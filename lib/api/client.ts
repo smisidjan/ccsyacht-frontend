@@ -23,6 +23,7 @@ import type {
   TenantRegistrationInfo,
   ApiError,
 } from "./types";
+import { publicFetch, publicFetchVoid } from "./publicFetch";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
 
@@ -325,69 +326,22 @@ export const invitationsApi = {
     }),
 
   // Public endpoint - no auth required
-  accept: async (data: AcceptInvitationRequest): Promise<void> => {
-    const response = await fetch(`${API_BASE_URL}/invitations/accept`, {
+  accept: (data: AcceptInvitationRequest): Promise<void> =>
+    publicFetchVoid("/invitations/accept", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      const error: ApiError = {
-        message: errorData.message || errorData.error || `HTTP error ${response.status}`,
-        code: errorData.code,
-        status: response.status,
-      };
-      throw error;
-    }
-  },
+    }),
 
   // Public endpoint - no auth required
-  decline: async (data: DeclineInvitationRequest): Promise<void> => {
-    console.log("Decline API call:", `${API_BASE_URL}/invitations/decline`, data);
-    const response = await fetch(`${API_BASE_URL}/invitations/decline`, {
+  decline: (data: DeclineInvitationRequest): Promise<void> =>
+    publicFetchVoid("/invitations/decline", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
-    });
-
-    console.log("Decline response status:", response.status);
-
-    if (!response.ok) {
-      const text = await response.text();
-      console.log("Decline error response:", text);
-      let errorData;
-      try {
-        errorData = JSON.parse(text);
-      } catch {
-        errorData = { message: text || `HTTP error ${response.status}` };
-      }
-      const error: ApiError = {
-        message: errorData.message || errorData.error || `HTTP error ${response.status}`,
-        code: errorData.code,
-        status: response.status,
-      };
-      throw error;
-    }
-  },
+    }),
 
   // Public endpoint - no auth required
-  getByTokenPublic: async (token: string): Promise<Invitation> => {
-    const response = await fetch(`${API_BASE_URL}/invitations/${token}`);
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      const error: ApiError = {
-        message: errorData.message || errorData.error || `HTTP error ${response.status}`,
-        code: errorData.code,
-        status: response.status,
-      };
-      throw error;
-    }
-
-    return response.json();
-  },
+  getByTokenPublic: (token: string): Promise<Invitation> =>
+    publicFetch(`/invitations/${token}`),
 
   resend: (invitationId: string): Promise<void> =>
     apiFetch(`/invitations/${invitationId}/resend`, {
@@ -418,21 +372,8 @@ export const registrationRequestsApi = {
 
 // ============ Tenants API (public, no auth required) ============
 export const tenantsApi = {
-  getRegistrationInfo: async (slug: string): Promise<TenantRegistrationInfo> => {
-    const response = await fetch(`${API_BASE_URL}/tenants/${slug}/registration-info`);
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      const error: ApiError = {
-        message: errorData.message || `HTTP error ${response.status}`,
-        code: errorData.code,
-        status: response.status,
-      };
-      throw error;
-    }
-
-    return response.json();
-  },
+  getRegistrationInfo: (slug: string): Promise<TenantRegistrationInfo> =>
+    publicFetch(`/tenants/${slug}/registration-info`),
 };
 
 // ============ System API (no tenant header) ============
