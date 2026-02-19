@@ -31,3 +31,18 @@ body {
 main {
   flex: 1;
 }
+
+/* Hide scrollbar for horizontal scrollable elements */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Safe area padding for iPhone notch/home indicator */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
