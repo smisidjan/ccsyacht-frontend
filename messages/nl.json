@@ -91,7 +91,9 @@
     "usersDescription": "Beheer gebruikers en rechten.",
     "shipyardsDescription": "Bekijk en beheer scheepswerven.",
     "profileDescription": "Beheer je profielinstellingen.",
-    "systemDescription": "Beheer organisaties en systeeminstellingen."
+    "systemDescription": "Beheer organisaties en systeeminstellingen.",
+    "collapseSidebar": "Zijbalk inklappen",
+    "expandSidebar": "Zijbalk uitklappen"
   },
   "projects": {
     "title": "Projecten",
@@ -163,7 +165,8 @@
       "actions": "Acties",
       "uploaded": "Geüpload",
       "pending": "In afwachting",
-      "upload": "Upload"
+      "upload": "Upload",
+      "noDocuments": "Geen documenten gevonden"
     },
     "punchlist": {
       "title": "Punchlist",

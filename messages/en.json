@@ -91,7 +91,9 @@
     "usersDescription": "Manage users and permissions.",
     "shipyardsDescription": "View and manage shipyards.",
     "profileDescription": "Manage your profile settings.",
-    "systemDescription": "Manage organisations and system settings."
+    "systemDescription": "Manage organisations and system settings.",
+    "collapseSidebar": "Collapse sidebar",
+    "expandSidebar": "Expand sidebar"
   },
   "projects": {
     "title": "Projects",
@@ -163,7 +165,8 @@
       "actions": "Actions",
       "uploaded": "Uploaded",
       "pending": "Pending",
-      "upload": "Upload"
+      "upload": "Upload",
+      "noDocuments": "No documents found"
     },
     "punchlist": {
       "title": "Punchlist",
