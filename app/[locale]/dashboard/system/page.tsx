@@ -10,6 +10,11 @@ import {
   clearSystemToken,
 } from "@/lib/api/client";
 import TenantsTab from "@/app/components/system-tabs/TenantsTab";
+import Spinner from "@/app/components/ui/Spinner";
+import FormInput from "@/app/components/ui/FormInput";
+import PasswordInput from "@/app/components/ui/PasswordInput";
+import Button from "@/app/components/ui/Button";
+import Alert from "@/app/components/ui/Alert";
 
 export default function SystemSettingsPage() {
   const t = useTranslations("systemSettings");
@@ -56,7 +61,7 @@ export default function SystemSettingsPage() {
   if (checkingAuth) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <Spinner />
       </div>
     );
   }
@@ -88,57 +93,39 @@ export default function SystemSettingsPage() {
               {t("login.subtitle")}
             </p>
 
-            {error && (
-              <div className="mb-4 p-3 text-sm text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-400 rounded-lg">
-                {error}
-              </div>
-            )}
+            {error && <Alert type="error" message={error} className="mb-4" />}
 
             <form onSubmit={handleLogin} className="space-y-4">
-              <div>
-                <label
-                  htmlFor="system-email"
-                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-                >
-                  {t("login.email")}
-                </label>
-                <input
-                  id="system-email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  autoFocus
-                  className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-                  placeholder={t("login.emailPlaceholder")}
-                />
-              </div>
+              <FormInput
+                id="system-email"
+                type="email"
+                label={t("login.email")}
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder={t("login.emailPlaceholder")}
+                required
+                autoFocus
+              />
 
               <div>
                 <label
                   htmlFor="system-password"
-                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
                 >
                   {t("login.password")}
                 </label>
-                <input
+                <PasswordInput
                   id="system-password"
-                  type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  required
-                  className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
                   placeholder={t("login.passwordPlaceholder")}
+                  required
                 />
               </div>
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full py-2 px-4 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-              >
+              <Button type="submit" fullWidth loading={loading}>
                 {loading ? t("login.loggingIn") : t("login.loginButton")}
-              </button>
+              </Button>
             </form>
           </div>
         </div>
@@ -157,12 +144,9 @@ export default function SystemSettingsPage() {
             {t("subtitle")}
           </p>
         </div>
-        <button
-          onClick={handleLogout}
-          className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-all"
-        >
+        <Button variant="secondary" onClick={handleLogout}>
           {t("login.logout")}
-        </button>
+        </Button>
       </div>
 
       <TenantsTab />

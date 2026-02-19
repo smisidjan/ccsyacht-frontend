@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "@/i18n/navigation";
+import Spinner from "@/app/components/ui/Spinner";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -12,7 +13,7 @@ export default function DashboardPage() {
 
   return (
     <div className="flex items-center justify-center min-h-[400px]">
-      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      <Spinner />
     </div>
   );
 }
