@@ -4,9 +4,18 @@ import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { useParams } from "next/navigation";
 import { Link } from "@/i18n/navigation";
-import { CheckCircleIcon, ExclamationTriangleIcon } from "@heroicons/react/24/outline";
 import { tenantsApi } from "@/lib/api/client";
+import { validatePassword } from "@/lib/utils/validation";
+import { translateApiError } from "@/lib/utils/errors";
 import type { TenantRegistrationInfo } from "@/lib/api/types";
+import AuthPageContainer from "@/app/components/ui/AuthPageContainer";
+import FormInput from "@/app/components/ui/FormInput";
+import FormTextarea from "@/app/components/ui/FormTextarea";
+import PasswordInput from "@/app/components/ui/PasswordInput";
+import Button from "@/app/components/ui/Button";
+import Alert from "@/app/components/ui/Alert";
+import Spinner from "@/app/components/ui/Spinner";
+import ResultIcon from "@/app/components/ui/ResultIcon";
 
 const ERROR_MAP: Record<string, string> = {
   "This email is already registered.": "errors.emailExists",
@@ -54,20 +63,13 @@ export default function RegisterPage() {
     }
   }, [slug]);
 
-  const getTranslatedError = (errorMessage: string): string => {
-    const translationKey = ERROR_MAP[errorMessage];
-    if (translationKey) {
-      return t(translationKey);
-    }
-    return errorMessage;
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
-    if (password !== confirmPassword) {
-      setError(t("passwordMismatch"));
+    const validation = validatePassword(password, confirmPassword);
+    if (!validation.valid) {
+      setError(t(validation.error === "mismatch" ? "passwordMismatch" : "passwordTooShort"));
       return;
     }
 
@@ -94,13 +96,12 @@ export default function RegisterPage() {
 
       if (!response.ok) {
         const data = await response.json();
-        const errorMessage = data.error || data.message || t("registerFailed");
-        throw new Error(getTranslatedError(errorMessage));
+        throw new Error(data.error || data.message || t("registerFailed"));
       }
 
       setSuccess(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("error"));
+      setError(translateApiError(err, t, ERROR_MAP));
     } finally {
       setLoading(false);
     }
@@ -110,7 +111,7 @@ export default function RegisterPage() {
   if (orgLoading) {
     return (
       <div className="min-h-[calc(100vh-8rem)] flex items-center justify-center px-4">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <Spinner size="lg" />
       </div>
     );
   }
@@ -118,168 +119,121 @@ export default function RegisterPage() {
   // Error state if organization not found
   if (orgError) {
     return (
-      <div className="min-h-[calc(100vh-8rem)] flex items-center justify-center px-4">
-        <div className="w-full max-w-md">
-          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl dark:shadow-gray-900/50 p-8 border border-gray-100 dark:border-gray-800 text-center">
-            <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
-              <ExclamationTriangleIcon className="w-10 h-10 text-red-600 dark:text-red-400" />
-            </div>
-            <h1 className="text-2xl font-bold mb-4">
-              {t("orgNotFound")}
-            </h1>
-            <p className="text-gray-600 dark:text-gray-400 mb-6">
-              {t("orgNotFoundMessage")}
-            </p>
-            <Link
-              href="/login"
-              className="inline-block px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-all"
-            >
-              {t("backToLogin")}
-            </Link>
-          </div>
+      <AuthPageContainer>
+        <div className="text-center">
+          <ResultIcon type="error" size="lg" className="mx-auto mb-6" />
+          <h1 className="text-2xl font-bold mb-4">
+            {t("orgNotFound")}
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">
+            {t("orgNotFoundMessage")}
+          </p>
+          <Link href="/login">
+            <Button>{t("backToLogin")}</Button>
+          </Link>
         </div>
-      </div>
+      </AuthPageContainer>
     );
   }
 
   // Show success message after registration
   if (success) {
     return (
-      <div className="min-h-[calc(100vh-8rem)] flex items-center justify-center px-4">
-        <div className="w-full max-w-md">
-          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl dark:shadow-gray-900/50 p-8 border border-gray-100 dark:border-gray-800 text-center">
-            <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-              <CheckCircleIcon className="w-10 h-10 text-green-600 dark:text-green-400" />
-            </div>
-            <h1 className="text-2xl font-bold mb-4">
-              {t("registerSuccessTitle")}
-            </h1>
-            <p className="text-gray-600 dark:text-gray-400 mb-6">
-              {t("registerSuccessMessage")}
-            </p>
-            <Link
-              href="/login"
-              className="inline-block px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-all"
-            >
-              {t("backToLogin")}
-            </Link>
-          </div>
+      <AuthPageContainer>
+        <div className="text-center">
+          <ResultIcon type="success" size="lg" className="mx-auto mb-6" />
+          <h1 className="text-2xl font-bold mb-4">
+            {t("registerSuccessTitle")}
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">
+            {t("registerSuccessMessage")}
+          </p>
+          <Link href="/login">
+            <Button>{t("backToLogin")}</Button>
+          </Link>
         </div>
-      </div>
+      </AuthPageContainer>
     );
   }
 
   return (
-    <div className="min-h-[calc(100vh-8rem)] flex items-center justify-center px-4">
-      <div className="w-full max-w-md">
-        <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl dark:shadow-gray-900/50 p-8 border border-gray-100 dark:border-gray-800">
-          <h1 className="text-2xl font-bold text-center mb-8">
-            {t("registerForOrg", { orgName: orgInfo?.name })}
-          </h1>
+    <AuthPageContainer>
+      <h1 className="text-2xl font-bold text-center mb-8">
+        {t("registerForOrg", { orgName: orgInfo?.name ?? "" })}
+      </h1>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {error && (
-              <div className="p-3 text-sm text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-400 rounded-lg">
-                {error}
-              </div>
-            )}
+      {error && <Alert type="error" message={error} className="mb-6" />}
 
-            <div>
-              <label htmlFor="name" className="block text-sm font-medium mb-2">
-                {t("name")}
-              </label>
-              <input
-                id="name"
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-                className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-                placeholder={t("namePlaceholder")}
-              />
-            </div>
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <FormInput
+          id="name"
+          type="text"
+          label={t("name")}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder={t("namePlaceholder")}
+          required
+        />
 
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium mb-2">
-                {t("email")}
-              </label>
-              <input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-                placeholder={t("emailPlaceholder")}
-              />
-            </div>
+        <FormInput
+          id="email"
+          type="email"
+          label={t("email")}
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder={t("emailPlaceholder")}
+          required
+        />
 
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium mb-2">
-                {t("password")}
-              </label>
-              <input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                minLength={8}
-                className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-                placeholder={t("passwordPlaceholder")}
-              />
-            </div>
-
-            <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium mb-2">
-                {t("confirmPassword")}
-              </label>
-              <input
-                id="confirmPassword"
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                required
-                minLength={8}
-                className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-                placeholder={t("passwordPlaceholder")}
-              />
-            </div>
-
-            <div>
-              <label htmlFor="message" className="block text-sm font-medium mb-2">
-                {t("message")}
-              </label>
-              <textarea
-                id="message"
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                rows={3}
-                className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all resize-none"
-                placeholder={t("messagePlaceholder")}
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-3 px-4 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 focus:ring-4 focus:ring-blue-500/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl"
-            >
-              {loading ? t("registering") : t("registerButton")}
-            </button>
-          </form>
-
-          <p className="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">
-            {t("hasAccount")}{" "}
-            <Link
-              href="/login"
-              className="text-blue-600 hover:text-blue-700 font-medium"
-            >
-              {t("loginHere")}
-            </Link>
-          </p>
+        <div>
+          <label htmlFor="password" className="block text-sm font-medium mb-2">
+            {t("password")}
+          </label>
+          <PasswordInput
+            id="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder={t("passwordPlaceholder")}
+            required
+          />
         </div>
-      </div>
-    </div>
+
+        <div>
+          <label htmlFor="confirmPassword" className="block text-sm font-medium mb-2">
+            {t("confirmPassword")}
+          </label>
+          <PasswordInput
+            id="confirmPassword"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            placeholder={t("passwordPlaceholder")}
+            required
+          />
+        </div>
+
+        <FormTextarea
+          id="message"
+          label={t("message")}
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          placeholder={t("messagePlaceholder")}
+          rows={3}
+        />
+
+        <Button type="submit" fullWidth loading={loading}>
+          {loading ? t("registering") : t("registerButton")}
+        </Button>
+      </form>
+
+      <p className="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">
+        {t("hasAccount")}{" "}
+        <Link
+          href="/login"
+          className="text-blue-600 hover:text-blue-700 font-medium"
+        >
+          {t("loginHere")}
+        </Link>
+      </p>
+    </AuthPageContainer>
   );
 }
