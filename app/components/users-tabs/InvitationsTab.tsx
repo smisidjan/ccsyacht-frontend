@@ -5,7 +5,10 @@ import { useTranslations } from "next-intl";
 import { PlusIcon, ArrowPathIcon, TrashIcon, EnvelopeIcon } from "@heroicons/react/24/outline";
 import type { Invitation } from "@/lib/api/types";
 import DeleteInvitationModal from "@/app/components/modals/DeleteInvitationModal";
+import Button from "@/app/components/ui/Button";
 import Toast from "@/app/components/ui/Toast";
+import LoadingSkeleton from "@/app/components/ui/LoadingSkeleton";
+import EmptyState from "@/app/components/ui/EmptyState";
 
 interface InvitationsTabProps {
   invitations: Invitation[];
@@ -113,29 +116,7 @@ export default function InvitationsTab({
   };
 
   if (loading) {
-    return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div className="animate-pulse">
-            <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-32 mb-2"></div>
-            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-40"></div>
-          </div>
-          <div className="animate-pulse h-10 w-32 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
-        </div>
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-100 dark:border-gray-700 p-6">
-          <div className="space-y-4">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="animate-pulse flex items-center gap-4">
-                <div className="w-5 h-5 bg-gray-200 dark:bg-gray-700 rounded"></div>
-                <div className="flex-1">
-                  <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/3"></div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
+    return <LoadingSkeleton type="list" rows={3} showButton />;
   }
 
   return (
@@ -159,13 +140,10 @@ export default function InvitationsTab({
             {t("subtitle", { pending: pendingCount })}
           </p>
         </div>
-        <button
-          onClick={onInviteUser}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-all shadow-md hover:shadow-lg"
-        >
+        <Button onClick={onInviteUser}>
           <PlusIcon className="w-4 h-4" />
           {t("inviteUser")}
-        </button>
+        </Button>
       </div>
 
       {/* Invitations Table */}
@@ -252,9 +230,10 @@ export default function InvitationsTab({
         </table>
 
         {invitations.length === 0 && (
-          <div className="text-center py-12 text-gray-500 dark:text-gray-400">
-            {t("noInvitations")}
-          </div>
+          <EmptyState
+            icon={<EnvelopeIcon className="w-6 h-6" />}
+            description={t("noInvitations")}
+          />
         )}
       </div>
 

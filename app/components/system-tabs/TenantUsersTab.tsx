@@ -5,6 +5,11 @@ import { useTranslations } from "next-intl";
 import { UserPlusIcon } from "@heroicons/react/24/outline";
 import { systemApi } from "@/lib/api/client";
 import type { Tenant, UserRole } from "@/lib/api/types";
+import FormInput from "@/app/components/ui/FormInput";
+import FormSelect from "@/app/components/ui/FormSelect";
+import PasswordInput from "@/app/components/ui/PasswordInput";
+import Button from "@/app/components/ui/Button";
+import Alert from "@/app/components/ui/Alert";
 
 const ROLES: UserRole[] = [
   "admin",
@@ -77,6 +82,19 @@ export default function TenantUsersTab() {
     }
   };
 
+  const tenantOptions = [
+    { value: "", label: t("selectTenantPlaceholder") },
+    ...tenants.map((tenant) => ({
+      value: tenant.identifier,
+      label: tenant.name,
+    })),
+  ];
+
+  const roleOptions = ROLES.map((r) => ({
+    value: r,
+    label: tRoles(r),
+  }));
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -113,129 +131,74 @@ export default function TenantUsersTab() {
       {/* Form */}
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg dark:shadow-gray-900/30 border border-gray-100 dark:border-gray-700 p-6">
         <form onSubmit={handleSubmit} className="space-y-6">
-          {error && (
-            <div className="p-3 text-sm text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-400 rounded-lg">
-              {error}
-            </div>
-          )}
-
-          {success && (
-            <div className="p-3 text-sm text-green-600 bg-green-50 dark:bg-green-900/20 dark:text-green-400 rounded-lg">
-              {success}
-            </div>
-          )}
+          {error && <Alert type="error" message={error} />}
+          {success && <Alert type="success" message={success} />}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label
-                htmlFor="tenant"
-                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-              >
-                {t("selectTenant")}
-              </label>
-              <select
-                id="tenant"
-                value={selectedTenantId}
-                onChange={(e) => setSelectedTenantId(e.target.value)}
-                required
-                className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-              >
-                <option value="">{t("selectTenantPlaceholder")}</option>
-                {tenants.map((tenant) => (
-                  <option key={tenant.identifier} value={tenant.identifier}>
-                    {tenant.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <FormSelect
+              id="tenant"
+              label={t("selectTenant")}
+              value={selectedTenantId}
+              onChange={(e) => setSelectedTenantId(e.target.value)}
+              options={tenantOptions}
+              required
+            />
 
-            <div>
-              <label
-                htmlFor="role"
-                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-              >
-                {t("role")}
-              </label>
-              <select
-                id="role"
-                value={role}
-                onChange={(e) => setRole(e.target.value as UserRole)}
-                required
-                className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-              >
-                {ROLES.map((r) => (
-                  <option key={r} value={r}>
-                    {tRoles(r)}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <FormSelect
+              id="role"
+              label={t("role")}
+              value={role}
+              onChange={(e) => setRole(e.target.value as UserRole)}
+              options={roleOptions}
+              required
+            />
 
-            <div>
-              <label
-                htmlFor="name"
-                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-              >
-                {t("name")}
-              </label>
-              <input
-                id="name"
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-                className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-                placeholder={t("namePlaceholder")}
-              />
-            </div>
+            <FormInput
+              id="name"
+              type="text"
+              label={t("name")}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder={t("namePlaceholder")}
+              required
+            />
 
-            <div>
-              <label
-                htmlFor="email"
-                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-              >
-                {t("email")}
-              </label>
-              <input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-                placeholder={t("emailPlaceholder")}
-              />
-            </div>
+            <FormInput
+              id="email"
+              type="email"
+              label={t("email")}
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder={t("emailPlaceholder")}
+              required
+            />
 
             <div className="md:col-span-2">
               <label
                 htmlFor="password"
-                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
               >
                 {t("password")}
               </label>
-              <input
+              <PasswordInput
                 id="password"
-                type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                required
-                minLength={8}
-                className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
                 placeholder={t("passwordPlaceholder")}
+                required
               />
             </div>
           </div>
 
           <div className="flex justify-end">
-            <button
+            <Button
               type="submit"
-              disabled={submitting || !selectedTenantId}
-              className="inline-flex items-center gap-2 px-6 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              disabled={!selectedTenantId}
+              loading={submitting}
             >
               <UserPlusIcon className="w-5 h-5" />
               {submitting ? t("adding") : t("addUser")}
-            </button>
+            </Button>
           </div>
         </form>
       </div>
