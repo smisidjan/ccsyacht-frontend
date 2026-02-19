@@ -3,6 +3,9 @@
 import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import Modal from "@/app/components/ui/Modal";
+import FormSelect from "@/app/components/ui/FormSelect";
+import Button from "@/app/components/ui/Button";
+import Alert from "@/app/components/ui/Alert";
 import {
   CheckCircleIcon,
   ExclamationTriangleIcon,
@@ -67,32 +70,33 @@ export default function ProcessRegistrationRequestModal({
 
   const isApprove = action === "approve";
 
+  const roleOptions = AVAILABLE_ROLES.map((role) => ({
+    value: role,
+    label: t(`roles.${role.replace(/ /g, "_")}`),
+  }));
+
   const footer = (
     <div className="flex justify-end gap-3">
-      <button
+      <Button
         type="button"
+        variant="secondary"
         onClick={onClose}
         disabled={isProcessing}
-        className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors disabled:opacity-50"
       >
         {t("cancel")}
-      </button>
-      <button
+      </Button>
+      <Button
         type="button"
+        variant={isApprove ? "success" : "danger"}
         onClick={handleConfirm}
-        disabled={isProcessing}
-        className={`px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed ${
-          isApprove
-            ? "bg-green-600 hover:bg-green-700"
-            : "bg-red-600 hover:bg-red-700"
-        }`}
+        loading={isProcessing}
       >
         {isProcessing
           ? t("processing")
           : isApprove
             ? t("approve")
             : t("reject")}
-      </button>
+      </Button>
     </div>
   );
 
@@ -105,11 +109,7 @@ export default function ProcessRegistrationRequestModal({
       size="sm"
     >
       <div className="flex flex-col items-center text-center">
-        {error && (
-          <div className="w-full mb-4 p-3 text-sm text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-400 rounded-lg">
-            {error}
-          </div>
-        )}
+        {error && <Alert type="error" message={error} className="w-full mb-4" />}
 
         <div
           className={`w-12 h-12 rounded-full flex items-center justify-center mb-4 ${
@@ -136,25 +136,15 @@ export default function ProcessRegistrationRequestModal({
 
         {isApprove && (
           <div className="w-full text-left">
-            <label
-              htmlFor="role"
-              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-            >
-              {t("selectRole")} <span className="text-red-500">*</span>
-            </label>
-            <select
+            <FormSelect
               id="role"
+              label={t("selectRole")}
               value={selectedRole}
               onChange={(e) => setSelectedRole(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              options={roleOptions}
+              required
               disabled={isProcessing}
-            >
-              {AVAILABLE_ROLES.map((role) => (
-                <option key={role} value={role}>
-                  {t(`roles.${role.replace(/ /g, "_")}`)}
-                </option>
-              ))}
-            </select>
+            />
           </div>
         )}
       </div>

@@ -3,7 +3,9 @@
 import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import Modal from "@/app/components/ui/Modal";
-import { ExclamationCircleIcon } from "@heroicons/react/24/outline";
+import FormInput from "@/app/components/ui/FormInput";
+import Button from "@/app/components/ui/Button";
+import Alert from "@/app/components/ui/Alert";
 import type { User, UserRole, UpdateUserRequest } from "@/lib/api/types";
 
 interface EditUserModalProps {
@@ -81,20 +83,12 @@ export default function EditUserModal({ isOpen, user, onClose, onSubmit }: EditU
 
   const footer = (
     <div className="flex justify-end gap-3">
-      <button
-        type="button"
-        onClick={handleClose}
-        className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-      >
+      <Button type="button" variant="secondary" onClick={handleClose}>
         {t("cancel")}
-      </button>
-      <button
-        type="submit"
-        form="edit-user-form"
-        className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors shadow-md"
-      >
+      </Button>
+      <Button type="submit" form="edit-user-form" loading={isSubmitting}>
         {t("save")}
-      </button>
+      </Button>
     </div>
   );
 
@@ -103,33 +97,25 @@ export default function EditUserModal({ isOpen, user, onClose, onSubmit }: EditU
   return (
     <Modal isOpen={isOpen} onClose={handleClose} title={t("title")} footer={footer} size="md">
       <form id="edit-user-form" onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            {t("name")} <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="text"
-            id="name"
-            value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            required
-          />
-        </div>
+        {error && <Alert type="error" message={error} />}
 
-        <div>
-          <label htmlFor="edit-email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            {t("email")} <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="email"
-            id="edit-email"
-            value={formData.email}
-            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            required
-          />
-        </div>
+        <FormInput
+          id="name"
+          type="text"
+          label={t("name")}
+          value={formData.name}
+          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+          required
+        />
+
+        <FormInput
+          id="edit-email"
+          type="email"
+          label={t("email")}
+          value={formData.email}
+          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+          required
+        />
 
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">

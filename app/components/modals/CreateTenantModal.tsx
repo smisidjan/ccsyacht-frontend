@@ -2,7 +2,11 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { XMarkIcon } from "@heroicons/react/24/outline";
+import Modal from "@/app/components/ui/Modal";
+import FormInput from "@/app/components/ui/FormInput";
+import PasswordInput from "@/app/components/ui/PasswordInput";
+import Button from "@/app/components/ui/Button";
+import Alert from "@/app/components/ui/Alert";
 
 interface CreateTenantModalProps {
   isOpen: boolean;
@@ -51,110 +55,74 @@ export default function CreateTenantModal({
     onClose();
   };
 
-  if (!isOpen) return null;
+  const footer = (
+    <div className="flex gap-3">
+      <Button
+        type="button"
+        variant="secondary"
+        onClick={handleClose}
+        className="flex-1"
+      >
+        {t("cancel")}
+      </Button>
+      <Button
+        type="submit"
+        form="create-tenant-form"
+        loading={loading}
+        className="flex-1"
+      >
+        {loading ? t("creating") : t("create")}
+      </Button>
+    </div>
+  );
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
-      <div className="flex min-h-full items-center justify-center p-4">
-        <div
-          className="fixed inset-0 bg-black/50 transition-opacity"
-          onClick={handleClose}
+    <Modal
+      isOpen={isOpen}
+      onClose={handleClose}
+      title={t("title")}
+      footer={footer}
+      size="md"
+    >
+      <form id="create-tenant-form" onSubmit={handleSubmit} className="space-y-4">
+        {error && <Alert type="error" message={error} />}
+
+        <FormInput
+          id="organisation-name"
+          type="text"
+          label={t("name")}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder={t("namePlaceholder")}
+          required
         />
 
-        <div className="relative bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-              {t("title")}
-            </h2>
-            <button
-              onClick={handleClose}
-              className="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300"
-            >
-              <XMarkIcon className="w-6 h-6" />
-            </button>
-          </div>
+        <FormInput
+          id="admin-email"
+          type="email"
+          label={t("adminEmail")}
+          value={adminEmail}
+          onChange={(e) => setAdminEmail(e.target.value)}
+          placeholder={t("adminEmailPlaceholder")}
+          required
+        />
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {error && (
-              <div className="p-3 text-sm text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-400 rounded-lg">
-                {error}
-              </div>
-            )}
-
-            <div>
-              <label
-                htmlFor="organisation-name"
-                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-              >
-                {t("name")}
-              </label>
-              <input
-                id="organisation-name"
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-                className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-                placeholder={t("namePlaceholder")}
-              />
-            </div>
-
-            <div>
-              <label
-                htmlFor="admin-email"
-                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-              >
-                {t("adminEmail")}
-              </label>
-              <input
-                id="admin-email"
-                type="email"
-                value={adminEmail}
-                onChange={(e) => setAdminEmail(e.target.value)}
-                required
-                className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-                placeholder={t("adminEmailPlaceholder")}
-              />
-            </div>
-
-            <div>
-              <label
-                htmlFor="admin-password"
-                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-              >
-                {t("adminPassword")}
-              </label>
-              <input
-                id="admin-password"
-                type="password"
-                value={adminPassword}
-                onChange={(e) => setAdminPassword(e.target.value)}
-                required
-                minLength={8}
-                className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-                placeholder={t("adminPasswordPlaceholder")}
-              />
-            </div>
-
-            <div className="flex gap-3 pt-4">
-              <button
-                type="button"
-                onClick={handleClose}
-                className="flex-1 px-4 py-2 text-gray-700 dark:text-gray-300 font-medium rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all"
-              >
-                {t("cancel")}
-              </button>
-              <button
-                type="submit"
-                disabled={loading}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-              >
-                {loading ? t("creating") : t("create")}
-              </button>
-            </div>
-          </form>
+        <div>
+          <label
+            htmlFor="admin-password"
+            className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+          >
+            {t("adminPassword")}
+          </label>
+          <PasswordInput
+            id="admin-password"
+            value={adminPassword}
+            onChange={(e) => setAdminPassword(e.target.value)}
+            placeholder={t("adminPasswordPlaceholder")}
+            required
+          />
         </div>
-      </div>
-    </div>
+      </form>
+    </Modal>
   );
 }

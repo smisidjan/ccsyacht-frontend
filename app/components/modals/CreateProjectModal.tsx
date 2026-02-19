@@ -5,6 +5,10 @@ import { useTranslations } from "next-intl";
 import { PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { DocumentIcon } from "@heroicons/react/24/solid";
 import Modal from "@/app/components/ui/Modal";
+import FormInput from "@/app/components/ui/FormInput";
+import FormTextarea from "@/app/components/ui/FormTextarea";
+import FormSelect from "@/app/components/ui/FormSelect";
+import Button from "@/app/components/ui/Button";
 
 interface DocumentType {
   id: string;
@@ -98,23 +102,25 @@ export default function CreateProjectModal({
     setNewDocTypeName("");
   };
 
+  const shipyardOptions = [
+    { value: "", label: t("selectShipyard") },
+    ...shipyards.map((s) => ({ value: s.id, label: s.name })),
+  ];
+
+  const projectTypeOptions = [
+    { value: "", label: "---------" },
+    ...projectTypes.map((pt) => ({ value: pt.id, label: pt.name })),
+  ];
+
   const footer = (
     <div className="flex justify-end gap-3">
-      <button
-        type="button"
-        onClick={onClose}
-        className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
-      >
+      <Button type="button" variant="secondary" onClick={onClose}>
         {t("cancel")}
-      </button>
-      <button
-        type="submit"
-        form="create-project-form"
-        className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-all shadow-md hover:shadow-lg"
-      >
+      </Button>
+      <Button type="submit" form="create-project-form">
         <DocumentIcon className="w-4 h-4" />
         {t("createProject")}
-      </button>
+      </Button>
     </div>
   );
 
@@ -127,74 +133,40 @@ export default function CreateProjectModal({
       size="lg"
     >
       <form id="create-project-form" onSubmit={handleSubmit} className="space-y-6">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            {t("projectName")}
-          </label>
-          <input
-            type="text"
-            value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            required
-            className="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-          />
-        </div>
+        <FormInput
+          id="project-name"
+          type="text"
+          label={t("projectName")}
+          value={formData.name}
+          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+          required
+        />
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            {t("description")}
-          </label>
-          <textarea
-            value={formData.description}
-            onChange={(e) =>
-              setFormData({ ...formData, description: e.target.value })
-            }
-            rows={3}
-            className="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all resize-y"
-          />
-        </div>
+        <FormTextarea
+          id="project-description"
+          label={t("description")}
+          value={formData.description}
+          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+          rows={3}
+        />
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            {t("yardOwner")}
-          </label>
-          <select
-            value={formData.shipyardId}
-            onChange={(e) =>
-              setFormData({ ...formData, shipyardId: e.target.value })
-            }
-            required
-            className="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-          >
-            <option value="">{t("selectShipyard")}</option>
-            {shipyards.map((shipyard) => (
-              <option key={shipyard.id} value={shipyard.id}>
-                {shipyard.name}
-              </option>
-            ))}
-          </select>
-        </div>
+        <FormSelect
+          id="shipyard"
+          label={t("yardOwner")}
+          value={formData.shipyardId}
+          onChange={(e) => setFormData({ ...formData, shipyardId: e.target.value })}
+          options={shipyardOptions}
+          required
+        />
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            {t("projectType")}
-          </label>
-          <select
-            value={formData.projectTypeId}
-            onChange={(e) =>
-              setFormData({ ...formData, projectTypeId: e.target.value })
-            }
-            required
-            className="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-          >
-            <option value="">---------</option>
-            {projectTypes.map((type) => (
-              <option key={type.id} value={type.id}>
-                {type.name}
-              </option>
-            ))}
-          </select>
-        </div>
+        <FormSelect
+          id="project-type"
+          label={t("projectType")}
+          value={formData.projectTypeId}
+          onChange={(e) => setFormData({ ...formData, projectTypeId: e.target.value })}
+          options={projectTypeOptions}
+          required
+        />
 
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -260,14 +232,16 @@ export default function CreateProjectModal({
           </div>
 
           <div className="mt-3">
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              fullWidth
               onClick={addDocType}
-              className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-blue-600 dark:text-blue-400 border border-blue-600 dark:border-blue-400 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+              className="border border-blue-600 dark:border-blue-400 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20"
             >
               <PlusIcon className="w-4 h-4" />
               {t("addDocumentType")}
-            </button>
+            </Button>
           </div>
         </div>
       </form>

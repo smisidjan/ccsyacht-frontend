@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import Modal from "@/app/components/ui/Modal";
+import Button from "@/app/components/ui/Button";
 import { ExclamationTriangleIcon } from "@heroicons/react/24/outline";
 
 interface DeleteInvitationModalProps {
@@ -35,22 +36,22 @@ export default function DeleteInvitationModal({
 
   const footer = (
     <div className="flex justify-end gap-3">
-      <button
+      <Button
         type="button"
+        variant="secondary"
         onClick={onClose}
         disabled={isDeleting}
-        className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors disabled:opacity-50"
       >
         {t("cancel")}
-      </button>
-      <button
+      </Button>
+      <Button
         type="button"
+        variant="danger"
         onClick={handleConfirm}
-        disabled={isDeleting}
-        className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+        loading={isDeleting}
       >
         {isDeleting ? t("deleting") : t("delete")}
-      </button>
+      </Button>
     </div>
   );
 
