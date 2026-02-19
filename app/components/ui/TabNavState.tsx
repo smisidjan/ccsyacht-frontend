@@ -15,7 +15,7 @@ interface TabNavStateProps {
 export default function TabNavState({ tabs, activeTab, onChange }: TabNavStateProps) {
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md dark:shadow-gray-900/30 px-4">
-      <nav className="flex items-center gap-1 overflow-x-auto">
+      <nav className="flex items-center gap-1 overflow-x-auto scrollbar-hide">
         {tabs.map((tab) => {
           const isActive = activeTab === tab.key;
           const Icon = tab.icon;

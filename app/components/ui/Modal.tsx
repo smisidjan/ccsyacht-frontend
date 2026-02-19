@@ -13,10 +13,10 @@ interface ModalProps {
 }
 
 const sizeClasses = {
-  sm: "max-w-md",
-  md: "max-w-lg",
-  lg: "max-w-2xl",
-  xl: "max-w-4xl",
+  sm: "max-w-[calc(100%-2rem)] sm:max-w-md",
+  md: "max-w-[calc(100%-2rem)] sm:max-w-lg",
+  lg: "max-w-[calc(100%-2rem)] md:max-w-2xl",
+  xl: "max-w-[calc(100%-2rem)] md:max-w-4xl",
 };
 
 export default function Modal({
@@ -62,7 +62,7 @@ export default function Modal({
         ref={modalRef}
         className={`w-full ${sizeClasses[size]} bg-white dark:bg-gray-800 rounded-2xl shadow-2xl dark:shadow-gray-900/50 max-h-[90vh] flex flex-col`}
       >
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex items-center justify-between px-4 py-3 md:px-6 md:py-4 border-b border-gray-200 dark:border-gray-700">
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
             {title}
           </h2>
@@ -74,10 +74,10 @@ export default function Modal({
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-6 py-4">{children}</div>
+        <div className="flex-1 overflow-y-auto px-4 py-3 md:px-6 md:py-4">{children}</div>
 
         {footer && (
-          <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 rounded-b-2xl">
+          <div className="px-4 py-3 md:px-6 md:py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 rounded-b-2xl">
             {footer}
           </div>
         )}

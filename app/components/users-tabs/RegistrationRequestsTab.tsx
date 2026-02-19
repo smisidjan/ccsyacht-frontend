@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { CheckIcon, XMarkIcon, UserIcon, ClipboardDocumentIcon, LinkIcon, ArrowPathIcon } from "@heroicons/react/24/outline";
 import type { RegistrationRequest } from "@/lib/api/types";
+import { getStatusBadgeColor } from "@/lib/utils/badges";
 import ProcessRegistrationRequestModal, {
   type ProcessAction,
 } from "@/app/components/modals/ProcessRegistrationRequestModal";
@@ -90,19 +91,6 @@ export default function RegistrationRequestsTab({
       await onApproveRequest?.(requestId, role);
     } else if (modal.action === "reject") {
       await onRejectRequest?.(requestId);
-    }
-  };
-
-  const getStatusBadgeColor = (status: string) => {
-    switch (status) {
-      case "pending":
-        return "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400";
-      case "approved":
-        return "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400";
-      case "rejected":
-        return "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400";
-      default:
-        return "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-400";
     }
   };
 
@@ -222,7 +210,7 @@ export default function RegistrationRequestsTab({
               key={request.identifier}
               className="bg-white dark:bg-gray-800 rounded-xl shadow-lg dark:shadow-gray-900/30 border border-gray-100 dark:border-gray-700 p-6"
             >
-              <div className="flex items-start justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between">
                 <div className="flex items-start gap-4">
                   <div className="w-12 h-12 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center">
                     <UserIcon className="w-6 h-6 text-gray-400" />
@@ -247,22 +235,22 @@ export default function RegistrationRequestsTab({
                     )}
                   </div>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2 sm:gap-3 mt-4 sm:mt-0">
                   <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeColor(statusKey)}`}>
                     {t(`statuses.${statusKey}`)}
                   </span>
                   {statusKey === "pending" && (
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                       <button
                         onClick={() => handleOpenModal("approve", request)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-all"
+                        className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-all"
                       >
                         <CheckIcon className="w-4 h-4" />
                         {t("approve")}
                       </button>
                       <button
                         onClick={() => handleOpenModal("reject", request)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-all"
+                        className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-all"
                       >
                         <XMarkIcon className="w-4 h-4" />
                         {t("reject")}

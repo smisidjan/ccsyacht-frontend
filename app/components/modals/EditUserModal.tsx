@@ -121,7 +121,7 @@ export default function EditUserModal({ isOpen, user, onClose, onSubmit }: EditU
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             {t("roles")}
           </label>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {AVAILABLE_ROLES.map((role) => (
               <label key={role} className="flex items-center gap-2 cursor-pointer">
                 <input
