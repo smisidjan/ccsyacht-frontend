@@ -1,0 +1,438 @@
+{
+  "common": {
+    "appName": "CCS Yacht",
+    "login": "Login",
+    "register": "Register",
+    "logout": "Logout",
+    "profile": "Profile",
+    "language": "Language"
+  },
+  "auth": {
+    "loginTitle": "Login",
+    "registerTitle": "Register",
+    "name": "Name",
+    "namePlaceholder": "John Doe",
+    "email": "Email address",
+    "emailPlaceholder": "name@example.com",
+    "password": "Password",
+    "passwordPlaceholder": "••••••••",
+    "confirmPassword": "Confirm password",
+    "message": "Message (optional)",
+    "messagePlaceholder": "Why do you want to access the platform?",
+    "loginButton": "Login",
+    "registerButton": "Register",
+    "loggingIn": "Logging in...",
+    "loading": "Loading...",
+    "continue": "Continue",
+    "back": "Back",
+    "selectOrganisation": "Select an organisation to continue:",
+    "registering": "Registering...",
+    "noAccount": "Don't have an account?",
+    "hasAccount": "Already have an account?",
+    "registerHere": "Register here",
+    "loginHere": "Login here",
+    "loginFailed": "Login failed",
+    "registerFailed": "Registration failed",
+    "passwordMismatch": "Passwords do not match",
+    "error": "An error occurred",
+    "registerSuccessTitle": "Registration Request Submitted",
+    "registerSuccessMessage": "Your registration request has been submitted successfully. You will receive an email notification when your request has been approved or declined.",
+    "backToLogin": "Back to Login",
+    "registerForOrg": "Register for {orgName}",
+    "orgNotFound": "Organization not found",
+    "orgNotFoundMessage": "The organization you're trying to register for doesn't exist.",
+    "errors": {
+      "invalidCredentials": "The provided credentials are incorrect.",
+      "userNotFound": "User not found.",
+      "emailExists": "This email is already registered.",
+      "invalidEmail": "Please enter a valid email address.",
+      "weakPassword": "Password is too weak.",
+      "tooManyAttempts": "Too many attempts. Please try again later."
+    },
+    "forgotPassword": "Forgot your password?",
+    "forgotPasswordTitle": "Forgot Password",
+    "forgotPasswordSubtitle": "Enter your email address and we'll send you instructions to reset your password.",
+    "sendResetLink": "Send Reset Link",
+    "sending": "Sending...",
+    "resetPasswordSentTitle": "Reset your password",
+    "resetPasswordSentMessage": "If an account exists, we'll send instructions for resetting your password. Didn't get them? Check the email address or ask to resend the instructions.",
+    "resendInstructions": "Resend instructions",
+    "resending": "Resending...",
+    "resetPasswordTitle": "Reset Password",
+    "resetPasswordSubtitle": "Enter your new password below.",
+    "newPassword": "New Password",
+    "newPasswordPlaceholder": "Enter new password",
+    "confirmPasswordPlaceholder": "Confirm new password",
+    "resetPassword": "Reset Password",
+    "resetting": "Resetting...",
+    "passwordsDoNotMatch": "Passwords do not match",
+    "passwordTooShort": "Password must be at least 8 characters",
+    "passwordResetSuccess": "Password Reset Successfully",
+    "passwordResetSuccessMessage": "Your password has been reset. You can now log in with your new password.",
+    "invalidResetLink": "Invalid Reset Link",
+    "invalidResetLinkMessage": "This password reset link is invalid or has expired.",
+    "requestNewLink": "Request New Link"
+  },
+  "theme": {
+    "switchToDark": "Switch to dark mode",
+    "switchToLight": "Switch to light mode"
+  },
+  "footer": {
+    "copyright": "© {year} CCS Yacht"
+  },
+  "dashboard": {
+    "projects": "Projects",
+    "users": "Users",
+    "shipyards": "Shipyards",
+    "profile": "Profile",
+    "system": "System Settings",
+    "logout": "Logout",
+    "projectsDescription": "Manage your yacht projects here.",
+    "usersDescription": "Manage users and permissions.",
+    "shipyardsDescription": "View and manage shipyards.",
+    "profileDescription": "Manage your profile settings.",
+    "systemDescription": "Manage organisations and system settings."
+  },
+  "projects": {
+    "title": "Projects",
+    "newProject": "New Project",
+    "searchPlaceholder": "Search project name, project description, or shipyards...",
+    "showing": "Showing {count} of {total} projects",
+    "noProjects": "No projects found",
+    "openProject": "Open Project",
+    "members": "members",
+    "filters": {
+      "all": "All",
+      "setup": "Setup",
+      "active": "Active",
+      "locked": "Locked",
+      "completed": "Completed"
+    }
+  },
+  "createProject": {
+    "title": "Create New Project",
+    "projectName": "Project Name",
+    "description": "Description",
+    "yardOwner": "Yard/Owner",
+    "selectShipyard": "Select a shipyard",
+    "projectType": "Project Type",
+    "generalArrangement": "General Arrangement",
+    "uploadPdfOptional": "Upload the General Arrangement PDF (optional)",
+    "documentTypes": "Document Types",
+    "name": "Name",
+    "required": "Required",
+    "delete": "Delete",
+    "addDocumentType": "Add Document Type",
+    "cancel": "Cancel",
+    "createProject": "Create Project"
+  },
+  "projectDetail": {
+    "tabs": {
+      "overview": "Overview",
+      "documents": "Documents",
+      "punchlist": "Punchlist",
+      "logbook": "Logbook",
+      "reporting": "Reporting",
+      "settings": "Settings"
+    },
+    "areasSection": {
+      "title": "Areas",
+      "noAreas": "No areas have been added yet"
+    },
+    "setupTasks": {
+      "title": "Setup Tasks",
+      "pendingCount": "{count} tasks pending",
+      "pending": "Pending",
+      "completed": "Completed",
+      "markComplete": "Mark Complete"
+    },
+    "areas": "areas",
+    "stages": "stages",
+    "completed": "completed",
+    "inProgress": "in progress",
+    "viewDetails": "View Details",
+    "documents": {
+      "title": "Documents",
+      "subtitle": "{uploaded} of {total} documents uploaded",
+      "uploadDocument": "Upload Document",
+      "requiredProgress": "{uploaded} of {required} required documents uploaded",
+      "documentName": "Document Name",
+      "type": "Type",
+      "status": "Status",
+      "uploadedAt": "Uploaded At",
+      "actions": "Actions",
+      "uploaded": "Uploaded",
+      "pending": "Pending",
+      "upload": "Upload"
+    },
+    "punchlist": {
+      "title": "Punchlist",
+      "subtitle": "{open} open, {resolved} resolved",
+      "addItem": "Add Item",
+      "openItems": "Open Items",
+      "resolvedItems": "Resolved Items",
+      "assignedTo": "Assigned to",
+      "priority": {
+        "high": "High",
+        "medium": "Medium",
+        "low": "Low"
+      },
+      "status": {
+        "open": "Open",
+        "resolved": "Resolved"
+      }
+    },
+    "logbook": {
+      "title": "Logbook",
+      "subtitle": "{count} entries",
+      "addEntry": "Add Entry",
+      "noEntries": "No logbook entries yet"
+    },
+    "reporting": {
+      "title": "Reporting",
+      "subtitle": "Project progress and statistics",
+      "exportReport": "Export Report",
+      "overallProgress": "Overall Progress",
+      "areasCompleted": "Areas Completed",
+      "tasksCompleted": "Tasks Completed",
+      "documentsUploaded": "Documents Uploaded",
+      "areaProgress": "Area Progress",
+      "stagesCompleted": "stages completed"
+    },
+    "settings": {
+      "projectInfo": {
+        "title": "Project Information",
+        "edit": "Edit",
+        "projectId": "Project ID",
+        "shipyard": "Shipyard",
+        "projectType": "Project Type",
+        "createdAt": "Created At"
+      },
+      "teamMembers": {
+        "title": "Team Members",
+        "addMember": "Add Member"
+      },
+      "signers": {
+        "title": "Default Signers",
+        "addSigner": "Add Signer",
+        "description": "Default signers will be automatically added to document approval workflows."
+      },
+      "dangerZone": {
+        "title": "Danger Zone",
+        "description": "Once you delete a project, there is no going back. Please be certain.",
+        "deleteProject": "Delete Project"
+      }
+    }
+  },
+  "usersPage": {
+    "title": "Users",
+    "subtitle": "Manage users, invitations and registration requests",
+    "tabs": {
+      "users": "Users",
+      "invitations": "Invitations",
+      "registrationRequests": "Registration Requests"
+    },
+    "users": {
+      "title": "All Users",
+      "subtitle": "{count} users",
+      "user": "User",
+      "email": "Email",
+      "roles": "Roles",
+      "status": "Status",
+      "active": "Active",
+      "inactive": "Inactive",
+      "createdAt": "Created",
+      "actions": "Actions",
+      "edit": "Edit user",
+      "noUsers": "No users found",
+      "roleNames": {
+        "admin": "Admin",
+        "main user": "Main User",
+        "invitation manager": "Invitation Manager",
+        "user": "User",
+        "yard": "Yard",
+        "surveyor": "Surveyor",
+        "painter": "Painter",
+        "owner representative": "Owner Representative"
+      }
+    },
+    "invitations": {
+      "title": "Invitations",
+      "subtitle": "{pending} pending invitations",
+      "inviteUser": "Invite User",
+      "email": "Email",
+      "role": "Role",
+      "status": "Status",
+      "sentBy": "Sent By",
+      "sentAt": "Sent At",
+      "actions": "Actions",
+      "resend": "Resend invitation",
+      "resendSuccess": "Invitation resent successfully",
+      "resendError": "Failed to resend invitation",
+      "delete": "Delete invitation",
+      "noInvitations": "No invitations",
+      "statuses": {
+        "pending": "Pending",
+        "accepted": "Accepted",
+        "declined": "Declined",
+        "expired": "Expired"
+      }
+    },
+    "registrationRequests": {
+      "title": "Registration Requests",
+      "subtitle": "{pending} pending requests",
+      "pendingAlert": "You have {count} registration requests waiting for review",
+      "requestedAt": "Requested at",
+      "approve": "Approve",
+      "reject": "Reject",
+      "noRequests": "No registration requests",
+      "statuses": {
+        "pending": "Pending",
+        "approved": "Approved",
+        "rejected": "Rejected"
+      },
+      "processedBy": {
+        "approved": "Approved by",
+        "rejected": "Rejected by"
+      },
+      "shareableLink": {
+        "title": "Registration Link",
+        "description": "Share this link with users who want to register for your organization",
+        "copyLink": "Copy Link",
+        "linkCopied": "Copied!"
+      },
+      "lastUpdated": "Last updated",
+      "refresh": "Refresh"
+    },
+    "inviteModal": {
+      "title": "Invite User",
+      "email": "Email Address",
+      "emailPlaceholder": "user@example.com",
+      "role": "Role",
+      "roles": {
+        "user": "User",
+        "admin": "Admin",
+        "main_user": "Main User",
+        "invitation_manager": "Invitation Manager",
+        "yard": "Yard",
+        "surveyor": "Surveyor",
+        "painter": "Painter",
+        "owner_representative": "Owner Representative"
+      },
+      "infoText": "An invitation email will be sent to this address. The user will need to accept the invitation and create a password to access the platform.",
+      "cancel": "Cancel",
+      "sendInvitation": "Send Invitation",
+      "sending": "Sending...",
+      "error": "Failed to send invitation. Please try again."
+    },
+    "editModal": {
+      "title": "Edit User",
+      "name": "Name",
+      "email": "Email Address",
+      "roles": "Roles",
+      "roleNames": {
+        "admin": "Admin",
+        "main user": "Main User",
+        "invitation manager": "Invitation Manager",
+        "user": "User",
+        "yard": "Yard",
+        "surveyor": "Surveyor",
+        "painter": "Painter",
+        "owner representative": "Owner Representative"
+      },
+      "activeStatus": "Active",
+      "activeDescription": "Deactivated users cannot log in to the platform",
+      "cancel": "Cancel",
+      "save": "Save Changes"
+    },
+    "deleteInvitationModal": {
+      "title": "Delete Invitation",
+      "message": "Are you sure you want to delete the invitation for:",
+      "cancel": "Cancel",
+      "delete": "Delete Invitation",
+      "deleting": "Deleting..."
+    },
+    "processRequestModal": {
+      "approveTitle": "Approve Registration Request",
+      "rejectTitle": "Reject Registration Request",
+      "approveMessage": "Are you sure you want to approve the registration request for:",
+      "rejectMessage": "Are you sure you want to reject the registration request for:",
+      "selectRole": "Select Role",
+      "roles": {
+        "user": "User",
+        "admin": "Admin",
+        "main_user": "Main User",
+        "invitation_manager": "Invitation Manager",
+        "yard": "Yard",
+        "surveyor": "Surveyor",
+        "painter": "Painter",
+        "owner_representative": "Owner Representative"
+      },
+      "cancel": "Cancel",
+      "approve": "Approve",
+      "reject": "Reject",
+      "processing": "Processing..."
+    }
+  },
+  "systemSettings": {
+    "title": "System Settings",
+    "subtitle": "Manage organisations",
+    "organisations": {
+      "title": "All Organisations",
+      "subtitle": "{count} organisations",
+      "createOrganisation": "Create Organisation",
+      "name": "Name",
+      "slug": "Slug",
+      "createdAt": "Created At",
+      "noOrganisations": "No organisations found"
+    },
+    "createOrganisationModal": {
+      "title": "Create Organisation",
+      "name": "Organisation Name",
+      "namePlaceholder": "My Company",
+      "adminEmail": "Admin Email",
+      "adminEmailPlaceholder": "admin@example.com",
+      "adminPassword": "Admin Password",
+      "adminPasswordPlaceholder": "••••••••",
+      "cancel": "Cancel",
+      "create": "Create Organisation",
+      "creating": "Creating...",
+      "error": "Failed to create organisation"
+    },
+    "login": {
+      "title": "System Login",
+      "subtitle": "Enter your system administrator credentials to access this section.",
+      "email": "Email",
+      "emailPlaceholder": "admin@example.com",
+      "password": "Password",
+      "passwordPlaceholder": "••••••••",
+      "loginButton": "Login",
+      "loggingIn": "Logging in...",
+      "logout": "Logout",
+      "error": "Login failed. Please check your credentials."
+    }
+  },
+  "invitation": {
+    "acceptTitle": "Create Your Account",
+    "acceptSubtitle": "You've been invited to join CCS Yacht as {email}. Please create your account below.",
+    "name": "Full Name",
+    "namePlaceholder": "Enter your full name",
+    "password": "Password",
+    "passwordPlaceholder": "Create a password",
+    "confirmPassword": "Confirm Password",
+    "confirmPasswordPlaceholder": "Confirm your password",
+    "createAccount": "Create Account",
+    "creating": "Creating account...",
+    "accountCreated": "Account Created",
+    "accountCreatedMessage": "Your account has been created successfully. You can now log in to the platform.",
+    "declineTitle": "Invitation Declined",
+    "declineMessage": "You have declined the invitation. If you change your mind, please contact the person who invited you.",
+    "invalidInvitation": "Invalid Invitation",
+    "invalidInvitationMessage": "This invitation link is invalid or has expired.",
+    "goToLogin": "Go to Login",
+    "processing": "Processing...",
+    "passwordsDoNotMatch": "Passwords do not match",
+    "passwordTooShort": "Password must be at least 8 characters",
+    "error": "An error occurred"
+  }
+}

@@ -1,0 +1,438 @@
+{
+  "common": {
+    "appName": "CCS Yacht",
+    "login": "Inloggen",
+    "register": "Registreren",
+    "logout": "Uitloggen",
+    "profile": "Profiel",
+    "language": "Taal"
+  },
+  "auth": {
+    "loginTitle": "Inloggen",
+    "registerTitle": "Registreren",
+    "name": "Naam",
+    "namePlaceholder": "Jan Jansen",
+    "email": "E-mailadres",
+    "emailPlaceholder": "naam@voorbeeld.nl",
+    "password": "Wachtwoord",
+    "passwordPlaceholder": "••••••••",
+    "confirmPassword": "Wachtwoord bevestigen",
+    "message": "Bericht (optioneel)",
+    "messagePlaceholder": "Waarom wil je toegang tot het platform?",
+    "loginButton": "Inloggen",
+    "registerButton": "Registreren",
+    "loggingIn": "Bezig met inloggen...",
+    "loading": "Laden...",
+    "continue": "Doorgaan",
+    "back": "Terug",
+    "selectOrganisation": "Selecteer een organisatie om door te gaan:",
+    "registering": "Bezig met registreren...",
+    "noAccount": "Nog geen account?",
+    "hasAccount": "Heb je al een account?",
+    "registerHere": "Registreer hier",
+    "loginHere": "Log hier in",
+    "loginFailed": "Inloggen mislukt",
+    "registerFailed": "Registratie mislukt",
+    "passwordMismatch": "Wachtwoorden komen niet overeen",
+    "error": "Er is een fout opgetreden",
+    "registerSuccessTitle": "Registratieverzoek Ingediend",
+    "registerSuccessMessage": "Je registratieverzoek is succesvol ingediend. Je ontvangt een e-mail wanneer je verzoek is goedgekeurd of afgewezen.",
+    "backToLogin": "Terug naar Inloggen",
+    "registerForOrg": "Registreren voor {orgName}",
+    "orgNotFound": "Organisatie niet gevonden",
+    "orgNotFoundMessage": "De organisatie waarvoor je probeert te registreren bestaat niet.",
+    "errors": {
+      "invalidCredentials": "De opgegeven inloggegevens zijn onjuist.",
+      "userNotFound": "Gebruiker niet gevonden.",
+      "emailExists": "Dit e-mailadres is al geregistreerd.",
+      "invalidEmail": "Voer een geldig e-mailadres in.",
+      "weakPassword": "Wachtwoord is te zwak.",
+      "tooManyAttempts": "Te veel pogingen. Probeer het later opnieuw."
+    },
+    "forgotPassword": "Wachtwoord vergeten?",
+    "forgotPasswordTitle": "Wachtwoord Vergeten",
+    "forgotPasswordSubtitle": "Voer je e-mailadres in en we sturen je instructies om je wachtwoord te resetten.",
+    "sendResetLink": "Verstuur Reset Link",
+    "sending": "Versturen...",
+    "resetPasswordSentTitle": "Reset je wachtwoord",
+    "resetPasswordSentMessage": "Als er een account bestaat, sturen we instructies voor het resetten van je wachtwoord. Niet ontvangen? Controleer het e-mailadres of vraag de instructies opnieuw aan.",
+    "resendInstructions": "Instructies opnieuw versturen",
+    "resending": "Opnieuw versturen...",
+    "resetPasswordTitle": "Wachtwoord Resetten",
+    "resetPasswordSubtitle": "Voer hieronder je nieuwe wachtwoord in.",
+    "newPassword": "Nieuw Wachtwoord",
+    "newPasswordPlaceholder": "Voer nieuw wachtwoord in",
+    "confirmPasswordPlaceholder": "Bevestig nieuw wachtwoord",
+    "resetPassword": "Wachtwoord Resetten",
+    "resetting": "Resetten...",
+    "passwordsDoNotMatch": "Wachtwoorden komen niet overeen",
+    "passwordTooShort": "Wachtwoord moet minimaal 8 tekens bevatten",
+    "passwordResetSuccess": "Wachtwoord Succesvol Gereset",
+    "passwordResetSuccessMessage": "Je wachtwoord is gereset. Je kunt nu inloggen met je nieuwe wachtwoord.",
+    "invalidResetLink": "Ongeldige Reset Link",
+    "invalidResetLinkMessage": "Deze wachtwoord reset link is ongeldig of verlopen.",
+    "requestNewLink": "Nieuwe Link Aanvragen"
+  },
+  "theme": {
+    "switchToDark": "Schakel naar donkere modus",
+    "switchToLight": "Schakel naar lichte modus"
+  },
+  "footer": {
+    "copyright": "© {year} CCS Yacht"
+  },
+  "dashboard": {
+    "projects": "Projecten",
+    "users": "Gebruikers",
+    "shipyards": "Scheepswerven",
+    "profile": "Profiel",
+    "system": "Systeeminstellingen",
+    "logout": "Uitloggen",
+    "projectsDescription": "Beheer hier je jachtprojecten.",
+    "usersDescription": "Beheer gebruikers en rechten.",
+    "shipyardsDescription": "Bekijk en beheer scheepswerven.",
+    "profileDescription": "Beheer je profielinstellingen.",
+    "systemDescription": "Beheer organisaties en systeeminstellingen."
+  },
+  "projects": {
+    "title": "Projecten",
+    "newProject": "Nieuw Project",
+    "searchPlaceholder": "Zoek op projectnaam, beschrijving of scheepswerf...",
+    "showing": "{count} van {total} projecten",
+    "noProjects": "Geen projecten gevonden",
+    "openProject": "Open Project",
+    "members": "leden",
+    "filters": {
+      "all": "Alles",
+      "setup": "Setup",
+      "active": "Actief",
+      "locked": "Vergrendeld",
+      "completed": "Voltooid"
+    }
+  },
+  "createProject": {
+    "title": "Nieuw Project Aanmaken",
+    "projectName": "Projectnaam",
+    "description": "Beschrijving",
+    "yardOwner": "Werf/Eigenaar",
+    "selectShipyard": "Selecteer een scheepswerf",
+    "projectType": "Project Type",
+    "generalArrangement": "General Arrangement",
+    "uploadPdfOptional": "Upload de General Arrangement PDF (optioneel)",
+    "documentTypes": "Document Types",
+    "name": "Naam",
+    "required": "Verplicht",
+    "delete": "Verwijderen",
+    "addDocumentType": "Document Type Toevoegen",
+    "cancel": "Annuleren",
+    "createProject": "Project Aanmaken"
+  },
+  "projectDetail": {
+    "tabs": {
+      "overview": "Overzicht",
+      "documents": "Documenten",
+      "punchlist": "Punchlist",
+      "logbook": "Logboek",
+      "reporting": "Rapportage",
+      "settings": "Instellingen"
+    },
+    "areasSection": {
+      "title": "Gebieden",
+      "noAreas": "Er zijn nog geen gebieden toegevoegd"
+    },
+    "setupTasks": {
+      "title": "Setup Taken",
+      "pendingCount": "{count} taken in behandeling",
+      "pending": "In behandeling",
+      "completed": "Voltooid",
+      "markComplete": "Markeer als Voltooid"
+    },
+    "areas": "gebieden",
+    "stages": "fasen",
+    "completed": "voltooid",
+    "inProgress": "in uitvoering",
+    "viewDetails": "Bekijk Details",
+    "documents": {
+      "title": "Documenten",
+      "subtitle": "{uploaded} van {total} documenten geüpload",
+      "uploadDocument": "Document Uploaden",
+      "requiredProgress": "{uploaded} van {required} verplichte documenten geüpload",
+      "documentName": "Documentnaam",
+      "type": "Type",
+      "status": "Status",
+      "uploadedAt": "Geüpload Op",
+      "actions": "Acties",
+      "uploaded": "Geüpload",
+      "pending": "In afwachting",
+      "upload": "Upload"
+    },
+    "punchlist": {
+      "title": "Punchlist",
+      "subtitle": "{open} open, {resolved} opgelost",
+      "addItem": "Item Toevoegen",
+      "openItems": "Open Items",
+      "resolvedItems": "Opgeloste Items",
+      "assignedTo": "Toegewezen aan",
+      "priority": {
+        "high": "Hoog",
+        "medium": "Gemiddeld",
+        "low": "Laag"
+      },
+      "status": {
+        "open": "Open",
+        "resolved": "Opgelost"
+      }
+    },
+    "logbook": {
+      "title": "Logboek",
+      "subtitle": "{count} notities",
+      "addEntry": "Notitie Toevoegen",
+      "noEntries": "Nog geen logboek notities"
+    },
+    "reporting": {
+      "title": "Rapportage",
+      "subtitle": "Projectvoortgang en statistieken",
+      "exportReport": "Rapport Exporteren",
+      "overallProgress": "Totale Voortgang",
+      "areasCompleted": "Gebieden Voltooid",
+      "tasksCompleted": "Taken Voltooid",
+      "documentsUploaded": "Documenten Geüpload",
+      "areaProgress": "Voortgang per Gebied",
+      "stagesCompleted": "fasen voltooid"
+    },
+    "settings": {
+      "projectInfo": {
+        "title": "Project Informatie",
+        "edit": "Bewerken",
+        "projectId": "Project ID",
+        "shipyard": "Scheepswerf",
+        "projectType": "Project Type",
+        "createdAt": "Aangemaakt Op"
+      },
+      "teamMembers": {
+        "title": "Teamleden",
+        "addMember": "Lid Toevoegen"
+      },
+      "signers": {
+        "title": "Standaard Ondertekenaars",
+        "addSigner": "Ondertekenaar Toevoegen",
+        "description": "Standaard ondertekenaars worden automatisch toegevoegd aan document goedkeuringsworkflows."
+      },
+      "dangerZone": {
+        "title": "Gevarenzone",
+        "description": "Zodra je een project verwijdert, is er geen weg terug. Wees zeker van je keuze.",
+        "deleteProject": "Project Verwijderen"
+      }
+    }
+  },
+  "usersPage": {
+    "title": "Gebruikers",
+    "subtitle": "Beheer gebruikers, uitnodigingen en registratieverzoeken",
+    "tabs": {
+      "users": "Gebruikers",
+      "invitations": "Uitnodigingen",
+      "registrationRequests": "Registratieverzoeken"
+    },
+    "users": {
+      "title": "Alle Gebruikers",
+      "subtitle": "{count} gebruikers",
+      "user": "Gebruiker",
+      "email": "E-mail",
+      "roles": "Rollen",
+      "status": "Status",
+      "active": "Actief",
+      "inactive": "Inactief",
+      "createdAt": "Aangemaakt",
+      "actions": "Acties",
+      "edit": "Gebruiker bewerken",
+      "noUsers": "Geen gebruikers gevonden",
+      "roleNames": {
+        "admin": "Admin",
+        "main user": "Hoofdgebruiker",
+        "invitation manager": "Uitnodigingsbeheerder",
+        "user": "Gebruiker",
+        "yard": "Werf",
+        "surveyor": "Inspecteur",
+        "painter": "Schilder",
+        "owner representative": "Eigenaar Vertegenwoordiger"
+      }
+    },
+    "invitations": {
+      "title": "Uitnodigingen",
+      "subtitle": "{pending} openstaande uitnodigingen",
+      "inviteUser": "Gebruiker Uitnodigen",
+      "email": "E-mail",
+      "role": "Rol",
+      "status": "Status",
+      "sentBy": "Verzonden Door",
+      "sentAt": "Verzonden Op",
+      "actions": "Acties",
+      "resend": "Uitnodiging opnieuw verzenden",
+      "resendSuccess": "Uitnodiging succesvol opnieuw verzonden",
+      "resendError": "Uitnodiging opnieuw verzenden mislukt",
+      "delete": "Uitnodiging verwijderen",
+      "noInvitations": "Geen uitnodigingen",
+      "statuses": {
+        "pending": "In afwachting",
+        "accepted": "Geaccepteerd",
+        "declined": "Afgewezen",
+        "expired": "Verlopen"
+      }
+    },
+    "registrationRequests": {
+      "title": "Registratieverzoeken",
+      "subtitle": "{pending} openstaande verzoeken",
+      "pendingAlert": "Je hebt {count} registratieverzoeken die wachten op beoordeling",
+      "requestedAt": "Aangevraagd op",
+      "approve": "Goedkeuren",
+      "reject": "Afwijzen",
+      "noRequests": "Geen registratieverzoeken",
+      "statuses": {
+        "pending": "In afwachting",
+        "approved": "Goedgekeurd",
+        "rejected": "Afgewezen"
+      },
+      "processedBy": {
+        "approved": "Goedgekeurd door",
+        "rejected": "Afgewezen door"
+      },
+      "shareableLink": {
+        "title": "Registratielink",
+        "description": "Deel deze link met gebruikers die zich willen registreren voor je organisatie",
+        "copyLink": "Kopieer Link",
+        "linkCopied": "Gekopieerd!"
+      },
+      "lastUpdated": "Laatst bijgewerkt",
+      "refresh": "Vernieuwen"
+    },
+    "inviteModal": {
+      "title": "Gebruiker Uitnodigen",
+      "email": "E-mailadres",
+      "emailPlaceholder": "gebruiker@voorbeeld.nl",
+      "role": "Rol",
+      "roles": {
+        "user": "Gebruiker",
+        "admin": "Admin",
+        "main_user": "Hoofdgebruiker",
+        "invitation_manager": "Uitnodigingsbeheerder",
+        "yard": "Werf",
+        "surveyor": "Inspecteur",
+        "painter": "Schilder",
+        "owner_representative": "Eigenaar Vertegenwoordiger"
+      },
+      "infoText": "Er wordt een uitnodigingsmail naar dit adres verzonden. De gebruiker moet de uitnodiging accepteren en een wachtwoord aanmaken om toegang te krijgen tot het platform.",
+      "cancel": "Annuleren",
+      "sendInvitation": "Uitnodiging Verzenden",
+      "sending": "Verzenden...",
+      "error": "Uitnodiging verzenden mislukt. Probeer het opnieuw."
+    },
+    "editModal": {
+      "title": "Gebruiker Bewerken",
+      "name": "Naam",
+      "email": "E-mailadres",
+      "roles": "Rollen",
+      "roleNames": {
+        "admin": "Admin",
+        "main user": "Hoofdgebruiker",
+        "invitation manager": "Uitnodigingsbeheerder",
+        "user": "Gebruiker",
+        "yard": "Werf",
+        "surveyor": "Inspecteur",
+        "painter": "Schilder",
+        "owner representative": "Eigenaar Vertegenwoordiger"
+      },
+      "activeStatus": "Actief",
+      "activeDescription": "Gedeactiveerde gebruikers kunnen niet inloggen op het platform",
+      "cancel": "Annuleren",
+      "save": "Wijzigingen Opslaan"
+    },
+    "deleteInvitationModal": {
+      "title": "Uitnodiging Verwijderen",
+      "message": "Weet je zeker dat je de uitnodiging wilt verwijderen voor:",
+      "cancel": "Annuleren",
+      "delete": "Uitnodiging Verwijderen",
+      "deleting": "Verwijderen..."
+    },
+    "processRequestModal": {
+      "approveTitle": "Registratieverzoek Goedkeuren",
+      "rejectTitle": "Registratieverzoek Afwijzen",
+      "approveMessage": "Weet je zeker dat je het registratieverzoek wilt goedkeuren voor:",
+      "rejectMessage": "Weet je zeker dat je het registratieverzoek wilt afwijzen voor:",
+      "selectRole": "Selecteer Rol",
+      "roles": {
+        "user": "Gebruiker",
+        "admin": "Admin",
+        "main_user": "Hoofdgebruiker",
+        "invitation_manager": "Uitnodigingsbeheerder",
+        "yard": "Werf",
+        "surveyor": "Inspecteur",
+        "painter": "Schilder",
+        "owner_representative": "Eigenaar Vertegenwoordiger"
+      },
+      "cancel": "Annuleren",
+      "approve": "Goedkeuren",
+      "reject": "Afwijzen",
+      "processing": "Verwerken..."
+    }
+  },
+  "systemSettings": {
+    "title": "Systeeminstellingen",
+    "subtitle": "Beheer organisaties",
+    "organisations": {
+      "title": "Alle Organisaties",
+      "subtitle": "{count} organisaties",
+      "createOrganisation": "Organisatie Aanmaken",
+      "name": "Naam",
+      "slug": "Slug",
+      "createdAt": "Aangemaakt Op",
+      "noOrganisations": "Geen organisaties gevonden"
+    },
+    "createOrganisationModal": {
+      "title": "Organisatie Aanmaken",
+      "name": "Organisatie Naam",
+      "namePlaceholder": "Mijn Bedrijf",
+      "adminEmail": "Admin E-mail",
+      "adminEmailPlaceholder": "admin@voorbeeld.nl",
+      "adminPassword": "Admin Wachtwoord",
+      "adminPasswordPlaceholder": "••••••••",
+      "cancel": "Annuleren",
+      "create": "Organisatie Aanmaken",
+      "creating": "Aanmaken...",
+      "error": "Organisatie aanmaken mislukt"
+    },
+    "login": {
+      "title": "Systeem Inloggen",
+      "subtitle": "Voer je systeembeheerder gegevens in om toegang te krijgen tot deze sectie.",
+      "email": "E-mail",
+      "emailPlaceholder": "admin@voorbeeld.nl",
+      "password": "Wachtwoord",
+      "passwordPlaceholder": "••••••••",
+      "loginButton": "Inloggen",
+      "loggingIn": "Bezig met inloggen...",
+      "logout": "Uitloggen",
+      "error": "Inloggen mislukt. Controleer je gegevens."
+    }
+  },
+  "invitation": {
+    "acceptTitle": "Maak Je Account Aan",
+    "acceptSubtitle": "Je bent uitgenodigd om lid te worden van CCS Yacht als {email}. Maak hieronder je account aan.",
+    "name": "Volledige Naam",
+    "namePlaceholder": "Voer je volledige naam in",
+    "password": "Wachtwoord",
+    "passwordPlaceholder": "Maak een wachtwoord aan",
+    "confirmPassword": "Wachtwoord Bevestigen",
+    "confirmPasswordPlaceholder": "Bevestig je wachtwoord",
+    "createAccount": "Account Aanmaken",
+    "creating": "Account aanmaken...",
+    "accountCreated": "Account Aangemaakt",
+    "accountCreatedMessage": "Je account is succesvol aangemaakt. Je kunt nu inloggen op het platform.",
+    "declineTitle": "Uitnodiging Afgewezen",
+    "declineMessage": "Je hebt de uitnodiging afgewezen. Als je van gedachten verandert, neem dan contact op met de persoon die je heeft uitgenodigd.",
+    "invalidInvitation": "Ongeldige Uitnodiging",
+    "invalidInvitationMessage": "Deze uitnodigingslink is ongeldig of verlopen.",
+    "goToLogin": "Naar Inloggen",
+    "processing": "Verwerken...",
+    "passwordsDoNotMatch": "Wachtwoorden komen niet overeen",
+    "passwordTooShort": "Wachtwoord moet minimaal 8 tekens bevatten",
+    "error": "Er is een fout opgetreden"
+  }
+}
