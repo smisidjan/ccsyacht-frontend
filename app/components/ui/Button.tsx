@@ -3,7 +3,7 @@
 import { forwardRef } from "react";
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: "primary" | "secondary" | "ghost" | "danger";
+  variant?: "primary" | "secondary" | "ghost" | "danger" | "success";
   size?: "sm" | "md" | "lg";
   fullWidth?: boolean;
   loading?: boolean;
@@ -19,6 +19,8 @@ const variantStyles = {
     "text-gray-600 dark:text-gray-400 font-medium hover:bg-gray-100 dark:hover:bg-gray-800",
   danger:
     "bg-red-600 text-white font-medium hover:bg-red-700 focus:ring-4 focus:ring-red-500/50",
+  success:
+    "bg-green-600 text-white font-medium hover:bg-green-700 focus:ring-4 focus:ring-green-500/50",
 };
 
 const sizeStyles = {
