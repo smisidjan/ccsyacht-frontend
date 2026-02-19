@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { DocumentTextIcon, ArrowUpTrayIcon } from "@heroicons/react/24/outline";
+import Table from "@/app/components/ui/Table";
 
 interface Document {
   id: string;
@@ -87,70 +88,77 @@ export default function DocumentsTab({ documents = defaultDocuments }: Documents
       )}
 
       {/* Documents List */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg dark:shadow-gray-900/30 border border-gray-100 dark:border-gray-700 overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-gray-50 dark:bg-gray-900/50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                {t("documentName")}
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                {t("type")}
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                {t("status")}
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                {t("uploadedAt")}
-              </th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                {t("actions")}
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-            {documents.map((doc) => (
-              <tr key={doc.id} className="hover:bg-gray-50 dark:hover:bg-gray-900/30">
-                <td className="px-6 py-4">
-                  <div className="flex items-center gap-3">
-                    <DocumentTextIcon className="w-5 h-5 text-gray-400" />
-                    <span className="text-sm font-medium text-gray-900 dark:text-white">
-                      {doc.name}
-                    </span>
-                    {doc.required && (
-                      <span className="text-xs text-red-600 dark:text-red-400">*</span>
-                    )}
-                  </div>
-                </td>
-                <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                  {doc.type}
-                </td>
-                <td className="px-6 py-4">
-                  <span
-                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      doc.uploaded
-                        ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                        : "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-400"
-                    }`}
-                  >
-                    {doc.uploaded ? t("uploaded") : t("pending")}
-                  </span>
-                </td>
-                <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                  {doc.uploadedAt || "-"}
-                </td>
-                <td className="px-6 py-4 text-right">
-                  {!doc.uploaded && (
-                    <button className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium">
-                      {t("upload")}
-                    </button>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <Table
+        columns={[
+          {
+            key: "documentName",
+            header: t("documentName"),
+            cell: (doc: Document) => (
+              <div className="flex items-center gap-3">
+                <DocumentTextIcon className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                <span className="text-sm font-medium text-gray-900 dark:text-white whitespace-nowrap">
+                  {doc.name}
+                </span>
+                {doc.required && (
+                  <span className="text-xs text-red-600 dark:text-red-400">*</span>
+                )}
+              </div>
+            ),
+          },
+          {
+            key: "type",
+            header: t("type"),
+            cell: (doc: Document) => (
+              <span className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                {doc.type}
+              </span>
+            ),
+          },
+          {
+            key: "status",
+            header: t("status"),
+            cell: (doc: Document) => (
+              <span
+                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${
+                  doc.uploaded
+                    ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                    : "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-400"
+                }`}
+              >
+                {doc.uploaded ? t("uploaded") : t("pending")}
+              </span>
+            ),
+          },
+          {
+            key: "uploadedAt",
+            header: t("uploadedAt"),
+            cell: (doc: Document) => (
+              <span className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                {doc.uploadedAt || "-"}
+              </span>
+            ),
+          },
+          {
+            key: "actions",
+            header: t("actions"),
+            headerClassName: "text-right",
+            className: "text-right",
+            cell: (doc: Document) => (
+              <>
+                {!doc.uploaded && (
+                  <button className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium whitespace-nowrap">
+                    {t("upload")}
+                  </button>
+                )}
+              </>
+            ),
+          },
+        ]}
+        data={documents}
+        keyExtractor={(doc) => doc.id}
+        emptyMessage={t("noDocuments")}
+        minWidth="600px"
+      />
     </div>
   );
 }
