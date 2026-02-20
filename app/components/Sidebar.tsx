@@ -46,7 +46,7 @@ export default function Sidebar() {
 
   return (
     <aside
-      className={`hidden md:flex flex-col min-h-screen bg-white dark:bg-gray-900 shadow-lg dark:shadow-gray-800/30 relative ${
+      className={`hidden md:flex flex-col h-full bg-white dark:bg-gray-900 shadow-lg dark:shadow-gray-800/30 relative ${
         isResizing ? "" : "transition-[width] duration-200 ease-in-out"
       }`}
       style={{ width: currentWidth }}
