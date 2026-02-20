@@ -415,6 +415,10 @@
       "error": "Login failed. Please check your credentials."
     }
   },
+  "comingSoon": {
+    "title": "Coming Soon",
+    "description": "We're working on this feature. It will be available soon."
+  },
   "invitation": {
     "acceptTitle": "Create Your Account",
     "acceptSubtitle": "You've been invited to join CCS Yacht as {email}. Please create your account below.",

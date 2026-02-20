@@ -415,6 +415,10 @@
       "error": "Inloggen mislukt. Controleer je gegevens."
     }
   },
+  "comingSoon": {
+    "title": "Binnenkort Beschikbaar",
+    "description": "We werken aan deze functie. Deze is binnenkort beschikbaar."
+  },
   "invitation": {
     "acceptTitle": "Maak Je Account Aan",
     "acceptSubtitle": "Je bent uitgenodigd om lid te worden van CCS Yacht als {email}. Maak hieronder je account aan.",

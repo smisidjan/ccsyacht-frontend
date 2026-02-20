@@ -1,6 +1,8 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import ComingSoon from "@/app/components/ui/ComingSoon";
+import { UserIcon } from "@heroicons/react/24/outline";
 
 export default function ProfilePage() {
   const t = useTranslations("dashboard");
@@ -8,7 +10,7 @@ export default function ProfilePage() {
   return (
     <div>
       <h1 className="text-2xl font-bold mb-6">{t("profile")}</h1>
-      <p className="text-gray-600 dark:text-gray-400">{t("profileDescription")}</p>
+      <ComingSoon icon={UserIcon} />
     </div>
   );
 }
