@@ -2,10 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
-import Modal from "@/app/components/ui/Modal";
+import BaseModal from "./BaseModal";
 import FormSelect from "@/app/components/ui/FormSelect";
-import Button from "@/app/components/ui/Button";
-import Alert from "@/app/components/ui/Alert";
 import {
   CheckCircleIcon,
   ExclamationTriangleIcon,
@@ -43,74 +41,36 @@ export default function ProcessRegistrationRequestModal({
 }: ProcessRegistrationRequestModalProps) {
   const t = useTranslations("usersPage.processRequestModal");
   const [selectedRole, setSelectedRole] = useState("user");
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  // Reset state when modal opens
   useEffect(() => {
     if (isOpen) {
       setSelectedRole("user");
-      setError(null);
     }
   }, [isOpen]);
 
-  const handleConfirm = async () => {
-    setIsProcessing(true);
-    setError(null);
-    try {
-      await onConfirm(action === "approve" ? selectedRole : undefined);
-      onClose();
-    } catch (err) {
-      const apiError = err as { message?: string };
-      setError(apiError.message || `Failed to ${action} request`);
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
   const isApprove = action === "approve";
+
+  const handleSubmit = async () => {
+    await onConfirm(isApprove ? selectedRole : undefined);
+  };
 
   const roleOptions = AVAILABLE_ROLES.map((role) => ({
     value: role,
     label: t(`roles.${role.replace(/ /g, "_")}`),
   }));
 
-  const footer = (
-    <div className="flex justify-end gap-3">
-      <Button
-        type="button"
-        variant="secondary"
-        onClick={onClose}
-        disabled={isProcessing}
-      >
-        {t("cancel")}
-      </Button>
-      <Button
-        type="button"
-        variant={isApprove ? "success" : "danger"}
-        onClick={handleConfirm}
-        loading={isProcessing}
-      >
-        {isProcessing
-          ? t("processing")
-          : isApprove
-            ? t("approve")
-            : t("reject")}
-      </Button>
-    </div>
-  );
-
   return (
-    <Modal
+    <BaseModal
       isOpen={isOpen}
       onClose={onClose}
       title={isApprove ? t("approveTitle") : t("rejectTitle")}
-      footer={footer}
+      onSubmit={handleSubmit}
+      successMessage={isApprove ? t("approveSuccess") : t("rejectSuccess")}
+      submitLabel={isApprove ? t("approve") : t("reject")}
+      submitVariant={isApprove ? "success" : "danger"}
       size="sm"
     >
       <div className="flex flex-col items-center text-center">
-        {error && <Alert type="error" message={error} className="w-full mb-4" />}
-
         <div
           className={`w-12 h-12 rounded-full flex items-center justify-center mb-4 ${
             isApprove
@@ -143,11 +103,10 @@ export default function ProcessRegistrationRequestModal({
               onChange={(e) => setSelectedRole(e.target.value)}
               options={roleOptions}
               required
-              disabled={isProcessing}
             />
           </div>
         )}
       </div>
-    </Modal>
+    </BaseModal>
   );
 }

@@ -1,11 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
-import Modal from "@/app/components/ui/Modal";
+import BaseModal from "./BaseModal";
 import FormInput from "@/app/components/ui/FormInput";
 import FormSelect from "@/app/components/ui/FormSelect";
-import Button from "@/app/components/ui/Button";
 import Alert from "@/app/components/ui/Alert";
 
 export interface InviteUserFormData {
@@ -36,31 +35,16 @@ export default function InviteUserModal({ isOpen, onClose, onSubmit }: InviteUse
     email: "",
     role: "user",
   });
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setIsSubmitting(true);
-
-    try {
-      await onSubmit(formData);
+  useEffect(() => {
+    if (isOpen) {
       setFormData({ email: "", role: "user" });
-    } catch (err) {
-      const errorMessage = err instanceof Error
-        ? err.message
-        : (err as { message?: string })?.message || t("error");
-      setError(errorMessage);
-    } finally {
-      setIsSubmitting(false);
     }
-  };
+  }, [isOpen]);
 
-  const handleClose = () => {
+  const handleSubmit = async () => {
+    await onSubmit(formData);
     setFormData({ email: "", role: "user" });
-    setError(null);
-    onClose();
   };
 
   const roleOptions = AVAILABLE_ROLES.map((role) => ({
@@ -68,54 +52,38 @@ export default function InviteUserModal({ isOpen, onClose, onSubmit }: InviteUse
     label: t(`roles.${role.replace(/ /g, "_")}`),
   }));
 
-  const footer = (
-    <div className="flex justify-end gap-3">
-      <Button
-        type="button"
-        variant="secondary"
-        onClick={handleClose}
-        disabled={isSubmitting}
-      >
-        {t("cancel")}
-      </Button>
-      <Button
-        type="submit"
-        form="invite-user-form"
-        loading={isSubmitting}
-      >
-        {isSubmitting ? t("sending") : t("sendInvitation")}
-      </Button>
-    </div>
-  );
-
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} title={t("title")} footer={footer} size="md">
-      <form id="invite-user-form" onSubmit={handleSubmit} className="space-y-4">
-        {error && <Alert type="error" message={error} />}
+    <BaseModal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={t("title")}
+      formId="invite-user-form"
+      onSubmit={handleSubmit}
+      successMessage={t("success")}
+      submitLabel={t("sendInvitation")}
+      errorFallbackMessage={t("error")}
+      size="md"
+    >
+      <FormInput
+        id="email"
+        type="email"
+        label={t("email")}
+        value={formData.email}
+        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+        placeholder={t("emailPlaceholder")}
+        required
+      />
 
-        <FormInput
-          id="email"
-          type="email"
-          label={t("email")}
-          value={formData.email}
-          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-          placeholder={t("emailPlaceholder")}
-          required
-          disabled={isSubmitting}
-        />
+      <FormSelect
+        id="role"
+        label={t("role")}
+        value={formData.role}
+        onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+        options={roleOptions}
+        required
+      />
 
-        <FormSelect
-          id="role"
-          label={t("role")}
-          value={formData.role}
-          onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-          options={roleOptions}
-          required
-          disabled={isSubmitting}
-        />
-
-        <Alert type="info" message={t("infoText")} />
-      </form>
-    </Modal>
+      <Alert type="info" message={t("infoText")} />
+    </BaseModal>
   );
 }
