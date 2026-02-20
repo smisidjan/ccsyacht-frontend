@@ -70,18 +70,83 @@ npm run lint   # Run ESLint
    - Gebruik composition pattern (children prop)
 
 3. **Herbruikbare componenten in `app/components/ui/`:**
-   - `Modal.tsx` - Basis modal met customizable content
+   - `Modal.tsx` - Basis modal met blur backdrop, ESC sluit, footer support
+   - `FormInput.tsx` - Input veld met label, error, hint support
+   - `Button.tsx` - Button met variants (primary, secondary, danger, etc.) en loading state
+   - `Alert.tsx` - Alert messages (error, success, info, warning)
+   - `Toast.tsx` - Toast notificaties (gebruik via `useToast()` hook)
    - `StatusBadge.tsx` - Status badges (setup, active, locked, completed)
    - `ProgressCircle.tsx` - Circulaire voortgangsindicator
    - `ProjectCard.tsx` - Project kaart
    - `SearchInput.tsx` - Zoekbalk met icoon
    - `FilterTabs.tsx` - Filter tabs/buttons
+   - `ProfileInfoItem.tsx` - Profiel informatie item met icon en optionele change knop
 
-4. **Pattern voor nieuwe UI componenten:**
+   **Toast gebruik:**
+   ```tsx
+   import { useToast } from "@/app/context/ToastContext";
+
+   const { showToast } = useToast();
+   showToast("success", "Actie geslaagd!");
+   showToast("error", "Er ging iets mis");
+   ```
+
+4. **Modal componenten in `app/components/modals/`:**
+   - Plaats ALLE modal componenten in deze folder
+   - Gebruik `BaseModal.tsx` voor modals met formulieren (automatische toast, error handling, loading state)
+   - Gebruik `Modal.tsx` direct alleen voor simpele informatie modals
+
+   **BaseModal pattern (aanbevolen voor formulieren):**
+   ```tsx
+   import BaseModal from "./BaseModal";
+   import FormInput from "@/app/components/ui/FormInput";
+
+   export default function MyModal({ isOpen, onClose }) {
+     const [value, setValue] = useState("");
+
+     const handleSubmit = async () => {
+       await api.doSomething(value);
+     };
+
+     return (
+       <BaseModal
+         isOpen={isOpen}
+         onClose={onClose}
+         title={t("title")}
+         formId="my-form"
+         onSubmit={handleSubmit}
+         successMessage={t("success")}
+         errorFallbackMessage={t("error")}
+       >
+         <FormInput
+           id="field"
+           label={t("label")}
+           value={value}
+           onChange={(e) => setValue(e.target.value)}
+           required
+         />
+       </BaseModal>
+     );
+   }
+   ```
+
+   **BaseModal voordelen:**
+   - Automatische toast notificatie bij succes
+   - Error handling met Alert component
+   - Loading state voor submit button
+   - Cancel en Save buttons automatisch toegevoegd
+   - Consistent gedrag voor alle modals
+
+5. **Pattern voor nieuwe UI componenten:**
    - Maak ze generiek en herbruikbaar
    - Plaats ze in `app/components/ui/`
    - Gebruik props voor customization
    - Documenteer de props met TypeScript interfaces
+
+6. **Helper functies en utilities:**
+   - Plaats in `lib/utils/` voor algemene utilities
+   - Plaats in `lib/hooks/` voor custom React hooks
+   - Hergebruik bestaande helpers waar mogelijk
 
 ### Component Naming
 
