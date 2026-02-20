@@ -22,7 +22,7 @@ interface UseApiState<T> {
 
 // ============ Auth Hooks ============
 export function useCurrentUser() {
-  const [state, setState] = useState<UseApiState<CurrentUser & { role?: string }>>({
+  const [state, setState] = useState<UseApiState<CurrentUser>>({
     data: null,
     loading: true,
     error: null,

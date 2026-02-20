@@ -44,10 +44,24 @@ export interface ChangePasswordRequest {
   newPassword: string;
 }
 
+export interface CurrentUserOrganization {
+  "@type"?: string;
+  identifier: string;
+  name: string;
+}
+
 export interface CurrentUser {
-  id: string;
-  username: string;
+  "@context"?: string;
+  "@type"?: string;
+  identifier: string;
+  name: string;
   email: string;
+  emailVerified: boolean;
+  active: boolean;
+  dateCreated: string;
+  dateModified: string;
+  roles: UserRole[];
+  memberOf: CurrentUserOrganization;
 }
 
 // ============ Users ============
