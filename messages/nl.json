@@ -5,7 +5,10 @@
     "register": "Registreren",
     "logout": "Uitloggen",
     "profile": "Profiel",
-    "language": "Taal"
+    "language": "Taal",
+    "cancel": "Annuleren",
+    "save": "Opslaan",
+    "error": "Er is een fout opgetreden"
   },
   "auth": {
     "loginTitle": "Inloggen",
@@ -326,7 +329,8 @@
       "cancel": "Annuleren",
       "sendInvitation": "Uitnodiging Verzenden",
       "sending": "Verzenden...",
-      "error": "Uitnodiging verzenden mislukt. Probeer het opnieuw."
+      "error": "Uitnodiging verzenden mislukt. Probeer het opnieuw.",
+      "success": "Uitnodiging succesvol verzonden"
     },
     "editModal": {
       "title": "Gebruiker Bewerken",
@@ -346,14 +350,17 @@
       "activeStatus": "Actief",
       "activeDescription": "Gedeactiveerde gebruikers kunnen niet inloggen op het platform",
       "cancel": "Annuleren",
-      "save": "Wijzigingen Opslaan"
+      "save": "Wijzigingen Opslaan",
+      "success": "Gebruiker succesvol bijgewerkt",
+      "error": "Gebruiker bijwerken mislukt"
     },
     "deleteInvitationModal": {
       "title": "Uitnodiging Verwijderen",
       "message": "Weet je zeker dat je de uitnodiging wilt verwijderen voor:",
       "cancel": "Annuleren",
       "delete": "Uitnodiging Verwijderen",
-      "deleting": "Verwijderen..."
+      "deleting": "Verwijderen...",
+      "success": "Uitnodiging succesvol verwijderd"
     },
     "processRequestModal": {
       "approveTitle": "Registratieverzoek Goedkeuren",
@@ -374,7 +381,9 @@
       "cancel": "Annuleren",
       "approve": "Goedkeuren",
       "reject": "Afwijzen",
-      "processing": "Verwerken..."
+      "processing": "Verwerken...",
+      "approveSuccess": "Registratieverzoek goedgekeurd",
+      "rejectSuccess": "Registratieverzoek afgewezen"
     }
   },
   "systemSettings": {
@@ -400,7 +409,8 @@
       "cancel": "Annuleren",
       "create": "Organisatie Aanmaken",
       "creating": "Aanmaken...",
-      "error": "Organisatie aanmaken mislukt"
+      "error": "Organisatie aanmaken mislukt",
+      "success": "Organisatie succesvol aangemaakt"
     },
     "login": {
       "title": "Systeem Inloggen",
@@ -418,6 +428,52 @@
   "comingSoon": {
     "title": "Binnenkort Beschikbaar",
     "description": "We werken aan deze functie. Deze is binnenkort beschikbaar."
+  },
+  "profile": {
+    "title": "Profiel",
+    "subtitle": "Beheer je accountinstellingen",
+    "personalInfo": "Persoonlijke Informatie",
+    "name": "Naam",
+    "email": "E-mail",
+    "password": "Wachtwoord",
+    "change": "Wijzigen",
+    "cancel": "Annuleren",
+    "save": "Opslaan",
+    "saving": "Opslaan...",
+    "changeName": "Naam Wijzigen",
+    "newName": "Nieuwe Naam",
+    "nameUpdated": "Naam succesvol bijgewerkt",
+    "nameError": "Naam bijwerken mislukt",
+    "emailVerified": "E-mail Geverifieerd",
+    "yes": "Ja",
+    "no": "Nee",
+    "accountStatus": "Account Status",
+    "active": "Actief",
+    "inactive": "Inactief",
+    "organization": "Organisatie",
+    "roles": "Rollen",
+    "accountDetails": "Account Details",
+    "memberSince": "Lid Sinds",
+    "lastModified": "Laatst Gewijzigd",
+    "changePassword": "Wachtwoord Wijzigen",
+    "currentPassword": "Huidig Wachtwoord",
+    "newPassword": "Nieuw Wachtwoord",
+    "confirmNewPassword": "Bevestig Nieuw Wachtwoord",
+    "updatePassword": "Wachtwoord Bijwerken",
+    "updating": "Bijwerken...",
+    "passwordUpdated": "Wachtwoord succesvol bijgewerkt",
+    "passwordError": "Wachtwoord bijwerken mislukt",
+    "passwordMismatch": "Wachtwoorden komen niet overeen",
+    "roleNames": {
+      "admin": "Admin",
+      "main user": "Hoofdgebruiker",
+      "invitation manager": "Uitnodigingsbeheerder",
+      "user": "Gebruiker",
+      "yard": "Werf",
+      "surveyor": "Inspecteur",
+      "painter": "Schilder",
+      "owner representative": "Eigenaar Vertegenwoordiger"
+    }
   },
   "invitation": {
     "acceptTitle": "Maak Je Account Aan",

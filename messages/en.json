@@ -5,7 +5,10 @@
     "register": "Register",
     "logout": "Logout",
     "profile": "Profile",
-    "language": "Language"
+    "language": "Language",
+    "cancel": "Cancel",
+    "save": "Save",
+    "error": "An error occurred"
   },
   "auth": {
     "loginTitle": "Login",
@@ -326,7 +329,8 @@
       "cancel": "Cancel",
       "sendInvitation": "Send Invitation",
       "sending": "Sending...",
-      "error": "Failed to send invitation. Please try again."
+      "error": "Failed to send invitation. Please try again.",
+      "success": "Invitation sent successfully"
     },
     "editModal": {
       "title": "Edit User",
@@ -346,14 +350,17 @@
       "activeStatus": "Active",
       "activeDescription": "Deactivated users cannot log in to the platform",
       "cancel": "Cancel",
-      "save": "Save Changes"
+      "save": "Save Changes",
+      "success": "User updated successfully",
+      "error": "Failed to update user"
     },
     "deleteInvitationModal": {
       "title": "Delete Invitation",
       "message": "Are you sure you want to delete the invitation for:",
       "cancel": "Cancel",
       "delete": "Delete Invitation",
-      "deleting": "Deleting..."
+      "deleting": "Deleting...",
+      "success": "Invitation deleted successfully"
     },
     "processRequestModal": {
       "approveTitle": "Approve Registration Request",
@@ -374,7 +381,9 @@
       "cancel": "Cancel",
       "approve": "Approve",
       "reject": "Reject",
-      "processing": "Processing..."
+      "processing": "Processing...",
+      "approveSuccess": "Registration request approved",
+      "rejectSuccess": "Registration request rejected"
     }
   },
   "systemSettings": {
@@ -400,7 +409,8 @@
       "cancel": "Cancel",
       "create": "Create Organisation",
       "creating": "Creating...",
-      "error": "Failed to create organisation"
+      "error": "Failed to create organisation",
+      "success": "Organisation created successfully"
     },
     "login": {
       "title": "System Login",
@@ -418,6 +428,52 @@
   "comingSoon": {
     "title": "Coming Soon",
     "description": "We're working on this feature. It will be available soon."
+  },
+  "profile": {
+    "title": "Profile",
+    "subtitle": "Manage your account settings",
+    "personalInfo": "Personal Information",
+    "name": "Name",
+    "email": "Email",
+    "password": "Password",
+    "change": "Change",
+    "cancel": "Cancel",
+    "save": "Save",
+    "saving": "Saving...",
+    "changeName": "Change Name",
+    "newName": "New Name",
+    "nameUpdated": "Name updated successfully",
+    "nameError": "Failed to update name",
+    "emailVerified": "Email Verified",
+    "yes": "Yes",
+    "no": "No",
+    "accountStatus": "Account Status",
+    "active": "Active",
+    "inactive": "Inactive",
+    "organization": "Organization",
+    "roles": "Roles",
+    "accountDetails": "Account Details",
+    "memberSince": "Member Since",
+    "lastModified": "Last Modified",
+    "changePassword": "Change Password",
+    "currentPassword": "Current Password",
+    "newPassword": "New Password",
+    "confirmNewPassword": "Confirm New Password",
+    "updatePassword": "Update Password",
+    "updating": "Updating...",
+    "passwordUpdated": "Password updated successfully",
+    "passwordError": "Failed to update password",
+    "passwordMismatch": "Passwords do not match",
+    "roleNames": {
+      "admin": "Admin",
+      "main user": "Main User",
+      "invitation manager": "Invitation Manager",
+      "user": "User",
+      "yard": "Yard",
+      "surveyor": "Surveyor",
+      "painter": "Painter",
+      "owner representative": "Owner Representative"
+    }
   },
   "invitation": {
     "acceptTitle": "Create Your Account",
