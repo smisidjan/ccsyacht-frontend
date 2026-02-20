@@ -34,6 +34,7 @@ export function getStatusBadgeColor(status: string): string {
     case "pending":
       return badgeColors.amber;
     case "accepted":
+    case "approved":
     case "active":
     case "completed":
       return badgeColors.green;
