@@ -16,7 +16,7 @@ export default function AuthPageContainer({
   maxWidth = "md",
 }: AuthPageContainerProps) {
   return (
-    <div className="min-h-[calc(100vh-8rem)] flex items-center justify-center px-4">
+    <div className="min-h-[calc(100vh-8rem)] flex items-center justify-center px-4 py-8">
       <div className={`w-full ${maxWidthStyles[maxWidth]}`}>
         <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl dark:shadow-gray-900/50 p-8 border border-gray-100 dark:border-gray-800">
           {children}
