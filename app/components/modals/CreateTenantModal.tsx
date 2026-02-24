@@ -4,16 +4,11 @@ import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import BaseModal from "./BaseModal";
 import FormInput from "@/app/components/ui/FormInput";
-import PasswordInput from "@/app/components/ui/PasswordInput";
 
 interface CreateTenantModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (
-    name: string,
-    adminEmail: string,
-    adminPassword: string
-  ) => Promise<void>;
+  onSubmit: (name: string, adminEmail: string) => Promise<void>;
 }
 
 export default function CreateTenantModal({
@@ -24,21 +19,18 @@ export default function CreateTenantModal({
   const t = useTranslations("systemSettings.createOrganisationModal");
   const [name, setName] = useState("");
   const [adminEmail, setAdminEmail] = useState("");
-  const [adminPassword, setAdminPassword] = useState("");
 
   useEffect(() => {
     if (isOpen) {
       setName("");
       setAdminEmail("");
-      setAdminPassword("");
     }
   }, [isOpen]);
 
   const handleSubmit = async () => {
-    await onSubmit(name, adminEmail, adminPassword);
+    await onSubmit(name, adminEmail);
     setName("");
     setAdminEmail("");
-    setAdminPassword("");
   };
 
   return (
@@ -72,22 +64,6 @@ export default function CreateTenantModal({
         placeholder={t("adminEmailPlaceholder")}
         required
       />
-
-      <div>
-        <label
-          htmlFor="admin-password"
-          className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-        >
-          {t("adminPassword")}
-        </label>
-        <PasswordInput
-          id="admin-password"
-          value={adminPassword}
-          onChange={(e) => setAdminPassword(e.target.value)}
-          placeholder={t("adminPasswordPlaceholder")}
-          required
-        />
-      </div>
     </BaseModal>
   );
 }

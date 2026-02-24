@@ -227,7 +227,19 @@ export interface Tenant {
 export interface CreateTenantRequest {
   name: string;
   admin_email: string;
-  admin_password: string;
+}
+
+export interface RegisterAdminRequest {
+  token: string;
+  email: string;
+  name: string;
+  password: string;
+  password_confirmation: string;
+}
+
+export interface RegisterAdminResponse {
+  token: string;
+  user: User;
 }
 
 export interface CreateTenantUserRequest {

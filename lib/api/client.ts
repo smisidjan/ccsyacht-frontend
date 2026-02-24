@@ -21,6 +21,8 @@ import type {
   CreateTenantRequest,
   CreateTenantUserRequest,
   TenantRegistrationInfo,
+  RegisterAdminRequest,
+  RegisterAdminResponse,
   ApiError,
 } from "./types";
 import { publicFetch, publicFetchVoid } from "./publicFetch";
@@ -264,6 +266,12 @@ export const authApi = {
       method: "POST",
       body: JSON.stringify(data),
     }),
+
+  registerAdmin: (data: RegisterAdminRequest): Promise<RegisterAdminResponse> =>
+    apiFetch("/register-admin", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
 };
 
 // Paginated API response
@@ -416,6 +424,18 @@ export const systemApi = {
 
   createTenantUser: (data: CreateTenantUserRequest): Promise<void> =>
     apiFetchSystem("/system/tenants/users", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  forgotPassword: (email: string): Promise<void> =>
+    apiFetchSystem("/system/forgot-password", {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    }),
+
+  resetPassword: (data: { token: string; email: string; password: string; password_confirmation: string }): Promise<void> =>
+    apiFetchSystem("/system/reset-password", {
       method: "POST",
       body: JSON.stringify(data),
     }),

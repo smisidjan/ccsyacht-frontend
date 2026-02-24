@@ -19,7 +19,16 @@ const AuthContext = createContext<AuthContextType>({
   logout: () => {},
 });
 
-const PUBLIC_ROUTES = ["/login", "/register", "/forgot-password", "/reset-password", "/invitation/accept", "/invitation/decline"];
+const PUBLIC_ROUTES = [
+  "/login",
+  "/register",
+  "/forgot-password",
+  "/reset-password",
+  "/dashboard/system/forgot-password",
+  "/dashboard/system/reset-password",
+  "/invitation/accept",
+  "/invitation/decline"
+];
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
@@ -37,13 +46,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (isLoading) return;
 
-    const isPublicRoute = PUBLIC_ROUTES.includes(pathname) || pathname.startsWith("/register/");
+    const isPublicRoute = PUBLIC_ROUTES.includes(pathname)
+      || pathname.startsWith("/register/")
+      || pathname.startsWith("/dashboard/system/");
+
+    const isSystemRoute = pathname.startsWith("/dashboard/system/");
 
     if (!token && !isPublicRoute) {
       router.push("/login");
     }
 
-    if (token && isPublicRoute) {
+    // Don't redirect if on system routes - they use separate authentication
+    if (token && isPublicRoute && !isSystemRoute) {
       router.push("/dashboard");
     }
   }, [token, isLoading, pathname, router]);

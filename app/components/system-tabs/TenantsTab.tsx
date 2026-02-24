@@ -51,16 +51,11 @@ export default function TenantsTab() {
     fetchTenants();
   }, [fetchTenants]);
 
-  const handleCreateTenant = async (
-    name: string,
-    adminEmail: string,
-    adminPassword: string
-  ) => {
+  const handleCreateTenant = async (name: string, adminEmail: string) => {
     try {
       await systemApi.createTenant({
         name,
         admin_email: adminEmail,
-        admin_password: adminPassword,
       });
       setIsCreateModalOpen(false);
       fetchTenants();

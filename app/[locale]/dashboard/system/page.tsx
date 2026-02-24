@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
+import { Link } from "@/i18n/navigation";
 import { LockClosedIcon } from "@heroicons/react/24/outline";
 import {
   systemApi,
@@ -121,6 +122,15 @@ export default function SystemSettingsPage() {
                   placeholder={t("login.passwordPlaceholder")}
                   required
                 />
+              </div>
+
+              <div className="text-sm text-right">
+                <Link
+                  href="/dashboard/system/forgot-password"
+                  className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
+                >
+                  {t("login.forgotPassword")}
+                </Link>
               </div>
 
               <Button type="submit" fullWidth loading={loading}>
