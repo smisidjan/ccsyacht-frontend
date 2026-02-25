@@ -91,6 +91,7 @@
   "dashboard": {
     "projects": "Projects",
     "users": "Users",
+    "members": "Members",
     "shipyards": "Shipyards",
     "profile": "Profile",
     "system": "System Settings",

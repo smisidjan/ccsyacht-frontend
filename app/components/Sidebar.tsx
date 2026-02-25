@@ -18,7 +18,7 @@ import {
 
 const baseNavItems = [
   { href: "/dashboard/projects", key: "projects", icon: FolderIcon },
-  { href: "/dashboard/users", key: "users", icon: UsersIcon },
+  { href: "/dashboard/users", key: "members", icon: UsersIcon },
   { href: "/dashboard/shipyards", key: "shipyards", icon: BuildingOffice2Icon },
   { href: "/dashboard/profile", key: "profile", icon: UserIcon },
 ];
