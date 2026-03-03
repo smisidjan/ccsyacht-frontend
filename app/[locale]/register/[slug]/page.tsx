@@ -40,7 +40,7 @@ export default function RegisterPage() {
 
   // Organization info state
   const [orgInfo, setOrgInfo] = useState<TenantRegistrationInfo | null>(null);
-  const [orgLoading, setOrgLoading] = useState(isAdminRegistration ? false : true);
+  const [orgLoading, setOrgLoading] = useState(true);
   const [orgError, setOrgError] = useState<string | null>(null);
 
   // Form state
@@ -60,7 +60,7 @@ export default function RegisterPage() {
     }
   }, [isAdminRegistration, emailParam]);
 
-  // Fetch organization info on mount (skip for admin registration)
+  // Fetch organization info on mount
   useEffect(() => {
     async function fetchOrgInfo() {
       try {
@@ -74,10 +74,10 @@ export default function RegisterPage() {
       }
     }
 
-    if (slug && !isAdminRegistration) {
+    if (slug) {
       fetchOrgInfo();
     }
-  }, [slug, isAdminRegistration]);
+  }, [slug]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
