@@ -82,8 +82,7 @@ export default function TenantInvitationsTable({
   };
 
   const getUserType = (invitation: Invitation) => {
-    const userType = (invitation as unknown as { object?: { employmentType?: string } })
-      ?.object?.employmentType || "employee";
+    const userType = invitation.object?.employmentType || "employee";
     return userType === "guest" ? t("guest") : t("employee");
   };
 

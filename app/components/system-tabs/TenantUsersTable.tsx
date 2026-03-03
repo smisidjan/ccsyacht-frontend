@@ -63,7 +63,7 @@ export default function TenantUsersTable({ tenantId }: TenantUsersTableProps) {
 
       const params = filter === "all" ? {} : { employment_type: filter };
       const response = await systemApi.getTenantUsers(tenantId, params);
-      setUsers((response.itemListElement as SystemTenantUser[]) || []);
+      setUsers((response.itemListElement as unknown as SystemTenantUser[]) || []);
     } catch (err) {
       const apiError = err as ApiError;
       const errorMessage =
@@ -139,7 +139,7 @@ export default function TenantUsersTable({ tenantId }: TenantUsersTableProps) {
         <div className="flex-1">
           <SearchInput
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={setSearchQuery}
             placeholder={t("searchPlaceholder")}
           />
         </div>
