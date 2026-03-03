@@ -1,16 +1,15 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useTranslations } from "next-intl";
+import { useTenant } from "@/app/context/TenantContext";
 import TabNavState from "@/app/components/ui/TabNavState";
 import type { StateTab } from "@/app/components/ui/TabNavState";
 import UsersTab from "@/app/components/users-tabs/UsersTab";
 import InvitationsTab from "@/app/components/users-tabs/InvitationsTab";
-import RegistrationRequestsTab from "@/app/components/users-tabs/RegistrationRequestsTab";
 import InviteUserModal from "@/app/components/modals/InviteUserModal";
 import EditUserModal from "@/app/components/modals/EditUserModal";
-import type { InviteUserFormData } from "@/app/components/modals/InviteUserModal";
-import type { User, UpdateUserRequest, UserRole } from "@/lib/api/types";
+import type { User, UpdateUserRequest, UserRole, CreateInvitationRequest } from "@/lib/api/types";
 import {
   useUsers,
   useInvitations,
@@ -18,7 +17,7 @@ import {
   useCurrentUser,
 } from "@/lib/api";
 
-type TabKey = "users" | "invitations" | "registrationRequests";
+type TabKey = "users" | "invitations";
 
 export default function UsersPage() {
   const t = useTranslations("usersPage");
@@ -29,6 +28,7 @@ export default function UsersPage() {
 
   // API hooks
   const { data: currentUser } = useCurrentUser();
+  const { tenantName } = useTenant();
   const { data: users, loading: usersLoading, updateUser, refetch: refetchUsers } = useUsers();
   const {
     data: invitations,
@@ -40,20 +40,10 @@ export default function UsersPage() {
   const {
     data: registrationRequests,
     loading: requestsLoading,
-    lastUpdated: requestsLastUpdated,
     refetch: refetchRequests,
     approveRequest,
     rejectRequest,
   } = useRegistrationRequests();
-
-  // Auto-refresh registration requests every 10 minutes
-  useEffect(() => {
-    const interval = setInterval(() => {
-      refetchRequests();
-    }, 10 * 60 * 1000); // 10 minutes
-
-    return () => clearInterval(interval);
-  }, [refetchRequests]);
 
   // Get current user role (default to 'user' if not loaded)
   const currentUserRoles = (currentUser as { roles?: string[] })?.roles || [];
@@ -62,7 +52,6 @@ export default function UsersPage() {
   const tabs: StateTab[] = [
     { key: "users", label: t("tabs.users") },
     { key: "invitations", label: t("tabs.invitations") },
-    { key: "registrationRequests", label: t("tabs.registrationRequests") },
   ];
 
   const handleEditUser = (user: User) => {
@@ -81,9 +70,9 @@ export default function UsersPage() {
     }
   };
 
-  const handleInviteUser = async (data: InviteUserFormData) => {
+  const handleInviteUser = async (data: CreateInvitationRequest) => {
     try {
-      await createInvitation({ email: data.email, role: data.role });
+      await createInvitation(data);
       setIsInviteModalOpen(false);
     } catch (error) {
       console.error("Failed to invite user:", error);
@@ -151,15 +140,9 @@ export default function UsersPage() {
             onInviteUser={() => setIsInviteModalOpen(true)}
             onResendInvitation={handleResendInvitation}
             onDeleteInvitation={handleDeleteInvitation}
-          />
-        );
-      case "registrationRequests":
-        return (
-          <RegistrationRequestsTab
-            requests={requestsArray}
-            loading={requestsLoading}
-            lastUpdated={requestsLastUpdated}
-            onRefresh={refetchRequests}
+            registrationRequests={requestsArray}
+            requestsLoading={requestsLoading}
+            onRefreshRequests={refetchRequests}
             onApproveRequest={handleApproveRequest}
             onRejectRequest={handleRejectRequest}
           />
@@ -194,6 +177,7 @@ export default function UsersPage() {
         isOpen={isInviteModalOpen}
         onClose={() => setIsInviteModalOpen(false)}
         onSubmit={handleInviteUser}
+        tenantName={tenantName || undefined}
       />
 
       <EditUserModal
