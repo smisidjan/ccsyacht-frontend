@@ -246,9 +246,20 @@
     "users": {
       "title": "All Users",
       "subtitle": "{count} users",
+      "allUsers": "All Users",
+      "employees": "Employees",
+      "guests": "Guests",
+      "employeesTitle": "Employees",
+      "employeesSubtitle": "{count} employees",
+      "guestsTitle": "Guests",
+      "guestsSubtitle": "{count} guests",
       "user": "User",
       "email": "Email",
+      "organization": "Organization",
       "roles": "Roles",
+      "typeColumn": "Type",
+      "employee": "Employee",
+      "guest": "Guest",
       "status": "Status",
       "active": "Active",
       "inactive": "Inactive",
@@ -256,6 +267,8 @@
       "actions": "Actions",
       "edit": "Edit user",
       "noUsers": "No users found",
+      "noEmployees": "No employees found",
+      "noGuests": "No guests found",
       "roleNames": {
         "admin": "Admin",
         "main user": "Main User",
@@ -273,6 +286,9 @@
       "inviteUser": "Invite User",
       "email": "Email",
       "role": "Role",
+      "typeColumn": "Type",
+      "employee": "Employee",
+      "guest": "Guest",
       "status": "Status",
       "sentBy": "Sent By",
       "sentAt": "Sent At",
@@ -287,6 +303,9 @@
         "accepted": "Accepted",
         "declined": "Declined",
         "expired": "Expired"
+      },
+      "registrationRequests": {
+        "title": "Registration Requests"
       }
     },
     "registrationRequests": {
@@ -320,6 +339,12 @@
       "email": "Email Address",
       "emailPlaceholder": "user@example.com",
       "role": "Role",
+      "userType": "User Type",
+      "employee": "Employee",
+      "guest": "Guest",
+      "homeOrganization": "Home Organization",
+      "homeOrganizationPlaceholder": "Company Name B.V.",
+      "homeOrganizationHint": "The guest's primary organization",
       "roles": {
         "user": "User",
         "admin": "Admin",
@@ -331,11 +356,18 @@
         "owner_representative": "Owner Representative"
       },
       "infoText": "An invitation email will be sent to this address. The user will need to accept the invitation and create a password to access the platform.",
+      "guestInfo": "Guest users can only be invited via email. They cannot use the public registration link and must receive a personal invitation.",
       "cancel": "Cancel",
       "sendInvitation": "Send Invitation",
       "sending": "Sending...",
       "error": "Failed to send invitation. Please try again.",
-      "success": "Invitation sent successfully"
+      "success": "Invitation sent successfully",
+      "registrationLink": {
+        "title": "Registration Link",
+        "description": "Share this link with users who want to register for your organization",
+        "copy": "Copy",
+        "copied": "Copied!"
+      }
     },
     "editModal": {
       "title": "Edit User",

@@ -246,9 +246,20 @@
     "users": {
       "title": "Alle Gebruikers",
       "subtitle": "{count} gebruikers",
+      "allUsers": "Alle Gebruikers",
+      "employees": "Medewerkers",
+      "guests": "Gasten",
+      "employeesTitle": "Medewerkers",
+      "employeesSubtitle": "{count} medewerkers",
+      "guestsTitle": "Gasten",
+      "guestsSubtitle": "{count} gasten",
       "user": "Gebruiker",
       "email": "E-mail",
+      "organization": "Organisatie",
       "roles": "Rollen",
+      "typeColumn": "Type",
+      "employee": "Medewerker",
+      "guest": "Gast",
       "status": "Status",
       "active": "Actief",
       "inactive": "Inactief",
@@ -256,6 +267,8 @@
       "actions": "Acties",
       "edit": "Gebruiker bewerken",
       "noUsers": "Geen gebruikers gevonden",
+      "noEmployees": "Geen medewerkers gevonden",
+      "noGuests": "Geen gasten gevonden",
       "roleNames": {
         "admin": "Admin",
         "main user": "Hoofdgebruiker",
@@ -273,6 +286,9 @@
       "inviteUser": "Gebruiker Uitnodigen",
       "email": "E-mail",
       "role": "Rol",
+      "typeColumn": "Type",
+      "employee": "Medewerker",
+      "guest": "Gast",
       "status": "Status",
       "sentBy": "Verzonden Door",
       "sentAt": "Verzonden Op",
@@ -287,6 +303,9 @@
         "accepted": "Geaccepteerd",
         "declined": "Afgewezen",
         "expired": "Verlopen"
+      },
+      "registrationRequests": {
+        "title": "Registratieverzoeken"
       }
     },
     "registrationRequests": {
@@ -320,6 +339,12 @@
       "email": "E-mailadres",
       "emailPlaceholder": "gebruiker@voorbeeld.nl",
       "role": "Rol",
+      "userType": "Gebruikerstype",
+      "employee": "Medewerker",
+      "guest": "Gast",
+      "homeOrganization": "Thuisorganisatie",
+      "homeOrganizationPlaceholder": "Bedrijfsnaam B.V.",
+      "homeOrganizationHint": "De primaire organisatie van de gast",
       "roles": {
         "user": "Gebruiker",
         "admin": "Admin",
@@ -331,11 +356,18 @@
         "owner_representative": "Eigenaar Vertegenwoordiger"
       },
       "infoText": "Er wordt een uitnodigingsmail naar dit adres verzonden. De gebruiker moet de uitnodiging accepteren en een wachtwoord aanmaken om toegang te krijgen tot het platform.",
+      "guestInfo": "Gastgebruikers kunnen alleen via e-mail worden uitgenodigd. Ze kunnen de openbare registratielink niet gebruiken en moeten een persoonlijke uitnodiging ontvangen.",
       "cancel": "Annuleren",
       "sendInvitation": "Uitnodiging Verzenden",
       "sending": "Verzenden...",
       "error": "Uitnodiging verzenden mislukt. Probeer het opnieuw.",
-      "success": "Uitnodiging succesvol verzonden"
+      "success": "Uitnodiging succesvol verzonden",
+      "registrationLink": {
+        "title": "Registratielink",
+        "description": "Deel deze link met gebruikers die zich willen registreren voor uw organisatie",
+        "copy": "Kopieer",
+        "copied": "Gekopieerd!"
+      }
     },
     "editModal": {
       "title": "Gebruiker Bewerken",
