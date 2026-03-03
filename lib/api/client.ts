@@ -23,6 +23,7 @@ import type {
   TenantRegistrationInfo,
   RegisterAdminRequest,
   RegisterAdminResponse,
+  GuestRolePermissions,
   ApiError,
 } from "./types";
 import { publicFetch, publicFetchVoid } from "./publicFetch";
@@ -408,6 +409,10 @@ export const invitationsApi = {
     apiFetch(`/invitations/${invitationId}/resend`, {
       method: "POST",
     }),
+
+  // Get guest role permissions
+  getGuestRolePermissions: (): Promise<GuestRolePermissions> =>
+    apiFetch("/guest-role-permissions"),
 };
 
 // ============ Registration Requests API ============

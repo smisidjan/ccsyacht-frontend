@@ -88,6 +88,11 @@ export interface ApiUser {
   dateModified?: string;
   roles: string[];
   active?: boolean;
+  employmentType?: "employee" | "guest";
+  memberOf?: {
+    identifier: string;
+    name: string;
+  };
 }
 
 // Frontend User format (matches backend)
@@ -100,6 +105,11 @@ export interface User {
   dateModified: string;
   roles: UserRole[];
   active: boolean;
+  employmentType?: "employee" | "guest";
+  memberOf?: {
+    identifier: string;
+    name: string;
+  };
 }
 
 // Transform API user to frontend User
@@ -113,6 +123,8 @@ export function mapApiUserToUser(apiUser: ApiUser): User {
     dateModified: apiUser.dateModified ?? "",
     roles: apiUser.roles as UserRole[],
     active: apiUser.active ?? true,
+    employmentType: apiUser.employmentType,
+    memberOf: apiUser.memberOf,
   };
 }
 
@@ -154,11 +166,18 @@ export interface Invitation {
   dateAccepted: string | null;
   dateDeclined: string | null;
   isExpired: boolean;
+  object?: {
+    roleName?: string;
+    employmentType?: "employee" | "guest";
+    homeOrganization?: string;
+  };
 }
 
 export interface CreateInvitationRequest {
   email: string;
   role: string;
+  employment_type?: "employee" | "guest";
+  home_organization_name?: string;
 }
 
 export interface AcceptInvitationRequest {
@@ -259,6 +278,16 @@ export interface CreateTenantUserRequest {
 export interface TenantRegistrationInfo {
   name: string;
   slug: string;
+}
+
+// Response from /api/guest-role-permissions
+export interface GuestRolePermissions {
+  "@type"?: string;
+  itemListElement: Array<{
+    "@type"?: string;
+    roleName: string;
+  }>;
+  numberOfItems: number;
 }
 
 // ============ API Error ============

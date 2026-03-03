@@ -80,7 +80,11 @@ export function useUsers() {
     setState((prev) => ({ ...prev, loading: true, error: null }));
     try {
       const response = await usersApi.getAll();
+      console.log("API Response for users:", response);
+      console.log("First user raw:", response.data[0]);
       const data = response.data.map(mapApiUserToUser);
+      console.log("Mapped users:", data);
+      console.log("First user mapped:", data[0]);
       setState({ data, loading: false, error: null });
     } catch (err) {
       setState({ data: null, loading: false, error: err as ApiError });
