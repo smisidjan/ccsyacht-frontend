@@ -2,9 +2,11 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
+import { useRouter } from "@/i18n/navigation";
 import {
   PlusIcon,
   BuildingOfficeIcon,
+  EyeIcon,
 } from "@heroicons/react/24/outline";
 import { systemApi, getSystemToken } from "@/lib/api/client";
 import type { Tenant, ApiError } from "@/lib/api/types";
@@ -16,6 +18,7 @@ import Table from "@/app/components/ui/Table";
 
 export default function TenantsTab() {
   const t = useTranslations("systemSettings.organisations");
+  const router = useRouter();
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -51,11 +54,20 @@ export default function TenantsTab() {
     fetchTenants();
   }, [fetchTenants]);
 
-  const handleCreateTenant = async (name: string, adminEmail: string) => {
+  const handleCreateTenant = async (
+    name: string,
+    adminEmail: string,
+    maxProjects: number,
+    maxUsers: number
+  ) => {
     try {
       await systemApi.createTenant({
         name,
         admin_email: adminEmail,
+        subscription: {
+          max_projects: maxProjects,
+          max_users: maxUsers,
+        },
       });
       setIsCreateModalOpen(false);
       fetchTenants();
@@ -143,6 +155,20 @@ export default function TenantsTab() {
                   ? new Date(tenant.dateCreated).toLocaleDateString()
                   : "-"}
               </span>
+            ),
+          },
+          {
+            key: "actions",
+            header: t("actions"),
+            cell: (tenant: Tenant) => (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => router.push(`/dashboard/system/organizations/${tenant.identifier}`)}
+                title={t("viewDetails")}
+              >
+                <EyeIcon className="w-4 h-4" />
+              </Button>
             ),
           },
         ]}

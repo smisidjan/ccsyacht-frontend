@@ -8,7 +8,7 @@ import FormInput from "@/app/components/ui/FormInput";
 interface CreateTenantModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (name: string, adminEmail: string) => Promise<void>;
+  onSubmit: (name: string, adminEmail: string, maxProjects: number, maxUsers: number) => Promise<void>;
 }
 
 export default function CreateTenantModal({
@@ -19,18 +19,29 @@ export default function CreateTenantModal({
   const t = useTranslations("systemSettings.createOrganisationModal");
   const [name, setName] = useState("");
   const [adminEmail, setAdminEmail] = useState("");
+  const [maxProjects, setMaxProjects] = useState<number | "">("");
+  const [maxUsers, setMaxUsers] = useState<number | "">("");
 
   useEffect(() => {
     if (isOpen) {
       setName("");
       setAdminEmail("");
+      setMaxProjects("");
+      setMaxUsers("");
     }
   }, [isOpen]);
 
   const handleSubmit = async () => {
-    await onSubmit(name, adminEmail);
+    // Form validation will ensure these are filled (required fields)
+    if (maxProjects === "" || maxUsers === "") {
+      return;
+    }
+
+    await onSubmit(name, adminEmail, maxProjects, maxUsers);
     setName("");
     setAdminEmail("");
+    setMaxProjects("");
+    setMaxUsers("");
   };
 
   return (
@@ -62,6 +73,28 @@ export default function CreateTenantModal({
         value={adminEmail}
         onChange={(e) => setAdminEmail(e.target.value)}
         placeholder={t("adminEmailPlaceholder")}
+        required
+      />
+
+      <FormInput
+        id="max-projects"
+        type="number"
+        label={t("maxProjects")}
+        value={maxProjects}
+        onChange={(e) => setMaxProjects(e.target.value ? Number(e.target.value) : "")}
+        placeholder={t("maxProjectsPlaceholder")}
+        min={1}
+        required
+      />
+
+      <FormInput
+        id="max-users"
+        type="number"
+        label={t("maxUsers")}
+        value={maxUsers}
+        onChange={(e) => setMaxUsers(e.target.value ? Number(e.target.value) : "")}
+        placeholder={t("maxUsersPlaceholder")}
+        min={1}
         required
       />
     </BaseModal>

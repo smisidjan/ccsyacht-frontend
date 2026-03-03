@@ -30,6 +30,7 @@ export interface SystemLoginResponse {
 export interface TenantInfo {
   id: string;
   name: string;
+  url: string;
 }
 
 export interface LookupResponse {
@@ -227,6 +228,10 @@ export interface Tenant {
 export interface CreateTenantRequest {
   name: string;
   admin_email: string;
+  subscription: {
+    max_projects: number;
+    max_users: number;
+  };
 }
 
 export interface RegisterAdminRequest {
