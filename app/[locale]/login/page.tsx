@@ -53,7 +53,7 @@ export default function LoginPage() {
 
       if (tenantList.length === 1) {
         setSelectedTenant(tenantList[0]);
-        updateTenant(tenantList[0].id, tenantList[0].name);
+        updateTenant(tenantList[0].id, tenantList[0].name, tenantList[0].url);
         setStep("password");
       } else {
         setStep("tenant");
@@ -67,7 +67,7 @@ export default function LoginPage() {
 
   const handleTenantSelect = (tenant: TenantInfo) => {
     setSelectedTenant(tenant);
-    updateTenant(tenant.id, tenant.name);
+    updateTenant(tenant.id, tenant.name, tenant.url);
     setStep("password");
   };
 
@@ -77,7 +77,13 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const response = await authApi.login({ email, password });
+      if (!selectedTenant) {
+        setError(t("errors.noTenantSelected") || "No tenant selected");
+        setLoading(false);
+        return;
+      }
+
+      const response = await authApi.login(selectedTenant.url, { email, password });
       login(response.token);
     } catch (err) {
       setError(translateApiError(err, t, ERROR_MAP));

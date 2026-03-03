@@ -62,6 +62,7 @@ export function clearSystemToken() {
 // Tenant management
 let tenantId: string | null = null;
 let tenantName: string | null = null;
+let tenantUrl: string | null = null;
 
 export function setTenantId(id: string | null) {
   tenantId = id;
@@ -72,16 +73,13 @@ export function setTenantId(id: string | null) {
   }
 }
 
-export function setTenant(id: string | null, name: string | null) {
+export function setTenant(id: string, name: string, url: string) {
   tenantId = id;
   tenantName = name;
-  if (id && name) {
-    localStorage.setItem("tenantId", id);
-    localStorage.setItem("tenantName", name);
-  } else {
-    localStorage.removeItem("tenantId");
-    localStorage.removeItem("tenantName");
-  }
+  tenantUrl = url;
+  localStorage.setItem("tenantId", id);
+  localStorage.setItem("tenantName", name);
+  localStorage.setItem("tenantUrl", url);
 }
 
 export function getTenantId(): string | null {
@@ -100,11 +98,21 @@ export function getTenantName(): string | null {
   return tenantName;
 }
 
+export function getTenantUrl(): string | null {
+  if (tenantUrl) return tenantUrl;
+  if (typeof window !== "undefined") {
+    tenantUrl = localStorage.getItem("tenantUrl");
+  }
+  return tenantUrl;
+}
+
 export function clearTenant() {
   tenantId = null;
   tenantName = null;
+  tenantUrl = null;
   localStorage.removeItem("tenantId");
   localStorage.removeItem("tenantName");
+  localStorage.removeItem("tenantUrl");
 }
 
 export function clearTenantId() {
@@ -134,7 +142,7 @@ async function apiFetch<T>(
   options: RequestInit = {}
 ): Promise<T> {
   const token = getAuthToken();
-  const tenant = getTenantId();
+  const tenantUrl = getTenantUrl();
 
   const headers: HeadersInit = {
     "Content-Type": "application/json",
@@ -145,8 +153,8 @@ async function apiFetch<T>(
     (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
   }
 
-  if (tenant) {
-    (headers as Record<string, string>)["X-Tenant-ID"] = tenant;
+  if (tenantUrl) {
+    (headers as Record<string, string>)["X-Tenant-ID"] = tenantUrl;
   }
 
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
@@ -207,6 +215,50 @@ async function apiFetchSystem<T>(
     const errorData = await response.json().catch(() => ({}));
     // Handle various error response formats from the backend
     const errorMessage =
+      errorData.error || errorData.message || `HTTP error ${response.status}`;
+
+    const error: ApiError = {
+      message: errorMessage,
+      code: errorData.code,
+      status: response.status,
+    };
+
+    throw error;
+  }
+
+  return response.json();
+}
+
+// Base fetch function for tenant-specific system endpoints
+// Uses system token AND tenant ID header
+async function apiFetchSystemTenant<T>(
+  tenantId: string,
+  endpoint: string,
+  options: RequestInit = {}
+): Promise<T> {
+  const token = getSystemToken();
+
+  const headers: HeadersInit = {
+    "Content-Type": "application/json",
+    ...options.headers,
+  };
+
+  if (token) {
+    (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
+  }
+
+  // Add X-Tenant-ID header for tenant-specific system endpoints
+  (headers as Record<string, string>)["X-Tenant-ID"] = tenantId;
+
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    ...options,
+    headers,
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    // Handle various error response formats from the backend
+    const errorMessage =
       errorData.message ||
       errorData.error ||
       errorData.detail ||
@@ -235,9 +287,10 @@ export const authApi = {
       body: JSON.stringify({ email }),
     }),
 
-  login: (data: LoginRequest): Promise<LoginResponse> =>
+  login: (tenantSlug: string, data: LoginRequest): Promise<LoginResponse> =>
     apiFetch("/auth/login", {
       method: "POST",
+      headers: { "X-Tenant-ID": tenantSlug },
       body: JSON.stringify(data),
     }),
 
@@ -439,6 +492,42 @@ export const systemApi = {
       method: "POST",
       body: JSON.stringify(data),
     }),
+
+  // Tenant-specific system endpoints (require X-Tenant-ID header)
+  getTenantStats: (tenantId: string): Promise<{ data: { totalUsers: number; activeUsers: number; inactiveUsers: number; employees: number; guests: number; pendingInvitations: number; acceptedInvitations: number } }> =>
+    apiFetchSystemTenant(tenantId, "/system/tenant/stats"),
+
+  getTenantUsers: (tenantId: string, params?: { employment_type?: string; active?: boolean; per_page?: number; page?: number }): Promise<{ itemListElement: User[]; numberOfItems: number; pagination: { currentPage: number; lastPage: number; perPage: number } }> => {
+    const query = new URLSearchParams();
+    if (params?.employment_type) query.append("employment_type", params.employment_type);
+    if (params?.active !== undefined) query.append("active", String(params.active));
+    if (params?.per_page) query.append("per_page", String(params.per_page));
+    if (params?.page) query.append("page", String(params.page));
+    const queryString = query.toString();
+    return apiFetchSystemTenant(tenantId, `/system/tenant/users${queryString ? `?${queryString}` : ""}`);
+  },
+
+  getTenantUser: (tenantId: string, userId: string): Promise<User> =>
+    apiFetchSystemTenant(tenantId, `/system/tenant/users/${userId}`),
+
+  impersonateUser: (tenantId: string, userId: string): Promise<{ result: { token: string; expires: string; user: User; tenant: string } }> =>
+    apiFetchSystemTenant(tenantId, `/system/tenant/impersonate/${userId}`, {
+      method: "POST",
+    }),
+
+  endImpersonation: (tenantId: string, userId: string): Promise<{ description: string }> =>
+    apiFetchSystemTenant(tenantId, `/system/tenant/impersonate/${userId}`, {
+      method: "DELETE",
+    }),
+
+  getTenantInvitations: (tenantId: string, params?: { status?: string; per_page?: number; page?: number }): Promise<{ itemListElement: Invitation[]; numberOfItems: number; pagination: { currentPage: number; lastPage: number; perPage: number } }> => {
+    const query = new URLSearchParams();
+    if (params?.status) query.append("status", params.status);
+    if (params?.per_page) query.append("per_page", String(params.per_page));
+    if (params?.page) query.append("page", String(params.page));
+    const queryString = query.toString();
+    return apiFetchSystemTenant(tenantId, `/system/tenant/invitations${queryString ? `?${queryString}` : ""}`);
+  },
 };
 
 // Export all APIs
