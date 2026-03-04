@@ -692,7 +692,7 @@
       "createError": "Kon scheepswerf niet toevoegen",
       "editError": "Kon scheepswerf niet bijwerken"
     },
-    "delete": {
+    "deleteModal": {
       "title": "Scheepswerf Verwijderen",
       "message": "Weet je zeker dat je \"{name}\" wilt verwijderen?",
       "warning": "Deze actie kan niet ongedaan worden gemaakt. Projecten gekoppeld aan deze scheepswerf worden niet verwijderd.",

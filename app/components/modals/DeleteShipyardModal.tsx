@@ -16,7 +16,7 @@ export default function DeleteShipyardModal({
   onClose,
   onConfirm,
 }: DeleteShipyardModalProps) {
-  const t = useTranslations("shipyards.delete");
+  const t = useTranslations("shipyards.deleteModal");
 
   return (
     <BaseModal

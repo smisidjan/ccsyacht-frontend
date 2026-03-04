@@ -691,7 +691,7 @@
       "createError": "Failed to create shipyard",
       "editError": "Failed to update shipyard"
     },
-    "delete": {
+    "deleteModal": {
       "title": "Delete Shipyard",
       "message": "Are you sure you want to delete \"{name}\"?",
       "warning": "This action cannot be undone. Projects linked to this shipyard will not be deleted.",
