@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { PlusIcon } from "@heroicons/react/24/outline";
 import AreaCard from "@/app/components/ui/AreaCard";
@@ -16,16 +16,20 @@ import { useDocumentTypes } from "@/lib/api/document-types";
 import { usePermission } from "@/lib/hooks/usePermission";
 import { useMinimumLoadingTime } from "@/lib/hooks/useMinimumLoadingTime";
 import { PERMISSIONS } from "@/lib/constants/permissions";
+import { projectsApi } from "@/lib/api/client";
+import { useToast } from "@/app/context/ToastContext";
 import type { Area } from "@/lib/api/types";
 
 interface OverviewTabProps {
   projectId: string;
   projectStatus: ProjectStatus;
+  onProjectUpdate?: () => void;
 }
 
 export default function OverviewTab({
   projectId,
   projectStatus,
+  onProjectUpdate,
 }: OverviewTabProps) {
   const t = useTranslations("projectDetail");
   const { data: areas, loading: rawLoading, error, refetch } = useAreas(projectId);
@@ -33,10 +37,13 @@ export default function OverviewTab({
   const { data: members } = useProjectMembers(projectId);
   const { data: signers } = useProjectSigners(projectId);
   const { hasPermission } = usePermission();
+  const { showToast } = useToast();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const hasUpdatedStatusRef = useRef(false);
 
   const loading = useMinimumLoadingTime(rawLoading || rawDocTypesLoading);
   const canCreateAreas = hasPermission(PERMISSIONS.CREATE_AREAS);
+  const canEditProject = hasPermission(PERMISSIONS.EDIT_PROJECTS);
 
   // Generate setup tasks dynamically based on project data
   const setupTasks = useMemo<SetupTask[]>(() => {
@@ -110,6 +117,41 @@ export default function OverviewTab({
   const pendingTasksCount = setupTasks.filter((task) => task.status === "pending").length;
   const allSetupTasksComplete = pendingTasksCount === 0;
 
+  // Automatically update project status to "active" when all setup tasks are complete
+  useEffect(() => {
+    async function updateProjectStatus() {
+      // Only update if:
+      // 1. User has permission to edit projects
+      // 2. Project is in setup status
+      // 3. All setup tasks are complete
+      // 4. We have setup tasks to check
+      // 5. We haven't already updated the status (prevent multiple calls)
+      if (
+        canEditProject &&
+        projectStatus === "setup" &&
+        allSetupTasksComplete &&
+        setupTasks.length > 0 &&
+        !hasUpdatedStatusRef.current
+      ) {
+        try {
+          hasUpdatedStatusRef.current = true;
+          await projectsApi.update(projectId, { status: "active" });
+          showToast("success", t("setupTasks.statusUpdated"));
+          // Notify parent component to refetch project data
+          if (onProjectUpdate) {
+            onProjectUpdate();
+          }
+        } catch (error: any) {
+          console.error("Failed to update project status:", error);
+          hasUpdatedStatusRef.current = false;
+          showToast("error", error.message || t("setupTasks.statusUpdateFailed"));
+        }
+      }
+    }
+
+    updateProjectStatus();
+  }, [canEditProject, projectStatus, allSetupTasksComplete, setupTasks.length, projectId, onProjectUpdate, showToast, t]);
+
   // Map API Area to AreaCard Area format
   const mapAreaToCardData = (area: Area): AreaCardData => ({
     id: area.identifier,
@@ -129,8 +171,8 @@ export default function OverviewTab({
 
   return (
     <div className="space-y-8">
-      {/* Setup Tasks Section (only shown for projects in setup status with pending tasks) */}
-      {projectStatus === "setup" && setupTasks.length > 0 && !allSetupTasksComplete && (
+      {/* Setup Tasks Section (only shown for users with edit permission in setup status with pending tasks) */}
+      {projectStatus === "setup" && canEditProject && setupTasks.length > 0 && !allSetupTasksComplete && (
         <section>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
@@ -153,9 +195,15 @@ export default function OverviewTab({
         </section>
       )}
 
-      {/* Areas Section (hidden during setup until all tasks are complete) */}
-      {(projectStatus !== "setup" || allSetupTasksComplete) && (
-        <section>
+      {/* Info message for users without edit permission when project is in setup */}
+      {projectStatus === "setup" && !canEditProject ? (
+        <Alert
+          type="info"
+          message={t("setupTasks.setupPhaseInfo")}
+        />
+      ) : (
+        (projectStatus !== "setup" || allSetupTasksComplete) && (
+          <section>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
               {t("areasSection.title")}
@@ -213,6 +261,7 @@ export default function OverviewTab({
             </>
           )}
         </section>
+        )
       )}
 
       {/* Create Area Modal */}

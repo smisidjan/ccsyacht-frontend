@@ -190,7 +190,10 @@
         "title": "Voeg Standaard Ondertekenaars Toe",
         "description": "Configureer de standaard ondertekenaars voor documentgoedkeuringen",
         "action": "Voeg Ondertekenaars Toe"
-      }
+      },
+      "statusUpdated": "Projectstatus automatisch bijgewerkt naar Actief",
+      "statusUpdateFailed": "Kon projectstatus niet bijwerken",
+      "setupPhaseInfo": "Dit project bevindt zich momenteel in de setup fase. De projectbeheerder moet de setup taken voltooien."
     },
     "areas": "gebieden",
     "stages": "fasen",

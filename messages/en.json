@@ -190,7 +190,10 @@
         "title": "Add Default Signers",
         "description": "Configure the default signers for document approvals",
         "action": "Add Signers"
-      }
+      },
+      "statusUpdated": "Project status automatically updated to Active",
+      "statusUpdateFailed": "Failed to update project status",
+      "setupPhaseInfo": "This project is currently in the setup phase. The project manager needs to complete the setup tasks."
     },
     "areas": "areas",
     "stages": "stages",

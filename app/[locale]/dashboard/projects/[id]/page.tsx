@@ -30,7 +30,7 @@ export default function ProjectDetailPage() {
   const [activeTab, setActiveTab] = useState<TabKey>("overview");
 
   // Fetch project from API
-  const { data: project, loading: rawLoading, error } = useProject(projectId);
+  const { data: project, loading: rawLoading, error, refetch } = useProject(projectId);
 
   // Enforce minimum loading time to prevent flickering
   const loading = useMinimumLoadingTime(rawLoading);
@@ -77,6 +77,7 @@ export default function ProjectDetailPage() {
           <OverviewTab
             projectId={projectId}
             projectStatus={project.status}
+            onProjectUpdate={refetch}
           />
         );
       case "generalArrangement":
