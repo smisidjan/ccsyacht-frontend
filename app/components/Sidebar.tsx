@@ -5,6 +5,8 @@ import { Link, usePathname } from "@/i18n/navigation";
 import { useAuth } from "@/app/context/AuthContext";
 import { useTenant } from "@/app/context/TenantContext";
 import { useSidebarResize } from "@/lib/hooks/useSidebarResize";
+import { usePermission } from "@/lib/hooks/usePermission";
+import { PERMISSIONS } from "@/lib/constants/permissions";
 import {
   FolderIcon,
   UsersIcon,
@@ -27,7 +29,7 @@ export default function Sidebar() {
   const t = useTranslations("dashboard");
   const pathname = usePathname();
   const { logout } = useAuth();
-  const { isCcsYachtTenant } = useTenant();
+  const { hasAnyPermission, loading } = usePermission();
 
   const {
     isCollapsed,
@@ -37,9 +39,15 @@ export default function Sidebar() {
     handleMouseDown,
   } = useSidebarResize();
 
+  // Check if user has settings/system permissions
+  const canAccessSettings = !loading && hasAnyPermission([
+    PERMISSIONS.MANAGE_GUEST_ROLES,
+    PERMISSIONS.MANAGE_SETTINGS,
+  ]);
+
   const navItems = [
     ...baseNavItems,
-    ...(isCcsYachtTenant
+    ...(canAccessSettings
       ? [{ href: "/dashboard/system", key: "system", icon: Cog8ToothIcon }]
       : []),
   ];
@@ -121,4 +129,3 @@ export default function Sidebar() {
     </aside>
   );
 }
-

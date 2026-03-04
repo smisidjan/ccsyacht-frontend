@@ -52,20 +52,17 @@ interface BottomNavProps {
 export default function BottomNav({ className = "" }: BottomNavProps) {
   const t = useTranslations("dashboard");
   const pathname = usePathname();
-  const { isCcsYachtTenant } = useTenant();
 
   const navItems = [
     ...baseNavItems,
-    ...(isCcsYachtTenant
-      ? [
+    ...([
           {
             href: "/dashboard/system",
             key: "system",
             icon: Cog8ToothIcon,
             iconActive: Cog8ToothIconSolid,
           },
-        ]
-      : []),
+        ]),
   ];
 
   return (

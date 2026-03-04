@@ -13,7 +13,6 @@ interface TenantContextType {
   tenantId: string | null;
   tenantName: string | null;
   tenantUrl: string | null;
-  isCcsYachtTenant: boolean;
   isLoaded: boolean;
   updateTenant: (id: string, name: string, url: string) => void;
   clearTenant: () => void;
@@ -23,7 +22,6 @@ const TenantContext = createContext<TenantContextType>({
   tenantId: null,
   tenantName: null,
   tenantUrl: null,
-  isCcsYachtTenant: false,
   isLoaded: false,
   updateTenant: () => {},
   clearTenant: () => {},
@@ -58,16 +56,12 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
     setTenantUrl(null);
   };
 
-  // Only check CCS Yacht after loaded to avoid flash
-  const isCcsYachtTenant = isLoaded && tenantName === "CCS Yacht";
-
   return (
     <TenantContext.Provider
       value={{
         tenantId,
         tenantName,
         tenantUrl,
-        isCcsYachtTenant,
         isLoaded,
         updateTenant,
         clearTenant,
