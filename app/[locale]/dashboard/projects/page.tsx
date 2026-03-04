@@ -9,77 +9,19 @@ import {
   LockClosedIcon,
   CheckCircleIcon,
 } from "@heroicons/react/24/outline";
+import { useProjects, useShipyards } from "@/lib/api";
+import { PERMISSIONS } from "@/lib/constants/permissions";
+import { usePermission } from "@/lib/hooks/usePermission";
+import ProtectedRoute from "@/app/components/guards/ProtectedRoute";
 import ProjectCard from "@/app/components/ui/ProjectCard";
-import type { Project } from "@/app/components/ui/ProjectCard";
 import SearchInput from "@/app/components/ui/SearchInput";
 import FilterTabs from "@/app/components/ui/FilterTabs";
 import type { FilterOption } from "@/app/components/ui/FilterTabs";
 import CreateProjectModal from "@/app/components/modals/CreateProjectModal";
 import type { ProjectFormData } from "@/app/components/modals/CreateProjectModal";
-
-// Mock data - replace with API call
-const mockProjects: Project[] = [
-  {
-    id: "1",
-    name: "TEST TEST",
-    shipyard: "Baltic Shipyard",
-    status: "setup",
-    progress: 0,
-    membersCount: 0,
-  },
-  {
-    id: "2",
-    name: "Pieter",
-    shipyard: "Monaco Marine Yard",
-    status: "active",
-    progress: 0,
-    membersCount: 1,
-  },
-  {
-    id: "3",
-    name: "Test Project 3",
-    shipyard: "Baltic Shipyard",
-    status: "active",
-    progress: 0,
-    membersCount: 0,
-  },
-  {
-    id: "4",
-    name: "Test Project 2",
-    shipyard: "Monaco Marine Yard",
-    status: "active",
-    progress: 0,
-    membersCount: 0,
-  },
-  {
-    id: "5",
-    name: "Test Project 1",
-    shipyard: "Baltic Shipyard",
-    status: "active",
-    progress: 0,
-    membersCount: 0,
-  },
-  {
-    id: "6",
-    name: "Test Project",
-    shipyard: "Baltic Shipyard",
-    status: "setup",
-    progress: 0,
-    membersCount: 0,
-  },
-];
-
-// Mock data for shipyards and project types - replace with API call
-const mockShipyards = [
-  { id: "1", name: "Baltic Shipyard" },
-  { id: "2", name: "Monaco Marine Yard" },
-];
-
-const mockProjectTypes = [
-  { id: "1", name: "New Build" },
-  { id: "2", name: "Refit" },
-  { id: "3", name: "Maintenance" },
-];
+import LoadingSkeleton from "@/app/components/ui/LoadingSkeleton";
+import Button from "@/app/components/ui/Button";
+import type { ProjectStatus } from "@/lib/api/types";
 
 export default function ProjectsPage() {
   const t = useTranslations("projects");
@@ -87,9 +29,37 @@ export default function ProjectsPage() {
   const [activeFilter, setActiveFilter] = useState<FilterOption>("all");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
-  const handleCreateProject = (data: ProjectFormData) => {
-    console.log("Create project:", data);
-    // TODO: API call to create project
+  // API hooks
+  const { data: projects, loading: projectsLoading, createProject } = useProjects();
+  const { data: shipyards, loading: shipyardsLoading } = useShipyards();
+  const { hasPermission } = usePermission();
+
+  // Permissions
+  const canCreateProject = hasPermission(PERMISSIONS.CREATE_PROJECTS);
+
+  // Prepare data
+  const projectsArray = Array.isArray(projects) ? projects : [];
+  const shipyardsArray = Array.isArray(shipyards) ? shipyards : [];
+
+  // Transform shipyards for modal
+  const shipyardOptions = shipyardsArray.map((shipyard) => ({
+    id: shipyard.identifier,
+    name: shipyard.name,
+  }));
+
+  // Project types for modal
+  const projectTypeOptions = [
+    { id: "new_built", name: t("types.newBuilt") },
+    { id: "refit", name: t("types.refit") },
+  ];
+
+  const handleCreateProject = async (data: ProjectFormData) => {
+    await createProject({
+      name: data.name,
+      description: data.description,
+      project_type: data.projectTypeId as "new_built" | "refit",
+      shipyard_id: data.shipyardId,
+    });
     setIsCreateModalOpen(false);
   };
 
@@ -102,72 +72,104 @@ export default function ProjectsPage() {
   ];
 
   const filteredProjects = useMemo(() => {
-    return mockProjects.filter((project) => {
+    return projectsArray.filter((project) => {
       const matchesSearch =
         project.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        project.shipyard.toLowerCase().includes(searchQuery.toLowerCase());
+        project.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        project.producer?.name?.toLowerCase().includes(searchQuery.toLowerCase());
 
       const matchesFilter =
-        activeFilter === "all" || project.status === activeFilter;
+        activeFilter === "all" || project.status === (activeFilter as ProjectStatus);
 
       return matchesSearch && matchesFilter;
     });
-  }, [searchQuery, activeFilter]);
+  }, [projectsArray, searchQuery, activeFilter]);
+
+  const loading = projectsLoading || shipyardsLoading;
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-          {t("title")}
-        </h1>
-        <button
-          onClick={() => setIsCreateModalOpen(true)}
-          className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-all shadow-lg hover:shadow-xl"
-        >
-          <PlusIcon className="w-5 h-5" />
-          {t("newProject")}
-        </button>
-      </div>
-
-      <div className="space-y-6 mb-8">
-        <SearchInput
-          value={searchQuery}
-          onChange={setSearchQuery}
-          placeholder={t("searchPlaceholder")}
-        />
-        <FilterTabs
-          activeFilter={activeFilter}
-          onChange={setActiveFilter}
-          tabs={filterTabs}
-        />
-      </div>
-
-      <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
-        {t("showing", {
-          count: filteredProjects.length,
-          total: mockProjects.length,
-        })}
-      </p>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-        {filteredProjects.map((project) => (
-          <ProjectCard key={project.id} project={project} />
-        ))}
-      </div>
-
-      {filteredProjects.length === 0 && (
-        <div className="text-center py-12 text-gray-500 dark:text-gray-400">
-          {t("noProjects")}
+    <ProtectedRoute permissions={PERMISSIONS.VIEW_PROJECTS}>
+      <div>
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+              {t("title")}
+            </h1>
+            <p className="text-gray-600 dark:text-gray-400 mt-2">
+              {t("subtitle")}
+            </p>
+          </div>
+          {canCreateProject && (
+            <Button onClick={() => setIsCreateModalOpen(true)}>
+              <PlusIcon className="w-5 h-5" />
+              {t("newProject")}
+            </Button>
+          )}
         </div>
-      )}
 
-      <CreateProjectModal
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-        onSubmit={handleCreateProject}
-        shipyards={mockShipyards}
-        projectTypes={mockProjectTypes}
-      />
-    </div>
+        {/* Filters */}
+        <div className="space-y-6 mb-8">
+          <SearchInput
+            value={searchQuery}
+            onChange={setSearchQuery}
+            placeholder={t("searchPlaceholder")}
+          />
+          <FilterTabs
+            activeFilter={activeFilter}
+            onChange={setActiveFilter}
+            tabs={filterTabs}
+          />
+        </div>
+
+        {/* Results count */}
+        {!loading && (
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+            {t("showing", {
+              count: filteredProjects.length,
+              total: projectsArray.length,
+            })}
+          </p>
+        )}
+
+        {/* Content */}
+        {loading ? (
+          <LoadingSkeleton type="table" rows={6} />
+        ) : filteredProjects.length === 0 ? (
+          <div className="text-center py-16 bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 rounded-2xl border-2 border-dashed border-gray-300 dark:border-gray-700 shadow-inner">
+            <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-100 to-purple-200 dark:from-blue-900/30 dark:to-purple-800/30 rounded-2xl mb-4 shadow-lg">
+              <CogIcon className="w-10 h-10 text-blue-600 dark:text-blue-400" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+              {projectsArray.length === 0 ? t("noProjectsYet") : t("noProjects")}
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400 mb-6 max-w-sm mx-auto">
+              {projectsArray.length === 0 ? t("createFirstProject") : t("tryDifferentFilters")}
+            </p>
+            {canCreateProject && projectsArray.length === 0 && (
+              <Button onClick={() => setIsCreateModalOpen(true)}>
+                <PlusIcon className="w-5 h-5" />
+                {t("newProject")}
+              </Button>
+            )}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            {filteredProjects.map((project) => (
+              <ProjectCard key={project.identifier} project={project} />
+            ))}
+          </div>
+        )}
+
+        {/* Create Modal */}
+        <CreateProjectModal
+          isOpen={isCreateModalOpen}
+          onClose={() => setIsCreateModalOpen(false)}
+          onSubmit={handleCreateProject}
+          shipyards={shipyardOptions}
+          projectTypes={projectTypeOptions}
+        />
+      </div>
+    </ProtectedRoute>
   );
 }
