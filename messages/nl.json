@@ -105,6 +105,7 @@
   },
   "projects": {
     "title": "Projecten",
+    "subtitle": "Beheer en volg al je jachtprojecten",
     "newProject": "Nieuw Project",
     "searchPlaceholder": "Zoek op projectnaam, beschrijving of scheepswerf...",
     "showing": "{count} van {total} projecten",
