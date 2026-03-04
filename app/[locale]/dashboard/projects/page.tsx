@@ -9,7 +9,7 @@ import {
   LockClosedIcon,
   CheckCircleIcon,
 } from "@heroicons/react/24/outline";
-import { useProjects, useShipyards } from "@/lib/api";
+import { useProjects, useShipyards, projectsApi, documentTypesApi } from "@/lib/api";
 import { PERMISSIONS } from "@/lib/constants/permissions";
 import { usePermission } from "@/lib/hooks/usePermission";
 import ProtectedRoute from "@/app/components/guards/ProtectedRoute";
@@ -30,7 +30,7 @@ export default function ProjectsPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   // API hooks
-  const { data: projects, loading: projectsLoading, createProject } = useProjects();
+  const { data: projects, loading: projectsLoading, refetch } = useProjects();
   const { data: shipyards, loading: shipyardsLoading } = useShipyards();
   const { hasPermission } = usePermission();
 
@@ -54,13 +54,38 @@ export default function ProjectsPage() {
   ];
 
   const handleCreateProject = async (data: ProjectFormData) => {
-    await createProject({
-      name: data.name,
-      description: data.description,
-      project_type: data.projectTypeId as "new_built" | "refit",
-      shipyard_id: data.shipyardId,
-    });
-    setIsCreateModalOpen(false);
+    try {
+      // 1. Create the project first
+      const newProject = await projectsApi.create({
+        name: data.name,
+        description: data.description,
+        project_type: data.projectTypeId as "new_built" | "refit",
+        shipyard_id: data.shipyardId,
+      });
+
+      const projectId = newProject.identifier;
+
+      // 2. Upload General Arrangement (required)
+      if (!data.generalArrangement) {
+        throw new Error("General Arrangement is required");
+      }
+      await projectsApi.uploadGeneralArrangement(projectId, data.generalArrangement);
+
+      // 3. Create document types
+      for (const docType of data.documentTypes) {
+        await documentTypesApi.create(projectId, {
+          name: docType.name,
+          is_required: docType.required,
+        });
+      }
+
+      // Refresh the projects list
+      refetch();
+      setIsCreateModalOpen(false);
+    } catch (error) {
+      console.error("Error creating project:", error);
+      throw error;
+    }
   };
 
   const filterTabs = [
@@ -173,3 +198,4 @@ export default function ProjectsPage() {
     </ProtectedRoute>
   );
 }
+
