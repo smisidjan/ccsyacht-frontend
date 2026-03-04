@@ -11,7 +11,7 @@ import type { ProjectStatus } from "@/app/components/ui/StatusBadge";
 import Button from "@/app/components/ui/Button";
 import Alert from "@/app/components/ui/Alert";
 import CreateAreaModal from "@/app/components/modals/CreateAreaModal";
-import { useAreas } from "@/lib/api";
+import { useAreas, useProjectMembers, useProjectSigners } from "@/lib/api";
 import { useDocumentTypes } from "@/lib/api/document-types";
 import { usePermission } from "@/lib/hooks/usePermission";
 import { PERMISSIONS } from "@/lib/constants/permissions";
@@ -29,6 +29,8 @@ export default function OverviewTab({
   const t = useTranslations("projectDetail");
   const { data: areas, loading, error, refetch } = useAreas(projectId);
   const { data: documentTypes, loading: docTypesLoading } = useDocumentTypes(projectId);
+  const { data: members } = useProjectMembers(projectId);
+  const { data: signers } = useProjectSigners(projectId);
   const { hasPermission } = usePermission();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
@@ -69,34 +71,39 @@ export default function OverviewTab({
       // Only show action button when not completed
       ...(allRequiredDocsUploaded ? {} : {
         actionLabel: t("setupTasks.uploadDocuments.action"),
-        actionHref: `/dashboard/projects/${projectId}#documents`,
+        actionHref: "#documents",
       }),
     });
 
-    // Task 2: Add Project Members (backend endpoint not ready yet)
-    // For now, always show as pending
+    // Task 2: Add Project Members
+    // Project creator is automatically added, so check for more than 1 member
+    const hasMembersAdded = members && members.length > 1;
     tasks.push({
       id: "add-members",
       title: t("setupTasks.addMembers.title"),
       description: t("setupTasks.addMembers.description"),
-      status: "pending",
-      actionLabel: t("setupTasks.addMembers.action"),
-      actionHref: `/dashboard/projects/${projectId}#members`,
+      status: hasMembersAdded ? "completed" : "pending",
+      ...(hasMembersAdded ? {} : {
+        actionLabel: t("setupTasks.addMembers.action"),
+        actionHref: "#settings",
+      }),
     });
 
-    // Task 3: Add Default Signers (backend endpoint not ready yet)
-    // For now, always show as pending
+    // Task 3: Add Default Signers
+    const hasSignersAdded = signers && signers.length > 0;
     tasks.push({
       id: "add-signers",
       title: t("setupTasks.addSigners.title"),
       description: t("setupTasks.addSigners.description"),
-      status: "pending",
-      actionLabel: t("setupTasks.addSigners.action"),
-      actionHref: `/dashboard/projects/${projectId}#signers`,
+      status: hasSignersAdded ? "completed" : "pending",
+      ...(hasSignersAdded ? {} : {
+        actionLabel: t("setupTasks.addSigners.action"),
+        actionHref: "#settings",
+      }),
     });
 
     return tasks;
-  }, [documentTypes, projectId, t]);
+  }, [documentTypes, members, signers, projectId, t]);
 
   const pendingTasksCount = setupTasks.filter((task) => task.status === "pending").length;
   const allSetupTasksComplete = pendingTasksCount === 0;
