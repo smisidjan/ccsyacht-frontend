@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { useTenant } from "@/app/context/TenantContext";
 import TabNavState from "@/app/components/ui/TabNavState";
@@ -9,6 +9,9 @@ import UsersTab from "@/app/components/users-tabs/UsersTab";
 import InvitationsTab from "@/app/components/users-tabs/InvitationsTab";
 import InviteUserModal from "@/app/components/modals/InviteUserModal";
 import EditUserModal from "@/app/components/modals/EditUserModal";
+import ProtectedRoute from "@/app/components/guards/ProtectedRoute";
+import { PERMISSIONS } from "@/lib/constants/permissions";
+import { usePermission } from "@/lib/hooks/usePermission";
 import type { User, UpdateUserRequest, UserRole, CreateInvitationRequest } from "@/lib/api/types";
 import {
   useUsers,
@@ -29,6 +32,7 @@ export default function UsersPage() {
   // API hooks
   const { data: currentUser } = useCurrentUser();
   const { tenantName } = useTenant();
+  const { hasAnyPermission } = usePermission();
   const { data: users, loading: usersLoading, updateUser, refetch: refetchUsers } = useUsers();
   const {
     data: invitations,
@@ -49,10 +53,25 @@ export default function UsersPage() {
   const currentUserRoles = (currentUser as { roles?: string[] })?.roles || [];
   const currentUserRole = (currentUserRoles[0] as UserRole) || "user";
 
+  // Check if user has invitation permissions
+  const canViewInvitations = hasAnyPermission([
+    PERMISSIONS.VIEW_INVITATIONS,
+    PERMISSIONS.CREATE_INVITATIONS,
+    PERMISSIONS.MANAGE_INVITATIONS,
+  ]);
+
+  // Build tabs array based on permissions
   const tabs: StateTab[] = [
     { key: "users", label: t("tabs.users") },
-    { key: "invitations", label: t("tabs.invitations") },
+    ...(canViewInvitations ? [{ key: "invitations", label: t("tabs.invitations") }] : []),
   ];
+
+  // Reset active tab to "users" if user doesn't have invitation permissions
+  useEffect(() => {
+    if (!canViewInvitations && activeTab === "invitations") {
+      setActiveTab("users");
+    }
+  }, [canViewInvitations, activeTab]);
 
   const handleEditUser = (user: User) => {
     setEditingUser(user);
@@ -153,43 +172,45 @@ export default function UsersPage() {
   };
 
   return (
-    <div>
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-          {t("title")}
-        </h1>
-        <p className="text-gray-600 dark:text-gray-400 mt-1">
-          {t("subtitle")}
-        </p>
-      </div>
+    <ProtectedRoute permissions={PERMISSIONS.VIEW_USERS}>
+      <div>
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+            {t("title")}
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-1">
+            {t("subtitle")}
+          </p>
+        </div>
 
-      <div className="mb-8">
-        <TabNavState
-          tabs={tabs}
-          activeTab={activeTab}
-          onChange={(key) => setActiveTab(key as TabKey)}
+        <div className="mb-8">
+          <TabNavState
+            tabs={tabs}
+            activeTab={activeTab}
+            onChange={(key) => setActiveTab(key as TabKey)}
+          />
+        </div>
+
+        {renderTabContent()}
+
+        <InviteUserModal
+          isOpen={isInviteModalOpen}
+          onClose={() => setIsInviteModalOpen(false)}
+          onSubmit={handleInviteUser}
+          tenantName={tenantName || undefined}
+        />
+
+        <EditUserModal
+          isOpen={isEditModalOpen}
+          user={editingUser}
+          onClose={() => {
+            setIsEditModalOpen(false);
+            setEditingUser(null);
+          }}
+          onSubmit={handleUpdateUser}
         />
       </div>
-
-      {renderTabContent()}
-
-      <InviteUserModal
-        isOpen={isInviteModalOpen}
-        onClose={() => setIsInviteModalOpen(false)}
-        onSubmit={handleInviteUser}
-        tenantName={tenantName || undefined}
-      />
-
-      <EditUserModal
-        isOpen={isEditModalOpen}
-        user={editingUser}
-        onClose={() => {
-          setIsEditModalOpen(false);
-          setEditingUser(null);
-        }}
-        onSubmit={handleUpdateUser}
-      />
-    </div>
+    </ProtectedRoute>
   );
 }
 

@@ -5,6 +5,8 @@ import { useTranslations } from "next-intl";
 import { PencilIcon, ShieldCheckIcon } from "@heroicons/react/24/outline";
 import type { User, UserRole } from "@/lib/api/types";
 import { getRoleBadgeColor } from "@/lib/utils/badges";
+import { usePermission } from "@/lib/hooks/usePermission";
+import { PERMISSIONS } from "@/lib/constants/permissions";
 import Table from "@/app/components/ui/Table";
 import LoadingSkeleton from "@/app/components/ui/LoadingSkeleton";
 
@@ -25,8 +27,12 @@ export default function UsersTab({
 }: UsersTabProps) {
   const t = useTranslations("usersPage.users");
   const [filter, setFilter] = useState<UserFilter>("all");
+  const { hasAnyPermission } = usePermission();
 
-  const canManageUsers = currentUserRole === "admin" || currentUserRole === "main user";
+  const canManageUsers = hasAnyPermission([
+    PERMISSIONS.EDIT_USERS,
+    PERMISSIONS.DELETE_USERS,
+  ]);
 
   if (loading) {
     return <LoadingSkeleton type="table" rows={3} />;
