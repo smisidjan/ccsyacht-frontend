@@ -18,18 +18,11 @@ import {
   ChevronRightIcon,
 } from "@heroicons/react/24/outline";
 
-const baseNavItems = [
-  { href: "/dashboard/projects", key: "projects", icon: FolderIcon },
-  { href: "/dashboard/users", key: "users", icon: UsersIcon },
-  { href: "/dashboard/shipyards", key: "shipyards", icon: BuildingOffice2Icon },
-  { href: "/dashboard/profile", key: "profile", icon: UserIcon },
-];
-
 export default function Sidebar() {
   const t = useTranslations("dashboard");
   const pathname = usePathname();
   const { logout } = useAuth();
-  const { hasAnyPermission, loading } = usePermission();
+  const { hasPermission, hasAnyPermission, loading } = usePermission();
 
   const {
     isCollapsed,
@@ -39,14 +32,28 @@ export default function Sidebar() {
     handleMouseDown,
   } = useSidebarResize();
 
-  // Check if user has settings/system permissions
+  // Check permissions for navigation items
+  const canAccessProjects = !loading && hasPermission(PERMISSIONS.VIEW_PROJECTS);
+  const canAccessUsers = !loading && hasPermission(PERMISSIONS.VIEW_USERS);
+  const canAccessShipyards = !loading && hasPermission(PERMISSIONS.VIEW_SHIPYARDS);
   const canAccessSettings = !loading && hasAnyPermission([
     PERMISSIONS.MANAGE_GUEST_ROLES,
     PERMISSIONS.MANAGE_SETTINGS,
   ]);
 
+  // Build navigation items based on permissions
   const navItems = [
-    ...baseNavItems,
+    ...(canAccessProjects
+      ? [{ href: "/dashboard/projects", key: "projects", icon: FolderIcon }]
+      : []),
+    ...(canAccessUsers
+      ? [{ href: "/dashboard/users", key: "users", icon: UsersIcon }]
+      : []),
+    ...(canAccessShipyards
+      ? [{ href: "/dashboard/shipyards", key: "shipyards", icon: BuildingOffice2Icon }]
+      : []),
+    // Profile is always accessible
+    { href: "/dashboard/profile", key: "profile", icon: UserIcon },
     ...(canAccessSettings
       ? [{ href: "/dashboard/system", key: "system", icon: Cog8ToothIcon }]
       : []),
