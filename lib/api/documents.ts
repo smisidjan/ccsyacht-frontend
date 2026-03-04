@@ -38,6 +38,9 @@ async function apiFetch<T>(
   const token = getAuthToken();
   const tenantUrl = getTenantUrl();
 
+  // Get socket ID to prevent broadcasting back to the sender (only for mutations)
+  const socketId = typeof window !== 'undefined' ? (window as any).Echo?.socketId() : null;
+
   const headers: HeadersInit = {
     "Content-Type": "application/json",
     ...options.headers,
@@ -48,6 +51,9 @@ async function apiFetch<T>(
   }
   if (tenantUrl) {
     (headers as Record<string, string>)["X-Tenant-ID"] = tenantUrl;
+  }
+  if (socketId) {
+    (headers as Record<string, string>)["X-Socket-ID"] = socketId;
   }
 
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
@@ -103,12 +109,18 @@ export const documentsApi = {
     const token = getAuthToken();
     const tenantUrl = getTenantUrl();
 
+    // Get socket ID to prevent broadcasting back to the sender
+    const socketId = typeof window !== 'undefined' ? (window as any).Echo?.socketId() : null;
+
     const headers: HeadersInit = {};
     if (token) {
       (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
     }
     if (tenantUrl) {
       (headers as Record<string, string>)["X-Tenant-ID"] = tenantUrl;
+    }
+    if (socketId) {
+      (headers as Record<string, string>)["X-Socket-ID"] = socketId;
     }
 
     const response = await fetch(`${API_BASE_URL}/projects/${projectId}/document-types/${typeId}/documents`, {
@@ -211,18 +223,31 @@ export function useDocuments(projectId: string, typeId?: string) {
   });
 
   const fetchDocuments = useCallback(async () => {
+    // Don't fetch if typeId is empty string (waiting for selection)
+    if (typeId === "") {
+      setState({ data: [], loading: false, error: null });
+      return;
+    }
+
     setState((prev) => ({ ...prev, loading: true, error: null }));
     try {
       let data: Document[];
       if (typeId) {
-        const response = await documentsApi.getByType(projectId, typeId);
+        // Use getAll with document_type_id filter instead of getByType to get proper pagination
+        const response = await documentsApi.getAll(projectId, {
+          document_type_id: typeId,
+          per_page: 100, // Get up to 100 documents per type
+        });
         data = response.data || [];
       } else {
-        const response = await documentsApi.getAll(projectId);
+        const response = await documentsApi.getAll(projectId, {
+          per_page: 100, // Get up to 100 documents total
+        });
         data = response.data || [];
       }
       setState({ data, loading: false, error: null });
     } catch (err) {
+      console.error('❌ Error fetching documents:', err);
       setState({ data: null, loading: false, error: err as ApiError });
     }
   }, [projectId, typeId]);

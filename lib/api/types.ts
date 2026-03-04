@@ -28,7 +28,7 @@ export interface SystemLoginResponse {
 
 // Tenant lookup types
 export interface TenantInfo {
-  id: string;
+  identifier: string;
   name: string;
   url: string;
 }

@@ -151,6 +151,9 @@ async function apiFetch<T>(
   const token = getAuthToken();
   const tenantUrl = getTenantUrl();
 
+  // Get socket ID to prevent broadcasting back to the sender
+  const socketId = typeof window !== 'undefined' ? (window as any).Echo?.socketId() : null;
+
   const headers: HeadersInit = {
     "Content-Type": "application/json",
     ...options.headers,
@@ -162,6 +165,10 @@ async function apiFetch<T>(
 
   if (tenantUrl) {
     (headers as Record<string, string>)["X-Tenant-ID"] = tenantUrl;
+  }
+
+  if (socketId) {
+    (headers as Record<string, string>)["X-Socket-ID"] = socketId;
   }
 
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
@@ -618,6 +625,7 @@ export const projectsApi = {
 
     const token = getAuthToken();
     const tenantUrl = getTenantUrl();
+    const socketId = typeof window !== 'undefined' ? (window as any).Echo?.socketId() : null;
 
     const headers: HeadersInit = {};
     if (token) {
@@ -625,6 +633,9 @@ export const projectsApi = {
     }
     if (tenantUrl) {
       (headers as Record<string, string>)["X-Tenant-ID"] = tenantUrl;
+    }
+    if (socketId) {
+      (headers as Record<string, string>)["X-Socket-ID"] = socketId;
     }
 
     const response = await fetch(`${API_BASE_URL}/projects/${id}/general-arrangement`, {
