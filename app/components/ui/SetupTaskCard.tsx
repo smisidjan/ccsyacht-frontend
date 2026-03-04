@@ -11,8 +11,8 @@ export interface SetupTask {
   title: string;
   description: string;
   status: TaskStatus;
-  actionLabel: string;
-  actionHref: string;
+  actionLabel?: string;
+  actionHref?: string;
 }
 
 interface SetupTaskCardProps {
@@ -49,24 +49,28 @@ export default function SetupTaskCard({ task, onMarkComplete }: SetupTaskCardPro
         {task.description}
       </p>
 
-      <div className="flex items-center gap-3">
-        <Link
-          href={task.actionHref}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-all shadow-md hover:shadow-lg"
-        >
-          <ArrowRightIcon className="w-4 h-4" />
-          {task.actionLabel}
-        </Link>
-        {task.status === "pending" && onMarkComplete && (
-          <button
-            onClick={() => onMarkComplete(task.id)}
-            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-          >
-            <CheckIcon className="w-4 h-4" />
-            {t("markComplete")}
-          </button>
-        )}
-      </div>
+      {(task.actionLabel || onMarkComplete) && (
+        <div className="flex items-center gap-3">
+          {task.actionLabel && task.actionHref && (
+            <Link
+              href={task.actionHref}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-all shadow-md hover:shadow-lg"
+            >
+              <ArrowRightIcon className="w-4 h-4" />
+              {task.actionLabel}
+            </Link>
+          )}
+          {task.status === "pending" && onMarkComplete && (
+            <button
+              onClick={() => onMarkComplete(task.id)}
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+            >
+              <CheckIcon className="w-4 h-4" />
+              {t("markComplete")}
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
