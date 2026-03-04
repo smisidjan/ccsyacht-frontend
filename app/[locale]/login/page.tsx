@@ -53,7 +53,7 @@ export default function LoginPage() {
 
       if (tenantList.length === 1) {
         setSelectedTenant(tenantList[0]);
-        updateTenant(tenantList[0].id, tenantList[0].name, tenantList[0].url);
+        updateTenant(tenantList[0].identifier, tenantList[0].name, tenantList[0].url);
         setStep("password");
       } else {
         setStep("tenant");
@@ -67,7 +67,7 @@ export default function LoginPage() {
 
   const handleTenantSelect = (tenant: TenantInfo) => {
     setSelectedTenant(tenant);
-    updateTenant(tenant.id, tenant.name, tenant.url);
+    updateTenant(tenant.identifier, tenant.name, tenant.url);
     setStep("password");
   };
 
@@ -146,7 +146,7 @@ export default function LoginPage() {
             <div className="space-y-2">
               {tenants.map((tenant) => (
                 <button
-                  key={tenant.id}
+                  key={tenant.identifier}
                   onClick={() => handleTenantSelect(tenant)}
                   className="w-full p-4 text-left rounded-lg border border-gray-200 dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all"
                 >
