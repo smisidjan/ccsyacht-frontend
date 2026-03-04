@@ -601,5 +601,11 @@
     "passwordsDoNotMatch": "Passwords do not match",
     "passwordTooShort": "Password must be at least 8 characters",
     "error": "An error occurred"
+  },
+  "permissions": {
+    "accessDenied": "Access Denied",
+    "noPermission": "You don't have permission to access this resource",
+    "insufficientPermissions": "You don't have sufficient permissions to perform this action",
+    "contactAdmin": "Please contact your administrator if you need access"
   }
 }

@@ -601,5 +601,11 @@
     "passwordsDoNotMatch": "Wachtwoorden komen niet overeen",
     "passwordTooShort": "Wachtwoord moet minimaal 8 tekens bevatten",
     "error": "Er is een fout opgetreden"
+  },
+  "permissions": {
+    "accessDenied": "Toegang Geweigerd",
+    "noPermission": "Je hebt geen toestemming om toegang te krijgen tot deze resource",
+    "insufficientPermissions": "Je hebt onvoldoende rechten om deze actie uit te voeren",
+    "contactAdmin": "Neem contact op met je beheerder als je toegang nodig hebt"
   }
 }
