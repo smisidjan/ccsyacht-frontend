@@ -33,6 +33,7 @@ export default function DocumentsTab({ projectId }: DocumentsTabProps) {
     data: documentTypes,
     loading: typesLoading,
     error: typesError,
+    refetch: refetchDocumentTypes,
   } = useDocumentTypes(projectId);
 
   // State for selected document type
@@ -64,6 +65,7 @@ export default function DocumentsTab({ projectId }: DocumentsTabProps) {
   const handleUploadDocument = async (data: UploadDocumentRequest) => {
     if (!selectedTypeId) return;
     await uploadDocument(selectedTypeId, data);
+    refetchDocumentTypes(); // Refresh document types to update counts and Required labels
     setIsUploadModalOpen(false);
   };
 
@@ -79,6 +81,7 @@ export default function DocumentsTab({ projectId }: DocumentsTabProps) {
     if (confirm(t("confirmDelete"))) {
       try {
         await deleteDocument(docId);
+        refetchDocumentTypes(); // Refresh document types to update counts and Required labels
       } catch (error) {
         console.error("Failed to delete document:", error);
       }
@@ -108,17 +111,17 @@ export default function DocumentsTab({ projectId }: DocumentsTabProps) {
   }
 
   return (
-    <div className="flex gap-6 h-[calc(100vh-300px)]">
+    <div className="flex gap-6">
       {/* Left Sidebar - Document Types */}
       <div className="w-80 flex-shrink-0">
-        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-lg h-full flex flex-col">
-          <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-lg flex flex-col max-h-[calc(100vh-240px)]">
+          <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
             <div className="flex items-center gap-2 text-gray-900 dark:text-white">
               <FolderIcon className="w-5 h-5" />
               <h3 className="font-semibold">{t("documentTypes")}</h3>
             </div>
           </div>
-          <div className="flex-1 overflow-y-auto">
+          <div className="overflow-y-auto">
             {documentTypes.map((type) => (
               <button
                 key={type.identifier}
@@ -131,9 +134,22 @@ export default function DocumentsTab({ projectId }: DocumentsTabProps) {
               >
                 <div className="flex items-center gap-3 flex-1 min-w-0">
                   <FolderIcon className="w-5 h-5 flex-shrink-0" />
-                  <span className="font-medium truncate">{type.name}</span>
+                  <div className="flex flex-col min-w-0">
+                    <span className="font-medium truncate">{type.name}</span>
+                  </div>
                 </div>
-                <span
+                {type.isRequired && type.documentCount === 0 ? (
+                      <span
+                        className={`flex-shrink-0 px-2 py-1 text-xs rounded-full ${
+                          selectedTypeId === type.identifier
+                            ? "bg-white/20 text-red-600"
+                            : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-red-600 dark:text-red-400"
+                        }`}
+                      >
+                        {t("required")}
+                      </span>
+                    ) : (
+                      <span
                   className={`flex-shrink-0 px-2 py-1 text-xs rounded-full ${
                     selectedTypeId === type.identifier
                       ? "bg-white/20 text-white"
@@ -142,6 +158,7 @@ export default function DocumentsTab({ projectId }: DocumentsTabProps) {
                 >
                   {type.documentCount}
                 </span>
+                    )}
               </button>
             ))}
           </div>
@@ -151,7 +168,7 @@ export default function DocumentsTab({ projectId }: DocumentsTabProps) {
       {/* Right Content - Documents Table */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Documents Table */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-lg flex-1 flex flex-col min-h-0">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-lg flex flex-col max-h-[calc(100vh-240px)]">
           <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
             <h3 className="font-semibold text-gray-900 dark:text-white">
               {selectedType?.name} ({documents?.length || 0})
