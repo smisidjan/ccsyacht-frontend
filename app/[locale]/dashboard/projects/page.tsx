@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import {
   PlusIcon,
@@ -13,6 +13,7 @@ import { useProjects, useShipyards, projectsApi, documentTypesApi, projectMember
 import { PERMISSIONS } from "@/lib/constants/permissions";
 import { usePermission } from "@/lib/hooks/usePermission";
 import { useMinimumLoadingTime } from "@/lib/hooks/useMinimumLoadingTime";
+import { useRealtimeProjectsList } from "@/lib/hooks/useRealtimeProject";
 import ProtectedRoute from "@/app/components/guards/ProtectedRoute";
 import ProjectCard from "@/app/components/ui/ProjectCard";
 import SearchInput from "@/app/components/ui/SearchInput";
@@ -112,6 +113,24 @@ export default function ProjectsPage() {
 
     fetchMemberships();
   }, [projectsArray, currentUser, canViewProjectMembers]);
+
+  // Real-time updates for member/signer changes across all projects
+  // Only subscribe to projects where the user is a member (to avoid 403 errors)
+  // When a member/signer is added or removed, refetch the entire projects list
+  // This ensures that:
+  // - New members see the project appear in their list
+  // - Removed members see the project disappear from their list
+  // - All users see updated member counts
+  const memberProjectIds = projectsArray
+    .filter((p) => projectMemberships[p.identifier])
+    .map((p) => p.identifier);
+
+  // Memoize callback to prevent multiple subscriptions
+  const handleMemberOrSignerUpdate = useCallback(() => {
+    refetch(); // Refetch projects list, which will trigger memberships reload via useEffect
+  }, [refetch]);
+
+  useRealtimeProjectsList(memberProjectIds, handleMemberOrSignerUpdate);
 
   const handleCreateProject = async (data: ProjectFormData) => {
     try {
