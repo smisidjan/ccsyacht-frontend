@@ -1,7 +1,6 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { Link } from "@/i18n/navigation";
 import { ArrowRightIcon, CheckIcon, ClockIcon } from "@heroicons/react/24/outline";
 
 export type TaskStatus = "pending" | "completed";
@@ -52,13 +51,13 @@ export default function SetupTaskCard({ task, onMarkComplete }: SetupTaskCardPro
       {(task.actionLabel || onMarkComplete) && (
         <div className="flex items-center gap-3">
           {task.actionLabel && task.actionHref && (
-            <Link
+            <a
               href={task.actionHref}
               className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-all shadow-md hover:shadow-lg"
             >
               <ArrowRightIcon className="w-4 h-4" />
               {task.actionLabel}
-            </Link>
+            </a>
           )}
           {task.status === "pending" && onMarkComplete && (
             <button

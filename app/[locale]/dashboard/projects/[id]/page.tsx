@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { useParams } from "next/navigation";
 import { Link } from "@/i18n/navigation";
@@ -30,6 +30,29 @@ export default function ProjectDetailPage() {
 
   // Fetch project from API
   const { data: project, loading, error } = useProject(projectId);
+
+  // Handle hash-based navigation
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.slice(1) as TabKey; // Remove the # character
+      if (hash && ["overview", "documents", "generalArrangement", "punchlist", "logbook", "reporting", "settings"].includes(hash)) {
+        setActiveTab(hash);
+      }
+    };
+
+    // Set initial tab from hash
+    handleHashChange();
+
+    // Listen for hash changes
+    window.addEventListener("hashchange", handleHashChange);
+    return () => window.removeEventListener("hashchange", handleHashChange);
+  }, []);
+
+  // Update hash when tab changes
+  const handleTabChange = (key: string) => {
+    setActiveTab(key as TabKey);
+    window.location.hash = key;
+  };
 
   const tabs: StateTab[] = [
     { key: "overview", label: t("tabs.overview") },
@@ -68,7 +91,7 @@ export default function ProjectDetailPage() {
       case "reporting":
         return <ReportingTab />;
       case "settings":
-        return <SettingsTab />;
+        return <SettingsTab projectId={projectId} />;
       default:
         return null;
     }
@@ -147,7 +170,7 @@ export default function ProjectDetailPage() {
         <TabNavState
           tabs={tabs}
           activeTab={activeTab}
-          onChange={(key) => setActiveTab(key as TabKey)}
+          onChange={handleTabChange}
         />
       </div>
 
