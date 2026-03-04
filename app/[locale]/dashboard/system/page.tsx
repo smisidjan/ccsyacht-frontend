@@ -11,6 +11,7 @@ import {
   clearSystemToken,
 } from "@/lib/api/client";
 import TenantsTab from "@/app/components/system-tabs/TenantsTab";
+import { useMinimumLoadingTime } from "@/lib/hooks/useMinimumLoadingTime";
 import Spinner from "@/app/components/ui/Spinner";
 import FormInput from "@/app/components/ui/FormInput";
 import PasswordInput from "@/app/components/ui/PasswordInput";
@@ -24,14 +25,16 @@ export default function SystemSettingsPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [checkingAuth, setCheckingAuth] = useState(true);
+  const [rawCheckingAuth, setRawCheckingAuth] = useState(true);
+
+  const checkingAuth = useMinimumLoadingTime(rawCheckingAuth);
 
   useEffect(() => {
     const token = getSystemToken();
     if (token) {
       setIsAuthenticated(true);
     }
-    setCheckingAuth(false);
+    setRawCheckingAuth(false);
   }, []);
 
   const handleLogin = async (e: React.FormEvent) => {

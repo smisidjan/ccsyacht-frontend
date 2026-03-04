@@ -10,6 +10,7 @@ import TabNavState from "@/app/components/ui/TabNavState";
 import type { StateTab } from "@/app/components/ui/TabNavState";
 import Alert from "@/app/components/ui/Alert";
 import { useProject } from "@/lib/api";
+import { useMinimumLoadingTime } from "@/lib/hooks/useMinimumLoadingTime";
 
 // Tab content components
 import OverviewTab from "@/app/components/project-tabs/OverviewTab";
@@ -29,7 +30,10 @@ export default function ProjectDetailPage() {
   const [activeTab, setActiveTab] = useState<TabKey>("overview");
 
   // Fetch project from API
-  const { data: project, loading, error } = useProject(projectId);
+  const { data: project, loading: rawLoading, error } = useProject(projectId);
+
+  // Enforce minimum loading time to prevent flickering
+  const loading = useMinimumLoadingTime(rawLoading);
 
   // Handle hash-based navigation
   useEffect(() => {

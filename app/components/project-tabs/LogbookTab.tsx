@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import { UserCircleIcon, ClockIcon } from "@heroicons/react/24/outline";
 import { useLogbook } from "@/lib/api";
+import { useMinimumLoadingTime } from "@/lib/hooks/useMinimumLoadingTime";
 import LoadingSkeleton from "@/app/components/ui/LoadingSkeleton";
 import Alert from "@/app/components/ui/Alert";
 
@@ -12,7 +13,8 @@ interface LogbookTabProps {
 
 export default function LogbookTab({ projectId }: LogbookTabProps) {
   const t = useTranslations("projectDetail.logbook");
-  const { data: entries, loading, error } = useLogbook(projectId, { per_page: 50 });
+  const { data: entries, loading: rawLoading, error } = useLogbook(projectId, { per_page: 50 });
+  const loading = useMinimumLoadingTime(rawLoading);
 
   // Format date helper
   const formatDate = (dateString: string) => {

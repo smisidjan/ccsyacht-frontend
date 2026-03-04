@@ -9,6 +9,7 @@ import {
   ArrowsPointingOutIcon,
 } from "@heroicons/react/24/outline";
 import { documentsApi } from "@/lib/api/documents";
+import { useMinimumLoadingTime } from "@/lib/hooks/useMinimumLoadingTime";
 import LoadingSkeleton from "@/app/components/ui/LoadingSkeleton";
 import Alert from "@/app/components/ui/Alert";
 
@@ -25,14 +26,16 @@ export default function GeneralArrangementTab({
   const [zoom, setZoom] = useState(100);
   const [gaUrl, setGaUrl] = useState<string | null>(null);
   const [fileType, setFileType] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [rawLoading, setRawLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const loading = useMinimumLoadingTime(rawLoading);
 
   // Fetch general arrangement on mount
   useEffect(() => {
     async function fetchGA() {
       try {
-        setLoading(true);
+        setRawLoading(true);
         setError(null);
         const blob = await documentsApi.downloadGeneralArrangement(projectId);
         const url = window.URL.createObjectURL(blob);
@@ -47,7 +50,7 @@ export default function GeneralArrangementTab({
           setError(err.message || "Failed to load general arrangement");
         }
       } finally {
-        setLoading(false);
+        setRawLoading(false);
       }
     }
 

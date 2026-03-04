@@ -6,6 +6,7 @@ import { UserPlusIcon, TrashIcon, PencilIcon, UserCircleIcon, StarIcon } from "@
 import { StarIcon as StarIconSolid } from "@heroicons/react/24/solid";
 import { useProjectMembers, useProjectSigners, useUsers } from "@/lib/api";
 import { usePermission } from "@/lib/hooks/usePermission";
+import { useMinimumLoadingTime } from "@/lib/hooks/useMinimumLoadingTime";
 import { PERMISSIONS } from "@/lib/constants/permissions";
 import Button from "@/app/components/ui/Button";
 import LoadingSkeleton from "@/app/components/ui/LoadingSkeleton";
@@ -22,9 +23,12 @@ export default function SettingsTab({ projectId }: SettingsTabProps) {
   const { hasPermission, user: currentUser } = usePermission();
 
   // Fetch data
-  const { data: members, loading: membersLoading, error: membersError, removeMember, addMember } = useProjectMembers(projectId);
-  const { data: signers, loading: signersLoading, error: signersError, removeSigner, addSigner } = useProjectSigners(projectId);
+  const { data: members, loading: rawMembersLoading, error: membersError, removeMember, addMember } = useProjectMembers(projectId);
+  const { data: signers, loading: rawSignersLoading, error: signersError, removeSigner, addSigner } = useProjectSigners(projectId);
   const { data: allUsers } = useUsers();
+
+  const membersLoading = useMinimumLoadingTime(rawMembersLoading);
+  const signersLoading = useMinimumLoadingTime(rawSignersLoading);
 
   // Permissions
   const canManageMembers = hasPermission(PERMISSIONS.MANAGE_PROJECT_MEMBERS);

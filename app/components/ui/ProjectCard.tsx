@@ -94,12 +94,10 @@ export default function ProjectCard({ project, isMember, userRole, memberCount, 
               {project.description || '\u00A0'}
             </h3>
           </div>
-           {memberCount !== undefined && (
           <div className="flex items-right gap-2 text-sm text-gray-600 dark:text-gray-400">
             <UsersIcon className="w-4 h-4" />
-            <span>{t("memberCount", { count: memberCount })}</span>
+            <span>{t("memberCount", { count: memberCount ?? 0 })}</span>
           </div>
-        )}
         </div>
 
         {/* Footer */}

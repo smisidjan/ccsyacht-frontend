@@ -12,6 +12,7 @@ import EditUserModal from "@/app/components/modals/EditUserModal";
 import ProtectedRoute from "@/app/components/guards/ProtectedRoute";
 import { PERMISSIONS } from "@/lib/constants/permissions";
 import { usePermission } from "@/lib/hooks/usePermission";
+import { useMinimumLoadingTime } from "@/lib/hooks/useMinimumLoadingTime";
 import type { User, UpdateUserRequest, UserRole, CreateInvitationRequest } from "@/lib/api/types";
 import {
   useUsers,
@@ -33,10 +34,10 @@ export default function UsersPage() {
   const { data: currentUser } = useCurrentUser();
   const { tenantName } = useTenant();
   const { hasAnyPermission } = usePermission();
-  const { data: users, loading: usersLoading, updateUser, refetch: refetchUsers } = useUsers();
+  const { data: users, loading: rawUsersLoading, updateUser, refetch: refetchUsers } = useUsers();
   const {
     data: invitations,
-    loading: invitationsLoading,
+    loading: rawInvitationsLoading,
     createInvitation,
     resendInvitation,
     deleteInvitation,
@@ -48,6 +49,10 @@ export default function UsersPage() {
     approveRequest,
     rejectRequest,
   } = useRegistrationRequests();
+
+  // Wrap loading states with minimum time
+  const usersLoading = useMinimumLoadingTime(rawUsersLoading);
+  const invitationsLoading = useMinimumLoadingTime(rawInvitationsLoading);
 
   // Get current user role (default to 'user' if not loaded)
   const currentUserRoles = (currentUser as { roles?: string[] })?.roles || [];

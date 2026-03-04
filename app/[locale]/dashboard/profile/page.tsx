@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { useCurrentUser } from "@/lib/api/hooks";
 import { usersApi } from "@/lib/api/client";
+import { useMinimumLoadingTime } from "@/lib/hooks/useMinimumLoadingTime";
 import ProfileInfoItem from "@/app/components/ui/ProfileInfoItem";
 import ChangeNameModal from "@/app/components/modals/ChangeNameModal";
 import ChangePasswordModal from "@/app/components/modals/ChangePasswordModal";
@@ -21,7 +22,8 @@ import {
 export default function ProfilePage() {
   const t = useTranslations("profile");
   const locale = useLocale();
-  const { data: user, loading, error, refetch } = useCurrentUser();
+  const { data: user, loading: rawLoading, error, refetch } = useCurrentUser();
+  const loading = useMinimumLoadingTime(rawLoading);
 
   const [showNameModal, setShowNameModal] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);

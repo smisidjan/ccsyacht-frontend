@@ -12,6 +12,7 @@ import {
 import { useDocumentTypes } from "@/lib/api/document-types";
 import { useDocuments } from "@/lib/api/documents";
 import { usePermission } from "@/lib/hooks/usePermission";
+import { useMinimumLoadingTime } from "@/lib/hooks/useMinimumLoadingTime";
 import { PERMISSIONS } from "@/lib/constants/permissions";
 import Button from "@/app/components/ui/Button";
 import Table from "@/app/components/ui/Table";
@@ -31,7 +32,7 @@ export default function DocumentsTab({ projectId }: DocumentsTabProps) {
   // Fetch document types
   const {
     data: documentTypes,
-    loading: typesLoading,
+    loading: rawTypesLoading,
     error: typesError,
     refetch: refetchDocumentTypes,
   } = useDocumentTypes(projectId);
@@ -43,12 +44,15 @@ export default function DocumentsTab({ projectId }: DocumentsTabProps) {
   // Fetch documents for selected type
   const {
     data: documents,
-    loading: documentsLoading,
+    loading: rawDocumentsLoading,
     error: documentsError,
     downloadDocument,
     deleteDocument,
     uploadDocument,
   } = useDocuments(projectId, selectedTypeId || undefined);
+
+  const typesLoading = useMinimumLoadingTime(rawTypesLoading);
+  const documentsLoading = useMinimumLoadingTime(rawDocumentsLoading);
 
   // Permissions
   const canUploadDocuments = hasPermission(PERMISSIONS.UPLOAD_DOCUMENTS);

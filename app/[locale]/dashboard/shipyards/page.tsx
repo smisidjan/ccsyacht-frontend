@@ -15,6 +15,7 @@ import {
 import { useShipyards } from "@/lib/api";
 import { PERMISSIONS } from "@/lib/constants/permissions";
 import { usePermission } from "@/lib/hooks/usePermission";
+import { useMinimumLoadingTime } from "@/lib/hooks/useMinimumLoadingTime";
 import ProtectedRoute from "@/app/components/guards/ProtectedRoute";
 import Button from "@/app/components/ui/Button";
 import LoadingSkeleton from "@/app/components/ui/LoadingSkeleton";
@@ -26,12 +27,14 @@ export default function ShipyardsPage() {
   const t = useTranslations("shipyards");
   const {
     data: shipyards,
-    loading,
+    loading: rawLoading,
     createShipyard,
     updateShipyard,
     deleteShipyard,
   } = useShipyards();
   const { hasPermission } = usePermission();
+
+  const loading = useMinimumLoadingTime(rawLoading);
 
   // Modal state
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);

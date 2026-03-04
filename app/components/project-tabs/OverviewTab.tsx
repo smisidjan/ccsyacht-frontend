@@ -14,6 +14,7 @@ import CreateAreaModal from "@/app/components/modals/CreateAreaModal";
 import { useAreas, useProjectMembers, useProjectSigners } from "@/lib/api";
 import { useDocumentTypes } from "@/lib/api/document-types";
 import { usePermission } from "@/lib/hooks/usePermission";
+import { useMinimumLoadingTime } from "@/lib/hooks/useMinimumLoadingTime";
 import { PERMISSIONS } from "@/lib/constants/permissions";
 import type { Area } from "@/lib/api/types";
 
@@ -27,13 +28,14 @@ export default function OverviewTab({
   projectStatus,
 }: OverviewTabProps) {
   const t = useTranslations("projectDetail");
-  const { data: areas, loading, error, refetch } = useAreas(projectId);
-  const { data: documentTypes, loading: docTypesLoading } = useDocumentTypes(projectId);
+  const { data: areas, loading: rawLoading, error, refetch } = useAreas(projectId);
+  const { data: documentTypes, loading: rawDocTypesLoading } = useDocumentTypes(projectId);
   const { data: members } = useProjectMembers(projectId);
   const { data: signers } = useProjectSigners(projectId);
   const { hasPermission } = usePermission();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
+  const loading = useMinimumLoadingTime(rawLoading || rawDocTypesLoading);
   const canCreateAreas = hasPermission(PERMISSIONS.CREATE_AREAS);
 
   // Generate setup tasks dynamically based on project data

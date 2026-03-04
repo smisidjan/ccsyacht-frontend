@@ -12,6 +12,7 @@ import {
 import { useProjects, useShipyards, projectsApi, documentTypesApi, projectMembersApi } from "@/lib/api";
 import { PERMISSIONS } from "@/lib/constants/permissions";
 import { usePermission } from "@/lib/hooks/usePermission";
+import { useMinimumLoadingTime } from "@/lib/hooks/useMinimumLoadingTime";
 import ProtectedRoute from "@/app/components/guards/ProtectedRoute";
 import ProjectCard from "@/app/components/ui/ProjectCard";
 import SearchInput from "@/app/components/ui/SearchInput";
@@ -175,7 +176,9 @@ export default function ProjectsPage() {
     });
   }, [projectsArray, searchQuery, activeFilter, projectMemberships, currentUser]);
 
-  const loading = projectsLoading || shipyardsLoading || membershipsLoading;
+  // Enforce minimum loading time to prevent flickering
+  const rawLoading = projectsLoading || shipyardsLoading || membershipsLoading;
+  const loading = useMinimumLoadingTime(rawLoading);
 
   const handleRefetch = () => {
     refetch();
