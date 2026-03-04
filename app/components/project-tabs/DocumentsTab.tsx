@@ -1,18 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import {
   DocumentTextIcon,
   ArrowUpTrayIcon,
   ArrowDownTrayIcon,
-  TrashIcon,
   FolderIcon,
 } from "@heroicons/react/24/outline";
 import { useDocumentTypes } from "@/lib/api/document-types";
 import { useDocuments } from "@/lib/api/documents";
 import { usePermission } from "@/lib/hooks/usePermission";
 import { useMinimumLoadingTime } from "@/lib/hooks/useMinimumLoadingTime";
+import { useRealtimeDocuments } from "@/lib/hooks/useRealtimeProject";
 import { PERMISSIONS } from "@/lib/constants/permissions";
 import Button from "@/app/components/ui/Button";
 import Table from "@/app/components/ui/Table";
@@ -41,28 +41,35 @@ export default function DocumentsTab({ projectId }: DocumentsTabProps) {
   const [selectedTypeId, setSelectedTypeId] = useState<string | null>(null);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
 
-  // Fetch documents for selected type
+  // Fetch documents for selected type (only when we have a typeId)
   const {
     data: documents,
     loading: rawDocumentsLoading,
     error: documentsError,
     downloadDocument,
-    deleteDocument,
     uploadDocument,
-  } = useDocuments(projectId, selectedTypeId || undefined);
+    refetch: refetchDocuments,
+  } = useDocuments(projectId, selectedTypeId ?? ""); // Empty string prevents fetch until typeId is set
 
   const typesLoading = useMinimumLoadingTime(rawTypesLoading);
   const documentsLoading = useMinimumLoadingTime(rawDocumentsLoading);
 
+  // Auto-select first document type if none selected
+  useEffect(() => {
+    if (!selectedTypeId && documentTypes && documentTypes.length > 0) {
+      setSelectedTypeId(documentTypes[0].identifier);
+    }
+  }, [selectedTypeId, documentTypes]);
+
+  // Real-time updates for documents
+  useRealtimeDocuments(projectId, () => {
+    refetchDocuments();
+    refetchDocumentTypes(); // Update document counts in sidebar
+  });
+
   // Permissions
   const canUploadDocuments = hasPermission(PERMISSIONS.UPLOAD_DOCUMENTS);
   const canDownloadDocuments = hasPermission(PERMISSIONS.DOWNLOAD_DOCUMENTS);
-  const canDeleteDocuments = hasPermission(PERMISSIONS.DELETE_DOCUMENTS);
-
-  // Auto-select first document type if none selected
-  if (!selectedTypeId && documentTypes && documentTypes.length > 0) {
-    setSelectedTypeId(documentTypes[0].identifier);
-  }
 
   const selectedType = documentTypes?.find((type) => type.identifier === selectedTypeId);
 
@@ -78,17 +85,6 @@ export default function DocumentsTab({ projectId }: DocumentsTabProps) {
       await downloadDocument(docId, fileName);
     } catch (error) {
       console.error("Failed to download document:", error);
-    }
-  };
-
-  const handleDelete = async (docId: string) => {
-    if (confirm(t("confirmDelete"))) {
-      try {
-        await deleteDocument(docId);
-        refetchDocumentTypes(); // Refresh document types to update counts and Required labels
-      } catch (error) {
-        console.error("Failed to delete document:", error);
-      }
     }
   };
 
@@ -262,15 +258,6 @@ export default function DocumentsTab({ projectId }: DocumentsTabProps) {
                             title={t("download")}
                           >
                             <ArrowDownTrayIcon className="w-4 h-4" />
-                          </button>
-                        )}
-                        {canDeleteDocuments && (
-                          <button
-                            onClick={() => handleDelete(doc.identifier)}
-                            className="p-2 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                            title={t("delete")}
-                          >
-                            <TrashIcon className="w-4 h-4" />
                           </button>
                         )}
                       </div>
