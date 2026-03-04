@@ -66,6 +66,9 @@ export const PERMISSIONS = {
   CREATE_STAGES: "create_stages",
   EDIT_STAGES: "edit_stages",
   DELETE_STAGES: "delete_stages",
+
+  // Logbook
+  VIEW_LOGBOOK: "view_logbook",
 } as const;
 
 // Extract all permission values as a union type

@@ -30,6 +30,9 @@ export { areasApi, useAreas, useArea } from "./areas";
 // Stages
 export { stagesApi, useStages } from "./stages";
 
+// Logbook
+export { logbookApi, useLogbook } from "./logbook";
+
 // Hooks
 export {
   useCurrentUser,

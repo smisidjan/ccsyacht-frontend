@@ -252,7 +252,9 @@
       "title": "Logboek",
       "subtitle": "{count} notities",
       "addEntry": "Notitie Toevoegen",
-      "noEntries": "Nog geen logboek notities"
+      "noEntries": "Nog geen logboek notities",
+      "noEntriesDescription": "Alle projectactiviteiten worden hier automatisch gelogd",
+      "loadError": "Kon logboek notities niet laden"
     },
     "reporting": {
       "title": "Rapportage",

@@ -574,3 +574,28 @@ export interface UpdateStageRequest {
 export interface UpdateStageStatusRequest {
   status: StageStatus;
 }
+
+// ============ Logbook ============
+export interface LogbookEntry {
+  "@context"?: string;
+  "@type"?: string;
+  identifier: string;
+  actionStatus: string;
+  name: string;
+  description: string;
+  agent: {
+    "@type"?: string;
+    identifier: string;
+    name: string;
+  };
+  startTime: string;
+}
+
+export interface LogbookFilters {
+  action_type?: string;
+  user_id?: string;
+  from_date?: string;
+  to_date?: string;
+  per_page?: number;
+  page?: number;
+}

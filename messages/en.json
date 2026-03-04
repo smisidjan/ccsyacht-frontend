@@ -252,7 +252,9 @@
       "title": "Logbook",
       "subtitle": "{count} entries",
       "addEntry": "Add Entry",
-      "noEntries": "No logbook entries yet"
+      "noEntries": "No logbook entries yet",
+      "noEntriesDescription": "All project activities will be logged here automatically",
+      "loadError": "Failed to load logbook entries"
     },
     "reporting": {
       "title": "Reporting",

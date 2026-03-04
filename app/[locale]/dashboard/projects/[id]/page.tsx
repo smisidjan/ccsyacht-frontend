@@ -64,7 +64,7 @@ export default function ProjectDetailPage() {
       case "punchlist":
         return <PunchlistTab />;
       case "logbook":
-        return <LogbookTab />;
+        return <LogbookTab projectId={projectId} />;
       case "reporting":
         return <ReportingTab />;
       case "settings":
