@@ -25,11 +25,29 @@ export const PERMISSIONS = {
   // Settings
   MANAGE_SETTINGS: "manage_settings",
 
+  // Shipyard Management
+  VIEW_SHIPYARDS: "view_shipyards",
+  CREATE_SHIPYARDS: "create_shipyards",
+  EDIT_SHIPYARDS: "edit_shipyards",
+  DELETE_SHIPYARDS: "delete_shipyards",
+
   // Project Management
   VIEW_PROJECTS: "view_projects",
   EDIT_PROJECTS: "edit_projects",
   CREATE_PROJECTS: "create_projects",
   DELETE_PROJECTS: "delete_projects",
+
+  // Document Type Management
+  VIEW_DOCUMENT_TYPES: "view_document_types",
+  CREATE_DOCUMENT_TYPES: "create_document_types",
+  EDIT_DOCUMENT_TYPES: "edit_document_types",
+  DELETE_DOCUMENT_TYPES: "delete_document_types",
+
+  // Document Management
+  VIEW_DOCUMENTS: "view_documents",
+  DOWNLOAD_DOCUMENTS: "download_documents",
+  UPLOAD_DOCUMENTS: "upload_documents",
+  DELETE_DOCUMENTS: "delete_documents",
 } as const;
 
 // Extract all permission values as a union type
@@ -54,11 +72,29 @@ export const PERMISSION_GROUPS = {
     PERMISSIONS.VIEW_REGISTRATIONS,
     PERMISSIONS.PROCESS_REGISTRATIONS,
   ],
+  SHIPYARD_MANAGEMENT: [
+    PERMISSIONS.VIEW_SHIPYARDS,
+    PERMISSIONS.CREATE_SHIPYARDS,
+    PERMISSIONS.EDIT_SHIPYARDS,
+    PERMISSIONS.DELETE_SHIPYARDS,
+  ],
   PROJECT_MANAGEMENT: [
     PERMISSIONS.VIEW_PROJECTS,
     PERMISSIONS.EDIT_PROJECTS,
     PERMISSIONS.CREATE_PROJECTS,
     PERMISSIONS.DELETE_PROJECTS,
+  ],
+  DOCUMENT_TYPE_MANAGEMENT: [
+    PERMISSIONS.VIEW_DOCUMENT_TYPES,
+    PERMISSIONS.CREATE_DOCUMENT_TYPES,
+    PERMISSIONS.EDIT_DOCUMENT_TYPES,
+    PERMISSIONS.DELETE_DOCUMENT_TYPES,
+  ],
+  DOCUMENT_MANAGEMENT: [
+    PERMISSIONS.VIEW_DOCUMENTS,
+    PERMISSIONS.DOWNLOAD_DOCUMENTS,
+    PERMISSIONS.UPLOAD_DOCUMENTS,
+    PERMISSIONS.DELETE_DOCUMENTS,
   ],
 } as const;
 
