@@ -1,13 +1,26 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { usersApi, invitationsApi, registrationRequestsApi, authApi } from "./client";
+import {
+  usersApi,
+  invitationsApi,
+  registrationRequestsApi,
+  authApi,
+  shipyardsApi,
+  projectsApi,
+} from "./client";
 import type {
   User,
   Invitation,
   RegistrationRequest,
   CreateInvitationRequest,
   UpdateUserRequest,
+  Shipyard,
+  CreateShipyardRequest,
+  UpdateShipyardRequest,
+  Project,
+  CreateProjectRequest,
+  UpdateProjectRequest,
   ApiError,
   CurrentUser,
 } from "./types";
@@ -196,5 +209,110 @@ export function useRegistrationRequests() {
     refetch: fetchRequests,
     approveRequest,
     rejectRequest,
+  };
+}
+
+// ============ Shipyards Hooks ============
+export function useShipyards(params?: { search?: string; per_page?: number }) {
+  const [state, setState] = useState<UseApiState<Shipyard[]>>({
+    data: null,
+    loading: true,
+    error: null,
+  });
+
+  const fetchShipyards = useCallback(async () => {
+    setState((prev) => ({ ...prev, loading: true, error: null }));
+    try {
+      const response = await shipyardsApi.getAll(params);
+      const data = response.data || [];
+      setState({ data, loading: false, error: null });
+    } catch (err) {
+      setState({ data: null, loading: false, error: err as ApiError });
+    }
+  }, [params?.search, params?.per_page]);
+
+  useEffect(() => {
+    fetchShipyards();
+  }, [fetchShipyards]);
+
+  const createShipyard = async (data: CreateShipyardRequest) => {
+    await shipyardsApi.create(data);
+    fetchShipyards();
+  };
+
+  const updateShipyard = async (id: string, data: UpdateShipyardRequest) => {
+    await shipyardsApi.update(id, data);
+    fetchShipyards();
+  };
+
+  const deleteShipyard = async (id: string) => {
+    await shipyardsApi.delete(id);
+    fetchShipyards();
+  };
+
+  return {
+    ...state,
+    refetch: fetchShipyards,
+    createShipyard,
+    updateShipyard,
+    deleteShipyard,
+  };
+}
+
+// ============ Projects Hooks ============
+export function useProjects(params?: {
+  status?: string;
+  project_type?: string;
+  search?: string;
+  per_page?: number;
+}) {
+  const [state, setState] = useState<UseApiState<Project[]>>({
+    data: null,
+    loading: true,
+    error: null,
+  });
+
+  const fetchProjects = useCallback(async () => {
+    setState((prev) => ({ ...prev, loading: true, error: null }));
+    try {
+      const response = await projectsApi.getAll(params);
+      const data = response.data || [];
+      setState({ data, loading: false, error: null });
+    } catch (err) {
+      setState({ data: null, loading: false, error: err as ApiError });
+    }
+  }, [params?.status, params?.project_type, params?.search, params?.per_page]);
+
+  useEffect(() => {
+    fetchProjects();
+  }, [fetchProjects]);
+
+  const createProject = async (data: CreateProjectRequest) => {
+    await projectsApi.create(data);
+    fetchProjects();
+  };
+
+  const updateProject = async (id: string, data: UpdateProjectRequest) => {
+    await projectsApi.update(id, data);
+    fetchProjects();
+  };
+
+  const deleteProject = async (id: string) => {
+    await projectsApi.delete(id);
+    fetchProjects();
+  };
+
+  const uploadGeneralArrangement = async (id: string, file: File) => {
+    await projectsApi.uploadGeneralArrangement(id, file);
+    fetchProjects();
+  };
+
+  return {
+    ...state,
+    refetch: fetchProjects,
+    createProject,
+    updateProject,
+    deleteProject,
+    uploadGeneralArrangement,
   };
 }

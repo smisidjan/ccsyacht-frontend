@@ -24,6 +24,12 @@ import type {
   RegisterAdminRequest,
   RegisterAdminResponse,
   GuestRolePermissions,
+  Shipyard,
+  CreateShipyardRequest,
+  UpdateShipyardRequest,
+  Project,
+  CreateProjectRequest,
+  UpdateProjectRequest,
   ApiError,
 } from "./types";
 import { publicFetch, publicFetchVoid } from "./publicFetch";
@@ -535,6 +541,112 @@ export const systemApi = {
   },
 };
 
+// ============ Shipyards API ============
+export const shipyardsApi = {
+  getAll: (params?: { search?: string; per_page?: number; page?: number }): Promise<PaginatedResponse<Shipyard>> => {
+    const query = new URLSearchParams();
+    if (params?.search) query.append("search", params.search);
+    if (params?.per_page) query.append("per_page", String(params.per_page));
+    if (params?.page) query.append("page", String(params.page));
+    const queryString = query.toString();
+    return apiFetch(`/shipyards${queryString ? `?${queryString}` : ""}`);
+  },
+
+  getById: (id: string): Promise<Shipyard> =>
+    apiFetch(`/shipyards/${id}`),
+
+  create: (data: CreateShipyardRequest): Promise<Shipyard> =>
+    apiFetch("/shipyards", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  update: (id: string, data: UpdateShipyardRequest): Promise<Shipyard> =>
+    apiFetch(`/shipyards/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
+  delete: (id: string): Promise<void> =>
+    apiFetch(`/shipyards/${id}`, {
+      method: "DELETE",
+    }),
+};
+
+// ============ Projects API ============
+export const projectsApi = {
+  getAll: (params?: {
+    status?: string;
+    project_type?: string;
+    search?: string;
+    per_page?: number;
+    page?: number;
+  }): Promise<PaginatedResponse<Project>> => {
+    const query = new URLSearchParams();
+    if (params?.status) query.append("status", params.status);
+    if (params?.project_type) query.append("project_type", params.project_type);
+    if (params?.search) query.append("search", params.search);
+    if (params?.per_page) query.append("per_page", String(params.per_page));
+    if (params?.page) query.append("page", String(params.page));
+    const queryString = query.toString();
+    return apiFetch(`/projects${queryString ? `?${queryString}` : ""}`);
+  },
+
+  getById: (id: string): Promise<Project> =>
+    apiFetch(`/projects/${id}`),
+
+  create: (data: CreateProjectRequest): Promise<Project> =>
+    apiFetch("/projects", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  update: (id: string, data: UpdateProjectRequest): Promise<Project> =>
+    apiFetch(`/projects/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
+  delete: (id: string): Promise<void> =>
+    apiFetch(`/projects/${id}`, {
+      method: "DELETE",
+    }),
+
+  uploadGeneralArrangement: async (id: string, file: File): Promise<Project> => {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const token = getAuthToken();
+    const tenantUrl = getTenantUrl();
+
+    const headers: HeadersInit = {};
+    if (token) {
+      (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
+    }
+    if (tenantUrl) {
+      (headers as Record<string, string>)["X-Tenant-ID"] = tenantUrl;
+    }
+
+    const response = await fetch(`${API_BASE_URL}/projects/${id}/general-arrangement`, {
+      method: "POST",
+      headers,
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      const error: ApiError = {
+        message: errorData.message || errorData.error || `HTTP error ${response.status}`,
+        code: errorData.code,
+        status: response.status,
+      };
+      throw error;
+    }
+
+    return response.json();
+  },
+};
+
 // Export all APIs
 export const api = {
   auth: authApi,
@@ -543,6 +655,8 @@ export const api = {
   registrationRequests: registrationRequestsApi,
   tenants: tenantsApi,
   system: systemApi,
+  shipyards: shipyardsApi,
+  projects: projectsApi,
 };
 
 export default api;
