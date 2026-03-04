@@ -9,6 +9,7 @@ export interface Area {
   id: string;
   name: string;
   description?: string;
+  deckName?: string;
   areasCount: number;
   stagesCount: number;
   completedCount: number;
@@ -43,11 +44,15 @@ export default function AreaCard({ area, projectId }: AreaCardProps) {
       )}
 
       <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400 mb-4">
-        <span className="inline-flex items-center gap-1.5">
-          <MapPinIcon className="w-4 h-4" />
-          {area.areasCount} {t("areas")}
-        </span>
-        <span>•</span>
+        {area.deckName && (
+          <>
+            <span className="inline-flex items-center gap-1.5">
+              <MapPinIcon className="w-4 h-4" />
+              {area.deckName}
+            </span>
+            <span>•</span>
+          </>
+        )}
         <span>{area.stagesCount} {t("stages")}</span>
       </div>
 
