@@ -144,7 +144,7 @@ export default function ProjectDetailPage() {
           />
         );
       case "documents":
-        return <DocumentsTab documents={[]} />;
+        return <DocumentsTab projectId={projectId} />;
       case "punchlist":
         return <PunchlistTab />;
       case "logbook":

@@ -1,164 +1,279 @@
 "use client";
 
+import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { DocumentTextIcon, ArrowUpTrayIcon } from "@heroicons/react/24/outline";
+import {
+  DocumentTextIcon,
+  ArrowUpTrayIcon,
+  ArrowDownTrayIcon,
+  TrashIcon,
+  FolderIcon,
+} from "@heroicons/react/24/outline";
+import { useDocumentTypes } from "@/lib/api/document-types";
+import { useDocuments } from "@/lib/api/documents";
+import { usePermission } from "@/lib/hooks/usePermission";
+import { PERMISSIONS } from "@/lib/constants/permissions";
+import Button from "@/app/components/ui/Button";
 import Table from "@/app/components/ui/Table";
-
-interface Document {
-  id: string;
-  name: string;
-  type: string;
-  uploadedAt: string | null;
-  required: boolean;
-  uploaded: boolean;
-}
+import LoadingSkeleton from "@/app/components/ui/LoadingSkeleton";
+import Alert from "@/app/components/ui/Alert";
+import UploadDocumentModal from "@/app/components/modals/UploadDocumentModal";
+import type { UploadDocumentRequest, Document } from "@/lib/api/types";
 
 interface DocumentsTabProps {
-  documents: Document[];
+  projectId: string;
 }
 
-// Mock documents data - replace with props from API
-const defaultDocuments: Document[] = [
-  {
-    id: "1",
-    name: "Contract Agreement",
-    type: "PDF",
-    uploadedAt: "2024-01-15",
-    required: true,
-    uploaded: true,
-  },
-  {
-    id: "2",
-    name: "Technical Specifications",
-    type: "PDF",
-    uploadedAt: "2024-01-16",
-    required: true,
-    uploaded: true,
-  },
-  {
-    id: "3",
-    name: "General Arrangement",
-    type: "PDF",
-    uploadedAt: null,
-    required: true,
-    uploaded: false,
-  },
-  {
-    id: "4",
-    name: "Safety Certificates",
-    type: "PDF",
-    uploadedAt: null,
-    required: false,
-    uploaded: false,
-  },
-];
-
-export default function DocumentsTab({ documents = defaultDocuments }: DocumentsTabProps) {
+export default function DocumentsTab({ projectId }: DocumentsTabProps) {
   const t = useTranslations("projectDetail.documents");
+  const { hasPermission } = usePermission();
 
-  const uploadedCount = documents.filter((doc) => doc.uploaded).length;
-  const requiredCount = documents.filter((doc) => doc.required).length;
-  const requiredUploadedCount = documents.filter((doc) => doc.required && doc.uploaded).length;
+  // Fetch document types
+  const {
+    data: documentTypes,
+    loading: typesLoading,
+    error: typesError,
+  } = useDocumentTypes(projectId);
+
+  // State for selected document type
+  const [selectedTypeId, setSelectedTypeId] = useState<string | null>(null);
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+
+  // Fetch documents for selected type
+  const {
+    data: documents,
+    loading: documentsLoading,
+    error: documentsError,
+    downloadDocument,
+    deleteDocument,
+    uploadDocument,
+  } = useDocuments(projectId, selectedTypeId || undefined);
+
+  // Permissions
+  const canUploadDocuments = hasPermission(PERMISSIONS.UPLOAD_DOCUMENTS);
+  const canDownloadDocuments = hasPermission(PERMISSIONS.DOWNLOAD_DOCUMENTS);
+  const canDeleteDocuments = hasPermission(PERMISSIONS.DELETE_DOCUMENTS);
+
+  // Auto-select first document type if none selected
+  if (!selectedTypeId && documentTypes && documentTypes.length > 0) {
+    setSelectedTypeId(documentTypes[0].identifier);
+  }
+
+  const selectedType = documentTypes?.find((type) => type.identifier === selectedTypeId);
+
+  const handleUploadDocument = async (data: UploadDocumentRequest) => {
+    if (!selectedTypeId) return;
+    await uploadDocument(selectedTypeId, data);
+    setIsUploadModalOpen(false);
+  };
+
+  const handleDownload = async (docId: string, fileName: string) => {
+    try {
+      await downloadDocument(docId, fileName);
+    } catch (error) {
+      console.error("Failed to download document:", error);
+    }
+  };
+
+  const handleDelete = async (docId: string) => {
+    if (confirm(t("confirmDelete"))) {
+      try {
+        await deleteDocument(docId);
+      } catch (error) {
+        console.error("Failed to delete document:", error);
+      }
+    }
+  };
+
+  if (typesLoading) {
+    return <LoadingSkeleton type="list" rows={5} />;
+  }
+
+  if (typesError) {
+    return <Alert type="error" message={typesError.message || t("loadError")} />;
+  }
+
+  if (!documentTypes || documentTypes.length === 0) {
+    return (
+      <div className="text-center py-16 bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 rounded-2xl border-2 border-dashed border-gray-300 dark:border-gray-700">
+        <DocumentTextIcon className="w-16 h-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+          {t("noDocumentTypes")}
+        </h3>
+        <p className="text-gray-600 dark:text-gray-400 mb-6 max-w-sm mx-auto">
+          {t("createFirstDocumentType")}
+        </p>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-            {t("title")}
-          </h2>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-            {t("subtitle", { uploaded: uploadedCount, total: documents.length })}
-          </p>
-        </div>
-        <button className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-all shadow-md hover:shadow-lg">
-          <ArrowUpTrayIcon className="w-4 h-4" />
-          {t("uploadDocument")}
-        </button>
-      </div>
-
-      {/* Required Documents Progress */}
-      {requiredUploadedCount < requiredCount && (
-        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
-          <p className="text-sm text-amber-800 dark:text-amber-200">
-            {t("requiredProgress", { uploaded: requiredUploadedCount, required: requiredCount })}
-          </p>
-        </div>
-      )}
-
-      {/* Documents List */}
-      <Table
-        columns={[
-          {
-            key: "documentName",
-            header: t("documentName"),
-            cell: (doc: Document) => (
-              <div className="flex items-center gap-3">
-                <DocumentTextIcon className="w-5 h-5 text-gray-400 flex-shrink-0" />
-                <span className="text-sm font-medium text-gray-900 dark:text-white whitespace-nowrap">
-                  {doc.name}
-                </span>
-                {doc.required && (
-                  <span className="text-xs text-red-600 dark:text-red-400">*</span>
-                )}
-              </div>
-            ),
-          },
-          {
-            key: "type",
-            header: t("type"),
-            cell: (doc: Document) => (
-              <span className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
-                {doc.type}
-              </span>
-            ),
-          },
-          {
-            key: "status",
-            header: t("status"),
-            cell: (doc: Document) => (
-              <span
-                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${
-                  doc.uploaded
-                    ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                    : "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-400"
+    <div className="flex gap-6 h-[calc(100vh-300px)]">
+      {/* Left Sidebar - Document Types */}
+      <div className="w-80 flex-shrink-0">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-lg h-full flex flex-col">
+          <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+            <div className="flex items-center gap-2 text-gray-900 dark:text-white">
+              <FolderIcon className="w-5 h-5" />
+              <h3 className="font-semibold">{t("documentTypes")}</h3>
+            </div>
+          </div>
+          <div className="flex-1 overflow-y-auto">
+            {documentTypes.map((type) => (
+              <button
+                key={type.identifier}
+                onClick={() => setSelectedTypeId(type.identifier)}
+                className={`w-full flex items-center justify-between p-4 text-left transition-colors ${
+                  selectedTypeId === type.identifier
+                    ? "bg-blue-600 text-white"
+                    : "hover:bg-gray-50 dark:hover:bg-gray-700/50 text-gray-900 dark:text-white"
                 }`}
               >
-                {doc.uploaded ? t("uploaded") : t("pending")}
-              </span>
-            ),
-          },
-          {
-            key: "uploadedAt",
-            header: t("uploadedAt"),
-            cell: (doc: Document) => (
-              <span className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
-                {doc.uploadedAt || "-"}
-              </span>
-            ),
-          },
-          {
-            key: "actions",
-            header: t("actions"),
-            headerClassName: "text-right",
-            className: "text-right",
-            cell: (doc: Document) => (
-              <>
-                {!doc.uploaded && (
-                  <button className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium whitespace-nowrap">
-                    {t("upload")}
-                  </button>
-                )}
-              </>
-            ),
-          },
-        ]}
-        data={documents}
-        keyExtractor={(doc) => doc.id}
-        emptyMessage={t("noDocuments")}
-        minWidth="600px"
-      />
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <FolderIcon className="w-5 h-5 flex-shrink-0" />
+                  <span className="font-medium truncate">{type.name}</span>
+                </div>
+                <span
+                  className={`flex-shrink-0 px-2 py-1 text-xs rounded-full ${
+                    selectedTypeId === type.identifier
+                      ? "bg-white/20 text-white"
+                      : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
+                  }`}
+                >
+                  {type.documentCount}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Right Content - Documents Table */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Documents Table */}
+        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-lg flex-1 flex flex-col min-h-0">
+          <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+            <h3 className="font-semibold text-gray-900 dark:text-white">
+              {selectedType?.name} ({documents?.length || 0})
+            </h3>
+            {canUploadDocuments && (
+              <Button onClick={() => setIsUploadModalOpen(true)}>
+                <ArrowUpTrayIcon className="w-4 h-4" />
+                {t("upload")}
+              </Button>
+            )}
+          </div>
+
+          <div className="flex-1 overflow-auto">
+            {documentsLoading ? (
+              <div className="p-6">
+                <LoadingSkeleton type="list" rows={5} />
+              </div>
+            ) : documentsError ? (
+              <div className="p-6">
+                <Alert type="error" message={documentsError.message || t("loadError")} />
+              </div>
+            ) : !documents || documents.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full p-8 text-center">
+                <DocumentTextIcon className="w-16 h-16 text-gray-300 dark:text-gray-600 mb-4" />
+                <p className="text-gray-600 dark:text-gray-400">{t("noDocumentsInType")}</p>
+              </div>
+            ) : (
+              <Table
+                columns={[
+                  {
+                    key: "name",
+                    header: t("documentName"),
+                    cell: (doc: Document) => (
+                      <div className="flex items-center gap-3">
+                        <DocumentTextIcon className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                            {doc.name}
+                          </p>
+                          {doc.description && (
+                            <p className="text-xs text-gray-600 dark:text-gray-400 truncate">
+                              {doc.description}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ),
+                  },
+                  {
+                    key: "size",
+                    header: t("size"),
+                    cell: (doc: Document) => (
+                      <span className="text-sm text-gray-600 dark:text-gray-400">
+                        {doc.contentSize}
+                      </span>
+                    ),
+                  },
+                  {
+                    key: "uploadedBy",
+                    header: t("uploadedBy"),
+                    cell: (doc: Document) => (
+                      <span className="text-sm text-gray-600 dark:text-gray-400">
+                        {doc.author.name}
+                      </span>
+                    ),
+                  },
+                  {
+                    key: "uploadedAt",
+                    header: t("uploadedAt"),
+                    cell: (doc: Document) => (
+                      <span className="text-sm text-gray-600 dark:text-gray-400">
+                        {new Date(doc.dateCreated).toLocaleDateString()}
+                      </span>
+                    ),
+                  },
+                  {
+                    key: "actions",
+                    header: t("actions"),
+                    headerClassName: "text-right",
+                    className: "text-right",
+                    cell: (doc: Document) => (
+                      <div className="flex items-center justify-end gap-2">
+                        {canDownloadDocuments && (
+                          <button
+                            onClick={() => handleDownload(doc.identifier, doc.fileName)}
+                            className="p-2 text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+                            title={t("download")}
+                          >
+                            <ArrowDownTrayIcon className="w-4 h-4" />
+                          </button>
+                        )}
+                        {canDeleteDocuments && (
+                          <button
+                            onClick={() => handleDelete(doc.identifier)}
+                            className="p-2 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                            title={t("delete")}
+                          >
+                            <TrashIcon className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    ),
+                  },
+                ]}
+                data={documents}
+                keyExtractor={(doc) => doc.identifier}
+                emptyMessage={t("noDocuments")}
+              />
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Upload Modal */}
+      {selectedType && (
+        <UploadDocumentModal
+          isOpen={isUploadModalOpen}
+          onClose={() => setIsUploadModalOpen(false)}
+          onSubmit={handleUploadDocument}
+          documentTypeName={selectedType.name}
+        />
+      )}
     </div>
   );
 }
