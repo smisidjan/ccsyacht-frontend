@@ -164,6 +164,36 @@ export const documentsApi = {
     apiFetch(`/projects/${projectId}/documents/${docId}`, {
       method: "DELETE",
     }),
+
+  downloadGeneralArrangement: async (projectId: string): Promise<Blob> => {
+    const token = getAuthToken();
+    const tenantUrl = getTenantUrl();
+
+    const headers: HeadersInit = {};
+    if (token) {
+      (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
+    }
+    if (tenantUrl) {
+      (headers as Record<string, string>)["X-Tenant-ID"] = tenantUrl;
+    }
+
+    const response = await fetch(`${API_BASE_URL}/projects/${projectId}/general-arrangement`, {
+      method: "GET",
+      headers,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      const error: ApiError = {
+        message: errorData.error || errorData.message || `HTTP error ${response.status}`,
+        code: errorData.code,
+        status: response.status,
+      };
+      throw error;
+    }
+
+    return response.blob();
+  },
 };
 
 // ============ Documents Hook ============

@@ -170,16 +170,17 @@ export default function CreateProjectModal({
 
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            {t("generalArrangement")}
+            {t("generalArrangement")} <span className="text-red-500">*</span>
           </label>
           <input
             type="file"
             accept=".pdf"
             onChange={handleFileChange}
+            required
             className="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-gray-100 dark:file:bg-gray-600 file:text-gray-700 dark:file:text-gray-200 hover:file:bg-gray-200 dark:hover:file:bg-gray-500 transition-all"
           />
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            {t("uploadPdfOptional")}
+            {t("uploadPdfRequired")}
           </p>
         </div>
 
@@ -231,16 +232,28 @@ export default function CreateProjectModal({
             </table>
           </div>
 
-          <div className="mt-3">
+          <div className="mt-3 flex gap-2">
+            <input
+              type="text"
+              value={newDocTypeName}
+              onChange={(e) => setNewDocTypeName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  addDocType();
+                }
+              }}
+              placeholder={t("addDocumentTypePlaceholder")}
+              className="flex-1 px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
             <Button
               type="button"
-              variant="ghost"
-              fullWidth
+              variant="primary"
               onClick={addDocType}
-              className="border border-blue-600 dark:border-blue-400 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+              disabled={!newDocTypeName.trim()}
             >
               <PlusIcon className="w-4 h-4" />
-              {t("addDocumentType")}
+              {t("add")}
             </Button>
           </div>
         </div>
