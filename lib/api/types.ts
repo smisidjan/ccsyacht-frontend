@@ -298,3 +298,153 @@ export interface ApiError {
   code?: string;
   status?: number;
 }
+
+// ============ Shipyards ============
+export interface ShipyardContactPoint {
+  "@type"?: string;
+  name?: string;
+  email?: string;
+  telephone?: string;
+}
+
+export interface Shipyard {
+  "@context"?: string;
+  "@type"?: string;
+  identifier: string;
+  name: string;
+  address?: string;
+  contactPoint?: ShipyardContactPoint;
+  dateCreated?: string;
+  dateModified?: string;
+}
+
+export interface CreateShipyardRequest {
+  name: string;
+  contact_name?: string;
+  contact_email?: string;
+  contact_phone?: string;
+  address?: string;
+}
+
+export interface UpdateShipyardRequest {
+  name?: string;
+  contact_name?: string;
+  contact_email?: string;
+  contact_phone?: string;
+  address?: string;
+}
+
+// ============ Projects ============
+export type ProjectType = "new_built" | "refit";
+export type ProjectStatus = "setup" | "active" | "locked" | "completed";
+
+export interface ProjectProducer {
+  "@type"?: string;
+  identifier: string;
+  name: string;
+  contactPoint?: ShipyardContactPoint;
+}
+
+export interface ProjectAuthor {
+  "@type"?: string;
+  identifier: string;
+  name: string;
+  email: string;
+}
+
+export interface Project {
+  "@context"?: string;
+  "@type"?: string;
+  identifier: string;
+  name: string;
+  description?: string;
+  additionalType: ProjectType;
+  status: ProjectStatus;
+  startDate?: string;
+  endDate?: string;
+  generalArrangement?: string;
+  dateCreated?: string;
+  dateModified?: string;
+  producer?: ProjectProducer;
+  author?: ProjectAuthor;
+}
+
+export interface CreateProjectRequest {
+  name: string;
+  description?: string;
+  project_type: ProjectType;
+  shipyard_id?: string;
+  start_date?: string;
+  end_date?: string;
+}
+
+export interface UpdateProjectRequest {
+  name?: string;
+  description?: string;
+  project_type?: ProjectType;
+  status?: ProjectStatus;
+  shipyard_id?: string;
+  start_date?: string;
+  end_date?: string;
+}
+
+// ============ Document Types ============
+export interface DocumentType {
+  "@context"?: string;
+  "@type"?: string;
+  identifier: string;
+  name: string;
+  isRequired: boolean;
+  position: number;
+  documentCount: number;
+  dateCreated: string;
+  dateModified: string;
+}
+
+export interface CreateDocumentTypeRequest {
+  name: string;
+  is_required?: boolean;
+  sort_order?: number;
+}
+
+export interface UpdateDocumentTypeRequest {
+  name?: string;
+  is_required?: boolean;
+  sort_order?: number;
+}
+
+// ============ Documents ============
+export interface DocumentAuthor {
+  "@type"?: string;
+  identifier: string;
+  name: string;
+  email: string;
+}
+
+export interface DocumentCategory {
+  "@type"?: string;
+  identifier: string;
+  name: string;
+}
+
+export interface Document {
+  "@context"?: string;
+  "@type"?: string;
+  identifier: string;
+  name: string;
+  description?: string;
+  fileName: string;
+  encodingFormat: string;
+  contentSize: string;
+  contentSizeBytes: number;
+  dateCreated: string;
+  dateModified: string;
+  author: DocumentAuthor;
+  category: DocumentCategory;
+}
+
+export interface UploadDocumentRequest {
+  title: string;
+  description?: string;
+  file: File;
+}
