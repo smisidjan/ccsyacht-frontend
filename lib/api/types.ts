@@ -599,3 +599,25 @@ export interface LogbookFilters {
   per_page?: number;
   page?: number;
 }
+
+// ============ Project Members & Signers ============
+export interface ProjectMember {
+  "@context"?: string;
+  "@type"?: string;
+  identifier: string;
+  roleName: string;
+  member: {
+    "@type"?: string;
+    identifier: string;
+    name: string;
+    email: string;
+  };
+  dateCreated: string;
+}
+
+export interface AddMemberRequest {
+  user_id: string;
+}
+
+export type ProjectSigner = ProjectMember;
+export type AddSignerRequest = AddMemberRequest;
