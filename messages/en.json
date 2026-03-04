@@ -118,6 +118,10 @@
       "active": "Active",
       "locked": "Locked",
       "completed": "Completed"
+    },
+    "types": {
+      "newBuilt": "New Built",
+      "refit": "Refit"
     }
   },
   "createProject": {
@@ -128,19 +132,23 @@
     "selectShipyard": "Select a shipyard",
     "projectType": "Project Type",
     "generalArrangement": "General Arrangement",
-    "uploadPdfOptional": "Upload the General Arrangement PDF (optional)",
+    "uploadPdfRequired": "Upload the General Arrangement PDF (required)",
     "documentTypes": "Document Types",
     "name": "Name",
     "required": "Required",
     "delete": "Delete",
     "addDocumentType": "Add Document Type",
+    "addDocumentTypePlaceholder": "Enter document type name...",
+    "add": "Add",
     "cancel": "Cancel",
     "createProject": "Create Project"
   },
   "projectDetail": {
+    "projectNotFound": "Project not found",
     "tabs": {
       "overview": "Overview",
       "documents": "Documents",
+      "generalArrangement": "General Arrangement",
       "punchlist": "Punchlist",
       "logbook": "Logbook",
       "reporting": "Reporting",
@@ -148,14 +156,32 @@
     },
     "areasSection": {
       "title": "Areas",
-      "noAreas": "No areas have been added yet"
+      "noAreas": "No areas have been added yet",
+      "createArea": "Create Area",
+      "loadError": "Failed to load areas",
+      "completeSetupFirst": "Complete all setup tasks before creating areas"
     },
     "setupTasks": {
       "title": "Setup Tasks",
       "pendingCount": "{count} tasks pending",
       "pending": "Pending",
       "completed": "Completed",
-      "markComplete": "Mark Complete"
+      "markComplete": "Mark Complete",
+      "uploadDocuments": {
+        "title": "Upload Required Documents",
+        "description": "Upload all required project documentation including contracts, specifications, and drawings",
+        "action": "Upload Documents"
+      },
+      "addMembers": {
+        "title": "Add Project Members",
+        "description": "Invite team members to collaborate on this project",
+        "action": "Add Members"
+      },
+      "addSigners": {
+        "title": "Add Default Signers",
+        "description": "Configure the default signers for document approvals",
+        "action": "Configure Signers"
+      }
     },
     "areas": "areas",
     "stages": "stages",
@@ -191,6 +217,19 @@
       "noDocumentTypes": "No Document Types Yet",
       "createFirstDocumentType": "Create document types to organize your project files",
       "loadError": "Failed to load documents"
+    },
+    "generalArrangement": {
+      "title": "General Arrangement",
+      "description": "View and download the project's general arrangement document",
+      "download": "Download PDF",
+      "noDocument": "No General Arrangement",
+      "noDocumentDescription": "No general arrangement has been uploaded for this project yet",
+      "zoomIn": "Zoom In",
+      "zoomOut": "Zoom Out",
+      "resetZoom": "Reset Zoom",
+      "loadingDocument": "Loading document...",
+      "areaInfo": "Area Information",
+      "selectAreaPrompt": "Click on an area in the diagram to view details"
     },
     "punchlist": {
       "title": "Punchlist",
@@ -674,5 +713,45 @@
     "upload": "Upload",
     "uploadSuccess": "Document uploaded successfully",
     "uploadError": "Failed to upload document"
+  },
+  "areas": {
+    "createAreaTitle": "Create Area",
+    "areaCreatedSuccess": "Area created successfully",
+    "areaCreatedError": "Failed to create area",
+    "areaDetails": "Area Details",
+    "areaName": "Area Name",
+    "areaNamePlaceholder": "e.g., Main Salon, Master Cabin",
+    "areaDescription": "Description",
+    "areaDescriptionPlaceholder": "Describe the area...",
+    "position": "Position",
+    "positionHint": "Display order (1 = first)",
+    "deckSelection": "Deck Selection",
+    "selectExistingDeck": "Select existing deck",
+    "createNewDeck": "Create new deck",
+    "selectDeck": "Select Deck",
+    "noDecksAvailable": "No decks available. Please create a new deck below.",
+    "deckName": "Deck Name",
+    "deckNamePlaceholder": "e.g., Main Deck, Upper Deck",
+    "deckDescription": "Deck Description",
+    "deckDescriptionPlaceholder": "Describe the deck..."
+  },
+  "areaDetail": {
+    "loading": "Loading...",
+    "loadError": "Failed to load area details",
+    "createStage": "Create Stage",
+    "createFirstStage": "Create First Stage",
+    "position": "Position",
+    "totalStages": "Total Stages",
+    "deck": "Deck",
+    "noStages": "No stages have been added to this area yet",
+    "notStarted": "Not Started",
+    "inProgress": "In Progress",
+    "completed": "Completed",
+    "requiresReleaseForm": "Requires Release Form",
+    "status": {
+      "not_started": "Not Started",
+      "in_progress": "In Progress",
+      "completed": "Completed"
+    }
   }
 }

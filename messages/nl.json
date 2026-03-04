@@ -118,6 +118,10 @@
       "active": "Actief",
       "locked": "Vergrendeld",
       "completed": "Voltooid"
+    },
+    "types": {
+      "newBuilt": "Nieuwbouw",
+      "refit": "Refit"
     }
   },
   "createProject": {
@@ -128,19 +132,23 @@
     "selectShipyard": "Selecteer een scheepswerf",
     "projectType": "Project Type",
     "generalArrangement": "General Arrangement",
-    "uploadPdfOptional": "Upload de General Arrangement PDF (optioneel)",
+    "uploadPdfRequired": "Upload de General Arrangement PDF (verplicht)",
     "documentTypes": "Document Types",
     "name": "Naam",
     "required": "Verplicht",
     "delete": "Verwijderen",
     "addDocumentType": "Document Type Toevoegen",
+    "addDocumentTypePlaceholder": "Voer document type naam in...",
+    "add": "Toevoegen",
     "cancel": "Annuleren",
     "createProject": "Project Aanmaken"
   },
   "projectDetail": {
+    "projectNotFound": "Project niet gevonden",
     "tabs": {
       "overview": "Overzicht",
       "documents": "Documenten",
+      "generalArrangement": "General Arrangement",
       "punchlist": "Punchlist",
       "logbook": "Logboek",
       "reporting": "Rapportage",
@@ -148,14 +156,32 @@
     },
     "areasSection": {
       "title": "Gebieden",
-      "noAreas": "Er zijn nog geen gebieden toegevoegd"
+      "noAreas": "Er zijn nog geen gebieden toegevoegd",
+      "createArea": "Gebied Aanmaken",
+      "loadError": "Kan gebieden niet laden",
+      "completeSetupFirst": "Voltooi alle setup taken voordat je gebieden aanmaakt"
     },
     "setupTasks": {
       "title": "Setup Taken",
       "pendingCount": "{count} taken in behandeling",
       "pending": "In behandeling",
       "completed": "Voltooid",
-      "markComplete": "Markeer als Voltooid"
+      "markComplete": "Markeer als Voltooid",
+      "uploadDocuments": {
+        "title": "Upload Verplichte Documenten",
+        "description": "Upload alle verplichte projectdocumentatie inclusief contracten, specificaties en tekeningen",
+        "action": "Upload Documenten"
+      },
+      "addMembers": {
+        "title": "Voeg Projectleden Toe",
+        "description": "Nodig teamleden uit om samen te werken aan dit project",
+        "action": "Voeg Leden Toe"
+      },
+      "addSigners": {
+        "title": "Voeg Standaard Ondertekenaars Toe",
+        "description": "Configureer de standaard ondertekenaars voor documentgoedkeuringen",
+        "action": "Configureer Ondertekenaars"
+      }
     },
     "areas": "gebieden",
     "stages": "fasen",
@@ -191,6 +217,19 @@
       "noDocumentTypes": "Nog Geen Documenttypes",
       "createFirstDocumentType": "Maak documenttypes aan om je projectbestanden te organiseren",
       "loadError": "Kan documenten niet laden"
+    },
+    "generalArrangement": {
+      "title": "General Arrangement",
+      "description": "Bekijk en download het algemeen arrangement document van het project",
+      "download": "Download PDF",
+      "noDocument": "Geen General Arrangement",
+      "noDocumentDescription": "Er is nog geen general arrangement geüpload voor dit project",
+      "zoomIn": "Inzoomen",
+      "zoomOut": "Uitzoomen",
+      "resetZoom": "Reset Zoom",
+      "loadingDocument": "Document laden...",
+      "areaInfo": "Gebied Informatie",
+      "selectAreaPrompt": "Klik op een gebied in het diagram om details te bekijken"
     },
     "punchlist": {
       "title": "Punchlist",
@@ -675,5 +714,45 @@
     "upload": "Upload",
     "uploadSuccess": "Document succesvol geüpload",
     "uploadError": "Kon document niet uploaden"
+  },
+  "areas": {
+    "createAreaTitle": "Gebied Aanmaken",
+    "areaCreatedSuccess": "Gebied succesvol aangemaakt",
+    "areaCreatedError": "Kon gebied niet aanmaken",
+    "areaDetails": "Gebied Details",
+    "areaName": "Gebied Naam",
+    "areaNamePlaceholder": "bijv. Hoofdsalon, Master Cabin",
+    "areaDescription": "Beschrijving",
+    "areaDescriptionPlaceholder": "Beschrijf het gebied...",
+    "position": "Positie",
+    "positionHint": "Weergavevolgorde (1 = eerste)",
+    "deckSelection": "Dek Selectie",
+    "selectExistingDeck": "Selecteer bestaand dek",
+    "createNewDeck": "Nieuw dek aanmaken",
+    "selectDeck": "Selecteer Dek",
+    "noDecksAvailable": "Geen dekken beschikbaar. Maak hieronder een nieuw dek aan.",
+    "deckName": "Dek Naam",
+    "deckNamePlaceholder": "bijv. Hoofddek, Bovendek",
+    "deckDescription": "Dek Beschrijving",
+    "deckDescriptionPlaceholder": "Beschrijf het dek..."
+  },
+  "areaDetail": {
+    "loading": "Laden...",
+    "loadError": "Kan gebied details niet laden",
+    "createStage": "Stage Aanmaken",
+    "createFirstStage": "Eerste Stage Aanmaken",
+    "position": "Positie",
+    "totalStages": "Totaal Stages",
+    "deck": "Dek",
+    "noStages": "Er zijn nog geen stages toegevoegd aan dit gebied",
+    "notStarted": "Niet Gestart",
+    "inProgress": "Bezig",
+    "completed": "Voltooid",
+    "requiresReleaseForm": "Vereist Vrijgaveformulier",
+    "status": {
+      "not_started": "Niet Gestart",
+      "in_progress": "Bezig",
+      "completed": "Voltooid"
+    }
   }
 }
