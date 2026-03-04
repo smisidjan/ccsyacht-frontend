@@ -165,7 +165,9 @@
     },
     "areasSection": {
       "title": "Gebieden",
+      "allDecks": "Alle Dekken",
       "noAreas": "Er zijn nog geen gebieden toegevoegd",
+      "noAreasInDeck": "Geen gebieden op dit dek",
       "createArea": "Gebied Aanmaken",
       "loadError": "Kan gebieden niet laden",
       "completeSetupFirst": "Voltooi alle setup taken voordat je gebieden aanmaakt"
@@ -264,9 +266,24 @@
       "title": "Logboek",
       "subtitle": "{count} notities",
       "addEntry": "Notitie Toevoegen",
+      "searchPlaceholder": "Zoek activiteiten...",
+      "showing": "{count} van {total} activiteiten worden getoond",
       "noEntries": "Nog geen logboek notities",
       "noEntriesDescription": "Alle projectactiviteiten worden hier automatisch gelogd",
-      "loadError": "Kon logboek notities niet laden"
+      "noResults": "Geen activiteiten gevonden",
+      "tryDifferentFilters": "Probeer een andere zoekopdracht of filter",
+      "loadError": "Kon logboek notities niet laden",
+      "filters": {
+        "all": "Alle Activiteiten",
+        "projectManagement": "Projectbeheer",
+        "membersSigners": "Leden & Ondertekenaars",
+        "documents": "Documenten",
+        "decksAreas": "Dekken & Gebieden",
+        "stageActivities": "Fase Activiteiten",
+        "punchlistItems": "Punchlist Items",
+        "remarks": "Opmerkingen",
+        "setupTasks": "Setup Taken"
+      }
     },
     "reporting": {
       "title": "Rapportage",

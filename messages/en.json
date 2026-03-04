@@ -165,7 +165,9 @@
     },
     "areasSection": {
       "title": "Areas",
+      "allDecks": "All Decks",
       "noAreas": "No areas have been added yet",
+      "noAreasInDeck": "No areas in this deck",
       "createArea": "Create Area",
       "loadError": "Failed to load areas",
       "completeSetupFirst": "Complete all setup tasks before creating areas"
@@ -264,9 +266,24 @@
       "title": "Logbook",
       "subtitle": "{count} entries",
       "addEntry": "Add Entry",
+      "searchPlaceholder": "Search activities...",
+      "showing": "Showing {count} of {total} activities",
       "noEntries": "No logbook entries yet",
       "noEntriesDescription": "All project activities will be logged here automatically",
-      "loadError": "Failed to load logbook entries"
+      "noResults": "No activities found",
+      "tryDifferentFilters": "Try adjusting your search or filter",
+      "loadError": "Failed to load logbook entries",
+      "filters": {
+        "all": "All Activities",
+        "projectManagement": "Project Management",
+        "membersSigners": "Members & Signers",
+        "documents": "Documents",
+        "decksAreas": "Decks & Areas",
+        "stageActivities": "Stage Activities",
+        "punchlistItems": "Punchlist Items",
+        "remarks": "Remarks",
+        "setupTasks": "Setup Tasks"
+      }
     },
     "reporting": {
       "title": "Reporting",
