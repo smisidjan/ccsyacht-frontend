@@ -48,6 +48,24 @@ export const PERMISSIONS = {
   DOWNLOAD_DOCUMENTS: "download_documents",
   UPLOAD_DOCUMENTS: "upload_documents",
   DELETE_DOCUMENTS: "delete_documents",
+
+  // Deck Management
+  VIEW_DECKS: "view_decks",
+  CREATE_DECKS: "create_decks",
+  EDIT_DECKS: "edit_decks",
+  DELETE_DECKS: "delete_decks",
+
+  // Area Management
+  VIEW_AREAS: "view_areas",
+  CREATE_AREAS: "create_areas",
+  EDIT_AREAS: "edit_areas",
+  DELETE_AREAS: "delete_areas",
+
+  // Stage Management
+  VIEW_STAGES: "view_stages",
+  CREATE_STAGES: "create_stages",
+  EDIT_STAGES: "edit_stages",
+  DELETE_STAGES: "delete_stages",
 } as const;
 
 // Extract all permission values as a union type
@@ -95,6 +113,24 @@ export const PERMISSION_GROUPS = {
     PERMISSIONS.DOWNLOAD_DOCUMENTS,
     PERMISSIONS.UPLOAD_DOCUMENTS,
     PERMISSIONS.DELETE_DOCUMENTS,
+  ],
+  DECK_MANAGEMENT: [
+    PERMISSIONS.VIEW_DECKS,
+    PERMISSIONS.CREATE_DECKS,
+    PERMISSIONS.EDIT_DECKS,
+    PERMISSIONS.DELETE_DECKS,
+  ],
+  AREA_MANAGEMENT: [
+    PERMISSIONS.VIEW_AREAS,
+    PERMISSIONS.CREATE_AREAS,
+    PERMISSIONS.EDIT_AREAS,
+    PERMISSIONS.DELETE_AREAS,
+  ],
+  STAGE_MANAGEMENT: [
+    PERMISSIONS.VIEW_STAGES,
+    PERMISSIONS.CREATE_STAGES,
+    PERMISSIONS.EDIT_STAGES,
+    PERMISSIONS.DELETE_STAGES,
   ],
 } as const;
 
