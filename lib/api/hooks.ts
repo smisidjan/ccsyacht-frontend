@@ -316,3 +316,31 @@ export function useProjects(params?: {
     uploadGeneralArrangement,
   };
 }
+
+// Hook for single project (for detail page)
+export function useProject(projectId: string) {
+  const [state, setState] = useState<UseApiState<Project>>({
+    data: null,
+    loading: true,
+    error: null,
+  });
+
+  const fetchProject = useCallback(async () => {
+    setState((prev) => ({ ...prev, loading: true, error: null }));
+    try {
+      const data = await projectsApi.getById(projectId);
+      setState({ data, loading: false, error: null });
+    } catch (err) {
+      setState({ data: null, loading: false, error: err as ApiError });
+    }
+  }, [projectId]);
+
+  useEffect(() => {
+    fetchProject();
+  }, [fetchProject]);
+
+  return {
+    ...state,
+    refetch: fetchProject,
+  };
+}

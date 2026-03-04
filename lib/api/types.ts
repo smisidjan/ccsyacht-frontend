@@ -448,3 +448,129 @@ export interface UploadDocumentRequest {
   description?: string;
   file: File;
 }
+
+// ============ Decks ============
+export interface DeckPlace {
+  "@type"?: string;
+  identifier: string;
+  name: string;
+  position?: number;
+  stageCount?: number;
+}
+
+export interface Deck {
+  "@context"?: string;
+  "@type"?: string;
+  identifier: string;
+  name: string;
+  description?: string;
+  position: number;
+  areaCount: number;
+  stageCount: number;
+  containsPlace?: DeckPlace[];
+  dateCreated: string;
+  dateModified: string;
+}
+
+export interface CreateDeckRequest {
+  name: string;
+  description?: string;
+  sort_order?: number;
+}
+
+export interface UpdateDeckRequest {
+  name?: string;
+  description?: string;
+  sort_order?: number;
+}
+
+// ============ Areas ============
+export interface AreaDeck {
+  "@type"?: string;
+  identifier: string;
+  name: string;
+}
+
+export interface AreaStage {
+  "@context"?: string;
+  "@type"?: string;
+  identifier: string;
+  name: string;
+  position: number;
+  status: {
+    "@type"?: string;
+    name: StageStatus;
+  };
+}
+
+export interface Area {
+  "@context"?: string;
+  "@type"?: string;
+  identifier: string;
+  name: string;
+  description?: string;
+  position: number;
+  stageCount: number;
+  containedInPlace?: AreaDeck;
+  containsPlace?: AreaStage[];
+  dateCreated: string;
+  dateModified: string;
+}
+
+export interface CreateAreaRequest {
+  name: string;
+  description?: string;
+  sort_order?: number;
+}
+
+export interface UpdateAreaRequest {
+  name?: string;
+  description?: string;
+  sort_order?: number;
+}
+
+// ============ Stages ============
+export type StageStatus = "not_started" | "in_progress" | "completed";
+
+export interface StageLocation {
+  "@type"?: string;
+  identifier: string;
+  name: string;
+}
+
+export interface Stage {
+  "@context"?: string;
+  "@type"?: string;
+  identifier: string;
+  name: string;
+  description?: string;
+  position: number;
+  status: {
+    "@type"?: string;
+    name: StageStatus;
+  };
+  requiresReleaseForm: boolean;
+  location?: StageLocation;
+  dateCreated: string;
+  dateModified: string;
+}
+
+export interface CreateStageRequest {
+  name: string;
+  description?: string;
+  status?: StageStatus;
+  requires_release_form?: boolean;
+  sort_order?: number;
+}
+
+export interface UpdateStageRequest {
+  name?: string;
+  description?: string;
+  status?: StageStatus;
+  requires_release_form?: boolean;
+  sort_order?: number;
+}
+
+export interface UpdateStageStatusRequest {
+  status: StageStatus;
+}

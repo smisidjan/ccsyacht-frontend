@@ -21,6 +21,15 @@ export { documentTypesApi, useDocumentTypes } from "./document-types";
 // Documents
 export { documentsApi, useDocuments } from "./documents";
 
+// Decks
+export { decksApi, useDecks } from "./decks";
+
+// Areas
+export { areasApi, useAreas, useArea } from "./areas";
+
+// Stages
+export { stagesApi, useStages } from "./stages";
+
 // Hooks
 export {
   useCurrentUser,
@@ -29,6 +38,7 @@ export {
   useRegistrationRequests,
   useShipyards,
   useProjects,
+  useProject,
 } from "./hooks";
 
 // OpenAPI utilities
