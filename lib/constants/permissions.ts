@@ -69,6 +69,12 @@ export const PERMISSIONS = {
 
   // Logbook
   VIEW_LOGBOOK: "view_logbook",
+
+  // Project Members & Signers
+  VIEW_PROJECT_MEMBERS: "view_project_members",
+  MANAGE_PROJECT_MEMBERS: "manage_project_members",
+  VIEW_PROJECT_SIGNERS: "view_project_signers",
+  MANAGE_PROJECT_SIGNERS: "manage_project_signers",
 } as const;
 
 // Extract all permission values as a union type
