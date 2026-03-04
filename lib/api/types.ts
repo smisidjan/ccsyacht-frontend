@@ -62,6 +62,8 @@ export interface CurrentUser {
   dateCreated: string;
   dateModified: string;
   roles: UserRole[];
+  permissions: string[];
+  employmentType?: "employee" | "guest";
   memberOf: CurrentUserOrganization;
 }
 
