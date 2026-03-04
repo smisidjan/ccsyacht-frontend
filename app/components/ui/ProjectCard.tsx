@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { Link } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 import {
   FolderIcon,
   BuildingOffice2Icon,
@@ -10,16 +10,30 @@ import {
   CalendarIcon,
   DocumentTextIcon,
   ExclamationTriangleIcon,
+  UserPlusIcon,
+  LockClosedIcon,
+  UsersIcon,
 } from "@heroicons/react/24/outline";
 import StatusBadge from "./StatusBadge";
-import type { Project } from "@/lib/api/types";
+import type { Project, UserRole } from "@/lib/api/types";
+import { projectMembersApi } from "@/lib/api";
+import { useToast } from "@/app/context/ToastContext";
+import { usePermission } from "@/lib/hooks/usePermission";
 
 interface ProjectCardProps {
   project: Project;
+  isMember: boolean;
+  userRole: UserRole;
+  memberCount?: number;
+  onJoin?: () => void;
 }
 
-export default function ProjectCard({ project }: ProjectCardProps) {
+export default function ProjectCard({ project, isMember, userRole, memberCount, onJoin }: ProjectCardProps) {
   const t = useTranslations("projects");
+  const router = useRouter();
+  const { showToast } = useToast();
+  const { user: currentUser } = usePermission();
+  const [isJoining, setIsJoining] = useState(false);
   
   return (
     <div className="group bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-2xl dark:shadow-gray-900/50 dark:hover:shadow-gray-900/70 transition-all duration-300 hover:-translate-y-1 overflow-hidden h-full flex flex-col">
@@ -70,21 +84,71 @@ export default function ProjectCard({ project }: ProjectCardProps) {
             </div>
           </div>
 
+        </div>
+
           {/* Description - always render with fixed height */}
-          <div className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2 min-h-[2.5rem]">
-            {project.description || '\u00A0'}
+        {/* Member Count */}
+          <div className="flex items-start justify-between mb-4">
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            <h3 className="text-sm text-gray-600 dark:text-gray-400">
+              {project.description || '\u00A0'}
+            </h3>
           </div>
+           {memberCount !== undefined && (
+          <div className="flex items-right gap-2 text-sm text-gray-600 dark:text-gray-400">
+            <UsersIcon className="w-4 h-4" />
+            <span>{t("memberCount", { count: memberCount })}</span>
+          </div>
+        )}
         </div>
 
         {/* Footer */}
-        <div className="pt-4 border-t border-gray-100 dark:border-gray-700">
-          <Link
-            href={`/dashboard/projects/${project.identifier}`}
-            className="inline-flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white text-sm font-medium rounded-lg transition-all shadow-md hover:shadow-lg"
-          >
-            {t("openProject")}
-            <ArrowRightIcon className="w-4 h-4" />
-          </Link>
+        <div className="pt-4 border-t border-gray-100 dark:border-gray-700 flex justify-end">
+          {isMember ? (
+            // If user is a member, show "Open Project" button
+            <Link
+              href={`/dashboard/projects/${project.identifier}`}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white text-sm font-medium rounded-lg transition-all shadow-md hover:shadow-lg"
+            >
+              {t("openProject")}
+              <ArrowRightIcon className="w-4 h-4" />
+            </Link>
+          ) : userRole === "admin" || userRole === "main user" || userRole === "surveyor" ? (
+            // If admin, main user, or surveyor and NOT a member, show "Join Project" button
+            <button
+              onClick={async () => {
+                if (!currentUser?.identifier) {
+                  showToast("error", t("joinError"));
+                  return;
+                }
+                setIsJoining(true);
+                try {
+                  await projectMembersApi.add(project.identifier, { user_id: currentUser.identifier });
+                  showToast("success", t("joinSuccess"));
+                  if (onJoin) onJoin();
+                  router.push(`/dashboard/projects/${project.identifier}`);
+                } catch (error) {
+                  showToast("error", t("joinError"));
+                } finally {
+                  setIsJoining(false);
+                }
+              }}
+              disabled={isJoining}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-all shadow-md hover:shadow-lg"
+            >
+              {isJoining ? t("joining") : t("joinProject")}
+              <UserPlusIcon className="w-4 h-4" />
+            </button>
+          ) : (
+            // If user or painter, show "Request Access" button (disabled)
+            <button
+              disabled
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-400 dark:bg-gray-600 text-white text-sm font-medium rounded-lg cursor-not-allowed opacity-60"
+            >
+              {t("requestAccess")}
+              <LockClosedIcon className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </div>
     </div>

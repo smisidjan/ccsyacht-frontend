@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import {
   PlusIcon,
@@ -9,7 +9,7 @@ import {
   LockClosedIcon,
   CheckCircleIcon,
 } from "@heroicons/react/24/outline";
-import { useProjects, useShipyards, projectsApi, documentTypesApi } from "@/lib/api";
+import { useProjects, useShipyards, projectsApi, documentTypesApi, projectMembersApi } from "@/lib/api";
 import { PERMISSIONS } from "@/lib/constants/permissions";
 import { usePermission } from "@/lib/hooks/usePermission";
 import ProtectedRoute from "@/app/components/guards/ProtectedRoute";
@@ -21,21 +21,25 @@ import CreateProjectModal from "@/app/components/modals/CreateProjectModal";
 import type { ProjectFormData } from "@/app/components/modals/CreateProjectModal";
 import LoadingSkeleton from "@/app/components/ui/LoadingSkeleton";
 import Button from "@/app/components/ui/Button";
-import type { ProjectStatus } from "@/lib/api/types";
+import type { ProjectStatus, UserRole } from "@/lib/api/types";
 
 export default function ProjectsPage() {
   const t = useTranslations("projects");
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<FilterOption>("all");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [projectMemberships, setProjectMemberships] = useState<Record<string, boolean>>({});
+  const [projectMemberCounts, setProjectMemberCounts] = useState<Record<string, number>>({});
+  const [membershipsLoading, setMembershipsLoading] = useState(true);
 
   // API hooks
   const { data: projects, loading: projectsLoading, refetch } = useProjects();
   const { data: shipyards, loading: shipyardsLoading } = useShipyards();
-  const { hasPermission } = usePermission();
+  const { hasPermission, user: currentUser } = usePermission();
 
   // Permissions
   const canCreateProject = hasPermission(PERMISSIONS.CREATE_PROJECTS);
+  const canViewProjectMembers = hasPermission(PERMISSIONS.VIEW_PROJECT_MEMBERS);
 
   // Prepare data
   const projectsArray = Array.isArray(projects) ? projects : [];
@@ -52,6 +56,61 @@ export default function ProjectsPage() {
     { id: "new_built", name: t("types.newBuilt") },
     { id: "refit", name: t("types.refit") },
   ];
+
+  // Fetch project memberships
+  useEffect(() => {
+    const fetchMemberships = async () => {
+      // If no projects, no need to load
+      if (!projectsArray.length) {
+        setMembershipsLoading(false);
+        return;
+      }
+
+      // Keep loading while waiting for currentUser to load
+      if (!currentUser) {
+        setMembershipsLoading(true);
+        return;
+      }
+
+      setMembershipsLoading(true);
+      const memberships: Record<string, boolean> = {};
+      const memberCounts: Record<string, number> = {};
+
+      // If user doesn't have permission to view project members, we can't determine membership
+      // Backend should give all authenticated users this permission
+      if (!canViewProjectMembers) {
+        console.warn("User does not have VIEW_PROJECT_MEMBERS permission. Cannot determine project membership.");
+        setMembershipsLoading(false);
+        return;
+      }
+
+      // Fetch members for each project and check if current user is a member
+      await Promise.all(
+        projectsArray.map(async (project) => {
+          try {
+            const response = await projectMembersApi.getAll(project.identifier);
+            const members = response.data || [];
+            const isMember = members.some(
+              (member) => member.member.identifier === currentUser.identifier
+            );
+            memberships[project.identifier] = isMember;
+            memberCounts[project.identifier] = members.length;
+          } catch (error: any) {
+            // If 403, user doesn't have permission (shouldn't happen if canViewProjectMembers is true)
+            // For other errors, assume not a member
+            memberships[project.identifier] = false;
+            memberCounts[project.identifier] = 0;
+          }
+        })
+      );
+
+      setProjectMemberships(memberships);
+      setProjectMemberCounts(memberCounts);
+      setMembershipsLoading(false);
+    };
+
+    fetchMemberships();
+  }, [projectsArray, currentUser, canViewProjectMembers]);
 
   const handleCreateProject = async (data: ProjectFormData) => {
     try {
@@ -106,11 +165,22 @@ export default function ProjectsPage() {
       const matchesFilter =
         activeFilter === "all" || project.status === (activeFilter as ProjectStatus);
 
-      return matchesSearch && matchesFilter;
-    });
-  }, [projectsArray, searchQuery, activeFilter]);
+      // For guest roles, only show projects where user is a member
+      const userRole = currentUser?.roles?.[0] as UserRole | undefined;
+      const isGuestRole = userRole && !["admin", "main user", "surveyor", "user", "painter"].includes(userRole);
+      const isMember = projectMemberships[project.identifier] || false;
+      const matchesMembership = !isGuestRole || isMember;
 
-  const loading = projectsLoading || shipyardsLoading;
+      return matchesSearch && matchesFilter && matchesMembership;
+    });
+  }, [projectsArray, searchQuery, activeFilter, projectMemberships, currentUser]);
+
+  const loading = projectsLoading || shipyardsLoading || membershipsLoading;
+
+  const handleRefetch = () => {
+    refetch();
+    // Refetch will trigger the useEffect to reload memberships
+  };
 
   return (
     <ProtectedRoute permissions={PERMISSIONS.VIEW_PROJECTS}>
@@ -181,7 +251,14 @@ export default function ProjectsPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
             {filteredProjects.map((project) => (
-              <ProjectCard key={project.identifier} project={project} />
+              <ProjectCard
+                key={project.identifier}
+                project={project}
+                isMember={projectMemberships[project.identifier] || false}
+                userRole={(currentUser?.roles?.[0] as UserRole) || "user"}
+                memberCount={projectMemberCounts[project.identifier]}
+                onJoin={handleRefetch}
+              />
             ))}
           </div>
         )}

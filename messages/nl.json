@@ -110,8 +110,17 @@
     "searchPlaceholder": "Zoek op projectnaam, beschrijving of scheepswerf...",
     "showing": "{count} van {total} projecten",
     "noProjects": "Geen projecten gevonden",
+    "noProjectsYet": "Nog Geen Projecten",
+    "createFirstProject": "Maak je eerste project aan om te beginnen",
+    "tryDifferentFilters": "Probeer je zoekterm of filters aan te passen",
     "openProject": "Open Project",
+    "joinProject": "Deelnemen",
+    "joining": "Deelnemen...",
+    "requestAccess": "Toegang Aanvragen",
+    "joinSuccess": "Succesvol toegevoegd aan project",
+    "joinError": "Kan niet deelnemen aan project",
     "members": "leden",
+    "memberCount": "{count, plural, =0 {Geen leden} =1 {1 lid} other {# leden}}",
     "filters": {
       "all": "Alles",
       "setup": "Setup",
@@ -180,7 +189,7 @@
       "addSigners": {
         "title": "Voeg Standaard Ondertekenaars Toe",
         "description": "Configureer de standaard ondertekenaars voor documentgoedkeuringen",
-        "action": "Configureer Ondertekenaars"
+        "action": "Voeg Ondertekenaars Toe"
       }
     },
     "areas": "gebieden",
@@ -278,12 +287,32 @@
       },
       "teamMembers": {
         "title": "Teamleden",
-        "addMember": "Lid Toevoegen"
+        "addMember": "Lid Toevoegen",
+        "add": "Toevoegen",
+        "selectUser": "Selecteer Gebruiker",
+        "selectUserPlaceholder": "Kies een gebruiker...",
+        "confirmRemove": "Weet je zeker dat je {name} wilt verwijderen van het projectteam?",
+        "remove": "Lid verwijderen",
+        "makeSigner": "Maak ondertekenaar",
+        "noMembers": "Nog geen teamleden toegevoegd",
+        "loadError": "Kan teamleden niet laden",
+        "addSuccess": "Teamlid succesvol toegevoegd",
+        "addError": "Kan teamlid niet toevoegen"
       },
       "signers": {
         "title": "Standaard Ondertekenaars",
         "addSigner": "Ondertekenaar Toevoegen",
-        "description": "Standaard ondertekenaars worden automatisch toegevoegd aan document goedkeuringsworkflows."
+        "add": "Toevoegen",
+        "description": "Standaard ondertekenaars worden automatisch toegevoegd aan document goedkeuringsworkflows.",
+        "manageFromMembers": "Voeg ondertekenaars toe door op het ster icoon naast een teamlid hierboven te klikken",
+        "selectUser": "Selecteer Gebruiker",
+        "selectUserPlaceholder": "Kies een gebruiker...",
+        "confirmRemove": "Weet je zeker dat je {name} wilt verwijderen als standaard ondertekenaar?",
+        "remove": "Ondertekenaar verwijderen",
+        "noSigners": "Nog geen standaard ondertekenaars toegevoegd",
+        "loadError": "Kan ondertekenaars niet laden",
+        "addSuccess": "Standaard ondertekenaar succesvol toegevoegd",
+        "addError": "Kan standaard ondertekenaar niet toevoegen"
       },
       "dangerZone": {
         "title": "Gevarenzone",

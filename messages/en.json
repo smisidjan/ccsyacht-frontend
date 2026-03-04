@@ -110,8 +110,17 @@
     "searchPlaceholder": "Search project name, project description, or shipyards...",
     "showing": "Showing {count} of {total} projects",
     "noProjects": "No projects found",
+    "noProjectsYet": "No Projects Yet",
+    "createFirstProject": "Create your first project to get started",
+    "tryDifferentFilters": "Try adjusting your search or filters",
     "openProject": "Open Project",
+    "joinProject": "Join Project",
+    "joining": "Joining...",
+    "requestAccess": "Request Access",
+    "joinSuccess": "Successfully joined project",
+    "joinError": "Failed to join project",
     "members": "members",
+    "memberCount": "{count, plural, =0 {No members} =1 {1 member} other {# members}}",
     "filters": {
       "all": "All",
       "setup": "Setup",
@@ -180,7 +189,7 @@
       "addSigners": {
         "title": "Add Default Signers",
         "description": "Configure the default signers for document approvals",
-        "action": "Configure Signers"
+        "action": "Add Signers"
       }
     },
     "areas": "areas",
@@ -278,12 +287,32 @@
       },
       "teamMembers": {
         "title": "Team Members",
-        "addMember": "Add Member"
+        "addMember": "Add Member",
+        "add": "Add",
+        "selectUser": "Select User",
+        "selectUserPlaceholder": "Choose a user...",
+        "confirmRemove": "Are you sure you want to remove {name} from the project team?",
+        "remove": "Remove member",
+        "makeSigner": "Make signer",
+        "noMembers": "No team members added yet",
+        "loadError": "Failed to load team members",
+        "addSuccess": "Team member added successfully",
+        "addError": "Failed to add team member"
       },
       "signers": {
         "title": "Default Signers",
         "addSigner": "Add Signer",
-        "description": "Default signers will be automatically added to document approval workflows."
+        "add": "Add",
+        "description": "Default signers will be automatically added to document approval workflows.",
+        "manageFromMembers": "Add signers by clicking the star icon next to a team member above",
+        "selectUser": "Select User",
+        "selectUserPlaceholder": "Choose a user...",
+        "confirmRemove": "Are you sure you want to remove {name} as a default signer?",
+        "remove": "Remove signer",
+        "noSigners": "No default signers added yet",
+        "loadError": "Failed to load signers",
+        "addSuccess": "Default signer added successfully",
+        "addError": "Failed to add default signer"
       },
       "dangerZone": {
         "title": "Danger Zone",
