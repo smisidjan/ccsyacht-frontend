@@ -3,6 +3,8 @@
 import { useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
 import { useTenant } from "@/app/context/TenantContext";
+import { usePermission } from "@/lib/hooks/usePermission";
+import { PERMISSIONS } from "@/lib/constants/permissions";
 import {
   FolderIcon,
   UsersIcon,
@@ -18,33 +20,6 @@ import {
   Cog8ToothIcon as Cog8ToothIconSolid,
 } from "@heroicons/react/24/solid";
 
-const baseNavItems = [
-  {
-    href: "/dashboard/projects",
-    key: "projects",
-    icon: FolderIcon,
-    iconActive: FolderIconSolid,
-  },
-  {
-    href: "/dashboard/users",
-    key: "users",
-    icon: UsersIcon,
-    iconActive: UsersIconSolid,
-  },
-  {
-    href: "/dashboard/shipyards",
-    key: "shipyards",
-    icon: BuildingOffice2Icon,
-    iconActive: BuildingOffice2IconSolid,
-  },
-  {
-    href: "/dashboard/profile",
-    key: "profile",
-    icon: UserIcon,
-    iconActive: UserIconSolid,
-  },
-];
-
 interface BottomNavProps {
   className?: string;
 }
@@ -52,17 +27,58 @@ interface BottomNavProps {
 export default function BottomNav({ className = "" }: BottomNavProps) {
   const t = useTranslations("dashboard");
   const pathname = usePathname();
+  const { hasPermission, hasAnyPermission, loading } = usePermission();
 
+  // Check permissions for navigation items
+  const canAccessProjects = !loading && hasPermission(PERMISSIONS.VIEW_PROJECTS);
+  const canAccessUsers = !loading && hasPermission(PERMISSIONS.VIEW_USERS);
+  const canAccessShipyards = !loading && hasPermission(PERMISSIONS.VIEW_SHIPYARDS);
+  const canAccessSettings = !loading && hasAnyPermission([
+    PERMISSIONS.MANAGE_GUEST_ROLES,
+    PERMISSIONS.MANAGE_SETTINGS,
+  ]);
+
+  // Build navigation items based on permissions
   const navItems = [
-    ...baseNavItems,
-    ...([
-          {
-            href: "/dashboard/system",
-            key: "system",
-            icon: Cog8ToothIcon,
-            iconActive: Cog8ToothIconSolid,
-          },
-        ]),
+    ...(canAccessProjects
+      ? [{
+          href: "/dashboard/projects",
+          key: "projects",
+          icon: FolderIcon,
+          iconActive: FolderIconSolid,
+        }]
+      : []),
+    ...(canAccessUsers
+      ? [{
+          href: "/dashboard/users",
+          key: "users",
+          icon: UsersIcon,
+          iconActive: UsersIconSolid,
+        }]
+      : []),
+    ...(canAccessShipyards
+      ? [{
+          href: "/dashboard/shipyards",
+          key: "shipyards",
+          icon: BuildingOffice2Icon,
+          iconActive: BuildingOffice2IconSolid,
+        }]
+      : []),
+    // Profile is always accessible
+    {
+      href: "/dashboard/profile",
+      key: "profile",
+      icon: UserIcon,
+      iconActive: UserIconSolid,
+    },
+    ...(canAccessSettings
+      ? [{
+          href: "/dashboard/system",
+          key: "system",
+          icon: Cog8ToothIcon,
+          iconActive: Cog8ToothIconSolid,
+        }]
+      : []),
   ];
 
   return (
