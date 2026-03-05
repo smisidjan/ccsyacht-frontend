@@ -4,10 +4,10 @@ import { useMemo } from "react";
 import { useCurrentUser } from "@/lib/api/hooks";
 import type { Permission } from "@/lib/constants/permissions";
 import {
-  hasPermission,
-  hasAnyPermission,
-  hasAllPermissions,
-  getMissingPermissions,
+  hasPermission as checkPermission,
+  hasAnyPermission as checkAnyPermission,
+  hasAllPermissions as checkAllPermissions,
+  getMissingPermissions as getPermissionsMissing,
 } from "@/lib/utils/permissions";
 
 /**
@@ -35,32 +35,32 @@ export function usePermission() {
        * Check if current user has a specific permission
        */
       hasPermission: (permission: Permission) =>
-        hasPermission(currentUser, permission),
+        checkPermission(currentUser, permission),
 
       /**
        * Check if current user has ANY of the specified permissions
        */
       hasAnyPermission: (permissions: Permission[]) =>
-        hasAnyPermission(currentUser, permissions),
+        checkAnyPermission(currentUser, permissions),
 
       /**
        * Check if current user has ALL of the specified permissions
        */
       hasAllPermissions: (permissions: Permission[]) =>
-        hasAllPermissions(currentUser, permissions),
+        checkAllPermissions(currentUser, permissions),
 
       /**
        * Get missing permissions for current user
        */
       getMissingPermissions: (requiredPermissions: Permission[]) =>
-        getMissingPermissions(currentUser, requiredPermissions),
+        getPermissionsMissing(currentUser, requiredPermissions),
 
       /**
        * Check if user can manage users (view, edit, or delete)
        * Convenience method for common permission checks
        */
       canManageUsers: () =>
-        hasAnyPermission(currentUser, [
+        checkAnyPermission(currentUser, [
           "view_users" as Permission,
           "edit_users" as Permission,
           "delete_users" as Permission,
@@ -70,7 +70,7 @@ export function usePermission() {
        * Check if user can manage invitations
        */
       canManageInvitations: () =>
-        hasAnyPermission(currentUser, [
+        checkAnyPermission(currentUser, [
           "view_invitations" as Permission,
           "create_invitations" as Permission,
           "manage_invitations" as Permission,
@@ -80,7 +80,7 @@ export function usePermission() {
        * Check if user can manage projects
        */
       canManageProjects: () =>
-        hasAnyPermission(currentUser, [
+        checkAnyPermission(currentUser, [
           "view_projects" as Permission,
           "edit_projects" as Permission,
           "create_projects" as Permission,
