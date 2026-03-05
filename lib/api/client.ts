@@ -319,7 +319,11 @@ export const authApi = {
   changePassword: (data: ChangePasswordRequest): Promise<void> =>
     apiFetch("/auth/change-password", {
       method: "POST",
-      body: JSON.stringify(data),
+      body: JSON.stringify({
+        current_password: data.oldPassword,
+        password: data.newPassword,
+        password_confirmation: data.newPassword,
+      }),
     }),
 
   forgotPassword: (email: string): Promise<void> =>
