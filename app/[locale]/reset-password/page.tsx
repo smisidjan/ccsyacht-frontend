@@ -40,7 +40,18 @@ export default function ResetPasswordPage() {
     setLoading(true);
 
     try {
-      await authApi.resetPassword({ token, email, password, password_confirmation: confirmPassword });
+      // First, lookup the tenant for this email
+      const lookupResponse = await authApi.lookup(email);
+
+      if (!lookupResponse.result || lookupResponse.result.length === 0) {
+        throw new Error("No tenant found for this email");
+      }
+
+      // Get the tenant URL (use first tenant if multiple)
+      const tenantUrl = lookupResponse.result[0].url;
+
+      // Reset password with tenant context
+      await authApi.resetPassword({ token, email, password, password_confirmation: confirmPassword }, tenantUrl);
       setState("success");
     } catch (err) {
       setError(getErrorMessage(err, t("error")));

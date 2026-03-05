@@ -328,9 +328,13 @@ export const authApi = {
       body: JSON.stringify({ email }),
     }),
 
-  resetPassword: (data: { token: string; email: string; password: string; password_confirmation: string }): Promise<void> =>
+  resetPassword: (
+    data: { token: string; email: string; password: string; password_confirmation: string },
+    tenantUrl: string
+  ): Promise<void> =>
     apiFetch("/auth/reset-password", {
       method: "POST",
+      headers: { "X-Tenant-ID": tenantUrl },
       body: JSON.stringify(data),
     }),
 
