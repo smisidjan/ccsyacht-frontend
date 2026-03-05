@@ -21,10 +21,22 @@ const FormInput = forwardRef<HTMLInputElement, FormInputProps>(
       required,
       showRequiredMark = true,
       className = "",
+      type,
+      onChange,
       ...props
     },
     ref
   ) => {
+    // For email inputs, automatically convert to lowercase
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (type === "email") {
+        e.target.value = e.target.value.toLowerCase();
+      }
+      if (onChange) {
+        onChange(e);
+      }
+    };
+
     return (
       <div>
         <label
@@ -39,7 +51,9 @@ const FormInput = forwardRef<HTMLInputElement, FormInputProps>(
         <input
           ref={ref}
           id={id}
+          type={type}
           required={required}
+          onChange={handleChange}
           className={`
             w-full px-4 py-3 rounded-lg border
             ${error
@@ -50,6 +64,7 @@ const FormInput = forwardRef<HTMLInputElement, FormInputProps>(
             focus:ring-2 focus:border-transparent
             outline-none transition-all
             disabled:opacity-50 disabled:cursor-not-allowed
+            ${type === "email" ? "lowercase" : ""}
             ${className}
           `}
           aria-invalid={error ? "true" : "false"}
