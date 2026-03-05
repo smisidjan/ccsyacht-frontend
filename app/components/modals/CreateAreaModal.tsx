@@ -64,7 +64,7 @@ export default function CreateAreaModal({
       const deckData: CreateDeckRequest = {
         name: newDeckName,
         description: newDeckDescription || undefined,
-        position: parseInt(newDeckPosition, 10),
+        sort_order: parseInt(newDeckPosition, 10),
       };
       const newDeck = await decksApi.create(projectId, deckData);
       deckId = newDeck.identifier;
@@ -74,7 +74,7 @@ export default function CreateAreaModal({
     const areaData: CreateAreaRequest = {
       name: areaName,
       description: areaDescription || undefined,
-      position: parseInt(areaPosition, 10),
+      sort_order: parseInt(areaPosition, 10),
     };
 
     await areasApi.create(projectId, deckId, areaData);
