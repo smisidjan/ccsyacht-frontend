@@ -27,11 +27,9 @@ const FormInput = forwardRef<HTMLInputElement, FormInputProps>(
     },
     ref
   ) => {
-    // For email inputs, automatically convert to lowercase
+    // Pass through onChange without modification
+    // Email transformation (lowercase, trim) happens at API level
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      if (type === "email") {
-        e.target.value = e.target.value.toLowerCase();
-      }
       if (onChange) {
         onChange(e);
       }
