@@ -298,14 +298,14 @@ export const authApi = {
   lookup: (email: string): Promise<LookupResponse> =>
     apiFetch("/auth/lookup", {
       method: "POST",
-      body: JSON.stringify({ email: email.trim() }),
+      body: JSON.stringify({ email: email.trim().toLowerCase() }),
     }),
 
   login: (tenantSlug: string, data: LoginRequest): Promise<LoginResponse> =>
     apiFetch("/auth/login", {
       method: "POST",
       headers: { "X-Tenant-ID": tenantSlug },
-      body: JSON.stringify({ ...data, email: data.email.trim() }),
+      body: JSON.stringify({ ...data, email: data.email.trim().toLowerCase() }),
     }),
 
   logout: (): Promise<void> =>
@@ -329,7 +329,7 @@ export const authApi = {
   forgotPassword: (email: string): Promise<void> =>
     apiFetch("/auth/forgot-password", {
       method: "POST",
-      body: JSON.stringify({ email: email.trim() }),
+      body: JSON.stringify({ email: email.trim().toLowerCase() }),
     }),
 
   resetPassword: (
@@ -339,7 +339,7 @@ export const authApi = {
     apiFetch("/auth/reset-password", {
       method: "POST",
       headers: { "X-Tenant-ID": tenantUrl },
-      body: JSON.stringify({ ...data, email: data.email.trim() }),
+      body: JSON.stringify({ ...data, email: data.email.trim().toLowerCase() }),
     }),
 
   registerAdmin: (data: RegisterAdminRequest): Promise<RegisterAdminResponse> =>
@@ -510,13 +510,13 @@ export const systemApi = {
   forgotPassword: (email: string): Promise<void> =>
     apiFetchSystem("/system/forgot-password", {
       method: "POST",
-      body: JSON.stringify({ email: email.trim() }),
+      body: JSON.stringify({ email: email.trim().toLowerCase() }),
     }),
 
   resetPassword: (data: { token: string; email: string; password: string; password_confirmation: string }): Promise<void> =>
     apiFetchSystem("/system/reset-password", {
       method: "POST",
-      body: JSON.stringify({ ...data, email: data.email.trim() }),
+      body: JSON.stringify({ ...data, email: data.email.trim().toLowerCase() }),
     }),
 
   // Tenant-specific system endpoints (require X-Tenant-ID header)
