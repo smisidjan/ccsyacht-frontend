@@ -383,7 +383,8 @@
         "yard": "Werf",
         "surveyor": "Inspecteur",
         "painter": "Schilder",
-        "owner representative": "Eigenaar Vertegenwoordiger"
+        "owner representative": "Eigenaar Vertegenwoordiger",
+        "viewer": "Kijker"
       }
     },
     "invitations": {
@@ -488,7 +489,8 @@
         "yard": "Werf",
         "surveyor": "Inspecteur",
         "painter": "Schilder",
-        "owner representative": "Eigenaar Vertegenwoordiger"
+        "owner representative": "Eigenaar Vertegenwoordiger",
+        "viewer": "Kijker"
       },
       "activeStatus": "Actief",
       "activeDescription": "Gedeactiveerde gebruikers kunnen niet inloggen op het platform",
@@ -682,7 +684,8 @@
       "yard": "Werf",
       "surveyor": "Inspecteur",
       "painter": "Schilder",
-      "owner representative": "Eigenaar Vertegenwoordiger"
+      "owner representative": "Eigenaar Vertegenwoordiger",
+      "viewer": "Kijker"
     }
   },
   "invitation": {

@@ -383,7 +383,8 @@
         "yard": "Yard",
         "surveyor": "Surveyor",
         "painter": "Painter",
-        "owner representative": "Owner Representative"
+        "owner representative": "Owner Representative",
+        "viewer": "Viewer"
       }
     },
     "invitations": {
@@ -488,7 +489,8 @@
         "yard": "Yard",
         "surveyor": "Surveyor",
         "painter": "Painter",
-        "owner representative": "Owner Representative"
+        "owner representative": "Owner Representative",
+        "viewer": "Viewer"
       },
       "activeStatus": "Active",
       "activeDescription": "Deactivated users cannot log in to the platform",
@@ -682,7 +684,8 @@
       "yard": "Yard",
       "surveyor": "Surveyor",
       "painter": "Painter",
-      "owner representative": "Owner Representative"
+      "owner representative": "Owner Representative",
+      "viewer": "Viewer"
     }
   },
   "invitation": {
