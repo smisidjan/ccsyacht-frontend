@@ -8,6 +8,8 @@ import {
   PlayIcon,
   LockClosedIcon,
   CheckCircleIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
 } from "@heroicons/react/24/outline";
 import { useProjects, useShipyards, projectsApi, documentTypesApi, projectMembersApi } from "@/lib/api";
 import { PERMISSIONS } from "@/lib/constants/permissions";
@@ -33,9 +35,10 @@ export default function ProjectsPage() {
   const [projectMemberships, setProjectMemberships] = useState<Record<string, boolean>>({});
   const [projectMemberCounts, setProjectMemberCounts] = useState<Record<string, number>>({});
   const [membershipsLoading, setMembershipsLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
 
   // API hooks
-  const { data: projects, loading: projectsLoading, refetch } = useProjects();
+  const { data: projects, loading: projectsLoading, pagination, refetch } = useProjects({ page: currentPage });
   const { data: shipyards, loading: shipyardsLoading } = useShipyards();
   const { hasPermission, user: currentUser } = usePermission();
 
@@ -132,6 +135,16 @@ export default function ProjectsPage() {
 
   useRealtimeProjectsList(memberProjectIds, handleMemberOrSignerUpdate);
 
+  // Reset to page 1 when search or filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, activeFilter]);
+
+  // Scroll to top when page changes
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [currentPage]);
+
   const handleCreateProject = async (data: ProjectFormData) => {
     try {
       // 1. Create the project first
@@ -160,7 +173,7 @@ export default function ProjectsPage() {
 
       // Refresh the projects list
       refetch();
-      setIsCreateModalOpen(false);
+      // Modal will close itself after successful submit
     } catch (error) {
       console.error("Error creating project:", error);
       throw error;
@@ -239,14 +252,43 @@ export default function ProjectsPage() {
           />
         </div>
 
-        {/* Results count */}
+        {/* Results count and pagination */}
         {!loading && (
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
-            {t("showing", {
-              count: filteredProjects.length,
-              total: projectsArray.length,
-            })}
-          </p>
+          <div className="flex items-center justify-between mb-6">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              {t("showing", {
+                count: filteredProjects.length,
+                total: projectsArray.length,
+              })}
+            </p>
+
+            {/* Pagination controls */}
+            {pagination && pagination.lastPage > 1 && (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-600 dark:text-gray-400">
+                  {t("pagination.page", { current: pagination.currentPage, total: pagination.lastPage })}
+                </span>
+                <div className="flex gap-1">
+                  <button
+                    onClick={() => setCurrentPage(currentPage - 1)}
+                    disabled={!pagination.hasPrev}
+                    className="p-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    aria-label={t("pagination.previous")}
+                  >
+                    <ChevronLeftIcon className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                  </button>
+                  <button
+                    onClick={() => setCurrentPage(currentPage + 1)}
+                    disabled={!pagination.hasNext}
+                    className="p-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    aria-label={t("pagination.next")}
+                  >
+                    <ChevronRightIcon className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         )}
 
         {/* Content */}

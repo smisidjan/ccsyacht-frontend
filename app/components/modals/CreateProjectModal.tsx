@@ -9,6 +9,9 @@ import FormInput from "@/app/components/ui/FormInput";
 import FormTextarea from "@/app/components/ui/FormTextarea";
 import FormSelect from "@/app/components/ui/FormSelect";
 import Button from "@/app/components/ui/Button";
+import Alert from "@/app/components/ui/Alert";
+import { useToast } from "@/app/context/ToastContext";
+import { getErrorMessage } from "@/lib/utils/errors";
 
 interface DocumentType {
   id: string;
@@ -19,7 +22,7 @@ interface DocumentType {
 interface CreateProjectModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: ProjectFormData) => void;
+  onSubmit: (data: ProjectFormData) => Promise<void>;
   shipyards: { id: string; name: string }[];
   projectTypes: { id: string; name: string }[];
 }
@@ -50,6 +53,7 @@ export default function CreateProjectModal({
   projectTypes,
 }: CreateProjectModalProps) {
   const t = useTranslations("createProject");
+  const { showToast } = useToast();
   const [formData, setFormData] = useState<ProjectFormData>({
     name: "",
     description: "",
@@ -59,10 +63,34 @@ export default function CreateProjectModal({
     documentTypes: defaultDocumentTypes,
   });
   const [newDocTypeName, setNewDocTypeName] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(formData);
+    setError("");
+    setLoading(true);
+
+    try {
+      await onSubmit(formData);
+      showToast("success", t("success"));
+      onClose();
+      // Reset form
+      setFormData({
+        name: "",
+        description: "",
+        shipyardId: "",
+        projectTypeId: "",
+        generalArrangement: null,
+        documentTypes: defaultDocumentTypes,
+      });
+    } catch (err) {
+      const errorMessage = getErrorMessage(err, t("error"));
+      setError(errorMessage);
+      showToast("error", errorMessage);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -114,12 +142,12 @@ export default function CreateProjectModal({
 
   const footer = (
     <div className="flex justify-end gap-3">
-      <Button type="button" variant="secondary" onClick={onClose}>
+      <Button type="button" variant="secondary" onClick={onClose} disabled={loading}>
         {t("cancel")}
       </Button>
-      <Button type="submit" form="create-project-form">
+      <Button type="submit" form="create-project-form" loading={loading} disabled={loading}>
         <DocumentIcon className="w-4 h-4" />
-        {t("createProject")}
+        {loading ? t("creating") : t("createProject")}
       </Button>
     </div>
   );
@@ -132,6 +160,8 @@ export default function CreateProjectModal({
       footer={footer}
       size="lg"
     >
+      {error && <Alert type="error" message={error} className="mb-6" />}
+
       <form id="create-project-form" onSubmit={handleSubmit} className="space-y-6">
         <FormInput
           id="project-name"

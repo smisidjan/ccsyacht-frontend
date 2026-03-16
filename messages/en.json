@@ -131,6 +131,11 @@
     "types": {
       "newBuilt": "New Built",
       "refit": "Refit"
+    },
+    "pagination": {
+      "page": "Page {current} of {total}",
+      "previous": "Previous page",
+      "next": "Next page"
     }
   },
   "createProject": {
@@ -150,7 +155,10 @@
     "addDocumentTypePlaceholder": "Enter document type name...",
     "add": "Add",
     "cancel": "Cancel",
-    "createProject": "Create Project"
+    "createProject": "Create Project",
+    "creating": "Creating...",
+    "success": "Project created successfully",
+    "error": "Failed to create project"
   },
   "projectDetail": {
     "projectNotFound": "Project not found",

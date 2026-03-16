@@ -131,6 +131,11 @@
     "types": {
       "newBuilt": "Nieuwbouw",
       "refit": "Refit"
+    },
+    "pagination": {
+      "page": "Pagina {current} van {total}",
+      "previous": "Vorige pagina",
+      "next": "Volgende pagina"
     }
   },
   "createProject": {
@@ -150,7 +155,10 @@
     "addDocumentTypePlaceholder": "Voer document type naam in...",
     "add": "Toevoegen",
     "cancel": "Annuleren",
-    "createProject": "Project Aanmaken"
+    "createProject": "Project Aanmaken",
+    "creating": "Aanmaken...",
+    "success": "Project succesvol aangemaakt",
+    "error": "Project aanmaken mislukt"
   },
   "projectDetail": {
     "projectNotFound": "Project niet gevonden",

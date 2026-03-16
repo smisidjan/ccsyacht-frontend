@@ -265,12 +265,20 @@ export function useProjects(params?: {
   project_type?: string;
   search?: string;
   per_page?: number;
+  page?: number;
 }) {
   const [state, setState] = useState<UseApiState<Project[]>>({
     data: null,
     loading: true,
     error: null,
   });
+  const [pagination, setPagination] = useState<{
+    currentPage: number;
+    lastPage: number;
+    total: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+  } | null>(null);
 
   const fetchProjects = useCallback(async () => {
     setState((prev) => ({ ...prev, loading: true, error: null }));
@@ -278,10 +286,22 @@ export function useProjects(params?: {
       const response = await projectsApi.getAll(params);
       const data = response.data || [];
       setState({ data, loading: false, error: null });
+
+      // Set pagination metadata
+      if (response.meta) {
+        setPagination({
+          currentPage: response.meta.current_page,
+          lastPage: response.meta.last_page,
+          total: response.meta.total,
+          hasNext: !!response.links?.next,
+          hasPrev: !!response.links?.prev,
+        });
+      }
     } catch (err) {
       setState({ data: null, loading: false, error: err as ApiError });
+      setPagination(null);
     }
-  }, [params?.status, params?.project_type, params?.search, params?.per_page]);
+  }, [params?.status, params?.project_type, params?.search, params?.per_page, params?.page]);
 
   useEffect(() => {
     fetchProjects();
@@ -309,6 +329,7 @@ export function useProjects(params?: {
 
   return {
     ...state,
+    pagination,
     refetch: fetchProjects,
     createProject,
     updateProject,
