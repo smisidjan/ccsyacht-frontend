@@ -182,7 +182,7 @@ export default function TenantUsersTable({ tenantId }: TenantUsersTableProps) {
             header: t("roleColumn"),
             cell: (user: SystemTenantUser) => (
               <span className="text-sm text-gray-600 dark:text-gray-400">
-                {user.worksFor.roleName || user.roles?.[0] || "-"}
+                {user.worksFor?.roleName || user.roles?.[0] || "-"}
               </span>
             ),
           },
@@ -190,7 +190,7 @@ export default function TenantUsersTable({ tenantId }: TenantUsersTableProps) {
             key: "type",
             header: t("typeColumn"),
             cell: (user: SystemTenantUser) => {
-              const userType = user.worksFor.employmentType;
+              const userType = user.worksFor?.employmentType;
               return (
                 <span
                   className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
