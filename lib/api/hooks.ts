@@ -9,6 +9,7 @@ import {
   shipyardsApi,
   projectsApi,
   rolesApi,
+  systemApi,
 } from "./client";
 import type {
   User,
@@ -25,6 +26,7 @@ import type {
   ApiError,
   CurrentUser,
   Role,
+  TenantRole,
 } from "./types";
 import { mapApiUserToUser } from "./types";
 
@@ -394,4 +396,58 @@ export function useRoles(type?: "employee" | "guest") {
     ...state,
     refetch: fetchRoles,
   };
+}
+
+// ============ System Tenant Roles Hooks ============
+export function useTenantRoles(tenantId: string) {
+  const [state, setState] = useState<UseApiState<TenantRole[]>>({
+    data: null,
+    loading: true,
+    error: null,
+  });
+
+  const fetchRoles = useCallback(async () => {
+    if (!tenantId) return;
+    setState((prev) => ({ ...prev, loading: true, error: null }));
+    try {
+      const response = await systemApi.getTenantRoles(tenantId);
+      setState({ data: response.itemListElement, loading: false, error: null });
+    } catch (err) {
+      setState({ data: null, loading: false, error: err as ApiError });
+    }
+  }, [tenantId]);
+
+  useEffect(() => {
+    fetchRoles();
+  }, [fetchRoles]);
+
+  return {
+    ...state,
+    refetch: fetchRoles,
+  };
+}
+
+export function useTenantPermissions(tenantId: string) {
+  const [state, setState] = useState<UseApiState<string[]>>({
+    data: null,
+    loading: true,
+    error: null,
+  });
+
+  const fetchPermissions = useCallback(async () => {
+    if (!tenantId) return;
+    setState((prev) => ({ ...prev, loading: true, error: null }));
+    try {
+      const response = await systemApi.getTenantPermissions(tenantId);
+      setState({ data: response.itemListElement, loading: false, error: null });
+    } catch (err) {
+      setState({ data: null, loading: false, error: err as ApiError });
+    }
+  }, [tenantId]);
+
+  useEffect(() => {
+    fetchPermissions();
+  }, [fetchPermissions]);
+
+  return state;
 }

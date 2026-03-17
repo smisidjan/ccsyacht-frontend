@@ -74,6 +74,29 @@ export interface Role {
   type: "employee" | "guest";
 }
 
+// System Admin - Tenant Role Management
+export interface TenantRole {
+  "@type"?: string;
+  identifier: string;
+  name: string;
+  additionalType: "employee" | "guest";
+  permissions: string[];
+  usersCount?: number;
+  dateCreated?: string;
+  dateModified?: string;
+}
+
+export interface CreateTenantRoleRequest {
+  name: string;
+  type: "employee" | "guest";
+  permissions: string[];
+}
+
+export interface UpdateTenantRoleRequest {
+  name?: string;
+  permissions?: string[];
+}
+
 // ============ Users ============
 export type UserRole =
   | "admin"

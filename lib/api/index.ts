@@ -11,6 +11,7 @@ export {
   invitationsApi,
   registrationRequestsApi,
   rolesApi,
+  systemApi,
   shipyardsApi,
   projectsApi,
 } from "./client";
@@ -49,6 +50,8 @@ export {
   useInvitations,
   useRegistrationRequests,
   useRoles,
+  useTenantRoles,
+  useTenantPermissions,
   useShipyards,
   useProjects,
   useProject,
