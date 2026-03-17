@@ -109,11 +109,18 @@ export default function UsersTab({
           {
             key: "organization",
             header: t("organization"),
-            cell: (user: User) => (
-              <span className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
-                {user.memberOf?.name || "-"}
-              </span>
-            ),
+            cell: (user: User) => {
+              // For guests, show home organization; for employees, show tenant organization
+              const organizationName = user.employmentType === "guest"
+                ? user.homeOrganization?.name
+                : user.memberOf?.name;
+
+              return (
+                <span className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                  {organizationName || "-"}
+                </span>
+              );
+            },
           },
         ]
       : []),

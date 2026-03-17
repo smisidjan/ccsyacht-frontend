@@ -102,6 +102,10 @@ export interface ApiUser {
     identifier: string;
     name: string;
   };
+  homeOrganization?: {
+    "@type"?: string;
+    name: string;
+  };
 }
 
 // Frontend User format (matches backend)
@@ -119,6 +123,9 @@ export interface User {
     identifier: string;
     name: string;
   };
+  homeOrganization?: {
+    name: string;
+  };
 }
 
 // Transform API user to frontend User
@@ -134,6 +141,7 @@ export function mapApiUserToUser(apiUser: ApiUser): User {
     active: apiUser.active ?? true,
     employmentType: apiUser.employmentType,
     memberOf: apiUser.memberOf,
+    homeOrganization: apiUser.homeOrganization,
   };
 }
 
