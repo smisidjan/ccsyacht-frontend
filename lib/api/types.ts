@@ -280,6 +280,7 @@ export interface Tenant {
   name: string;
   alternateName: string;
   isActive: boolean;
+  restrictedPermissions?: string[];
   dateCreated: string;
   dateModified: string;
 }
@@ -287,10 +288,15 @@ export interface Tenant {
 export interface CreateTenantRequest {
   name: string;
   admin_email: string;
+  restricted_permissions?: string[];
   subscription: {
     max_projects: number;
     max_users: number;
   };
+}
+
+export interface UpdateTenantRequest {
+  restricted_permissions?: string[];
 }
 
 export interface RegisterAdminRequest {

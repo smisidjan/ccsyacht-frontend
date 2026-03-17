@@ -586,6 +586,7 @@
       "createdAt": "Aangemaakt Op",
       "actions": "Acties",
       "viewDetails": "Bekijk details",
+      "editPermissions": "Rechten bewerken",
       "noOrganisations": "Geen organisaties gevonden"
     },
     "tenantDetail": {
@@ -711,11 +712,26 @@
       "maxProjectsPlaceholder": "10",
       "maxUsers": "Max Gebruikers",
       "maxUsersPlaceholder": "50",
+      "restrictedPermissions": "Beperkte Rechten",
+      "restricted": "beperkt",
+      "restrictedPermissionsHint": "Selecteer de rechten die NIET beschikbaar moeten zijn voor deze organisatie. Als er geen geselecteerd zijn, zijn alle rechten beschikbaar.",
       "cancel": "Annuleren",
       "create": "Organisatie Aanmaken",
       "creating": "Aanmaken...",
       "error": "Organisatie aanmaken mislukt",
       "success": "Organisatie succesvol aangemaakt"
+    },
+    "editTenantPermissionsModal": {
+      "title": "Rechten Bewerken - {name}",
+      "description": "Beheer beperkte rechten voor deze organisatie. Beperkte rechten zijn niet beschikbaar voor gebruikers in deze organisatie.",
+      "restrictedPermissions": "Beperkte Rechten",
+      "restricted": "beperkt",
+      "restrictedPermissionsHint": "Selecteer de rechten die NIET beschikbaar moeten zijn voor deze organisatie. Als er geen geselecteerd zijn, zijn alle rechten beschikbaar.",
+      "loading": "Rechten laden...",
+      "save": "Wijzigingen Opslaan",
+      "cancel": "Annuleren",
+      "success": "Organisatie rechten succesvol bijgewerkt",
+      "error": "Organisatie rechten bijwerken mislukt"
     },
     "login": {
       "title": "Systeem Inloggen",

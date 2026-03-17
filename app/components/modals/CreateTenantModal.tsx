@@ -4,11 +4,14 @@ import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import BaseModal from "./BaseModal";
 import FormInput from "@/app/components/ui/FormInput";
+import FormCheckbox from "@/app/components/ui/FormCheckbox";
+import { ALL_PERMISSIONS } from "@/lib/constants/permissions";
+import { formatRoleName } from "@/lib/utils/roleFormatter";
 
 interface CreateTenantModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (name: string, adminEmail: string, maxProjects: number, maxUsers: number) => Promise<void>;
+  onSubmit: (name: string, adminEmail: string, maxProjects: number, maxUsers: number, restrictedPermissions: string[]) => Promise<void>;
 }
 
 export default function CreateTenantModal({
@@ -21,6 +24,7 @@ export default function CreateTenantModal({
   const [adminEmail, setAdminEmail] = useState("");
   const [maxProjects, setMaxProjects] = useState<number | "">("");
   const [maxUsers, setMaxUsers] = useState<number | "">("");
+  const [restrictedPermissions, setRestrictedPermissions] = useState<string[]>([]);
 
   useEffect(() => {
     if (isOpen) {
@@ -28,6 +32,7 @@ export default function CreateTenantModal({
       setAdminEmail("");
       setMaxProjects("");
       setMaxUsers("");
+      setRestrictedPermissions([]);
     }
   }, [isOpen]);
 
@@ -37,11 +42,22 @@ export default function CreateTenantModal({
       return;
     }
 
-    await onSubmit(name, adminEmail, maxProjects, maxUsers);
+    await onSubmit(name, adminEmail, maxProjects, maxUsers, restrictedPermissions);
     setName("");
     setAdminEmail("");
     setMaxProjects("");
     setMaxUsers("");
+    setRestrictedPermissions([]);
+  };
+
+  const handlePermissionToggle = (permission: string) => {
+    setRestrictedPermissions((prev) => {
+      if (prev.includes(permission)) {
+        return prev.filter((p) => p !== permission);
+      } else {
+        return [...prev, permission];
+      }
+    });
   };
 
   return (
@@ -97,6 +113,32 @@ export default function CreateTenantModal({
         min={1}
         required
       />
+
+      <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          {t("restrictedPermissions")}
+          <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">
+            ({restrictedPermissions.length} {t("restricted")})
+          </span>
+        </label>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+          {t("restrictedPermissionsHint")}
+        </p>
+
+        <div className="max-h-60 overflow-y-auto border border-gray-300 dark:border-gray-600 rounded-lg p-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {ALL_PERMISSIONS.map((permission) => (
+              <FormCheckbox
+                key={permission}
+                id={`permission-${permission}`}
+                label={formatRoleName(permission)}
+                checked={restrictedPermissions.includes(permission)}
+                onChange={() => handlePermissionToggle(permission)}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
     </BaseModal>
   );
 }

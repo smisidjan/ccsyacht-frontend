@@ -556,6 +556,7 @@
       "createdAt": "Created At",
       "actions": "Actions",
       "viewDetails": "View details",
+      "editPermissions": "Edit permissions",
       "noOrganisations": "No organisations found"
     },
     "tenantDetail": {
@@ -681,11 +682,26 @@
       "maxProjectsPlaceholder": "10",
       "maxUsers": "Max Users",
       "maxUsersPlaceholder": "50",
+      "restrictedPermissions": "Restricted Permissions",
+      "restricted": "restricted",
+      "restrictedPermissionsHint": "Select the permissions that should NOT be available to this organisation. If none are selected, all permissions will be available.",
       "cancel": "Cancel",
       "create": "Create Organisation",
       "creating": "Creating...",
       "error": "Failed to create organisation",
       "success": "Organisation created successfully"
+    },
+    "editTenantPermissionsModal": {
+      "title": "Edit Permissions - {name}",
+      "description": "Manage restricted permissions for this organisation. Restricted permissions will not be available to users in this organisation.",
+      "restrictedPermissions": "Restricted Permissions",
+      "restricted": "restricted",
+      "restrictedPermissionsHint": "Select the permissions that should NOT be available to this organisation. If none are selected, all permissions will be available.",
+      "loading": "Loading permissions...",
+      "save": "Save Changes",
+      "cancel": "Cancel",
+      "success": "Organisation permissions updated successfully",
+      "error": "Failed to update organisation permissions"
     },
     "login": {
       "title": "System Login",
