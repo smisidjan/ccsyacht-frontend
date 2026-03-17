@@ -8,6 +8,7 @@ import { getStatusBadgeColor } from "@/lib/utils/badges";
 import { getInvitationStatusKey, canDeleteInvitation, canResendInvitation } from "@/lib/utils/status";
 import DeleteInvitationModal from "@/app/components/modals/DeleteInvitationModal";
 import RegistrationRequestCard from "./RegistrationRequestCard";
+import type { ApproveRequestData } from "@/app/components/modals/ProcessRegistrationRequestModal";
 import Button from "@/app/components/ui/Button";
 import Toast from "@/app/components/ui/Toast";
 import Table from "@/app/components/ui/Table";
@@ -23,7 +24,7 @@ interface InvitationsTabProps {
   registrationRequests?: RegistrationRequest[];
   requestsLoading?: boolean;
   onRefreshRequests?: () => Promise<void>;
-  onApproveRequest?: (requestId: string, role: string) => Promise<void>;
+  onApproveRequest?: (requestId: string, data: ApproveRequestData) => Promise<void>;
   onRejectRequest?: (requestId: string) => Promise<void>;
 }
 

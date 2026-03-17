@@ -4,12 +4,22 @@ import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import BaseModal from "./BaseModal";
 import FormSelect from "@/app/components/ui/FormSelect";
+import FormInput from "@/app/components/ui/FormInput";
+import FormRadioGroup from "@/app/components/ui/FormRadioGroup";
 import {
   CheckCircleIcon,
   ExclamationTriangleIcon,
 } from "@heroicons/react/24/outline";
+import { useRoles } from "@/lib/api";
+import { formatRoleName } from "@/lib/utils/roleFormatter";
 
 export type ProcessAction = "approve" | "reject";
+
+export interface ApproveRequestData {
+  role: string;
+  employmentType: "employee" | "guest";
+  homeOrganization?: string;
+}
 
 interface ProcessRegistrationRequestModalProps {
   isOpen: boolean;
@@ -17,19 +27,8 @@ interface ProcessRegistrationRequestModalProps {
   userName: string;
   userEmail: string;
   onClose: () => void;
-  onConfirm: (role?: string) => Promise<void>;
+  onConfirm: (data?: ApproveRequestData) => Promise<void>;
 }
-
-const AVAILABLE_ROLES = [
-  "user",
-  "admin",
-  "main user",
-  "invitation manager",
-  "yard",
-  "surveyor",
-  "painter",
-  "owner representative",
-];
 
 export default function ProcessRegistrationRequestModal({
   isOpen,
@@ -40,23 +39,54 @@ export default function ProcessRegistrationRequestModal({
   onConfirm,
 }: ProcessRegistrationRequestModalProps) {
   const t = useTranslations("usersPage.processRequestModal");
-  const [selectedRole, setSelectedRole] = useState("user");
+  const [employmentType, setEmploymentType] = useState<"employee" | "guest">("employee");
+  const [selectedRole, setSelectedRole] = useState("");
+  const [homeOrganization, setHomeOrganization] = useState("");
 
+  // Fetch roles based on employment type
+  const { data: employeeRoles } = useRoles("employee");
+  const { data: guestRoles } = useRoles("guest");
+  const availableRoles = employmentType === "guest" ? guestRoles : employeeRoles;
+
+  // Reset form when modal opens
   useEffect(() => {
     if (isOpen) {
-      setSelectedRole("user");
+      setEmploymentType("employee");
+      setSelectedRole("");
+      setHomeOrganization("");
     }
   }, [isOpen]);
+
+  // Set default role when roles are loaded or employment type changes
+  useEffect(() => {
+    if (availableRoles && availableRoles.length > 0) {
+      setSelectedRole(availableRoles[0].name);
+    }
+  }, [availableRoles]);
 
   const isApprove = action === "approve";
 
   const handleSubmit = async () => {
-    await onConfirm(isApprove ? selectedRole : undefined);
+    if (isApprove) {
+      const data: ApproveRequestData = {
+        role: selectedRole,
+        employmentType,
+      };
+
+      // Add home organization for guests
+      if (employmentType === "guest" && homeOrganization.trim()) {
+        data.homeOrganization = homeOrganization.trim();
+      }
+
+      await onConfirm(data);
+    } else {
+      await onConfirm(undefined);
+    }
   };
 
-  const roleOptions = AVAILABLE_ROLES.map((role) => ({
-    value: role,
-    label: t(`roles.${role.replace(/ /g, "_")}`),
+  const roleOptions = (availableRoles || []).map((role) => ({
+    value: role.name,
+    label: formatRoleName(role.name),
   }));
 
   return (
@@ -68,7 +98,7 @@ export default function ProcessRegistrationRequestModal({
       successMessage={isApprove ? t("approveSuccess") : t("rejectSuccess")}
       submitLabel={isApprove ? t("approve") : t("reject")}
       submitVariant={isApprove ? "success" : "danger"}
-      size="sm"
+      size="md"
     >
       <div className="flex flex-col items-center text-center">
         <div
@@ -95,7 +125,19 @@ export default function ProcessRegistrationRequestModal({
         </div>
 
         {isApprove && (
-          <div className="w-full text-left">
+          <div className="w-full text-left space-y-4">
+            <FormRadioGroup
+              id="employment-type"
+              name="employmentType"
+              label={t("employmentType")}
+              value={employmentType}
+              onChange={(value) => setEmploymentType(value as "employee" | "guest")}
+              options={[
+                { value: "employee", label: t("employee"), color: "blue" },
+                { value: "guest", label: t("guest"), color: "purple" },
+              ]}
+            />
+
             <FormSelect
               id="role"
               label={t("selectRole")}
@@ -104,6 +146,18 @@ export default function ProcessRegistrationRequestModal({
               options={roleOptions}
               required
             />
+
+            {employmentType === "guest" && (
+              <FormInput
+                id="home-organization"
+                type="text"
+                label={t("homeOrganization")}
+                value={homeOrganization}
+                onChange={(e) => setHomeOrganization(e.target.value)}
+                placeholder={t("homeOrganizationPlaceholder")}
+                required
+              />
+            )}
           </div>
         )}
       </div>

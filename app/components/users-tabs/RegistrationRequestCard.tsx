@@ -5,11 +5,11 @@ import { useTranslations } from "next-intl";
 import { CheckIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import type { RegistrationRequest } from "@/lib/api/types";
 import ProcessRegistrationRequestModal from "@/app/components/modals/ProcessRegistrationRequestModal";
-import type { ProcessAction } from "@/app/components/modals/ProcessRegistrationRequestModal";
+import type { ProcessAction, ApproveRequestData } from "@/app/components/modals/ProcessRegistrationRequestModal";
 
 interface RegistrationRequestCardProps {
   request: RegistrationRequest;
-  onApprove: (requestId: string, role: string) => Promise<void>;
+  onApprove: (requestId: string, data: ApproveRequestData) => Promise<void>;
   onReject: (requestId: string) => Promise<void>;
 }
 
@@ -29,9 +29,9 @@ export default function RegistrationRequestCard({
     setIsModalOpen(true);
   };
 
-  const handleConfirm = async (role?: string) => {
-    if (modalAction === "approve" && role) {
-      await onApprove(request.identifier, role);
+  const handleConfirm = async (data?: ApproveRequestData) => {
+    if (modalAction === "approve" && data) {
+      await onApprove(request.identifier, data);
     } else if (modalAction === "reject") {
       await onReject(request.identifier);
     }

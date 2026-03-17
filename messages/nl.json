@@ -488,7 +488,12 @@
         "yard": "Werf",
         "surveyor": "Inspecteur",
         "painter": "Schilder",
-        "owner_representative": "Eigenaar Vertegenwoordiger"
+        "owner_representative": "Eigenaar Vertegenwoordiger",
+        "applicator": "Aanbrenger",
+        "class": "Klasse",
+        "manufactor": "Fabrikant",
+        "viewer": "Kijker",
+        "werf": "Werf"
       },
       "infoText": "Er wordt een uitnodigingsmail naar dit adres verzonden. De gebruiker moet de uitnodiging accepteren en een wachtwoord aanmaken om toegang te krijgen tot het platform.",
       "guestInfo": "Gastgebruikers kunnen alleen via e-mail worden uitgenodigd. Ze kunnen de openbare registratielink niet gebruiken en moeten een persoonlijke uitnodiging ontvangen.",
@@ -540,7 +545,12 @@
       "rejectTitle": "Registratieverzoek Afwijzen",
       "approveMessage": "Weet je zeker dat je het registratieverzoek wilt goedkeuren voor:",
       "rejectMessage": "Weet je zeker dat je het registratieverzoek wilt afwijzen voor:",
+      "employmentType": "Gebruikerstype",
+      "employee": "Medewerker",
+      "guest": "Gast",
       "selectRole": "Selecteer Rol",
+      "homeOrganization": "Thuisorganisatie",
+      "homeOrganizationPlaceholder": "Voer bedrijfsnaam in",
       "roles": {
         "user": "Gebruiker",
         "admin": "Admin",
@@ -549,7 +559,12 @@
         "yard": "Werf",
         "surveyor": "Inspecteur",
         "painter": "Schilder",
-        "owner_representative": "Eigenaar Vertegenwoordiger"
+        "owner_representative": "Eigenaar Vertegenwoordiger",
+        "applicator": "Aanbrenger",
+        "class": "Klasse",
+        "manufactor": "Fabrikant",
+        "viewer": "Kijker",
+        "werf": "Werf"
       },
       "cancel": "Annuleren",
       "approve": "Goedkeuren",

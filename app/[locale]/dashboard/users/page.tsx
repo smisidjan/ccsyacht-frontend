@@ -19,6 +19,7 @@ import {
   useInvitations,
   useRegistrationRequests,
   useCurrentUser,
+  registrationRequestsApi,
 } from "@/lib/api";
 
 type TabKey = "users" | "invitations";
@@ -45,7 +46,6 @@ export default function UsersPage() {
     data: registrationRequests,
     loading: requestsLoading,
     refetch: refetchRequests,
-    approveRequest,
     rejectRequest,
   } = useRegistrationRequests();
 
@@ -114,11 +114,25 @@ export default function UsersPage() {
     await deleteInvitation(id);
   };
 
-  const handleApproveRequest = async (requestId: string, role: string) => {
+  const handleApproveRequest = async (requestId: string, data: { role: string; employmentType: "employee" | "guest"; homeOrganization?: string }) => {
     try {
-      await approveRequest(requestId, role);
-      // Refresh users list to show the newly approved user
-      refetchUsers();
+      // Map the data to the backend API format
+      const apiData: any = {
+        action: "approve",
+        role: data.role,
+        employment_type: data.employmentType,
+      };
+
+      // Add home organization for guests
+      if (data.employmentType === "guest" && data.homeOrganization) {
+        apiData.home_organization_name = data.homeOrganization;
+      }
+
+      await registrationRequestsApi.process(requestId, apiData);
+
+      // Refresh both registration requests and users list
+      await refetchRequests();
+      await refetchUsers();
     } catch (error) {
       const apiError = error as { message?: string; status?: number };
       console.error("Failed to approve request:", apiError.message || error, "Status:", apiError.status);
