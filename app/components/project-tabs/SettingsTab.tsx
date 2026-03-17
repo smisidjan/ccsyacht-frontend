@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { UserPlusIcon, TrashIcon, PencilIcon, UserCircleIcon, StarIcon } from "@heroicons/react/24/outline";
+import { UserPlusIcon, TrashIcon, PencilIcon, UserCircleIcon, StarIcon, DocumentTextIcon, TagIcon, BuildingOffice2Icon, CalendarIcon, UserIcon } from "@heroicons/react/24/outline";
 import { StarIcon as StarIconSolid } from "@heroicons/react/24/solid";
-import { useProjectMembers, useProjectSigners, useUsers } from "@/lib/api";
+import { useProjectMembers, useProjectSigners, useUsers, useProject, projectsApi } from "@/lib/api";
 import { usePermission } from "@/lib/hooks/usePermission";
 import { useMinimumLoadingTime } from "@/lib/hooks/useMinimumLoadingTime";
 import { useRealtimeMembers, useRealtimeSigners } from "@/lib/hooks/useRealtimeProject";
@@ -13,17 +13,31 @@ import Button from "@/app/components/ui/Button";
 import LoadingSkeleton from "@/app/components/ui/LoadingSkeleton";
 import Alert from "@/app/components/ui/Alert";
 import BaseModal from "@/app/components/modals/BaseModal";
-import type { User } from "@/lib/api/types";
+import ProfileInfoItem from "@/app/components/ui/ProfileInfoItem";
+import EditProjectModal from "@/app/components/modals/EditProjectModal";
+import type { User, ProjectType } from "@/lib/api/types";
 
 interface SettingsTabProps {
   projectId: string;
+  onProjectUpdate?: () => void;
 }
 
-export default function SettingsTab({ projectId }: SettingsTabProps) {
+export default function SettingsTab({ projectId, onProjectUpdate }: SettingsTabProps) {
   const t = useTranslations("projectDetail.settings");
+  const locale = "en"; // TODO: Get from useLocale() if needed
   const { hasPermission, user: currentUser } = usePermission();
 
+  const formatDate = (dateString: string | undefined) => {
+    if (!dateString) return "-";
+    return new Date(dateString).toLocaleDateString(locale, {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  };
+
   // Fetch data
+  const { data: project, refetch: refetchProject } = useProject(projectId);
   const { data: members, loading: rawMembersLoading, error: membersError, removeMember, addMember, refetch: refetchMembers } = useProjectMembers(projectId);
   const { data: signers, loading: rawSignersLoading, error: signersError, removeSigner, addSigner, refetch: refetchSigners } = useProjectSigners(projectId);
   const { data: allUsers } = useUsers();
@@ -38,10 +52,18 @@ export default function SettingsTab({ projectId }: SettingsTabProps) {
   // Permissions
   const canManageMembers = hasPermission(PERMISSIONS.MANAGE_PROJECT_MEMBERS);
   const canManageSigners = hasPermission(PERMISSIONS.MANAGE_PROJECT_SIGNERS);
+  const canEditProject = hasPermission(PERMISSIONS.EDIT_PROJECTS);
 
   // Modal states
   const [isAddMemberModalOpen, setIsAddMemberModalOpen] = useState(false);
+  const [isEditProjectModalOpen, setIsEditProjectModalOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState("");
+
+  // Project types for modal
+  const projectTypes = [
+    { id: "new_built", name: t("projectTypes.new_built") },
+    { id: "refit", name: t("projectTypes.refit") },
+  ];
 
   // Get available users (exclude already added members and current user)
   const memberIds = members?.map(m => m.member.identifier) || [];
@@ -75,10 +97,121 @@ export default function SettingsTab({ projectId }: SettingsTabProps) {
     }
   };
 
+  const handleEditProject = async (data: { name: string; description: string; project_type: ProjectType }) => {
+    await projectsApi.update(projectId, {
+      name: data.name,
+      description: data.description,
+      project_type: data.project_type,
+    });
+    await refetchProject();
+    onProjectUpdate?.();
+  };
+
   return (
     <div className="space-y-8">
-      {/* Team Members */}
-      <section id="members" className="bg-white dark:bg-gray-800 rounded-xl shadow-lg dark:shadow-gray-900/30 border border-gray-100 dark:border-gray-700 p-6">
+      {/* General Information */}
+      <section id="general-info" className="bg-white dark:bg-gray-800 rounded-xl shadow-lg dark:shadow-gray-900/30 border border-gray-100 dark:border-gray-700 p-6">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">
+          {t("generalInfo.title")}
+        </h3>
+
+        {project && (
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto_1fr] gap-8">
+            {/* Editable Fields */}
+            <div>
+              {canEditProject && (
+                <div className="flex items-center justify-end mb-4">
+                  <button
+                    onClick={() => setIsEditProjectModalOpen(true)}
+                    className="text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+                  >
+                    <PencilIcon className="w-4 h-4" />
+                    {t("generalInfo.edit")}
+                  </button>
+                </div>
+              )}
+              <div className="grid grid-rows-[repeat(3,auto)] grid-flow-col gap-x-8 gap-y-4 auto-cols-fr">
+                <ProfileInfoItem
+                  icon={DocumentTextIcon}
+                  iconBgColor="bg-blue-100 dark:bg-blue-900/30"
+                  iconColor="text-blue-600 dark:text-blue-400"
+                  label={t("generalInfo.name")}
+                  value={project.name}
+                />
+
+                <ProfileInfoItem
+                  icon={TagIcon}
+                  iconBgColor="bg-purple-100 dark:bg-purple-900/30"
+                  iconColor="text-purple-600 dark:text-purple-400"
+                  label={t("generalInfo.description")}
+                  value={project.description || t("generalInfo.noDescription")}
+                />
+
+                <ProfileInfoItem
+                  icon={BuildingOffice2Icon}
+                  iconBgColor="bg-green-100 dark:bg-green-900/30"
+                  iconColor="text-green-600 dark:text-green-400"
+                  label={t("generalInfo.type")}
+                  value={t(`projectTypes.${project.additionalType}`)}
+                />
+              </div>
+            </div>
+
+            {/* Divider */}
+            <div className="hidden lg:block w-px bg-gray-200 dark:bg-gray-700" />
+
+            {/* Read-only Fields */}
+            <div>
+              {/* Placeholder to align with edit button height */}
+              <div className="mb-4" style={{ height: canEditProject ? 'auto' : '0' }}>
+                {canEditProject && <div style={{ height: '32px' }} />}
+              </div>
+              <div className="grid grid-rows-[repeat(3,auto)] grid-flow-col gap-x-8 gap-y-4 auto-cols-fr">
+                <ProfileInfoItem
+                  icon={CalendarIcon}
+                  iconBgColor="bg-gray-100 dark:bg-gray-700/30"
+                  iconColor="text-gray-600 dark:text-gray-400"
+                  label={t("projectDetails.created")}
+                  value={formatDate(project.dateCreated)}
+                />
+
+                <ProfileInfoItem
+                  icon={CalendarIcon}
+                  iconBgColor="bg-gray-100 dark:bg-gray-700/30"
+                  iconColor="text-gray-600 dark:text-gray-400"
+                  label={t("projectDetails.modified")}
+                  value={formatDate(project.dateModified)}
+                />
+
+                {project.producer && (
+                  <ProfileInfoItem
+                    icon={BuildingOffice2Icon}
+                    iconBgColor="bg-gray-100 dark:bg-gray-700/30"
+                    iconColor="text-gray-600 dark:text-gray-400"
+                    label={t("projectDetails.shipyard")}
+                    value={project.producer.name}
+                  />
+                )}
+
+                {project.author && (
+                  <ProfileInfoItem
+                    icon={UserIcon}
+                    iconBgColor="bg-gray-100 dark:bg-gray-700/30"
+                    iconColor="text-gray-600 dark:text-gray-400"
+                    label={t("projectDetails.createdBy")}
+                    value={project.author.name}
+                  />
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </section>
+
+      {/* Team Members & Signers Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Team Members */}
+        <section id="members" className="bg-white dark:bg-gray-800 rounded-xl shadow-lg dark:shadow-gray-900/30 border border-gray-100 dark:border-gray-700 p-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
             {t("teamMembers.title")}
@@ -210,7 +343,8 @@ export default function SettingsTab({ projectId }: SettingsTabProps) {
             {t("signers.noSigners")}
           </div>
         )}
-      </section>
+        </section>
+      </div>
 
       {/* Add Member Modal */}
       <BaseModal
@@ -246,6 +380,19 @@ export default function SettingsTab({ projectId }: SettingsTabProps) {
           </select>
         </div>
       </BaseModal>
+
+      {/* Edit Project Modal */}
+      {project && (
+        <EditProjectModal
+          isOpen={isEditProjectModalOpen}
+          onClose={() => setIsEditProjectModalOpen(false)}
+          onSubmit={handleEditProject}
+          currentName={project.name}
+          currentDescription={project.description || ""}
+          currentProjectType={project.additionalType}
+          projectTypes={projectTypes}
+        />
+      )}
     </div>
   );
 }

@@ -160,6 +160,16 @@
     "success": "Project created successfully",
     "error": "Failed to create project"
   },
+  "editProject": {
+    "title": "Edit Project Information",
+    "projectName": "Project Name",
+    "description": "Description",
+    "projectType": "Project Type",
+    "save": "Save Changes",
+    "cancel": "Cancel",
+    "success": "Project updated successfully",
+    "error": "Failed to update project"
+  },
   "projectDetail": {
     "projectNotFound": "Project not found",
     "tabs": {
@@ -305,13 +315,23 @@
       "stagesCompleted": "stages completed"
     },
     "settings": {
-      "projectInfo": {
-        "title": "Project Information",
+      "generalInfo": {
+        "title": "General Information",
         "edit": "Edit",
-        "projectId": "Project ID",
+        "name": "Project Name",
+        "description": "Description",
+        "noDescription": "No description",
+        "type": "Project Type"
+      },
+      "projectDetails": {
+        "created": "Created",
+        "modified": "Last Modified",
         "shipyard": "Shipyard",
-        "projectType": "Project Type",
-        "createdAt": "Created At"
+        "createdBy": "Created By"
+      },
+      "projectTypes": {
+        "new_built": "New Built",
+        "refit": "Refit"
       },
       "teamMembers": {
         "title": "Team Members",

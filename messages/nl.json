@@ -160,6 +160,16 @@
     "success": "Project succesvol aangemaakt",
     "error": "Project aanmaken mislukt"
   },
+  "editProject": {
+    "title": "Project Informatie Bewerken",
+    "projectName": "Projectnaam",
+    "description": "Beschrijving",
+    "projectType": "Project Type",
+    "save": "Wijzigingen Opslaan",
+    "cancel": "Annuleren",
+    "success": "Project succesvol bijgewerkt",
+    "error": "Project bijwerken mislukt"
+  },
   "projectDetail": {
     "projectNotFound": "Project niet gevonden",
     "tabs": {
@@ -305,13 +315,23 @@
       "stagesCompleted": "fasen voltooid"
     },
     "settings": {
-      "projectInfo": {
-        "title": "Project Informatie",
+      "generalInfo": {
+        "title": "Algemene Informatie",
         "edit": "Bewerken",
-        "projectId": "Project ID",
-        "shipyard": "Scheepswerf",
-        "projectType": "Project Type",
-        "createdAt": "Aangemaakt Op"
+        "name": "Projectnaam",
+        "description": "Beschrijving",
+        "noDescription": "Geen beschrijving",
+        "type": "Project Type"
+      },
+      "projectDetails": {
+        "created": "Aangemaakt",
+        "modified": "Laatst Gewijzigd",
+        "shipyard": "Werf",
+        "createdBy": "Aangemaakt Door"
+      },
+      "projectTypes": {
+        "new_built": "Nieuwbouw",
+        "refit": "Refit"
       },
       "teamMembers": {
         "title": "Teamleden",

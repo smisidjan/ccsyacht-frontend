@@ -96,7 +96,7 @@ export default function ProjectDetailPage() {
       case "reporting":
         return <ReportingTab />;
       case "settings":
-        return <SettingsTab projectId={projectId} />;
+        return <SettingsTab projectId={projectId} onProjectUpdate={refetch} />;
       default:
         return null;
     }
