@@ -252,7 +252,7 @@ export default function TenantRolesTable({ tenantId }: TenantRolesTableProps) {
           },
         ]}
         data={filteredRoles}
-        keyExtractor={(role) => role.identifier}
+        keyExtractor={(role) => role.id}
         emptyMessage={
           searchQuery || filter !== "all"
             ? t("noSearchResults")

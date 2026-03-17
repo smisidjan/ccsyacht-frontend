@@ -653,6 +653,7 @@
           "roleType": "Role Type",
           "usersWithRole": "Users with this role",
           "warning": "Warning: Users with this role will need to be assigned a different role.",
+          "cannotDelete": "This role cannot be deleted because it has users assigned to it. Please reassign the users to a different role first.",
           "confirmQuestion": "Are you sure you want to proceed?",
           "delete": "Delete Role",
           "cancel": "Cancel",

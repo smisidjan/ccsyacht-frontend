@@ -65,16 +65,19 @@ export default function EditRoleModal({
 
   const handleSubmit = async () => {
     if (!role) return;
-    await onSubmit(role.identifier, formData);
+    await onSubmit(role.id, formData);
   };
 
   const handlePermissionToggle = (permission: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      permissions: prev.permissions.includes(permission)
-        ? prev.permissions.filter((p) => p !== permission)
-        : [...prev.permissions, permission],
-    }));
+    setFormData((prev) => {
+      const currentPermissions = prev.permissions || [];
+      return {
+        ...prev,
+        permissions: currentPermissions.includes(permission)
+          ? currentPermissions.filter((p) => p !== permission)
+          : [...currentPermissions, permission],
+      };
+    });
   };
 
   if (!role) return null;
@@ -117,7 +120,7 @@ export default function EditRoleModal({
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
           {t("permissions")}
           <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">
-            ({formData.permissions.length} {t("selected")})
+            ({formData.permissions?.length || 0} {t("selected")})
           </span>
         </label>
 
@@ -139,7 +142,7 @@ export default function EditRoleModal({
                 >
                   <input
                     type="checkbox"
-                    checked={formData.permissions.includes(permission)}
+                    checked={formData.permissions?.includes(permission) || false}
                     onChange={() => handlePermissionToggle(permission)}
                     className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                   />

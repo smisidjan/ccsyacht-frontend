@@ -683,6 +683,7 @@
           "roleType": "Roltype",
           "usersWithRole": "Gebruikers met deze rol",
           "warning": "Waarschuwing: Gebruikers met deze rol moeten een andere rol toegewezen krijgen.",
+          "cannotDelete": "Deze rol kan niet verwijderd worden omdat er gebruikers aan toegewezen zijn. Wijs de gebruikers eerst een andere rol toe.",
           "confirmQuestion": "Weet je zeker dat je wilt doorgaan?",
           "delete": "Rol Verwijderen",
           "cancel": "Annuleren",

@@ -22,10 +22,12 @@ export default function DeleteRoleModal({
 
   const handleDelete = async () => {
     if (!role) return;
-    await onConfirm(role.identifier);
+    await onConfirm(role.id);
   };
 
   if (!role) return null;
+
+  const hasUsers = role.usersCount > 0;
 
   return (
     <BaseModal
@@ -36,6 +38,7 @@ export default function DeleteRoleModal({
       successMessage={t("success", { name: role.name })}
       submitLabel={t("delete")}
       submitVariant="danger"
+      submitDisabled={hasUsers}
       cancelLabel={t("cancel")}
       errorFallbackMessage={t("error")}
       size="sm"
@@ -78,17 +81,17 @@ export default function DeleteRoleModal({
           </div>
         </div>
 
-        {role.usersCount && role.usersCount > 0 ? (
-          <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3">
-            <p className="text-sm text-yellow-800 dark:text-yellow-200">
-              ⚠️ {t("warning")}
+        {hasUsers ? (
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
+            <p className="text-sm text-red-800 dark:text-red-200 font-medium">
+              🚫 {t("cannotDelete")}
             </p>
           </div>
-        ) : null}
-
-        <p className="text-sm font-medium text-gray-900 dark:text-white">
-          {t("confirmQuestion")}
-        </p>
+        ) : (
+          <p className="text-sm font-medium text-gray-900 dark:text-white">
+            {t("confirmQuestion")}
+          </p>
+        )}
       </div>
     </BaseModal>
   );

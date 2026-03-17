@@ -77,11 +77,11 @@ export interface Role {
 // System Admin - Tenant Role Management
 export interface TenantRole {
   "@type"?: string;
-  identifier: string;
+  id: string;
   name: string;
   additionalType: "employee" | "guest";
   permissions: string[];
-  usersCount?: number;
+  usersCount: number;
   dateCreated?: string;
   dateModified?: string;
 }

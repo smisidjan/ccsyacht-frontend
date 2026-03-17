@@ -22,6 +22,7 @@ interface BaseModalProps {
   // Button customization
   submitLabel?: string;
   submitVariant?: ButtonVariant;
+  submitDisabled?: boolean;
   cancelLabel?: string;
   // Error handling
   errorFallbackMessage?: string;
@@ -38,6 +39,7 @@ export default function BaseModal({
   successMessage,
   submitLabel,
   submitVariant = "primary",
+  submitDisabled = false,
   cancelLabel,
   errorFallbackMessage,
 }: BaseModalProps) {
@@ -93,6 +95,7 @@ export default function BaseModal({
         form={formId}
         variant={submitVariant}
         loading={isSubmitting}
+        disabled={submitDisabled || isSubmitting}
         onClick={formId ? undefined : () => handleSubmit()}
       >
         {submitLabel || t("save")}
