@@ -33,7 +33,6 @@ export default function UsersPage() {
   // API hooks
   const { data: currentUser } = useCurrentUser();
   const { tenantName } = useTenant();
-  const { hasAnyPermission } = usePermission();
   const { data: users, loading: rawUsersLoading, updateUser, refetch: refetchUsers } = useUsers();
   const {
     data: invitations,
@@ -59,11 +58,8 @@ export default function UsersPage() {
   const currentUserRole = (currentUserRoles[0] as UserRole) || "user";
 
   // Check if user has invitation permissions
-  const canViewInvitations = hasAnyPermission([
-    PERMISSIONS.VIEW_INVITATIONS,
-    PERMISSIONS.CREATE_INVITATIONS,
-    PERMISSIONS.MANAGE_INVITATIONS,
-  ]);
+  const { hasPermission } = usePermission();
+  const canViewInvitations = hasPermission(PERMISSIONS.CREATE_INVITATIONS);
 
   // Build tabs array based on permissions
   const tabs: StateTab[] = [
