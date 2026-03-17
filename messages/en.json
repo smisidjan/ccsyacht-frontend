@@ -616,7 +616,49 @@
         "noSearchResults": "No roles found matching your search",
         "noRoles": "No roles found",
         "employee": "Employee",
-        "guest": "Guest"
+        "guest": "Guest",
+        "createModal": {
+          "title": "Create Role",
+          "roleName": "Role Name",
+          "roleNamePlaceholder": "Enter role name",
+          "roleType": "Role Type",
+          "permissions": "Permissions",
+          "selected": "selected",
+          "loadingPermissions": "Loading permissions...",
+          "noPermissions": "No permissions available",
+          "hint": "Select the permissions this role should have",
+          "create": "Create Role",
+          "success": "Role created successfully",
+          "error": "Failed to create role"
+        },
+        "editModal": {
+          "title": "Edit Role",
+          "roleName": "Role Name",
+          "roleNamePlaceholder": "Enter role name",
+          "roleType": "Role Type",
+          "typeCannotChange": "cannot be changed",
+          "permissions": "Permissions",
+          "selected": "selected",
+          "loadingPermissions": "Loading permissions...",
+          "noPermissions": "No permissions available",
+          "hint": "Update the permissions for this role",
+          "save": "Save Changes",
+          "success": "Role updated successfully",
+          "error": "Failed to update role"
+        },
+        "deleteModal": {
+          "title": "Delete Role",
+          "message": "Are you sure you want to delete this role? This action cannot be undone.",
+          "roleName": "Role Name",
+          "roleType": "Role Type",
+          "usersWithRole": "Users with this role",
+          "warning": "Warning: Users with this role will need to be assigned a different role.",
+          "confirmQuestion": "Are you sure you want to proceed?",
+          "delete": "Delete Role",
+          "cancel": "Cancel",
+          "success": "Role '{name}' deleted successfully",
+          "error": "Failed to delete role"
+        }
       }
     },
     "tenantSettings": {

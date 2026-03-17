@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import {
   PencilIcon,
@@ -10,13 +10,16 @@ import {
 import { useTenantRoles } from "@/lib/api";
 import { systemApi } from "@/lib/api/client";
 import { useToast } from "@/app/context/ToastContext";
-import type { TenantRole } from "@/lib/api/types";
+import type { TenantRole, CreateTenantRoleRequest, UpdateTenantRoleRequest } from "@/lib/api/types";
 import { formatRoleName } from "@/lib/utils/roleFormatter";
 import SearchInput from "@/app/components/ui/SearchInput";
 import Button from "@/app/components/ui/Button";
 import Table from "@/app/components/ui/Table";
 import LoadingSkeleton from "@/app/components/ui/LoadingSkeleton";
 import Alert from "@/app/components/ui/Alert";
+import CreateRoleModal from "@/app/components/modals/CreateRoleModal";
+import EditRoleModal from "@/app/components/modals/EditRoleModal";
+import DeleteRoleModal from "@/app/components/modals/DeleteRoleModal";
 
 interface TenantRolesTableProps {
   tenantId: string;
@@ -31,7 +34,12 @@ export default function TenantRolesTable({ tenantId }: TenantRolesTableProps) {
   const [filteredRoles, setFilteredRoles] = useState<TenantRole[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [filter, setFilter] = useState<string>("all");
-  const [deletingRole, setDeletingRole] = useState<string | null>(null);
+
+  // Modal state
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [selectedRole, setSelectedRole] = useState<TenantRole | null>(null);
 
   // Fetch role types
   useEffect(() => {
@@ -75,33 +83,34 @@ export default function TenantRolesTable({ tenantId }: TenantRolesTableProps) {
     setFilteredRoles(filtered);
   }, [roles, searchQuery, filter]);
 
-  const handleDelete = async (role: TenantRole) => {
-    // TODO: Show confirmation modal
-    if (!window.confirm(t("deleteConfirm", { name: role.name }))) {
-      return;
-    }
+  // Modal handlers
+  const handleCreate = () => {
+    setIsCreateModalOpen(true);
+  };
 
-    try {
-      setDeletingRole(role.identifier);
-      await systemApi.deleteTenantRole(tenantId, role.identifier);
-      showToast("success", t("deleteSuccess", { name: role.name }));
-      refetch();
-    } catch (err) {
-      console.error("Failed to delete role:", err);
-      showToast("error", t("deleteError"));
-    } finally {
-      setDeletingRole(null);
-    }
+  const handleCreateSubmit = async (data: CreateTenantRoleRequest) => {
+    await systemApi.createTenantRole(tenantId, data);
+    refetch();
   };
 
   const handleEdit = (role: TenantRole) => {
-    // TODO: Open edit modal
-    showToast("info", `Edit role: ${role.name} (coming soon)`);
+    setSelectedRole(role);
+    setIsEditModalOpen(true);
   };
 
-  const handleCreate = () => {
-    // TODO: Open create modal
-    showToast("info", "Create role (coming soon)");
+  const handleEditSubmit = async (roleId: string, data: UpdateTenantRoleRequest) => {
+    await systemApi.updateTenantRole(tenantId, roleId, data);
+    refetch();
+  };
+
+  const handleDeleteClick = (role: TenantRole) => {
+    setSelectedRole(role);
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleDeleteConfirm = async (roleId: string) => {
+    await systemApi.deleteTenantRole(tenantId, roleId);
+    refetch();
   };
 
   if (loading) {
@@ -232,9 +241,7 @@ export default function TenantRolesTable({ tenantId }: TenantRolesTableProps) {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => handleDelete(role)}
-                  disabled={deletingRole === role.identifier}
-                  loading={deletingRole === role.identifier}
+                  onClick={() => handleDeleteClick(role)}
                   title={t("deleteRole")}
                   className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
                 >
@@ -251,6 +258,35 @@ export default function TenantRolesTable({ tenantId }: TenantRolesTableProps) {
             ? t("noSearchResults")
             : t("noRoles")
         }
+      />
+
+      {/* Modals */}
+      <CreateRoleModal
+        isOpen={isCreateModalOpen}
+        tenantId={tenantId}
+        onClose={() => setIsCreateModalOpen(false)}
+        onSubmit={handleCreateSubmit}
+      />
+
+      <EditRoleModal
+        isOpen={isEditModalOpen}
+        tenantId={tenantId}
+        role={selectedRole}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setSelectedRole(null);
+        }}
+        onSubmit={handleEditSubmit}
+      />
+
+      <DeleteRoleModal
+        isOpen={isDeleteModalOpen}
+        role={selectedRole}
+        onClose={() => {
+          setIsDeleteModalOpen(false);
+          setSelectedRole(null);
+        }}
+        onConfirm={handleDeleteConfirm}
       />
     </div>
   );

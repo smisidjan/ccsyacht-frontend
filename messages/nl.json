@@ -646,7 +646,49 @@
         "noSearchResults": "Geen rollen gevonden die overeenkomen met je zoekopdracht",
         "noRoles": "Geen rollen gevonden",
         "employee": "Medewerker",
-        "guest": "Gast"
+        "guest": "Gast",
+        "createModal": {
+          "title": "Rol Aanmaken",
+          "roleName": "Rolnaam",
+          "roleNamePlaceholder": "Voer rolnaam in",
+          "roleType": "Roltype",
+          "permissions": "Permissies",
+          "selected": "geselecteerd",
+          "loadingPermissions": "Permissies laden...",
+          "noPermissions": "Geen permissies beschikbaar",
+          "hint": "Selecteer de permissies die deze rol moet hebben",
+          "create": "Rol Aanmaken",
+          "success": "Rol succesvol aangemaakt",
+          "error": "Rol aanmaken mislukt"
+        },
+        "editModal": {
+          "title": "Rol Bewerken",
+          "roleName": "Rolnaam",
+          "roleNamePlaceholder": "Voer rolnaam in",
+          "roleType": "Roltype",
+          "typeCannotChange": "kan niet worden gewijzigd",
+          "permissions": "Permissies",
+          "selected": "geselecteerd",
+          "loadingPermissions": "Permissies laden...",
+          "noPermissions": "Geen permissies beschikbaar",
+          "hint": "Werk de permissies voor deze rol bij",
+          "save": "Wijzigingen Opslaan",
+          "success": "Rol succesvol bijgewerkt",
+          "error": "Rol bijwerken mislukt"
+        },
+        "deleteModal": {
+          "title": "Rol Verwijderen",
+          "message": "Weet je zeker dat je deze rol wilt verwijderen? Deze actie kan niet ongedaan worden gemaakt.",
+          "roleName": "Rolnaam",
+          "roleType": "Roltype",
+          "usersWithRole": "Gebruikers met deze rol",
+          "warning": "Waarschuwing: Gebruikers met deze rol moeten een andere rol toegewezen krijgen.",
+          "confirmQuestion": "Weet je zeker dat je wilt doorgaan?",
+          "delete": "Rol Verwijderen",
+          "cancel": "Annuleren",
+          "success": "Rol '{name}' succesvol verwijderd",
+          "error": "Rol verwijderen mislukt"
+        }
       }
     },
     "tenantSettings": {
