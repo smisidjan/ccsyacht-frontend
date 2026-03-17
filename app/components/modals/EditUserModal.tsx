@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import BaseModal from "./BaseModal";
 import FormInput from "@/app/components/ui/FormInput";
+import FormSelect from "@/app/components/ui/FormSelect";
 import type { User, UserRole, UpdateUserRequest } from "@/lib/api/types";
 import { useRoles } from "@/lib/api";
 import { formatRoleName } from "@/lib/utils/roleFormatter";
@@ -20,7 +21,7 @@ export default function EditUserModal({ isOpen, user, onClose, onSubmit }: EditU
   const [formData, setFormData] = useState({
     name: "",
     email: "",
-    roles: [] as UserRole[],
+    role: "" as UserRole,
     active: true,
   });
 
@@ -33,7 +34,7 @@ export default function EditUserModal({ isOpen, user, onClose, onSubmit }: EditU
       setFormData({
         name: user.name,
         email: user.email,
-        roles: user.roles,
+        role: user.roles[0] || ("" as UserRole),
         active: user.active,
       });
     }
@@ -44,14 +45,6 @@ export default function EditUserModal({ isOpen, user, onClose, onSubmit }: EditU
     await onSubmit(user.id, formData);
   };
 
-  const handleRoleToggle = (role: UserRole) => {
-    setFormData((prev) => ({
-      ...prev,
-      roles: prev.roles.includes(role)
-        ? prev.roles.filter((r) => r !== role)
-        : [...prev.roles, role],
-    }));
-  };
 
   if (!user) return null;
 
@@ -85,26 +78,17 @@ export default function EditUserModal({ isOpen, user, onClose, onSubmit }: EditU
         required
       />
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-          {t("roles")}
-        </label>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          {(availableRoles || []).map((role) => (
-            <label key={role.name} className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={formData.roles.includes(role.name as UserRole)}
-                onChange={() => handleRoleToggle(role.name as UserRole)}
-                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-              />
-              <span className="text-sm text-gray-700 dark:text-gray-300">
-                {formatRoleName(role.name)}
-              </span>
-            </label>
-          ))}
-        </div>
-      </div>
+      <FormSelect
+        id="role"
+        label={t("role")}
+        value={formData.role}
+        onChange={(e) => setFormData({ ...formData, role: e.target.value as UserRole })}
+        options={(availableRoles || []).map((role) => ({
+          value: role.name,
+          label: formatRoleName(role.name),
+        }))}
+        required
+      />
 
       <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
         <label className="flex items-center justify-between cursor-pointer">
