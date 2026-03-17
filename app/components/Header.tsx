@@ -5,6 +5,7 @@ import { useTheme } from "next-themes";
 import { useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
 import { useAuth } from "@/app/context/AuthContext";
+import { useCurrentUser } from "@/lib/api";
 
 export default function Header() {
   const [mounted, setMounted] = useState(false);
@@ -13,6 +14,7 @@ export default function Header() {
   const pathname = usePathname();
   const { resolvedTheme, setTheme } = useTheme();
   const { token, logout } = useAuth();
+  const { data: currentUser } = useCurrentUser();
   const t = useTranslations("common");
   const tTheme = useTranslations("theme");
 
@@ -68,7 +70,27 @@ export default function Header() {
                   </svg>
                 </button>
                 {dropdownOpen && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-xl dark:shadow-gray-900/50 border border-gray-100 dark:border-gray-700 py-2 z-50">
+                  <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-gray-800 rounded-xl shadow-xl dark:shadow-gray-900/50 border border-gray-100 dark:border-gray-700 py-2 z-50">
+                    {/* User Info Section */}
+                    {currentUser && (
+                      <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-semibold flex-shrink-0">
+                            {currentUser.name?.charAt(0).toUpperCase() || "U"}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
+                              {currentUser.name}
+                            </p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                              {currentUser.email}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Menu Items */}
                     <Link
                       href="/dashboard/profile"
                       className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
