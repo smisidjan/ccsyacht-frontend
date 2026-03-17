@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import BaseModal from "./BaseModal";
 import FormInput from "@/app/components/ui/FormInput";
+import FormCheckbox from "@/app/components/ui/FormCheckbox";
 import { systemApi } from "@/lib/api/client";
 import type { TenantRole, UpdateTenantRoleRequest } from "@/lib/api/types";
 import { formatRoleName } from "@/lib/utils/roleFormatter";
@@ -136,20 +137,13 @@ export default function EditRoleModal({
           <div className="max-h-60 overflow-y-auto border border-gray-300 dark:border-gray-600 rounded-lg p-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {availablePermissions.map((permission) => (
-                <label
+                <FormCheckbox
                   key={permission}
-                  className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-2 rounded"
-                >
-                  <input
-                    type="checkbox"
-                    checked={formData.permissions?.includes(permission) || false}
-                    onChange={() => handlePermissionToggle(permission)}
-                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                  />
-                  <span className="text-sm text-gray-700 dark:text-gray-300">
-                    {formatRoleName(permission)}
-                  </span>
-                </label>
+                  id={`edit-permission-${permission}`}
+                  label={formatRoleName(permission)}
+                  checked={formData.permissions?.includes(permission) || false}
+                  onChange={() => handlePermissionToggle(permission)}
+                />
               ))}
             </div>
           </div>
