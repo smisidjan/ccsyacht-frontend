@@ -16,6 +16,8 @@ import StatsCard from "@/app/components/ui/StatsCard";
 import Button from "@/app/components/ui/Button";
 import Spinner from "@/app/components/ui/Spinner";
 import Alert from "@/app/components/ui/Alert";
+import TabNavState from "@/app/components/ui/TabNavState";
+import type { StateTab } from "@/app/components/ui/TabNavState";
 import TenantUsersTable from "@/app/components/system-tabs/TenantUsersTable";
 import TenantInvitationsTable from "@/app/components/system-tabs/TenantInvitationsTable";
 import TenantRolesTable from "@/app/components/system-tabs/TenantRolesTable";
@@ -46,6 +48,13 @@ export default function TenantDetailPage() {
   const [maxUsers, setMaxUsers] = useState<number | null>(null);
   const [isCcsYacht, setIsCcsYacht] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  // Build tabs array
+  const tabs: StateTab[] = [
+    { key: "users", label: t("usersTab") },
+    { key: "invitations", label: t("invitationsTab") },
+    { key: "roles", label: t("rolesTab") },
+  ];
 
   useEffect(() => {
     async function fetchData() {
@@ -165,47 +174,21 @@ export default function TenantDetailPage() {
       )}
 
       {/* Tabs */}
-      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl">
-        <div className="flex gap-1 p-2">
-          <button
-            onClick={() => setActiveTab("users")}
-            className={`px-6 py-3 rounded-xl text-sm font-medium transition-all ${
-              activeTab === "users"
-                ? "bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg"
-                : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
-            }`}
-          >
-            {t("usersTab")}
-          </button>
-          <button
-            onClick={() => setActiveTab("invitations")}
-            className={`px-6 py-3 rounded-xl text-sm font-medium transition-all ${
-              activeTab === "invitations"
-                ? "bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg"
-                : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
-            }`}
-          >
-            {t("invitationsTab")}
-          </button>
-          <button
-            onClick={() => setActiveTab("roles")}
-            className={`px-6 py-3 rounded-xl text-sm font-medium transition-all ${
-              activeTab === "roles"
-                ? "bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg"
-                : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
-            }`}
-          >
-            {t("rolesTab")}
-          </button>
-        </div>
+      <div className="mb-6">
+        <TabNavState
+          tabs={tabs}
+          activeTab={activeTab}
+          onChange={(key) => setActiveTab(key as TabType)}
+        />
+      </div>
 
-        <div className="p-6">
-          {activeTab === "users" && <TenantUsersTable tenantId={tenantId} />}
-          {activeTab === "invitations" && (
-            <TenantInvitationsTable tenantId={tenantId} />
-          )}
-          {activeTab === "roles" && <TenantRolesTable tenantId={tenantId} />}
-        </div>
+      {/* Tab Content */}
+      <div>
+        {activeTab === "users" && <TenantUsersTable tenantId={tenantId} />}
+        {activeTab === "invitations" && (
+          <TenantInvitationsTable tenantId={tenantId} />
+        )}
+        {activeTab === "roles" && <TenantRolesTable tenantId={tenantId} />}
       </div>
 
       {/* Settings Modal */}
