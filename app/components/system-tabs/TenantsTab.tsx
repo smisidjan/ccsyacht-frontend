@@ -7,10 +7,12 @@ import {
   PlusIcon,
   BuildingOfficeIcon,
   EyeIcon,
+  PencilIcon,
 } from "@heroicons/react/24/outline";
 import { systemApi, getSystemToken } from "@/lib/api/client";
 import type { Tenant, ApiError } from "@/lib/api/types";
 import CreateTenantModal from "@/app/components/modals/CreateTenantModal";
+import EditTenantPermissionsModal from "@/app/components/modals/EditTenantPermissionsModal";
 import Button from "@/app/components/ui/Button";
 import Alert from "@/app/components/ui/Alert";
 import LoadingSkeleton from "@/app/components/ui/LoadingSkeleton";
@@ -23,6 +25,8 @@ export default function TenantsTab() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isEditPermissionsModalOpen, setIsEditPermissionsModalOpen] = useState(false);
+  const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null);
 
   const fetchTenants = useCallback(async () => {
     setLoading(true);
@@ -58,12 +62,14 @@ export default function TenantsTab() {
     name: string,
     adminEmail: string,
     maxProjects: number,
-    maxUsers: number
+    maxUsers: number,
+    restrictedPermissions: string[]
   ) => {
     try {
       await systemApi.createTenant({
         name,
         admin_email: adminEmail,
+        restricted_permissions: restrictedPermissions.length > 0 ? restrictedPermissions : undefined,
         subscription: {
           max_projects: maxProjects,
           max_users: maxUsers,
@@ -75,6 +81,26 @@ export default function TenantsTab() {
       const apiError = err as ApiError;
       console.error("Failed to create organisation:", apiError?.message);
       throw new Error(apiError?.message || "Failed to create organisation");
+    }
+  };
+
+  const handleEditPermissions = (tenant: Tenant) => {
+    setSelectedTenant(tenant);
+    setIsEditPermissionsModalOpen(true);
+  };
+
+  const handleUpdatePermissions = async (tenantId: string, restrictedPermissions: string[]) => {
+    try {
+      await systemApi.updateTenant(tenantId, {
+        restricted_permissions: restrictedPermissions.length > 0 ? restrictedPermissions : undefined,
+      });
+      setIsEditPermissionsModalOpen(false);
+      setSelectedTenant(null);
+      fetchTenants();
+    } catch (err) {
+      const apiError = err as ApiError;
+      console.error("Failed to update organisation permissions:", apiError?.message);
+      throw new Error(apiError?.message || "Failed to update organisation permissions");
     }
   };
 
@@ -160,16 +186,31 @@ export default function TenantsTab() {
           {
             key: "actions",
             header: t("actions"),
-            cell: (tenant: Tenant) => (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => router.push(`/dashboard/system/organizations/${tenant.identifier}`)}
-                title={t("viewDetails")}
-              >
-                <EyeIcon className="w-4 h-4" />
-              </Button>
-            ),
+            cell: (tenant: Tenant) => {
+              const isCcsYacht = tenant.name.toLowerCase() === "ccs yacht";
+              return (
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => router.push(`/dashboard/system/organizations/${tenant.identifier}`)}
+                    title={t("viewDetails")}
+                  >
+                    <EyeIcon className="w-4 h-4" />
+                  </Button>
+                   {!isCcsYacht && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleEditPermissions(tenant)}
+                      title={t("editPermissions")}
+                    >
+                      <PencilIcon className="w-4 h-4" />
+                    </Button>
+                  )}
+                </div>
+              );
+            },
           },
         ]}
         data={tenants}
@@ -182,6 +223,16 @@ export default function TenantsTab() {
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
         onSubmit={handleCreateTenant}
+      />
+
+      <EditTenantPermissionsModal
+        isOpen={isEditPermissionsModalOpen}
+        tenant={selectedTenant}
+        onClose={() => {
+          setIsEditPermissionsModalOpen(false);
+          setSelectedTenant(null);
+        }}
+        onSubmit={handleUpdatePermissions}
       />
     </div>
   );

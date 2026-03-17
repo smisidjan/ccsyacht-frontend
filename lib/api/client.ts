@@ -23,6 +23,7 @@ import type {
   ProcessRegistrationRequest,
   Tenant,
   CreateTenantRequest,
+  UpdateTenantRequest,
   CreateTenantUserRequest,
   TenantRegistrationInfo,
   RegisterAdminRequest,
@@ -507,9 +508,18 @@ export const systemApi = {
   getTenants: (): Promise<PaginatedResponse<Tenant>> =>
     apiFetchSystem("/system/tenants"),
 
+  getTenant: (tenantId: string): Promise<Tenant> =>
+    apiFetchSystem(`/system/tenants/${tenantId}`),
+
   createTenant: (data: CreateTenantRequest): Promise<Tenant> =>
     apiFetchSystem("/system/tenants", {
       method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  updateTenant: (tenantId: string, data: UpdateTenantRequest): Promise<Tenant> =>
+    apiFetchSystem(`/system/tenants/${tenantId}`, {
+      method: "PUT",
       body: JSON.stringify(data),
     }),
 
