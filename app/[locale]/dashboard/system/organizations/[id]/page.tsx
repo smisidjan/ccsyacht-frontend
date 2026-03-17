@@ -18,9 +18,10 @@ import Spinner from "@/app/components/ui/Spinner";
 import Alert from "@/app/components/ui/Alert";
 import TenantUsersTable from "@/app/components/system-tabs/TenantUsersTable";
 import TenantInvitationsTable from "@/app/components/system-tabs/TenantInvitationsTable";
+import TenantRolesTable from "@/app/components/system-tabs/TenantRolesTable";
 import TenantSettingsModal from "@/app/components/modals/TenantSettingsModal";
 
-type TabType = "users" | "invitations";
+type TabType = "users" | "invitations" | "roles";
 
 export default function TenantDetailPage() {
   const t = useTranslations("systemSettings.tenantDetail");
@@ -186,6 +187,16 @@ export default function TenantDetailPage() {
           >
             {t("invitationsTab")}
           </button>
+          <button
+            onClick={() => setActiveTab("roles")}
+            className={`px-6 py-3 rounded-xl text-sm font-medium transition-all ${
+              activeTab === "roles"
+                ? "bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg"
+                : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+            }`}
+          >
+            {t("rolesTab")}
+          </button>
         </div>
 
         <div className="p-6">
@@ -193,6 +204,7 @@ export default function TenantDetailPage() {
           {activeTab === "invitations" && (
             <TenantInvitationsTable tenantId={tenantId} />
           )}
+          {activeTab === "roles" && <TenantRolesTable tenantId={tenantId} />}
         </div>
       </div>
 
