@@ -67,6 +67,13 @@ export interface CurrentUser {
   memberOf: CurrentUserOrganization;
 }
 
+// ============ Roles ============
+export interface Role {
+  id: number;
+  name: string;
+  type: "employee" | "guest";
+}
+
 // ============ Users ============
 export type UserRole =
   | "admin"

@@ -10,6 +10,7 @@ export {
   usersApi,
   invitationsApi,
   registrationRequestsApi,
+  rolesApi,
   shipyardsApi,
   projectsApi,
 } from "./client";
@@ -47,6 +48,7 @@ export {
   useUsers,
   useInvitations,
   useRegistrationRequests,
+  useRoles,
   useShipyards,
   useProjects,
   useProject,

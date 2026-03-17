@@ -10,6 +10,7 @@ import type {
   User,
   ApiUser,
   UpdateUserRequest,
+  Role,
   Invitation,
   CreateInvitationRequest,
   AcceptInvitationRequest,
@@ -387,6 +388,14 @@ export const usersApi = {
     apiFetch(`/users/${id}`, {
       method: "DELETE",
     }),
+};
+
+// ============ Roles API ============
+export const rolesApi = {
+  getAll: (type?: "employee" | "guest"): Promise<Role[]> => {
+    const params = type ? `?type=${type}` : "";
+    return apiFetch(`/roles${params}`);
+  },
 };
 
 // ============ Invitations API ============

@@ -8,6 +8,7 @@ import {
   authApi,
   shipyardsApi,
   projectsApi,
+  rolesApi,
 } from "./client";
 import type {
   User,
@@ -23,6 +24,7 @@ import type {
   UpdateProjectRequest,
   ApiError,
   CurrentUser,
+  Role,
 } from "./types";
 import { mapApiUserToUser } from "./types";
 
@@ -363,5 +365,33 @@ export function useProject(projectId: string) {
   return {
     ...state,
     refetch: fetchProject,
+  };
+}
+
+// ============ Roles Hooks ============
+export function useRoles(type?: "employee" | "guest") {
+  const [state, setState] = useState<UseApiState<Role[]>>({
+    data: null,
+    loading: true,
+    error: null,
+  });
+
+  const fetchRoles = useCallback(async () => {
+    setState((prev) => ({ ...prev, loading: true, error: null }));
+    try {
+      const data = await rolesApi.getAll(type);
+      setState({ data, loading: false, error: null });
+    } catch (err) {
+      setState({ data: null, loading: false, error: err as ApiError });
+    }
+  }, [type]);
+
+  useEffect(() => {
+    fetchRoles();
+  }, [fetchRoles]);
+
+  return {
+    ...state,
+    refetch: fetchRoles,
   };
 }
