@@ -9,7 +9,8 @@ import FormSelect from "@/app/components/ui/FormSelect";
 import FormRadioGroup from "@/app/components/ui/FormRadioGroup";
 import Alert from "@/app/components/ui/Alert";
 import type { CreateInvitationRequest } from "@/lib/api/types";
-import { invitationsApi } from "@/lib/api/client";
+import { invitationsApi, useRoles } from "@/lib/api";
+import { formatRoleName } from "@/lib/utils/roleFormatter";
 
 export interface InviteUserFormData {
   email: string;
@@ -25,17 +26,6 @@ interface InviteUserModalProps {
   tenantName?: string;
 }
 
-const AVAILABLE_ROLES = [
-  "user",
-  "admin",
-  "main user",
-  "invitation manager",
-  "yard",
-  "surveyor",
-  "painter",
-  "owner representative",
-];
-
 function generateSlug(name: string): string {
   return name
     .toLowerCase()
@@ -48,12 +38,15 @@ export default function InviteUserModal({ isOpen, onClose, onSubmit, tenantName 
   const locale = useLocale();
   const [formData, setFormData] = useState<InviteUserFormData>({
     email: "",
-    role: "user",
+    role: "",
     employmentType: "employee",
     homeOrganization: "",
   });
   const [linkCopied, setLinkCopied] = useState(false);
-  const [guestRoles, setGuestRoles] = useState<string[]>([]);
+
+  // Fetch roles dynamically from API
+  const { data: employeeRoles, loading: employeeRolesLoading } = useRoles("employee");
+  const { data: guestRoles, loading: guestRolesLoading } = useRoles("guest");
 
   // Generate registration link
   const tenantSlug = tenantName ? generateSlug(tenantName) : "";
@@ -69,25 +62,27 @@ export default function InviteUserModal({ isOpen, onClose, onSubmit, tenantName 
     registrationLink,
   });
 
+  // Set default role when roles are loaded
+  useEffect(() => {
+    if (isOpen && employeeRoles && employeeRoles.length > 0 && !formData.role) {
+      setFormData(prev => ({
+        ...prev,
+        role: employeeRoles[0].name,
+      }));
+    }
+  }, [isOpen, employeeRoles, formData.role]);
+
   useEffect(() => {
     if (isOpen) {
       setFormData({
         email: "",
-        role: "user",
+        role: employeeRoles?.[0]?.name || "",
         employmentType: "employee",
         homeOrganization: "",
       });
       setLinkCopied(false);
-
-      // Fetch guest roles when modal opens
-      invitationsApi.getGuestRolePermissions()
-        .then(response => {
-          const roles = response.itemListElement.map(item => item.roleName);
-          setGuestRoles(roles);
-        })
-        .catch(err => console.error('Failed to fetch guest roles:', err));
     }
-  }, [isOpen]);
+  }, [isOpen, employeeRoles]);
 
   const handleCopyLink = async () => {
     if (!registrationLink) return;
@@ -128,10 +123,13 @@ export default function InviteUserModal({ isOpen, onClose, onSubmit, tenantName 
   };
 
   // Dynamic role options based on employment type
-  const availableRoles = formData.employmentType === "guest" ? guestRoles : AVAILABLE_ROLES;
+  const availableRoles = formData.employmentType === "guest"
+    ? (guestRoles || [])
+    : (employeeRoles || []);
+
   const roleOptions = availableRoles.map((role) => ({
-    value: role,
-    label: role.charAt(0).toUpperCase() + role.slice(1), // Capitalize first letter
+    value: role.name,
+    label: formatRoleName(role.name),
   }));
 
   return (
@@ -146,8 +144,8 @@ export default function InviteUserModal({ isOpen, onClose, onSubmit, tenantName 
       errorFallbackMessage={t("error")}
       size="md"
     >
-      {/* Registration Link Section - Only for Employees */}
-      {registrationLink && formData.employmentType === "employee" && (
+      {/* Registration Link Section */}
+      {registrationLink && (
         <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
           <div className="flex items-start gap-3">
             <LinkIcon className="w-5 h-5 text-blue-500 dark:text-blue-400 flex-shrink-0 mt-0.5" />
@@ -189,14 +187,6 @@ export default function InviteUserModal({ isOpen, onClose, onSubmit, tenantName 
         </div>
       )}
 
-      {/* Guest Info - Only for Guests */}
-      {formData.employmentType === "guest" && (
-        <div className="mb-6 p-4 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg">
-          <p className="text-sm text-purple-900 dark:text-purple-100">
-            {t("guestInfo")}
-          </p>
-        </div>
-      )}
 
       <FormRadioGroup
         id="employment-type"
@@ -205,11 +195,11 @@ export default function InviteUserModal({ isOpen, onClose, onSubmit, tenantName 
         value={formData.employmentType}
         onChange={(value) => {
           const newType = value as "employee" | "guest";
-          const newRoles = newType === "guest" ? guestRoles : AVAILABLE_ROLES;
+          const newRoles = newType === "guest" ? (guestRoles || []) : (employeeRoles || []);
           setFormData({
             ...formData,
             employmentType: newType,
-            role: newRoles[0] || "user" // Reset to first available role
+            role: newRoles[0]?.name || "" // Reset to first available role
           });
         }}
         options={[

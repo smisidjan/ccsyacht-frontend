@@ -5,6 +5,8 @@ import { useTranslations } from "next-intl";
 import BaseModal from "./BaseModal";
 import FormInput from "@/app/components/ui/FormInput";
 import type { User, UserRole, UpdateUserRequest } from "@/lib/api/types";
+import { useRoles } from "@/lib/api";
+import { formatRoleName } from "@/lib/utils/roleFormatter";
 
 interface EditUserModalProps {
   isOpen: boolean;
@@ -12,17 +14,6 @@ interface EditUserModalProps {
   onClose: () => void;
   onSubmit: (userId: string, data: UpdateUserRequest) => Promise<void>;
 }
-
-const AVAILABLE_ROLES: UserRole[] = [
-  "admin",
-  "main user",
-  "invitation manager",
-  "user",
-  "yard",
-  "surveyor",
-  "painter",
-  "owner representative",
-];
 
 export default function EditUserModal({ isOpen, user, onClose, onSubmit }: EditUserModalProps) {
   const t = useTranslations("usersPage.editModal");
@@ -32,6 +23,10 @@ export default function EditUserModal({ isOpen, user, onClose, onSubmit }: EditU
     roles: [] as UserRole[],
     active: true,
   });
+
+  // Fetch roles based on user's employment type
+  const userEmploymentType = user?.employmentType || "employee";
+  const { data: availableRoles } = useRoles(userEmploymentType);
 
   useEffect(() => {
     if (user) {
@@ -95,16 +90,16 @@ export default function EditUserModal({ isOpen, user, onClose, onSubmit }: EditU
           {t("roles")}
         </label>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          {AVAILABLE_ROLES.map((role) => (
-            <label key={role} className="flex items-center gap-2 cursor-pointer">
+          {(availableRoles || []).map((role) => (
+            <label key={role.name} className="flex items-center gap-2 cursor-pointer">
               <input
                 type="checkbox"
-                checked={formData.roles.includes(role)}
-                onChange={() => handleRoleToggle(role)}
+                checked={formData.roles.includes(role.name as UserRole)}
+                onChange={() => handleRoleToggle(role.name as UserRole)}
                 className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
               />
               <span className="text-sm text-gray-700 dark:text-gray-300">
-                {t(`roleNames.${role}`)}
+                {formatRoleName(role.name)}
               </span>
             </label>
           ))}
