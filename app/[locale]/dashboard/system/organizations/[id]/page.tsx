@@ -11,7 +11,7 @@ import {
   ClockIcon,
   Cog6ToothIcon,
 } from "@heroicons/react/24/outline";
-import { systemApi } from "@/lib/api/client";
+import { systemApi } from "@/lib/api/system";
 import StatsCard from "@/app/components/ui/StatsCard";
 import Button from "@/app/components/ui/Button";
 import Spinner from "@/app/components/ui/Spinner";
@@ -21,9 +21,10 @@ import type { StateTab } from "@/app/components/ui/TabNavState";
 import TenantUsersTable from "@/app/components/system-tabs/TenantUsersTable";
 import TenantInvitationsTable from "@/app/components/system-tabs/TenantInvitationsTable";
 import TenantRolesTable from "@/app/components/system-tabs/TenantRolesTable";
+import TenantProjectsTable from "@/app/components/system-tabs/TenantProjectsTable";
 import TenantSettingsModal from "@/app/components/modals/TenantSettingsModal";
 
-type TabType = "users" | "invitations" | "roles";
+type TabType = "users" | "invitations" | "roles" | "projects";
 
 export default function TenantDetailPage() {
   const t = useTranslations("systemSettings.tenantDetail");
@@ -54,6 +55,7 @@ export default function TenantDetailPage() {
     { key: "users", label: t("usersTab") },
     { key: "invitations", label: t("invitationsTab") },
     { key: "roles", label: t("rolesTab") },
+    { key: "projects", label: t("projectsTab") },
   ];
 
   useEffect(() => {
@@ -189,6 +191,7 @@ export default function TenantDetailPage() {
           <TenantInvitationsTable tenantId={tenantId} />
         )}
         {activeTab === "roles" && <TenantRolesTable tenantId={tenantId} />}
+        {activeTab === "projects" && <TenantProjectsTable tenantId={tenantId} />}
       </div>
 
       {/* Settings Modal */}

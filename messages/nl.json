@@ -587,6 +587,7 @@
       "usersTab": "Gebruikers",
       "invitationsTab": "Uitnodigingen",
       "rolesTab": "Rollen",
+      "projectsTab": "Projecten",
       "searchPlaceholder": "Zoek op naam of e-mail...",
       "filterAll": "Alles",
       "filterEmployees": "Medewerkers",
@@ -680,6 +681,40 @@
           "success": "Rol '{name}' succesvol verwijderd",
           "error": "Rol verwijderen mislukt"
         }
+      },
+      "projects": {
+        "searchPlaceholder": "Zoek projecten...",
+        "statusLabel": "Status",
+        "typeLabel": "Type",
+        "filters": {
+          "all": "Alles",
+          "setup": "Installatie",
+          "active": "Actief",
+          "locked": "Vergrendeld",
+          "completed": "Voltooid"
+        },
+        "typeFilters": {
+          "all": "Alle Types",
+          "newBuilt": "Nieuwbouw",
+          "refit": "Refit"
+        },
+        "types": {
+          "newBuilt": "Nieuwbouw",
+          "refit": "Refit"
+        },
+        "columns": {
+          "name": "Project",
+          "type": "Type",
+          "status": "Status",
+          "shipyard": "Scheepswerf",
+          "dates": "Data",
+          "actions": "Acties"
+        },
+        "viewDetails": "Bekijk projectdetails",
+        "noProjects": "Geen projecten gevonden",
+        "noProjectsFound": "Geen projecten gevonden die overeenkomen met je zoekopdracht",
+        "summary": "{showing} van {total} projecten weergegeven",
+        "tryAgain": "Probeer Opnieuw"
       }
     },
     "tenantSettings": {

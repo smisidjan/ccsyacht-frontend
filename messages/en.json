@@ -557,6 +557,7 @@
       "usersTab": "Users",
       "invitationsTab": "Invitations",
       "rolesTab": "Roles",
+      "projectsTab": "Projects",
       "searchPlaceholder": "Search by name or email...",
       "filterAll": "All",
       "filterEmployees": "Employees",
@@ -650,6 +651,40 @@
           "success": "Role '{name}' deleted successfully",
           "error": "Failed to delete role"
         }
+      },
+      "projects": {
+        "searchPlaceholder": "Search projects...",
+        "statusLabel": "Status",
+        "typeLabel": "Type",
+        "filters": {
+          "all": "All",
+          "setup": "Setup",
+          "active": "Active",
+          "locked": "Locked",
+          "completed": "Completed"
+        },
+        "typeFilters": {
+          "all": "All Types",
+          "newBuilt": "New Built",
+          "refit": "Refit"
+        },
+        "types": {
+          "newBuilt": "New Built",
+          "refit": "Refit"
+        },
+        "columns": {
+          "name": "Project",
+          "type": "Type",
+          "status": "Status",
+          "shipyard": "Shipyard",
+          "dates": "Dates",
+          "actions": "Actions"
+        },
+        "viewDetails": "View project details",
+        "noProjects": "No projects found",
+        "noProjectsFound": "No projects found matching your search",
+        "summary": "Showing {showing} of {total} projects",
+        "tryAgain": "Try Again"
       }
     },
     "tenantSettings": {
