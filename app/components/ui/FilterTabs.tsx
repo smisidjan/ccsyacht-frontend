@@ -9,23 +9,23 @@ import {
 
 export type FilterOption = "all" | "setup" | "active" | "locked" | "completed";
 
-interface FilterTab {
-  key: FilterOption;
+interface FilterTab<T extends string = string> {
+  key: T;
   label: string;
   icon?: typeof CogIcon;
 }
 
-interface FilterTabsProps {
-  activeFilter: FilterOption;
-  onChange: (filter: FilterOption) => void;
-  tabs: FilterTab[];
+interface FilterTabsProps<T extends string = string> {
+  activeFilter: T;
+  onChange: (filter: T) => void;
+  tabs: FilterTab<T>[];
 }
 
-export default function FilterTabs({
+export default function FilterTabs<T extends string = string>({
   activeFilter,
   onChange,
   tabs,
-}: FilterTabsProps) {
+}: FilterTabsProps<T>) {
   return (
     <div className="flex items-center gap-2 flex-wrap">
       {tabs.map((tab) => {
@@ -51,7 +51,7 @@ export default function FilterTabs({
   );
 }
 
-export const defaultFilterTabs: FilterTab[] = [
+export const defaultFilterTabs: FilterTab<FilterOption>[] = [
   { key: "all", label: "All" },
   { key: "setup", label: "Setup", icon: CogIcon },
   { key: "active", label: "Active", icon: PlayIcon },
