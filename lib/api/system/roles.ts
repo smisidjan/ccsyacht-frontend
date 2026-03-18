@@ -45,8 +45,14 @@ export const systemRolesApi = {
 
   getTenantPermissions: (
     tenantId: string
-  ): Promise<{ itemListElement: string[]; numberOfItems: number }> =>
-    apiFetchSystemTenant(tenantId, "/system/tenant/permissions"),
+  ): Promise<{
+    itemListElement: string[];
+    numberOfItems: number;
+    metadata?: {
+      alwaysRestricted: string[];
+      description: string;
+    };
+  }> => apiFetchSystemTenant(tenantId, "/system/tenant/permissions"),
 
   getTenantRoleTypes: (
     tenantId: string

@@ -190,7 +190,7 @@ export default function TenantDetailPage() {
         {activeTab === "invitations" && (
           <TenantInvitationsTable tenantId={tenantId} />
         )}
-        {activeTab === "roles" && <TenantRolesTable tenantId={tenantId} />}
+        {activeTab === "roles" && <TenantRolesTable tenantId={tenantId} isCcsYacht={isCcsYacht} />}
         {activeTab === "projects" && <TenantProjectsTable tenantId={tenantId} />}
       </div>
 

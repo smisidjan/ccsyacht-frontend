@@ -15,6 +15,7 @@ interface CreateRoleModalProps {
   tenantId: string;
   onClose: () => void;
   onSubmit: (data: CreateTenantRoleRequest) => Promise<void>;
+  isCcsYacht?: boolean;
 }
 
 export default function CreateRoleModal({
@@ -22,6 +23,7 @@ export default function CreateRoleModal({
   tenantId,
   onClose,
   onSubmit,
+  isCcsYacht = false,
 }: CreateRoleModalProps) {
   const t = useTranslations("systemSettings.tenantDetail.roles.createModal");
 
@@ -48,7 +50,14 @@ export default function CreateRoleModal({
         ]);
 
         setRoleTypes(typesResponse.itemListElement || []);
-        setAvailablePermissions(permissionsResponse.itemListElement || []);
+
+        let permissions = permissionsResponse.itemListElement || [];
+        // For CCS Yacht tenant, include the alwaysRestricted permissions
+        if (isCcsYacht && permissionsResponse.metadata?.alwaysRestricted) {
+          permissions = [...permissions, ...permissionsResponse.metadata.alwaysRestricted];
+        }
+
+        setAvailablePermissions(permissions);
       } catch (err) {
         console.error("Failed to fetch role data:", err);
         setRoleTypes([]);
@@ -59,7 +68,7 @@ export default function CreateRoleModal({
     };
 
     fetchData();
-  }, [isOpen, tenantId]);
+  }, [isOpen, tenantId, isCcsYacht]);
 
   // Reset form when modal closes
   useEffect(() => {
@@ -84,6 +93,16 @@ export default function CreateRoleModal({
         : [...prev.permissions, permission],
     }));
   };
+
+  const handleToggleAll = () => {
+    const allSelected = formData.permissions.length === availablePermissions.length;
+    setFormData((prev) => ({
+      ...prev,
+      permissions: allSelected ? [] : [...availablePermissions],
+    }));
+  };
+
+  const allSelected = formData.permissions.length === availablePermissions.length;
 
   const roleTypeOptions = roleTypes.map((type) => ({
     value: type,
@@ -123,12 +142,24 @@ export default function CreateRoleModal({
       />
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-          {t("permissions")}
-          <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">
-            ({formData.permissions.length} {t("selected")})
-          </span>
-        </label>
+        <div className="flex items-center justify-between mb-3">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            {t("permissions")}
+            <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">
+              ({formData.permissions.length} {t("selected")})
+            </span>
+          </label>
+
+          {!loadingData && availablePermissions.length > 0 && (
+            <button
+              type="button"
+              onClick={handleToggleAll}
+              className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+            >
+              {allSelected ? t("deselectAll") : t("selectAll")}
+            </button>
+          )}
+        </div>
 
         {loadingData ? (
           <div className="text-sm text-gray-500 dark:text-gray-400">

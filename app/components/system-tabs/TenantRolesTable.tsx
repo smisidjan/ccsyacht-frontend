@@ -23,9 +23,10 @@ import DeleteRoleModal from "@/app/components/modals/DeleteRoleModal";
 
 interface TenantRolesTableProps {
   tenantId: string;
+  isCcsYacht?: boolean;
 }
 
-export default function TenantRolesTable({ tenantId }: TenantRolesTableProps) {
+export default function TenantRolesTable({ tenantId, isCcsYacht = false }: TenantRolesTableProps) {
   const t = useTranslations("systemSettings.tenantDetail.roles");
   const { showToast } = useToast();
 
@@ -266,6 +267,7 @@ export default function TenantRolesTable({ tenantId }: TenantRolesTableProps) {
         tenantId={tenantId}
         onClose={() => setIsCreateModalOpen(false)}
         onSubmit={handleCreateSubmit}
+        isCcsYacht={isCcsYacht}
       />
 
       <EditRoleModal
@@ -277,6 +279,7 @@ export default function TenantRolesTable({ tenantId }: TenantRolesTableProps) {
           setSelectedRole(null);
         }}
         onSubmit={handleEditSubmit}
+        isCcsYacht={isCcsYacht}
       />
 
       <DeleteRoleModal
