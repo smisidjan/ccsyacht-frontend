@@ -365,13 +365,27 @@ export default function ProjectDetailView({
           {project.generalArrangement ? (
             <div className="flex items-center gap-3 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
               <DocumentIcon className="w-8 h-8 text-blue-600 dark:text-blue-400" />
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-900 dark:text-white">
                   General Arrangement
                 </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  PDF document
-                </p>
+                <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  <span>PDF document</span>
+                  {project.dateModified && (
+                    <>
+                      <span>•</span>
+                      <span>
+                        {new Date(project.dateModified).toLocaleDateString()}
+                      </span>
+                    </>
+                  )}
+                  {project.author && (
+                    <>
+                      <span>•</span>
+                      <span>{project.author.name}</span>
+                    </>
+                  )}
+                </div>
               </div>
               <div className="flex items-center gap-2">
                 <button

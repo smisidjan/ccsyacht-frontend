@@ -650,7 +650,7 @@ export interface LogbookEntry {
   description: string;
   agent: {
     "@type"?: string;
-    identifier: string;
+    identifier?: string; // Optional - only present for Person type
     name: string;
   };
   startTime: string;
