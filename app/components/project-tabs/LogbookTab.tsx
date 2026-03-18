@@ -119,7 +119,7 @@ export default function LogbookTab({ projectId }: LogbookTabProps) {
         searchQuery === "" ||
         entry.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         entry.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        entry.agent.name.toLowerCase().includes(searchQuery.toLowerCase());
+        (entry.agent?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false);
 
       // Category filter
       const patterns = getActivityPattern(selectedFilter);
@@ -231,9 +231,11 @@ export default function LogbookTab({ projectId }: LogbookTabProps) {
                   <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
                     {entry.description}
                   </p>
-                  <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-500">
-                    <span className="font-medium">{entry.agent.name}</span>
-                  </div>
+                  {entry.agent && (
+                    <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-500">
+                      <span className="font-medium">{entry.agent.name}</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
