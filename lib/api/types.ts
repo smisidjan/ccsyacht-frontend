@@ -410,9 +410,9 @@ export interface ProjectProducer {
 
 export interface ProjectAuthor {
   "@type"?: string;
-  identifier: string;
+  identifier?: string; // Optional - only present for Person type
   name: string;
-  email: string;
+  email?: string; // Optional - only present for Person type
 }
 
 export interface Project {
@@ -479,9 +479,9 @@ export interface UpdateDocumentTypeRequest {
 // ============ Documents ============
 export interface DocumentAuthor {
   "@type"?: string;
-  identifier: string;
+  identifier?: string; // Optional - only present for Person type
   name: string;
-  email: string;
+  email?: string; // Optional - only present for Person type
 }
 
 export interface DocumentCategory {
@@ -504,6 +504,8 @@ export interface Document {
   dateModified: string;
   author: DocumentAuthor;
   category: DocumentCategory;
+  uploadedBy?: string;
+  uploadedByName?: string;
 }
 
 export interface UploadDocumentRequest {

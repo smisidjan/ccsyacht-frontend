@@ -27,19 +27,20 @@ interface SystemTenantUser {
   identifier: string;
   name: string;
   email: string;
-  emailVerified: boolean;
-  active: boolean;
-  dateCreated: string;
-  dateModified: string;
+  emailVerified?: boolean;
+  active?: boolean;
+  dateCreated?: string;
+  dateModified?: string;
   roles: string[];
-  worksFor: {
-    "@type": "EmployeeRole";
-    roleName: string;
-    employmentType: "employee" | "guest";
-  };
+  permissions: string[];
+  employmentType: "employee" | "guest";
   memberOf?: {
     "@type": "Organization";
     identifier: string;
+    name: string;
+  };
+  homeOrganization?: {
+    "@type": "Organization";
     name: string;
   };
 }
@@ -182,7 +183,7 @@ export default function TenantUsersTable({ tenantId }: TenantUsersTableProps) {
             header: t("roleColumn"),
             cell: (user: SystemTenantUser) => (
               <span className="text-sm text-gray-600 dark:text-gray-400">
-                {user.worksFor?.roleName || user.roles?.[0] || "-"}
+                {user.roles?.[0] || "-"}
               </span>
             ),
           },
@@ -190,7 +191,7 @@ export default function TenantUsersTable({ tenantId }: TenantUsersTableProps) {
             key: "type",
             header: t("typeColumn"),
             cell: (user: SystemTenantUser) => {
-              const userType = user.worksFor?.employmentType;
+              const userType = user.employmentType;
               return (
                 <span
                   className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
