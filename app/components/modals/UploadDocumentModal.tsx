@@ -20,7 +20,7 @@ export default function UploadDocumentModal({
   onSubmit,
   documentTypeName,
 }: UploadDocumentModalProps) {
-  const t = useTranslations("documents");
+  const t = useTranslations("systemSettings.tenantDetail.projects.detail.documents.uploadModal");
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -56,11 +56,11 @@ export default function UploadDocumentModal({
     <BaseModal
       isOpen={isOpen}
       onClose={onClose}
-      title={t("uploadTitle", { type: documentTypeName })}
+      title={t("title", { type: documentTypeName })}
       formId="upload-document-form"
       onSubmit={handleSubmit}
-      successMessage={t("uploadSuccess")}
-      errorFallbackMessage={t("uploadError")}
+      successMessage={t("success")}
+      errorFallbackMessage={t("error")}
       submitLabel={t("upload")}
     >
       <div className="space-y-4">
