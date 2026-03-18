@@ -45,7 +45,7 @@ export default function Header() {
       <div className="px-4 sm:px-6">
         <div className="flex justify-between items-center h-16">
           <Link href="/" className="text-xl font-bold">
-            {t("appName")}
+            {process.env.NEXT_PUBLIC_APP_NAME || t("appName")}
           </Link>
 
           <nav className="flex items-center gap-4">
@@ -85,6 +85,11 @@ export default function Header() {
                             <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
                               {currentUser.email}
                             </p>
+                            {currentUser.memberOf && (
+                              <p className="text-xs text-gray-400 dark:text-gray-500 truncate mt-0.5">
+                                {currentUser.memberOf.name}
+                              </p>
+                            )}
                           </div>
                         </div>
                       </div>

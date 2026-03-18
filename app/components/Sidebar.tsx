@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
 import { useAuth } from "@/app/context/AuthContext";
 import { useTenant } from "@/app/context/TenantContext";
+import { useCurrentUser } from "@/lib/api";
 import { useSidebarResize } from "@/lib/hooks/useSidebarResize";
 import { usePermission } from "@/lib/hooks/usePermission";
 import { PERMISSIONS } from "@/lib/constants/permissions";
@@ -22,6 +23,7 @@ export default function Sidebar() {
   const t = useTranslations("dashboard");
   const pathname = usePathname();
   const { logout } = useAuth();
+  const { data: currentUser } = useCurrentUser();
   const { hasPermission, hasAnyPermission, loading } = usePermission();
 
   const {
@@ -78,6 +80,15 @@ export default function Sidebar() {
           <ChevronLeftIcon className="w-3 h-3 text-gray-600 dark:text-gray-400" />
         )}
       </button>
+
+      {/* Organization Name */}
+      {!isCollapsed && currentUser?.memberOf && (
+        <div className="px-3 py-3 border-b border-gray-200 dark:border-gray-700">
+          <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider truncate">
+            {currentUser.memberOf.name}
+          </p>
+        </div>
+      )}
 
       {/* Navigation */}
       <nav className="flex flex-col h-full p-3">
