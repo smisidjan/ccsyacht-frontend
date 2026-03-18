@@ -11,11 +11,13 @@ export {
   invitationsApi,
   registrationRequestsApi,
   rolesApi,
-  systemApi,
   shipyardsApi,
   projectsApi,
 } from "./client";
 export { setAuthToken, getAuthToken } from "./client";
+
+// System API
+export { systemApi } from "./system";
 
 // Document Types
 export { documentTypesApi, useDocumentTypes } from "./document-types";

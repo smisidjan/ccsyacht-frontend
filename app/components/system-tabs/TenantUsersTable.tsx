@@ -6,7 +6,7 @@ import {
   EyeIcon,
   UserIcon as ImpersonateIcon,
 } from "@heroicons/react/24/outline";
-import { systemApi } from "@/lib/api/client";
+import { systemApi } from "@/lib/api/system";
 import { useToast } from "@/app/context/ToastContext";
 import type { ApiError } from "@/lib/api/types";
 import SearchInput from "@/app/components/ui/SearchInput";

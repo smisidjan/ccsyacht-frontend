@@ -8,7 +8,7 @@ import {
   PlusIcon,
 } from "@heroicons/react/24/outline";
 import { useTenantRoles } from "@/lib/api";
-import { systemApi } from "@/lib/api/client";
+import { systemApi } from "@/lib/api/system";
 import { useToast } from "@/app/context/ToastContext";
 import type { TenantRole, CreateTenantRoleRequest, UpdateTenantRoleRequest } from "@/lib/api/types";
 import { formatRoleName } from "@/lib/utils/roleFormatter";

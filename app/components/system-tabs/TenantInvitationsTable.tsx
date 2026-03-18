@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
-import { systemApi } from "@/lib/api/client";
+import { systemApi } from "@/lib/api/system";
 import type { Invitation, ApiError } from "@/lib/api/types";
 import Table from "@/app/components/ui/Table";
 import LoadingSkeleton from "@/app/components/ui/LoadingSkeleton";

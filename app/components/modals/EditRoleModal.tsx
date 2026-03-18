@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import BaseModal from "./BaseModal";
 import FormInput from "@/app/components/ui/FormInput";
 import FormCheckbox from "@/app/components/ui/FormCheckbox";
-import { systemApi } from "@/lib/api/client";
+import { systemApi } from "@/lib/api/system";
 import type { TenantRole, UpdateTenantRoleRequest } from "@/lib/api/types";
 import { formatRoleName } from "@/lib/utils/roleFormatter";
 

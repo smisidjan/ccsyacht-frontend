@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
-import { systemApi } from "@/lib/api/client";
+import { systemApi } from "@/lib/api/system";
 import { getErrorMessage } from "@/lib/utils/errors";
 import AuthPageContainer from "@/app/components/ui/AuthPageContainer";
 import FormInput from "@/app/components/ui/FormInput";

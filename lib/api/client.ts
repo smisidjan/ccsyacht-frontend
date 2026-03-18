@@ -3,7 +3,6 @@
 import type {
   LoginRequest,
   LoginResponse,
-  SystemLoginResponse,
   LookupResponse,
   ChangePasswordRequest,
   CurrentUser,
@@ -11,9 +10,6 @@ import type {
   ApiUser,
   UpdateUserRequest,
   Role,
-  TenantRole,
-  CreateTenantRoleRequest,
-  UpdateTenantRoleRequest,
   Invitation,
   CreateInvitationRequest,
   AcceptInvitationRequest,
@@ -21,10 +17,6 @@ import type {
   RegistrationRequest,
   CreateRegistrationRequest,
   ProcessRegistrationRequest,
-  Tenant,
-  CreateTenantRequest,
-  UpdateTenantRequest,
-  CreateTenantUserRequest,
   TenantRegistrationInfo,
   RegisterAdminRequest,
   RegisterAdminResponse,
@@ -43,33 +35,6 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
 
 // Token management
 let authToken: string | null = null;
-
-// System token management (separate from regular auth)
-let systemToken: string | null = null;
-
-export function setSystemToken(token: string | null) {
-  systemToken = token;
-  if (token) {
-    sessionStorage.setItem("systemToken", token);
-  } else {
-    sessionStorage.removeItem("systemToken");
-  }
-}
-
-export function getSystemToken(): string | null {
-  if (systemToken) return systemToken;
-  if (typeof window !== "undefined") {
-    systemToken = sessionStorage.getItem("systemToken");
-  }
-  return systemToken;
-}
-
-export function clearSystemToken() {
-  systemToken = null;
-  if (typeof window !== "undefined") {
-    sessionStorage.removeItem("systemToken");
-  }
-}
 
 // Tenant management
 let tenantId: string | null = null;
@@ -199,98 +164,6 @@ async function apiFetch<T>(
   }
 
   // Handle 204 No Content
-  if (response.status === 204) {
-    return undefined as T;
-  }
-
-  return response.json();
-}
-
-// Base fetch function WITHOUT tenant header (for system endpoints)
-// Uses system token instead of regular auth token
-async function apiFetchSystem<T>(
-  endpoint: string,
-  options: RequestInit = {}
-): Promise<T> {
-  const token = getSystemToken();
-
-  const headers: HeadersInit = {
-    "Content-Type": "application/json",
-    ...options.headers,
-  };
-
-  if (token) {
-    (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
-  }
-
-  // Note: No X-Tenant-ID header for system endpoints
-
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    ...options,
-    headers,
-  });
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    // Handle various error response formats from the backend
-    const errorMessage =
-      errorData.error || errorData.message || `HTTP error ${response.status}`;
-
-    const error: ApiError = {
-      message: errorMessage,
-      code: errorData.code,
-      status: response.status,
-    };
-
-    throw error;
-  }
-
-  return response.json();
-}
-
-// Base fetch function for tenant-specific system endpoints
-// Uses system token AND tenant ID header
-async function apiFetchSystemTenant<T>(
-  tenantId: string,
-  endpoint: string,
-  options: RequestInit = {}
-): Promise<T> {
-  const token = getSystemToken();
-
-  const headers: HeadersInit = {
-    "Content-Type": "application/json",
-    ...options.headers,
-  };
-
-  if (token) {
-    (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
-  }
-
-  // Add X-Tenant-ID header for tenant-specific system endpoints
-  (headers as Record<string, string>)["X-Tenant-ID"] = tenantId;
-
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    ...options,
-    headers,
-  });
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    // Handle various error response formats from the backend
-    const errorMessage =
-      errorData.message ||
-      errorData.error ||
-      errorData.detail ||
-      errorData["hydra:description"] ||
-      `HTTP error ${response.status}`;
-    const error: ApiError = {
-      message: errorMessage,
-      code: errorData.code,
-      status: response.status,
-    };
-    throw error;
-  }
-
   if (response.status === 204) {
     return undefined as T;
   }
@@ -476,138 +349,6 @@ export const tenantsApi = {
     publicFetch(`/tenants/${slug}/registration-info`),
 };
 
-// ============ System API (no tenant header) ============
-export const systemApi = {
-  // Login doesn't require token - it returns the token
-  // The API returns { result: { admin: {...}, token: "..." } }
-  // We extract the token and return it in a simple LoginResponse format
-  login: async (data: LoginRequest): Promise<LoginResponse> => {
-    const response = await fetch(`${API_BASE_URL}/system/login`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(data),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      const error: ApiError = {
-        message: errorData.message || `HTTP error ${response.status}`,
-        code: errorData.code,
-        status: response.status,
-      };
-      throw error;
-    }
-
-    const responseData: SystemLoginResponse = await response.json();
-    // Extract token from nested result object
-    return { token: responseData.result.token };
-  },
-
-  getTenants: (): Promise<PaginatedResponse<Tenant>> =>
-    apiFetchSystem("/system/tenants"),
-
-  getTenant: (tenantId: string): Promise<Tenant> =>
-    apiFetchSystem(`/system/tenants/${tenantId}`),
-
-  createTenant: (data: CreateTenantRequest): Promise<Tenant> =>
-    apiFetchSystem("/system/tenants", {
-      method: "POST",
-      body: JSON.stringify(data),
-    }),
-
-  updateTenant: (tenantId: string, data: UpdateTenantRequest): Promise<Tenant> =>
-    apiFetchSystem(`/system/tenants/${tenantId}`, {
-      method: "PUT",
-      body: JSON.stringify(data),
-    }),
-
-  createTenantUser: (data: CreateTenantUserRequest): Promise<void> =>
-    apiFetchSystem("/system/tenants/users", {
-      method: "POST",
-      body: JSON.stringify(data),
-    }),
-
-  forgotPassword: (email: string): Promise<void> =>
-    apiFetchSystem("/system/forgot-password", {
-      method: "POST",
-      body: JSON.stringify({ email: email.trim().toLowerCase() }),
-    }),
-
-  resetPassword: (data: { token: string; email: string; password: string; password_confirmation: string }): Promise<void> =>
-    apiFetchSystem("/system/reset-password", {
-      method: "POST",
-      body: JSON.stringify({ ...data, email: data.email.trim().toLowerCase() }),
-    }),
-
-  // Tenant-specific system endpoints (require X-Tenant-ID header)
-  getTenantStats: (tenantId: string): Promise<{ data: { totalUsers: number; activeUsers: number; inactiveUsers: number; employees: number; guests: number; pendingInvitations: number; acceptedInvitations: number } }> =>
-    apiFetchSystemTenant(tenantId, "/system/tenant/stats"),
-
-  getTenantUsers: (tenantId: string, params?: { employment_type?: string; active?: boolean; per_page?: number; page?: number }): Promise<{ itemListElement: User[]; numberOfItems: number; pagination: { currentPage: number; lastPage: number; perPage: number } }> => {
-    const query = new URLSearchParams();
-    if (params?.employment_type) query.append("employment_type", params.employment_type);
-    if (params?.active !== undefined) query.append("active", String(params.active));
-    if (params?.per_page) query.append("per_page", String(params.per_page));
-    if (params?.page) query.append("page", String(params.page));
-    const queryString = query.toString();
-    return apiFetchSystemTenant(tenantId, `/system/tenant/users${queryString ? `?${queryString}` : ""}`);
-  },
-
-  getTenantUser: (tenantId: string, userId: string): Promise<User> =>
-    apiFetchSystemTenant(tenantId, `/system/tenant/users/${userId}`),
-
-  impersonateUser: (tenantId: string, userId: string): Promise<{ result: { token: string; expires: string; user: User; tenant: string } }> =>
-    apiFetchSystemTenant(tenantId, `/system/tenant/impersonate/${userId}`, {
-      method: "POST",
-    }),
-
-  endImpersonation: (tenantId: string, userId: string): Promise<{ description: string }> =>
-    apiFetchSystemTenant(tenantId, `/system/tenant/impersonate/${userId}`, {
-      method: "DELETE",
-    }),
-
-  getTenantInvitations: (tenantId: string, params?: { status?: string; per_page?: number; page?: number }): Promise<{ itemListElement: Invitation[]; numberOfItems: number; pagination: { currentPage: number; lastPage: number; perPage: number } }> => {
-    const query = new URLSearchParams();
-    if (params?.status) query.append("status", params.status);
-    if (params?.per_page) query.append("per_page", String(params.per_page));
-    if (params?.page) query.append("page", String(params.page));
-    const queryString = query.toString();
-    return apiFetchSystemTenant(tenantId, `/system/tenant/invitations${queryString ? `?${queryString}` : ""}`);
-  },
-
-  // Tenant Role Management
-  getTenantRoles: (tenantId: string): Promise<{ itemListElement: TenantRole[]; numberOfItems: number }> =>
-    apiFetchSystemTenant(tenantId, "/system/tenant/roles"),
-
-  getTenantRole: (tenantId: string, roleId: string): Promise<TenantRole> =>
-    apiFetchSystemTenant(tenantId, `/system/tenant/roles/${roleId}`),
-
-  createTenantRole: (tenantId: string, data: CreateTenantRoleRequest): Promise<{ result: TenantRole }> =>
-    apiFetchSystemTenant(tenantId, "/system/tenant/roles", {
-      method: "POST",
-      body: JSON.stringify(data),
-    }),
-
-  updateTenantRole: (tenantId: string, roleId: string, data: UpdateTenantRoleRequest): Promise<{ result: TenantRole }> =>
-    apiFetchSystemTenant(tenantId, `/system/tenant/roles/${roleId}`, {
-      method: "PUT",
-      body: JSON.stringify(data),
-    }),
-
-  deleteTenantRole: (tenantId: string, roleId: string): Promise<{ description: string }> =>
-    apiFetchSystemTenant(tenantId, `/system/tenant/roles/${roleId}`, {
-      method: "DELETE",
-    }),
-
-  getTenantPermissions: (tenantId: string): Promise<{ itemListElement: string[]; numberOfItems: number }> =>
-    apiFetchSystemTenant(tenantId, "/system/tenant/permissions"),
-
-  getTenantRoleTypes: (tenantId: string): Promise<{ itemListElement: string[]; numberOfItems: number }> =>
-    apiFetchSystemTenant(tenantId, "/system/tenant/role-types"),
-};
-
 // ============ Shipyards API ============
 export const shipyardsApi = {
   getAll: (params?: { search?: string; per_page?: number; page?: number }): Promise<PaginatedResponse<Shipyard>> => {
@@ -725,7 +466,6 @@ export const api = {
   invitations: invitationsApi,
   registrationRequests: registrationRequestsApi,
   tenants: tenantsApi,
-  system: systemApi,
   shipyards: shipyardsApi,
   projects: projectsApi,
 };

@@ -6,7 +6,7 @@ import BaseModal from "./BaseModal";
 import FormCheckbox from "@/app/components/ui/FormCheckbox";
 import { ALL_PERMISSIONS } from "@/lib/constants/permissions";
 import { formatRoleName } from "@/lib/utils/roleFormatter";
-import { systemApi } from "@/lib/api/client";
+import { systemApi } from "@/lib/api/system";
 import type { Tenant } from "@/lib/api/types";
 
 interface EditTenantPermissionsModalProps {

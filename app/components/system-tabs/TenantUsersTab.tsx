@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { UserPlusIcon } from "@heroicons/react/24/outline";
-import { systemApi } from "@/lib/api/client";
+import { systemApi } from "@/lib/api/system";
 import type { Tenant, UserRole } from "@/lib/api/types";
 import FormInput from "@/app/components/ui/FormInput";
 import FormSelect from "@/app/components/ui/FormSelect";

@@ -9,7 +9,7 @@ import {
   EyeIcon,
   PencilIcon,
 } from "@heroicons/react/24/outline";
-import { systemApi, getSystemToken } from "@/lib/api/client";
+import { systemApi, getSystemToken } from "@/lib/api/system";
 import type { Tenant, ApiError } from "@/lib/api/types";
 import CreateTenantModal from "@/app/components/modals/CreateTenantModal";
 import EditTenantPermissionsModal from "@/app/components/modals/EditTenantPermissionsModal";

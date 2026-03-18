@@ -6,7 +6,7 @@ import BaseModal from "./BaseModal";
 import FormInput from "@/app/components/ui/FormInput";
 import FormSelect from "@/app/components/ui/FormSelect";
 import FormCheckbox from "@/app/components/ui/FormCheckbox";
-import { systemApi } from "@/lib/api/client";
+import { systemApi } from "@/lib/api/system";
 import type { CreateTenantRoleRequest } from "@/lib/api/types";
 import { formatRoleName } from "@/lib/utils/roleFormatter";
 

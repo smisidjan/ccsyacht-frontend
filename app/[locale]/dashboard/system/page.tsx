@@ -9,7 +9,7 @@ import {
   setSystemToken,
   getSystemToken,
   clearSystemToken,
-} from "@/lib/api/client";
+} from "@/lib/api/system";
 import TenantsTab from "@/app/components/system-tabs/TenantsTab";
 import { useMinimumLoadingTime } from "@/lib/hooks/useMinimumLoadingTime";
 import Spinner from "@/app/components/ui/Spinner";
