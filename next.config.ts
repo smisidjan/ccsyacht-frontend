@@ -9,7 +9,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: "/api/:path*",
-        destination: "http://167.235.135.241:80/api/:path*",
+        destination: "https://api.papertrail.ccsyacht.com/api/:path*",
       },
     ];
   },
