@@ -125,7 +125,7 @@
       "all": "Alles",
       "setup": "Setup",
       "active": "Actief",
-      "locked": "Vergrendeld",
+      "archived": "Gearchiveerd",
       "completed": "Voltooid"
     },
     "types": {
@@ -180,6 +180,27 @@
       "logbook": "Logboek",
       "reporting": "Rapportage",
       "settings": "Instellingen"
+    },
+    "statusActions": {
+      "archiveTooltip": "Dit project archiveren",
+      "completeTooltip": "Dit project voltooien",
+      "reactivateTooltip": "Dit project reactiveren",
+      "archiveTitle": "Project Archiveren",
+      "completeTitle": "Project Voltooien",
+      "reactivateTitle": "Project Reactiveren",
+      "confirmArchive": "Weet je zeker dat je dit project wilt archiveren? Gearchiveerde projecten zijn alleen-lezen en kunnen later worden gereactiveerd.",
+      "confirmComplete": "Weet je zeker dat je dit project wilt markeren als voltooid? Voltooide projecten zijn volledig alleen-lezen en kunnen niet meer worden gewijzigd.",
+      "confirmReactivate": "Weet je zeker dat je dit project wilt reactiveren? Het zal terugkeren naar actieve status.",
+      "archive": "Archiveren",
+      "complete": "Voltooien",
+      "reactivate": "Reactiveren",
+      "cancel": "Annuleren",
+      "archiveSuccess": "Project succesvol gearchiveerd",
+      "archiveError": "Kan project niet archiveren",
+      "completeSuccess": "Project succesvol voltooid",
+      "completeError": "Kan project niet voltooien",
+      "reactivateSuccess": "Project succesvol gereactiveerd",
+      "reactivateError": "Kan project niet reactiveren"
     },
     "areasSection": {
       "title": "Gebieden",
@@ -361,6 +382,22 @@
         "loadError": "Kan ondertekenaars niet laden",
         "addSuccess": "Standaard ondertekenaar succesvol toegevoegd",
         "addError": "Kan standaard ondertekenaar niet toevoegen"
+      },
+      "statusManagement": {
+        "title": "Project Status",
+        "description": "Beheer de levenscyclus status van dit project.",
+        "archive": "Project Archiveren",
+        "complete": "Project Voltooien",
+        "reactivate": "Project Reactiveren",
+        "confirmArchive": "Weet je zeker dat je dit project wilt archiveren? Gearchiveerde projecten zijn alleen-lezen en kunnen later worden gereactiveerd.",
+        "confirmComplete": "Weet je zeker dat je dit project wilt markeren als voltooid? Deze actie kan niet ongedaan worden gemaakt.",
+        "confirmReactivate": "Weet je zeker dat je dit project wilt reactiveren? Het zal terugkeren naar actieve status.",
+        "archiveSuccess": "Project succesvol gearchiveerd",
+        "archiveError": "Kan project niet archiveren",
+        "completeSuccess": "Project succesvol voltooid",
+        "completeError": "Kan project niet voltooien",
+        "reactivateSuccess": "Project succesvol gereactiveerd",
+        "reactivateError": "Kan project niet reactiveren"
       },
       "dangerZone": {
         "title": "Gevarenzone",
@@ -694,7 +731,7 @@
           "all": "Alles",
           "setup": "Installatie",
           "active": "Actief",
-          "locked": "Vergrendeld",
+          "archived": "Gearchiveerd",
           "completed": "Voltooid"
         },
         "typeFilters": {

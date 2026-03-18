@@ -191,7 +191,7 @@ export default function OverviewTab({
       ) {
         try {
           hasUpdatedStatusRef.current = true;
-          await projectsApi.update(projectId, { status: "active" });
+          await projectsApi.activate(projectId);
           showToast("success", t("setupTasks.statusUpdated"));
           // Notify parent component to refetch project data
           if (onProjectUpdate) {
@@ -307,7 +307,7 @@ export default function OverviewTab({
                   )}
                 </div>
               )}
-              {canCreateAreas && (
+              {canCreateAreas && projectStatus !== "archived" && projectStatus !== "completed" && (
                 <Button
                   variant="primary"
                   onClick={() => setIsCreateModalOpen(true)}

@@ -6,7 +6,7 @@ import {
   PlusIcon,
   CogIcon,
   PlayIcon,
-  LockClosedIcon,
+  ArchiveBoxIcon,
   CheckCircleIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -184,7 +184,7 @@ export default function ProjectsPage() {
     { key: "all" as FilterOption, label: t("filters.all") },
     { key: "setup" as FilterOption, label: t("filters.setup"), icon: CogIcon },
     { key: "active" as FilterOption, label: t("filters.active"), icon: PlayIcon },
-    { key: "locked" as FilterOption, label: t("filters.locked"), icon: LockClosedIcon },
+    { key: "archived" as FilterOption, label: t("filters.archived"), icon: ArchiveBoxIcon },
     { key: "completed" as FilterOption, label: t("filters.completed"), icon: CheckCircleIcon },
   ];
 

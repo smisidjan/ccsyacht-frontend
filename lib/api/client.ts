@@ -27,6 +27,7 @@ import type {
   Project,
   CreateProjectRequest,
   UpdateProjectRequest,
+  UpdateActionResponse,
   ApiError,
 } from "./types";
 import { publicFetch, publicFetchVoid } from "./publicFetch";
@@ -457,6 +458,22 @@ export const projectsApi = {
 
     return response.json();
   },
+
+  // Status transitions
+  activate: (id: string): Promise<UpdateActionResponse> =>
+    apiFetch(`/projects/${id}/activate`, {
+      method: "POST",
+    }),
+
+  complete: (id: string): Promise<UpdateActionResponse> =>
+    apiFetch(`/projects/${id}/complete`, {
+      method: "POST",
+    }),
+
+  archive: (id: string): Promise<UpdateActionResponse> =>
+    apiFetch(`/projects/${id}/archive`, {
+      method: "POST",
+    }),
 };
 
 // Export all APIs

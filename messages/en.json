@@ -125,7 +125,7 @@
       "all": "All",
       "setup": "Setup",
       "active": "Active",
-      "locked": "Locked",
+      "archived": "Archived",
       "completed": "Completed"
     },
     "types": {
@@ -180,6 +180,27 @@
       "logbook": "Logbook",
       "reporting": "Reporting",
       "settings": "Settings"
+    },
+    "statusActions": {
+      "archiveTooltip": "Archive this project",
+      "completeTooltip": "Complete this project",
+      "reactivateTooltip": "Reactivate this project",
+      "archiveTitle": "Archive Project",
+      "completeTitle": "Complete Project",
+      "reactivateTitle": "Reactivate Project",
+      "confirmArchive": "Are you sure you want to archive this project? Archived projects are read-only and can be reactivated later.",
+      "confirmComplete": "Are you sure you want to mark this project as completed? Completed projects are fully read-only and cannot be changed.",
+      "confirmReactivate": "Are you sure you want to reactivate this project? It will return to active status.",
+      "archive": "Archive",
+      "complete": "Complete",
+      "reactivate": "Reactivate",
+      "cancel": "Cancel",
+      "archiveSuccess": "Project archived successfully",
+      "archiveError": "Failed to archive project",
+      "completeSuccess": "Project completed successfully",
+      "completeError": "Failed to complete project",
+      "reactivateSuccess": "Project reactivated successfully",
+      "reactivateError": "Failed to reactivate project"
     },
     "areasSection": {
       "title": "Areas",
@@ -361,6 +382,22 @@
         "loadError": "Failed to load signers",
         "addSuccess": "Default signer added successfully",
         "addError": "Failed to add default signer"
+      },
+      "statusManagement": {
+        "title": "Project Status",
+        "description": "Manage the lifecycle status of this project.",
+        "archive": "Archive Project",
+        "complete": "Complete Project",
+        "reactivate": "Reactivate Project",
+        "confirmArchive": "Are you sure you want to archive this project? Archived projects are read-only and can be reactivated later.",
+        "confirmComplete": "Are you sure you want to mark this project as completed? This action cannot be undone.",
+        "confirmReactivate": "Are you sure you want to reactivate this project? It will return to active status.",
+        "archiveSuccess": "Project archived successfully",
+        "archiveError": "Failed to archive project",
+        "completeSuccess": "Project completed successfully",
+        "completeError": "Failed to complete project",
+        "reactivateSuccess": "Project reactivated successfully",
+        "reactivateError": "Failed to reactivate project"
       },
       "dangerZone": {
         "title": "Danger Zone",
@@ -664,7 +701,7 @@
           "all": "All",
           "setup": "Setup",
           "active": "Active",
-          "locked": "Locked",
+          "archived": "Archived",
           "completed": "Completed"
         },
         "typeFilters": {

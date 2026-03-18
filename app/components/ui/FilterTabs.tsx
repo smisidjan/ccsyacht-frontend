@@ -3,11 +3,11 @@
 import {
   CogIcon,
   PlayIcon,
-  LockClosedIcon,
+  ArchiveBoxIcon,
   CheckCircleIcon,
 } from "@heroicons/react/24/outline";
 
-export type FilterOption = "all" | "setup" | "active" | "locked" | "completed";
+export type FilterOption = "all" | "setup" | "active" | "archived" | "completed";
 
 interface FilterTab<T extends string = string> {
   key: T;
@@ -55,6 +55,6 @@ export const defaultFilterTabs: FilterTab<FilterOption>[] = [
   { key: "all", label: "All" },
   { key: "setup", label: "Setup", icon: CogIcon },
   { key: "active", label: "Active", icon: PlayIcon },
-  { key: "locked", label: "Locked", icon: LockClosedIcon },
+  { key: "archived", label: "Archived", icon: ArchiveBoxIcon },
   { key: "completed", label: "Completed", icon: CheckCircleIcon },
 ];

@@ -4,11 +4,11 @@ import { useTranslations } from "next-intl";
 import {
   CogIcon,
   PlayIcon,
-  LockClosedIcon,
   CheckCircleIcon,
+  ArchiveBoxIcon,
 } from "@heroicons/react/24/solid";
 
-export type ProjectStatus = "setup" | "active" | "locked" | "completed";
+export type ProjectStatus = "setup" | "active" | "archived" | "completed";
 
 interface StatusBadgeProps {
   status: ProjectStatus;
@@ -28,8 +28,8 @@ const statusConfig: Record<
     bgColor: "bg-green-100",
     textColor: "text-green-700",
   },
-  locked: {
-    icon: LockClosedIcon,
+  archived: {
+    icon: ArchiveBoxIcon,
     bgColor: "bg-gray-100",
     textColor: "text-gray-700",
   },

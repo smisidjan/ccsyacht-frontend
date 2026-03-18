@@ -23,9 +23,10 @@ import type { UploadDocumentRequest, Document } from "@/lib/api/types";
 
 interface DocumentsTabProps {
   projectId: string;
+  projectStatus?: "setup" | "active" | "archived" | "completed";
 }
 
-export default function DocumentsTab({ projectId }: DocumentsTabProps) {
+export default function DocumentsTab({ projectId, projectStatus }: DocumentsTabProps) {
   const t = useTranslations("projectDetail.documents");
   const { hasPermission } = usePermission();
 
@@ -173,7 +174,7 @@ export default function DocumentsTab({ projectId }: DocumentsTabProps) {
             <h3 className="font-semibold text-gray-900 dark:text-white">
               {selectedType?.name} ({documents?.length || 0})
             </h3>
-            {canUploadDocuments && (
+            {canUploadDocuments && projectStatus !== "archived" && projectStatus !== "completed" && (
               <Button onClick={() => setIsUploadModalOpen(true)}>
                 <ArrowUpTrayIcon className="w-4 h-4" />
                 {t("upload")}

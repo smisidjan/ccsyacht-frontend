@@ -399,7 +399,7 @@ export interface UpdateShipyardRequest {
 
 // ============ Projects ============
 export type ProjectType = "new_built" | "refit";
-export type ProjectStatus = "setup" | "active" | "locked" | "completed";
+export type ProjectStatus = "setup" | "active" | "archived" | "completed";
 
 export interface ProjectProducer {
   "@type"?: string;
@@ -449,6 +449,12 @@ export interface UpdateProjectRequest {
   shipyard_id?: string;
   start_date?: string;
   end_date?: string;
+}
+
+export interface UpdateActionResponse {
+  "@type"?: string;
+  actionStatus?: "CompletedActionStatus" | "FailedActionStatus";
+  result: Project;
 }
 
 // ============ Document Types ============

@@ -19,7 +19,7 @@ interface TenantProjectsTableProps {
   tenantId: string;
 }
 
-type StatusFilter = "all" | "setup" | "active" | "locked" | "completed";
+type StatusFilter = "all" | "setup" | "active" | "archived" | "completed";
 type TypeFilter = "all" | "new_built" | "refit";
 
 export default function TenantProjectsTable({
@@ -136,7 +136,7 @@ export default function TenantProjectsTable({
     { key: "all", label: t("filters.all") },
     { key: "setup", label: t("filters.setup") },
     { key: "active", label: t("filters.active") },
-    { key: "locked", label: t("filters.locked") },
+    { key: "archived", label: t("filters.archived") },
     { key: "completed", label: t("filters.completed") },
   ];
 

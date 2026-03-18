@@ -54,6 +54,9 @@ export default function SettingsTab({ projectId, onProjectUpdate }: SettingsTabP
   const canManageSigners = hasPermission(PERMISSIONS.MANAGE_PROJECT_SIGNERS);
   const canEditProject = hasPermission(PERMISSIONS.EDIT_PROJECTS);
 
+  // Check if project is read-only (archived or completed)
+  const isReadOnly = project?.status === "archived" || project?.status === "completed";
+
   // Modal states
   const [isAddMemberModalOpen, setIsAddMemberModalOpen] = useState(false);
   const [isEditProjectModalOpen, setIsEditProjectModalOpen] = useState(false);
@@ -119,7 +122,7 @@ export default function SettingsTab({ projectId, onProjectUpdate }: SettingsTabP
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto_1fr] gap-8">
             {/* Editable Fields */}
             <div>
-              {canEditProject && (
+              {canEditProject && project.status !== "archived" && project.status !== "completed" && (
                 <div className="flex items-center justify-end mb-4">
                   <button
                     onClick={() => setIsEditProjectModalOpen(true)}
@@ -216,7 +219,7 @@ export default function SettingsTab({ projectId, onProjectUpdate }: SettingsTabP
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
             {t("teamMembers.title")}
           </h3>
-          {canManageMembers && (
+          {canManageMembers && !isReadOnly && (
             <Button onClick={() => setIsAddMemberModalOpen(true)}>
               <UserPlusIcon className="w-4 h-4" />
               {t("teamMembers.addMember")}
@@ -255,7 +258,7 @@ export default function SettingsTab({ projectId, onProjectUpdate }: SettingsTabP
                       Signer
                     </span>
                   )}
-                  {canManageSigners && !isMemberSigner(member.member.identifier) && (
+                  {canManageSigners && !isMemberSigner(member.member.identifier) && !isReadOnly && (
                     <button
                       onClick={() => handleMakeSigner(member.member.identifier)}
                       className="text-gray-400 hover:text-amber-500 transition-colors"
@@ -264,7 +267,7 @@ export default function SettingsTab({ projectId, onProjectUpdate }: SettingsTabP
                       <StarIcon className="w-5 h-5" />
                     </button>
                   )}
-                  {canManageMembers && member.member.identifier !== currentUser?.identifier && (
+                  {canManageMembers && member.member.identifier !== currentUser?.identifier && !isReadOnly && (
                     <button
                       onClick={() => handleRemoveMember(member.member.identifier, member.member.name)}
                       className="text-gray-400 hover:text-red-500 transition-colors"
@@ -293,7 +296,7 @@ export default function SettingsTab({ projectId, onProjectUpdate }: SettingsTabP
           <p className="text-sm text-gray-600 dark:text-gray-400">
             {t("signers.description")}
           </p>
-          {canManageSigners && (
+          {canManageSigners && !isReadOnly && (
             <p className="text-sm text-blue-600 dark:text-blue-400 mt-1">
               {t("signers.manageFromMembers")}
             </p>
@@ -325,7 +328,7 @@ export default function SettingsTab({ projectId, onProjectUpdate }: SettingsTabP
                   <span className="text-sm text-gray-600 dark:text-gray-400 capitalize">
                     {signer.roleName}
                   </span>
-                  {canManageSigners && (
+                  {canManageSigners && !isReadOnly && (
                     <button
                       onClick={() => handleRemoveSigner(signer.member.identifier, signer.member.name)}
                       className="text-gray-400 hover:text-red-500 transition-colors"
