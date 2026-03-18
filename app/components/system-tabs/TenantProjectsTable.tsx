@@ -2,9 +2,9 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
-import { EyeIcon, FolderIcon } from "@heroicons/react/24/outline";
+import { EyeIcon, FolderIcon, PlusIcon } from "@heroicons/react/24/outline";
 import { systemProjectsApi } from "@/lib/api/system/projects";
-import type { Project, ApiError } from "@/lib/api/types";
+import type { Project, ApiError, Shipyard, CreateProjectRequest } from "@/lib/api/types";
 import SearchInput from "@/app/components/ui/SearchInput";
 import FilterTabs from "@/app/components/ui/FilterTabs";
 import Button from "@/app/components/ui/Button";
@@ -12,6 +12,8 @@ import Table from "@/app/components/ui/Table";
 import LoadingSkeleton from "@/app/components/ui/LoadingSkeleton";
 import Alert from "@/app/components/ui/Alert";
 import StatusBadge from "@/app/components/ui/StatusBadge";
+import ProjectDetailView from "./ProjectDetailView";
+import CreateProjectModal from "@/app/components/modals/system/CreateProjectModal";
 
 interface TenantProjectsTableProps {
   tenantId: string;
@@ -32,6 +34,9 @@ export default function TenantProjectsTable({
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [shipyards, setShipyards] = useState<Shipyard[]>([]);
 
   const fetchProjects = useCallback(async () => {
     try {
@@ -62,7 +67,27 @@ export default function TenantProjectsTable({
 
   useEffect(() => {
     fetchProjects();
+    fetchShipyards();
   }, [fetchProjects]);
+
+  const fetchShipyards = async () => {
+    try {
+      const response = await systemProjectsApi.getShipyards(tenantId);
+      setShipyards(response.itemListElement || []);
+    } catch (err) {
+      console.error("Failed to fetch shipyards:", err);
+    }
+  };
+
+  const handleCreateProject = async (data: CreateProjectRequest) => {
+    await systemProjectsApi.createProject(tenantId, data);
+    await fetchProjects();
+    setShowCreateModal(false);
+  };
+
+  const handleShipyardCreated = (newShipyard: Shipyard) => {
+    setShipyards((prev) => [...prev, newShipyard]);
+  };
 
   // Filter projects by search query
   useEffect(() => {
@@ -80,6 +105,17 @@ export default function TenantProjectsTable({
     );
     setFilteredProjects(filtered);
   }, [projects, searchQuery]);
+
+  // Show project detail view if a project is selected
+  if (selectedProjectId) {
+    return (
+      <ProjectDetailView
+        tenantId={tenantId}
+        projectId={selectedProjectId}
+        onBack={() => setSelectedProjectId(null)}
+      />
+    );
+  }
 
   if (loading) {
     return <LoadingSkeleton type="table" rows={5} />;
@@ -112,6 +148,18 @@ export default function TenantProjectsTable({
 
   return (
     <div className="space-y-6">
+      {/* Add Project Button */}
+      <div className="flex justify-end">
+        <Button
+          variant="primary"
+          size="sm"
+          onClick={() => setShowCreateModal(true)}
+        >
+          <PlusIcon className="w-4 h-4 mr-2" />
+          {t("addProject")}
+        </Button>
+      </div>
+
       {/* Search and Filters */}
       <div className="space-y-4">
         <SearchInput
@@ -221,10 +269,7 @@ export default function TenantProjectsTable({
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => {
-                    // TODO: Open project details modal
-                    console.log("View project:", project.identifier);
-                  }}
+                  onClick={() => setSelectedProjectId(project.identifier)}
                   title={t("viewDetails")}
                 >
                   <EyeIcon className="w-4 h-4" />
@@ -250,6 +295,16 @@ export default function TenantProjectsTable({
           total: projects.length,
         })}
       </div>
+
+      {/* Create Project Modal */}
+      <CreateProjectModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onSubmit={handleCreateProject}
+        shipyards={shipyards}
+        tenantId={tenantId}
+        onShipyardCreated={handleShipyardCreated}
+      />
     </div>
   );
 }

@@ -10,6 +10,7 @@ import type {
   Document,
   UploadDocumentRequest,
   Shipyard,
+  CreateShipyardRequest,
   ApiError,
   PaginatedResponse,
 } from "../types";
@@ -311,4 +312,13 @@ export const systemProjectsApi = {
     tenantId: string
   ): Promise<{ itemListElement: Shipyard[]; numberOfItems: number }> =>
     apiFetchSystemTenant(tenantId, "/system/tenant/shipyards"),
+
+  createShipyard: (
+    tenantId: string,
+    data: CreateShipyardRequest
+  ): Promise<{ result: Shipyard }> =>
+    apiFetchSystemTenant(tenantId, "/system/tenant/shipyards", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
 };
