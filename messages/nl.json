@@ -714,7 +714,177 @@
         "noProjects": "Geen projecten gevonden",
         "noProjectsFound": "Geen projecten gevonden die overeenkomen met je zoekopdracht",
         "summary": "{showing} van {total} projecten weergegeven",
-        "tryAgain": "Probeer Opnieuw"
+        "tryAgain": "Probeer Opnieuw",
+        "addProject": "Project Toevoegen",
+        "createModal": {
+          "title": "Nieuw Project Aanmaken",
+          "name": "Projectnaam",
+          "namePlaceholder": "Voer projectnaam in",
+          "description": "Beschrijving",
+          "descriptionPlaceholder": "Voer projectbeschrijving in (optioneel)",
+          "type": "Projecttype",
+          "shipyard": "Scheepswerf",
+          "selectShipyard": "Selecteer een scheepswerf (optioneel)",
+          "addShipyard": "Scheepswerf Toevoegen",
+          "startDate": "Startdatum",
+          "endDate": "Einddatum",
+          "create": "Project Aanmaken",
+          "success": "Project succesvol aangemaakt",
+          "error": "Project aanmaken mislukt",
+          "createShipyardInline": "Nieuwe Scheepswerf Aanmaken",
+          "shipyardName": "Naam Scheepswerf",
+          "shipyardNamePlaceholder": "Voer naam scheepswerf in",
+          "shipyardAddress": "Adres",
+          "shipyardAddressPlaceholder": "Voer adres in (optioneel)",
+          "contactInfoOptional": "Contactinformatie (optioneel)",
+          "contactName": "Contactnaam",
+          "contactNamePlaceholder": "Voer contactnaam in",
+          "contactEmail": "Contact E-mail",
+          "contactEmailPlaceholder": "Voer contact e-mail in",
+          "contactPhone": "Contacttelefoon",
+          "contactPhonePlaceholder": "Voer contacttelefoon in",
+          "createShipyard": "Scheepswerf Aanmaken",
+          "cancel": "Annuleren"
+        },
+        "createShipyardModal": {
+          "title": "Nieuwe Scheepswerf Aanmaken",
+          "name": "Naam Scheepswerf",
+          "namePlaceholder": "Voer naam scheepswerf in",
+          "address": "Adres",
+          "addressPlaceholder": "Voer adres scheepswerf in (optioneel)",
+          "contactInfo": "Contactinformatie",
+          "contactName": "Contactnaam",
+          "contactNamePlaceholder": "Voer contactnaam in (optioneel)",
+          "contactEmail": "Contact E-mail",
+          "contactEmailPlaceholder": "Voer contact e-mail in (optioneel)",
+          "contactPhone": "Contacttelefoon",
+          "contactPhonePlaceholder": "Voer contacttelefoon in (optioneel)",
+          "create": "Scheepswerf Aanmaken",
+          "success": "Scheepswerf succesvol aangemaakt",
+          "error": "Scheepswerf aanmaken mislukt"
+        },
+        "detail": {
+          "title": "Projectdetails",
+          "back": "Terug naar projecten",
+          "tabs": {
+            "overview": "Overzicht",
+            "documents": "Documenten"
+          },
+          "fields": {
+            "name": "Naam",
+            "status": "Status",
+            "type": "Type",
+            "shipyard": "Scheepswerf",
+            "startDate": "Startdatum",
+            "endDate": "Einddatum",
+            "description": "Beschrijving",
+            "authorName": "Aangemaakt Door",
+            "authorEmail": "E-mail"
+          },
+          "sections": {
+            "generalArrangement": "Algemeen Arrangement",
+            "author": "Auteur Informatie"
+          },
+          "noDocumentTypes": "Geen documenttypen geconfigureerd voor dit project",
+          "required": "Verplicht",
+          "document": "document",
+          "documents": "documenten",
+          "noDocuments": "Geen documenten geüpload",
+          "download": "Downloaden",
+          "errors": {
+            "title": "Fout bij Laden Project",
+            "downloadFailed": "Bestand downloaden mislukt"
+          },
+          "ga": {
+            "upload": "Uploaden",
+            "uploading": "Uploaden...",
+            "replace": "Vervangen",
+            "delete": "Verwijderen",
+            "deleting": "Verwijderen...",
+            "noDocument": "Nog geen algemeen arrangement geüpload",
+            "overwriteWarning": "Er bestaat al een algemeen arrangement. Wil je deze vervangen?",
+            "deleteWarning": "Weet je zeker dat je het algemeen arrangement wilt verwijderen? Dit kan niet ongedaan worden gemaakt als er decks en areas aan gekoppeld zijn.",
+            "uploadSuccess": "Algemeen arrangement succesvol geüpload",
+            "uploadError": "Algemeen arrangement uploaden mislukt",
+            "deleteSuccess": "Algemeen arrangement succesvol verwijderd",
+            "deleteError": "Algemeen arrangement verwijderen mislukt",
+            "replaceModal": {
+              "title": "Algemeen Arrangement Vervangen",
+              "message": "Er bestaat al een algemeen arrangement. Een nieuw bestand uploaden zal het huidige vervangen.",
+              "warning": "Deze actie zal het bestaande algemeen arrangement overschrijven.",
+              "confirm": "Vervangen",
+              "success": "Algemeen arrangement succesvol vervangen",
+              "error": "Algemeen arrangement vervangen mislukt"
+            },
+            "deleteModal": {
+              "title": "Algemeen Arrangement Verwijderen",
+              "message": "Weet je zeker dat je dit algemeen arrangement wilt verwijderen?",
+              "warning": "Deze actie kan niet ongedaan worden gemaakt. Zorg ervoor dat er geen decks en areas aan dit project gekoppeld zijn.",
+              "confirm": "Verwijderen",
+              "success": "Algemeen arrangement succesvol verwijderd",
+              "error": "Algemeen arrangement verwijderen mislukt"
+            }
+          },
+          "documentTypes": {
+            "add": "Documenttype Toevoegen",
+            "edit": "Bewerken",
+            "delete": "Verwijderen",
+            "createModal": {
+              "title": "Documenttype Aanmaken",
+              "name": "Naam",
+              "namePlaceholder": "Voer documenttype naam in",
+              "required": "Verplicht documenttype",
+              "create": "Aanmaken",
+              "success": "Documenttype succesvol aangemaakt",
+              "error": "Documenttype aanmaken mislukt"
+            },
+            "editModal": {
+              "title": "Documenttype Bewerken",
+              "name": "Naam",
+              "namePlaceholder": "Voer documenttype naam in",
+              "required": "Verplicht documenttype",
+              "save": "Wijzigingen Opslaan",
+              "success": "Documenttype succesvol bijgewerkt",
+              "error": "Documenttype bijwerken mislukt"
+            },
+            "deleteModal": {
+              "title": "Documenttype Verwijderen",
+              "message": "Weet je zeker dat je het documenttype {name} wilt verwijderen?",
+              "warning": "Dit zal ook {count} gekoppelde documenten verwijderen.",
+              "confirm": "Verwijderen",
+              "success": "Documenttype succesvol verwijderd",
+              "error": "Documenttype verwijderen mislukt"
+            }
+          },
+          "documents": {
+            "uploadButton": "Uploaden",
+            "deleteButton": "Verwijderen",
+            "uploadModal": {
+              "title": "Document Uploaden - {type}",
+              "file": "Bestand",
+              "fileRequired": "Bestand is verplicht",
+              "selectedFile": "Geselecteerd bestand",
+              "titleLabel": "Titel",
+              "titleOptional": "Titel (optioneel)",
+              "titlePlaceholder": "Voer document titel in",
+              "titleHint": "Laat leeg om bestandsnaam te gebruiken",
+              "descriptionLabel": "Beschrijving",
+              "descriptionOptional": "Beschrijving (optioneel)",
+              "descriptionPlaceholder": "Voer beschrijving in (optioneel)",
+              "upload": "Uploaden",
+              "success": "Document succesvol geüpload",
+              "error": "Document uploaden mislukt"
+            },
+            "deleteModal": {
+              "title": "Document Verwijderen",
+              "message": "Weet je zeker dat je {name} wilt verwijderen?",
+              "warning": "Deze actie kan niet ongedaan worden gemaakt.",
+              "confirm": "Verwijderen",
+              "success": "Document succesvol verwijderd",
+              "error": "Document verwijderen mislukt"
+            }
+          }
+        }
       }
     },
     "tenantSettings": {
@@ -739,6 +909,7 @@
       "restrictedPermissions": "Beperkte Rechten",
       "restricted": "beperkt",
       "restrictedPermissionsHint": "Selecteer de rechten die NIET beschikbaar moeten zijn voor deze organisatie. Als er geen geselecteerd zijn, zijn alle rechten beschikbaar.",
+      "noPermissionsAvailable": "Geen rechten beschikbaar",
       "cancel": "Annuleren",
       "create": "Organisatie Aanmaken",
       "creating": "Aanmaken...",
@@ -751,6 +922,7 @@
       "restrictedPermissions": "Beperkte Rechten",
       "restricted": "beperkt",
       "restrictedPermissionsHint": "Selecteer de rechten die NIET beschikbaar moeten zijn voor deze organisatie. Als er geen geselecteerd zijn, zijn alle rechten beschikbaar.",
+      "noPermissionsAvailable": "Geen rechten beschikbaar",
       "loading": "Rechten laden...",
       "save": "Wijzigingen Opslaan",
       "cancel": "Annuleren",

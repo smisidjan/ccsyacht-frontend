@@ -68,4 +68,14 @@ export const systemTenantsApi = {
       acceptedInvitations: number;
     };
   }> => apiFetchSystemTenant(tenantId, "/system/tenant/stats"),
+
+  // Get selectable permissions for tenant creation
+  getSelectablePermissions: (): Promise<{
+    itemListElement: string[];
+    numberOfItems: number;
+    metadata: {
+      alwaysRestricted: string[];
+      description: string;
+    };
+  }> => apiFetchSystem("/system/selectable-permissions"),
 };
