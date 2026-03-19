@@ -1,6 +1,6 @@
 import type { ApiError } from "./types";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
+const API_BASE_URL = "https://api.papertrail.ccsyacht.com/api";
 
 // CSRF initialization flag
 let csrfInitialized = false;

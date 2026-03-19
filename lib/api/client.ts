@@ -32,9 +32,7 @@ import type {
 } from "./types";
 import { publicFetch, publicFetchVoid } from "./publicFetch";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
-console.log('API_BASE_URL configured as:', API_BASE_URL);
-console.log('process.env.NEXT_PUBLIC_API_URL:', process.env.NEXT_PUBLIC_API_URL);
+const API_BASE_URL = "https://api.papertrail.ccsyacht.com/api";
 
 // CSRF initialization flag
 let csrfInitialized = false;
