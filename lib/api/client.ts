@@ -39,9 +39,13 @@ let csrfInitialized = false;
 
 // Initialize CSRF protection
 async function initializeCSRF(): Promise<void> {
-  if (csrfInitialized) return;
+  if (csrfInitialized) {
+    console.log('CSRF already initialized');
+    return;
+  }
 
   try {
+    console.log('Initializing CSRF...');
     // Fetch CSRF cookie from backend - use the API subdomain directly
     const csrfUrl = 'https://api.papertrail.ccsyacht.com/sanctum/csrf-cookie';
     const response = await fetch(csrfUrl, {
@@ -51,8 +55,13 @@ async function initializeCSRF(): Promise<void> {
       },
     });
 
+    console.log('CSRF response status:', response.status);
     if (response.ok) {
       csrfInitialized = true;
+      console.log('CSRF initialized successfully');
+      console.log('Cookies after CSRF:', document.cookie);
+    } else {
+      console.error('CSRF initialization failed with status:', response.status);
     }
   } catch (error) {
     console.error('Failed to initialize CSRF:', error);
@@ -63,11 +72,17 @@ async function initializeCSRF(): Promise<void> {
 function getXSRFToken(): string | null {
   if (typeof document === 'undefined') return null;
 
+  console.log('All cookies:', document.cookie);
   const match = document.cookie.match(/XSRF-TOKEN=([^;]*)/);
-  if (!match) return null;
+  if (!match) {
+    console.log('XSRF-TOKEN not found in cookies');
+    return null;
+  }
 
   // The cookie is URL encoded, so decode it
-  return decodeURIComponent(match[1]);
+  const token = decodeURIComponent(match[1]);
+  console.log('XSRF-TOKEN found:', token);
+  return token;
 }
 
 // Token management
@@ -188,6 +203,9 @@ async function apiFetch<T>(
   if (socketId) {
     (headers as Record<string, string>)["X-Socket-ID"] = socketId;
   }
+
+  console.log('Making API request to:', `${API_BASE_URL}${endpoint}`);
+  console.log('Request headers:', headers);
 
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     ...options,
