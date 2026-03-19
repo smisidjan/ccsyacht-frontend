@@ -40,28 +40,24 @@ let csrfInitialized = false;
 // Initialize CSRF protection
 async function initializeCSRF(): Promise<void> {
   if (csrfInitialized) {
-    console.log('CSRF already initialized');
     return;
   }
 
   try {
-    console.log('Initializing CSRF...');
     // Fetch CSRF cookie from backend - use the API subdomain directly
     const csrfUrl = 'https://api.papertrail.ccsyacht.com/sanctum/csrf-cookie';
     const response = await fetch(csrfUrl, {
+      method: 'GET',
+      mode: 'cors',
       credentials: 'include',
       headers: {
         'Accept': 'application/json',
+        'Origin': window.location.origin,
       },
     });
 
-    console.log('CSRF response status:', response.status);
     if (response.ok) {
       csrfInitialized = true;
-      console.log('CSRF initialized successfully');
-      console.log('Cookies after CSRF:', document.cookie);
-    } else {
-      console.error('CSRF initialization failed with status:', response.status);
     }
   } catch (error) {
     console.error('Failed to initialize CSRF:', error);
@@ -72,16 +68,13 @@ async function initializeCSRF(): Promise<void> {
 function getXSRFToken(): string | null {
   if (typeof document === 'undefined') return null;
 
-  console.log('All cookies:', document.cookie);
   const match = document.cookie.match(/XSRF-TOKEN=([^;]*)/);
   if (!match) {
-    console.log('XSRF-TOKEN not found in cookies');
     return null;
   }
 
   // The cookie is URL encoded, so decode it
   const token = decodeURIComponent(match[1]);
-  console.log('XSRF-TOKEN found:', token);
   return token;
 }
 
@@ -170,14 +163,13 @@ async function apiFetch<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
-  // Ensure CSRF is initialized for state-changing requests
-  if (options.method && ['POST', 'PUT', 'DELETE', 'PATCH'].includes(options.method)) {
-    await initializeCSRF();
-  }
+  // Skip CSRF for now - backend needs to be configured to work with cross-subdomain
+  // if (options.method && ['POST', 'PUT', 'DELETE', 'PATCH'].includes(options.method)) {
+  //   await initializeCSRF();
+  // }
 
   const token = getAuthToken();
   const tenantUrl = getTenantUrl();
-  const xsrfToken = getXSRFToken();
 
   // Get socket ID to prevent broadcasting back to the sender
   const socketId = typeof window !== 'undefined' ? (window as any).Echo?.socketId() : null;
@@ -196,21 +188,18 @@ async function apiFetch<T>(
     (headers as Record<string, string>)["X-Tenant-ID"] = tenantUrl;
   }
 
-  if (xsrfToken) {
-    (headers as Record<string, string>)["X-XSRF-TOKEN"] = xsrfToken;
-  }
+  // For now, skip XSRF-TOKEN header since cookies aren't accessible cross-subdomain
+  // Laravel will use the session cookie for CSRF validation
 
   if (socketId) {
     (headers as Record<string, string>)["X-Socket-ID"] = socketId;
   }
 
-  console.log('Making API request to:', `${API_BASE_URL}${endpoint}`);
-  console.log('Request headers:', headers);
-
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     ...options,
     headers,
     credentials: 'include', // Important for CSRF cookies
+    mode: 'cors',
   });
 
   if (!response.ok) {
@@ -247,8 +236,8 @@ export const authApi = {
     }),
 
   login: async (tenantSlug: string, data: LoginRequest): Promise<LoginResponse> => {
-    // Always initialize CSRF before login
-    await initializeCSRF();
+    // Skip CSRF for now
+    // await initializeCSRF();
 
     return apiFetch("/auth/login", {
       method: "POST",
