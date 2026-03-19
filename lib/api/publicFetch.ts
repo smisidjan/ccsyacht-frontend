@@ -19,12 +19,17 @@ export async function publicFetch<T>(
     (headers as Record<string, string>)["Content-Type"] = "application/json";
   }
 
-  // Get tenant from localStorage or URL if available
-  const tenantUrl = typeof window !== 'undefined'
-    ? localStorage.getItem("tenantUrl") || "ccs-yacht"
-    : "ccs-yacht";
+  // Only add X-Tenant-ID if it's explicitly provided in headers or available in localStorage
+  // This allows the calling code to provide the tenant when needed
+  if (!headers["X-Tenant-ID"]) {
+    const tenantUrl = typeof window !== 'undefined'
+      ? localStorage.getItem("tenantUrl")
+      : null;
 
-  (headers as Record<string, string>)["X-Tenant-ID"] = tenantUrl;
+    if (tenantUrl) {
+      (headers as Record<string, string>)["X-Tenant-ID"] = tenantUrl;
+    }
+  }
 
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     ...options,
@@ -73,12 +78,17 @@ export async function publicFetchVoid(
     (headers as Record<string, string>)["Content-Type"] = "application/json";
   }
 
-  // Get tenant from localStorage or URL if available
-  const tenantUrl = typeof window !== 'undefined'
-    ? localStorage.getItem("tenantUrl") || "ccs-yacht"
-    : "ccs-yacht";
+  // Only add X-Tenant-ID if it's explicitly provided in headers or available in localStorage
+  // This allows the calling code to provide the tenant when needed
+  if (!headers["X-Tenant-ID"]) {
+    const tenantUrl = typeof window !== 'undefined'
+      ? localStorage.getItem("tenantUrl")
+      : null;
 
-  (headers as Record<string, string>)["X-Tenant-ID"] = tenantUrl;
+    if (tenantUrl) {
+      (headers as Record<string, string>)["X-Tenant-ID"] = tenantUrl;
+    }
+  }
 
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     ...options,
