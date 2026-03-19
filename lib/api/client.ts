@@ -34,6 +34,41 @@ import { publicFetch, publicFetchVoid } from "./publicFetch";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
 
+// CSRF initialization flag
+let csrfInitialized = false;
+
+// Initialize CSRF protection
+async function initializeCSRF(): Promise<void> {
+  if (csrfInitialized) return;
+
+  try {
+    // Fetch CSRF cookie from backend
+    const response = await fetch(`${API_BASE_URL.replace('/api', '')}/sanctum/csrf-cookie`, {
+      credentials: 'include',
+      headers: {
+        'Accept': 'application/json',
+      },
+    });
+
+    if (response.ok) {
+      csrfInitialized = true;
+    }
+  } catch (error) {
+    console.error('Failed to initialize CSRF:', error);
+  }
+}
+
+// Get XSRF token from cookie
+function getXSRFToken(): string | null {
+  if (typeof document === 'undefined') return null;
+
+  const match = document.cookie.match(/XSRF-TOKEN=([^;]*)/);
+  if (!match) return null;
+
+  // The cookie is URL encoded, so decode it
+  return decodeURIComponent(match[1]);
+}
+
 // Token management
 let authToken: string | null = null;
 
@@ -119,14 +154,21 @@ async function apiFetch<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
+  // Ensure CSRF is initialized for state-changing requests
+  if (options.method && ['POST', 'PUT', 'DELETE', 'PATCH'].includes(options.method)) {
+    await initializeCSRF();
+  }
+
   const token = getAuthToken();
   const tenantUrl = getTenantUrl();
+  const xsrfToken = getXSRFToken();
 
   // Get socket ID to prevent broadcasting back to the sender
   const socketId = typeof window !== 'undefined' ? (window as any).Echo?.socketId() : null;
 
   const headers: HeadersInit = {
     "Content-Type": "application/json",
+    "Accept": "application/json",
     ...options.headers,
   };
 
@@ -138,6 +180,10 @@ async function apiFetch<T>(
     (headers as Record<string, string>)["X-Tenant-ID"] = tenantUrl;
   }
 
+  if (xsrfToken) {
+    (headers as Record<string, string>)["X-XSRF-TOKEN"] = xsrfToken;
+  }
+
   if (socketId) {
     (headers as Record<string, string>)["X-Socket-ID"] = socketId;
   }
@@ -145,6 +191,7 @@ async function apiFetch<T>(
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     ...options,
     headers,
+    credentials: 'include', // Important for CSRF cookies
   });
 
   if (!response.ok) {
@@ -180,12 +227,16 @@ export const authApi = {
       body: JSON.stringify({ email: email.trim().toLowerCase() }),
     }),
 
-  login: (tenantSlug: string, data: LoginRequest): Promise<LoginResponse> =>
-    apiFetch("/auth/login", {
+  login: async (tenantSlug: string, data: LoginRequest): Promise<LoginResponse> => {
+    // Always initialize CSRF before login
+    await initializeCSRF();
+
+    return apiFetch("/auth/login", {
       method: "POST",
       headers: { "X-Tenant-ID": tenantSlug },
       body: JSON.stringify({ ...data, email: data.email.trim().toLowerCase() }),
-    }),
+    });
+  },
 
   logout: (): Promise<void> =>
     apiFetch("/auth/logout", {
@@ -422,19 +473,28 @@ export const projectsApi = {
     }),
 
   uploadGeneralArrangement: async (id: string, file: File): Promise<Project> => {
+    // Ensure CSRF is initialized
+    await initializeCSRF();
+
     const formData = new FormData();
     formData.append("file", file);
 
     const token = getAuthToken();
     const tenantUrl = getTenantUrl();
+    const xsrfToken = getXSRFToken();
     const socketId = typeof window !== 'undefined' ? (window as any).Echo?.socketId() : null;
 
-    const headers: HeadersInit = {};
+    const headers: HeadersInit = {
+      'Accept': 'application/json',
+    };
     if (token) {
       (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
     }
     if (tenantUrl) {
       (headers as Record<string, string>)["X-Tenant-ID"] = tenantUrl;
+    }
+    if (xsrfToken) {
+      (headers as Record<string, string>)["X-XSRF-TOKEN"] = xsrfToken;
     }
     if (socketId) {
       (headers as Record<string, string>)["X-Socket-ID"] = socketId;
@@ -444,6 +504,7 @@ export const projectsApi = {
       method: "POST",
       headers,
       body: formData,
+      credentials: 'include', // Important for CSRF cookies
     });
 
     if (!response.ok) {
