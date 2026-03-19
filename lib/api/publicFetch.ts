@@ -19,8 +19,12 @@ export async function publicFetch<T>(
     (headers as Record<string, string>)["Content-Type"] = "application/json";
   }
 
-  // Always include X-Tenant-ID for public endpoints
-  (headers as Record<string, string>)["X-Tenant-ID"] = "ccs-yacht";
+  // Get tenant from localStorage or URL if available
+  const tenantUrl = typeof window !== 'undefined'
+    ? localStorage.getItem("tenantUrl") || "ccs-yacht"
+    : "ccs-yacht";
+
+  (headers as Record<string, string>)["X-Tenant-ID"] = tenantUrl;
 
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     ...options,
@@ -69,8 +73,12 @@ export async function publicFetchVoid(
     (headers as Record<string, string>)["Content-Type"] = "application/json";
   }
 
-  // Always include X-Tenant-ID for public endpoints
-  (headers as Record<string, string>)["X-Tenant-ID"] = "ccs-yacht";
+  // Get tenant from localStorage or URL if available
+  const tenantUrl = typeof window !== 'undefined'
+    ? localStorage.getItem("tenantUrl") || "ccs-yacht"
+    : "ccs-yacht";
+
+  (headers as Record<string, string>)["X-Tenant-ID"] = tenantUrl;
 
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     ...options,

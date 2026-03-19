@@ -122,7 +122,7 @@ async function apiFetch<T>(
   options: RequestInit = {}
 ): Promise<T> {
   const token = getAuthToken();
-  const tenantUrl = getTenantUrl() || 'ccs-yacht'; // Default tenant
+  const tenantUrl = getTenantUrl(); // Can be null for non-tenant requests
 
   // Get socket ID to prevent broadcasting back to the sender
   const socketId = typeof window !== 'undefined' ? (window as any).Echo?.socketId() : null;
@@ -141,8 +141,10 @@ async function apiFetch<T>(
     (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
   }
 
-  // Always send X-Tenant-ID
-  (headers as Record<string, string>)["X-Tenant-ID"] = tenantUrl;
+  // Send X-Tenant-ID if available
+  if (tenantUrl) {
+    (headers as Record<string, string>)["X-Tenant-ID"] = tenantUrl;
+  }
 
   if (socketId) {
     (headers as Record<string, string>)["X-Socket-ID"] = socketId;
@@ -434,13 +436,16 @@ export const projectsApi = {
     formData.append("file", file);
 
     const token = getAuthToken();
-    const tenantUrl = getTenantUrl() || 'ccs-yacht';
+    const tenantUrl = getTenantUrl();
     const socketId = typeof window !== 'undefined' ? (window as any).Echo?.socketId() : null;
 
     const headers: HeadersInit = {
       'Accept': 'application/json',
-      'X-Tenant-ID': tenantUrl,
     };
+
+    if (tenantUrl) {
+      (headers as Record<string, string>)["X-Tenant-ID"] = tenantUrl;
+    }
 
     if (token) {
       (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
