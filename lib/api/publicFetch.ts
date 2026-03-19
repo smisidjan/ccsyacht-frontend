@@ -10,8 +10,9 @@ async function initializeCSRF(): Promise<void> {
   if (csrfInitialized) return;
 
   try {
-    // Fetch CSRF cookie from backend
-    const response = await fetch(`${API_BASE_URL.replace('/api', '')}/sanctum/csrf-cookie`, {
+    // Fetch CSRF cookie from backend - use the API subdomain directly
+    const csrfUrl = 'https://api.papertrail.ccsyacht.com/sanctum/csrf-cookie';
+    const response = await fetch(csrfUrl, {
       credentials: 'include',
       headers: {
         'Accept': 'application/json',
