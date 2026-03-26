@@ -1,6 +1,6 @@
 import type { ApiError } from "./types";
 
-const API_BASE_URL = "https://api.papertrail.ccsyacht.com/api";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
 
 /**
  * Fetch function for public API endpoints (no authentication required)
@@ -21,7 +21,7 @@ export async function publicFetch<T>(
 
   // Only add X-Tenant-ID if it's explicitly provided in headers or available in localStorage
   // This allows the calling code to provide the tenant when needed
-  if (!headers["X-Tenant-ID"]) {
+  if (!(headers as Record<string, string>)["X-Tenant-ID"]) {
     const tenantUrl = typeof window !== 'undefined'
       ? localStorage.getItem("tenantUrl")
       : null;
@@ -80,7 +80,7 @@ export async function publicFetchVoid(
 
   // Only add X-Tenant-ID if it's explicitly provided in headers or available in localStorage
   // This allows the calling code to provide the tenant when needed
-  if (!headers["X-Tenant-ID"]) {
+  if (!(headers as Record<string, string>)["X-Tenant-ID"]) {
     const tenantUrl = typeof window !== 'undefined'
       ? localStorage.getItem("tenantUrl")
       : null;

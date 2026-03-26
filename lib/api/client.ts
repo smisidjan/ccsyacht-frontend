@@ -32,7 +32,7 @@ import type {
 } from "./types";
 import { publicFetch, publicFetchVoid } from "./publicFetch";
 
-const API_BASE_URL = "https://api.papertrail.ccsyacht.com/api";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
 
 // CSRF is disabled - backend doesn't require it for API routes
 
@@ -117,7 +117,7 @@ export function getAuthToken(): string | null {
 }
 
 // Base fetch function with error handling
-async function apiFetch<T>(
+export async function apiFetch<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
@@ -185,7 +185,7 @@ async function apiFetch<T>(
 // ============ Authentication API ============
 export const authApi = {
   lookup: (email: string): Promise<LookupResponse> =>
-    apiFetch("/auth/lookup", {
+    publicFetch("/auth/lookup", {
       method: "POST",
       body: JSON.stringify({ email: email.trim().toLowerCase() }),
     }),
@@ -216,7 +216,7 @@ export const authApi = {
     }),
 
   forgotPassword: (email: string): Promise<void> =>
-    apiFetch("/auth/forgot-password", {
+    publicFetchVoid("/auth/forgot-password", {
       method: "POST",
       body: JSON.stringify({ email: email.trim().toLowerCase() }),
     }),
@@ -225,14 +225,14 @@ export const authApi = {
     data: { token: string; email: string; password: string; password_confirmation: string },
     tenantUrl: string
   ): Promise<void> =>
-    apiFetch("/auth/reset-password", {
+    publicFetchVoid("/auth/reset-password", {
       method: "POST",
       headers: { "X-Tenant-ID": tenantUrl },
       body: JSON.stringify({ ...data, email: data.email.trim().toLowerCase() }),
     }),
 
   registerAdmin: (data: RegisterAdminRequest): Promise<RegisterAdminResponse> =>
-    apiFetch("/register-admin", {
+    publicFetch("/register-admin", {
       method: "POST",
       body: JSON.stringify(data),
     }),
