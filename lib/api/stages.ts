@@ -6,6 +6,7 @@ import type {
   CreateStageRequest,
   UpdateStageRequest,
   UpdateStageStatusRequest,
+  BulkCreateStagesRequest,
   ApiError,
 } from "./types";
 import { getAuthToken, getTenantUrl } from "./client";
@@ -84,6 +85,16 @@ export const stagesApi = {
   delete: (projectId: string, stageId: string): Promise<void> =>
     apiFetch(`/projects/${projectId}/stages/${stageId}`, {
       method: "DELETE",
+    }),
+
+  bulkCreate: (
+    projectId: string,
+    areaId: string,
+    data: BulkCreateStagesRequest
+  ): Promise<{ data: Stage[] }> =>
+    apiFetch(`/projects/${projectId}/areas/${areaId}/stages/bulk`, {
+      method: "POST",
+      body: JSON.stringify(data),
     }),
 };
 
