@@ -600,8 +600,42 @@ export interface UpdateAreaRequest {
   sort_order?: number;
 }
 
+// ============ Stage Templates ============
+export interface StageTemplate {
+  "@context"?: string;
+  "@type"?: string;
+  identifier: string;
+  name: string;
+  description?: string;
+  position: number;
+  requiresReleaseForm: boolean;
+  isActive: boolean;
+  dateCreated: string;
+  dateModified: string;
+}
+
+export interface CreateStageTemplateRequest {
+  name: string;
+  description?: string;
+  requires_release_form?: boolean;
+  sort_order?: number;
+  is_active?: boolean;
+}
+
+export interface UpdateStageTemplateRequest {
+  name?: string;
+  description?: string;
+  requires_release_form?: boolean;
+  sort_order?: number;
+  is_active?: boolean;
+}
+
+export interface ReorderStageTemplatesRequest {
+  order: string[];
+}
+
 // ============ Stages ============
-export type StageStatus = "not_started" | "in_progress" | "completed";
+export type StageStatus = "not_started" | "in_progress" | "pending_signoff" | "completed" | "rejected";
 
 export interface StageLocation {
   "@type"?: string;
@@ -622,6 +656,11 @@ export interface Stage {
   };
   requiresReleaseForm: boolean;
   location?: StageLocation;
+  template?: {
+    "@type"?: string;
+    identifier: string;
+    name: string;
+  };
   dateCreated: string;
   dateModified: string;
 }
@@ -644,6 +683,63 @@ export interface UpdateStageRequest {
 
 export interface UpdateStageStatusRequest {
   status: StageStatus;
+}
+
+export interface BulkCreateStagesRequest {
+  stages: {
+    name: string;
+    requires_release_form: boolean;
+    sort_order: number;
+  }[];
+}
+
+// ============ Stage Signoffs ============
+export type SignoffStatus = "pending" | "signed" | "rejected";
+
+export interface RejectionHistoryEntry {
+  rejected_by: string;
+  rejected_by_name: string;
+  rejected_at: string;
+  notes: string;
+}
+
+export interface StageSignoff {
+  "@context"?: string;
+  "@type"?: string;
+  identifier: string;
+  actionStatus: string;
+  status: SignoffStatus;
+  recipient: {
+    "@type"?: string;
+    identifier: string;
+    name: string;
+    email?: string;
+  };
+  agent?: {
+    "@type"?: string;
+    identifier: string;
+    name: string;
+  } | null;
+  object: {
+    "@type"?: string;
+    identifier: string;
+    name: string;
+  };
+  signedAt: string | null;
+  notes: string | null;
+  hasSignature: boolean;
+  rejectionHistory?: RejectionHistoryEntry[];
+  dateCreated: string;
+  dateModified: string;
+}
+
+export interface SignSignoffRequest {
+  signature_data?: string; // Base64 image
+  notes?: string;          // max 1000 chars
+}
+
+export interface RejectSignoffRequest {
+  notes: string;           // Required, max 1000 chars
 }
 
 // ============ Logbook ============

@@ -34,6 +34,9 @@ export { areasApi, useAreas, useArea } from "./areas";
 // Stages
 export { stagesApi, useStages } from "./stages";
 
+// Stage Signoffs
+export { stageSignoffsApi, useStageSignoffs } from "./stageSignoffs";
+
 // Logbook
 export { logbookApi, useLogbook } from "./logbook";
 
