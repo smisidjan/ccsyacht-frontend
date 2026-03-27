@@ -19,6 +19,7 @@ interface PunchlistItemFormProps {
   onFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onFileRemove: (index: number) => void;
   projectMembers?: ProjectMember[];
+  hideTitle?: boolean; // Hide title field (used when title is set elsewhere, e.g., GA pin label)
   translations: {
     punchlistItemTitle: string;
     punchlistTitlePlaceholder: string;
@@ -53,19 +54,22 @@ export default function PunchlistItemForm({
   onFileChange,
   onFileRemove,
   projectMembers,
+  hideTitle = false,
   translations: t,
 }: PunchlistItemFormProps) {
   return (
     <div className="space-y-4">
       {/* Title */}
-      <FormInput
-        id="punchlist-title"
-        label={t.punchlistItemTitle}
-        value={title}
-        onChange={(e) => onTitleChange(e.target.value)}
-        placeholder={t.punchlistTitlePlaceholder}
-        required
-      />
+      {!hideTitle && (
+        <FormInput
+          id="punchlist-title"
+          label={t.punchlistItemTitle}
+          value={title}
+          onChange={(e) => onTitleChange(e.target.value)}
+          placeholder={t.punchlistTitlePlaceholder}
+          required
+        />
+      )}
 
       {/* Description */}
       <div>

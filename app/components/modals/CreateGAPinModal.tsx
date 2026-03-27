@@ -5,11 +5,8 @@ import { useTranslations } from "next-intl";
 import { PencilIcon } from "@heroicons/react/24/outline";
 import BaseModal from "./BaseModal";
 import FormInput from "@/app/components/ui/FormInput";
-import RemarkForm from "@/app/components/forms/RemarkForm";
 import PunchlistItemForm from "@/app/components/forms/PunchlistItemForm";
 import { gaPinsApi } from "@/lib/api/ga-pins";
-import { stageRemarksApi } from "@/lib/api/stage-remarks";
-import { punchlistItemsApi } from "@/lib/api/punchlist-items";
 import { useDecks } from "@/lib/api/decks";
 import { useAreas } from "@/lib/api/areas";
 import { useStages } from "@/lib/api/stages";
@@ -60,12 +57,7 @@ export default function CreateGAPinModal({
   // Edit mode: track which fields have been opened for editing
   const [editingFields, setEditingFields] = useState<Set<"deck" | "area" | "stage">>(new Set());
 
-  // Optional remark or punchlist item (only for create mode)
-  const [addRemarkOrPunchlist, setAddRemarkOrPunchlist] = useState(false);
-  const [activeTab, setActiveTab] = useState<"remark" | "punchlist">("remark");
-  const [remarkContent, setRemarkContent] = useState("");
-  const [remarkFiles, setRemarkFiles] = useState<File[]>([]);
-  const [punchlistTitle, setPunchlistTitle] = useState("");
+  // Punchlist item fields (only for create mode)
   const [punchlistDescription, setPunchlistDescription] = useState("");
   const [punchlistPriority, setPunchlistPriority] = useState<PunchlistItemPriority>("medium");
   const [punchlistDueDate, setPunchlistDueDate] = useState("");
@@ -97,6 +89,12 @@ export default function CreateGAPinModal({
       setSelectedDeckId("");
       setSelectedAreaId("");
       setSelectedStageId("");
+      // Reset punchlist fields
+      setPunchlistDescription("");
+      setPunchlistPriority("medium");
+      setPunchlistDueDate("");
+      setPunchlistAssignees([]);
+      setPunchlistFiles([]);
     } else {
       setLabel("");
       setColor(DEFAULT_COLORS[0]);
@@ -127,7 +125,7 @@ export default function CreateGAPinModal({
     }
   }, [stages, isEditing, selectedAreaId, selectedStageId]);
 
-  // Check if selected stage is completed (disable punchlist if so)
+  // Check if selected stage is completed
   const selectedStage = stages?.find((s) => s.identifier === selectedStageId);
   const isStageCompleted = selectedStage?.status.name === "completed";
 
@@ -152,36 +150,15 @@ export default function CreateGAPinModal({
     }
   };
 
-  // File handling for remarks
-  const handleRemarkFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    const validFiles: File[] = [];
-    const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
-
-    for (const file of files) {
-      if (file.size > MAX_FILE_SIZE) {
-        alert(`${file.name}: Max 20MB`);
-        continue;
-      }
-      validFiles.push(file);
-    }
-
-    setRemarkFiles((prev) => [...prev, ...validFiles]);
-  };
-
-  const removeRemarkFile = (index: number) => {
-    setRemarkFiles((prev) => prev.filter((_, i) => i !== index));
-  };
-
   // File handling for punchlist items
   const handlePunchlistFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     const validFiles: File[] = [];
-    const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
+    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB per file
 
     for (const file of files) {
       if (file.size > MAX_FILE_SIZE) {
-        alert(`${file.name}: Max 20MB`);
+        alert(`${file.name}: Max 10MB`);
         continue;
       }
       validFiles.push(file);
@@ -215,58 +192,21 @@ export default function CreateGAPinModal({
       };
       await gaPinsApi.update(projectId, initialData.identifier, updateData);
     } else {
-      // Create new pin
+      // Create new pin with punchlist item
       const createData: CreateGAPinRequest = {
         stage_id: selectedStageId,
-        label: label.trim() || undefined,
+        label: label.trim(),
         x,
         y,
         color,
+        // Punchlist fields (optioneel)
+        description: punchlistDescription.trim() || undefined,
+        priority: punchlistPriority,
+        due_date: punchlistDueDate || undefined,
+        assignee_ids: punchlistAssignees.length > 0 ? punchlistAssignees : undefined,
       };
-      await gaPinsApi.create(projectId, createData);
 
-      // Create remark or punchlist item if checkbox is enabled
-      if (addRemarkOrPunchlist) {
-        // Create remark if provided
-        if (remarkContent.trim()) {
-          const newRemark = await stageRemarksApi.create(projectId, selectedStageId, {
-            content: remarkContent.trim(),
-          });
-
-          // Upload attachments if any
-          if (remarkFiles.length > 0) {
-            for (const file of remarkFiles) {
-              try {
-                await stageRemarksApi.uploadAttachment(projectId, newRemark.identifier, file);
-              } catch (error) {
-                console.error(`Failed to upload ${file.name}:`, error);
-              }
-            }
-          }
-        }
-
-        // Create punchlist item if provided (only if stage is not completed)
-        if (!isStageCompleted && punchlistTitle.trim()) {
-          const newItem = await punchlistItemsApi.create(projectId, selectedStageId, {
-            title: punchlistTitle.trim(),
-            description: punchlistDescription.trim() || undefined,
-            priority: punchlistPriority,
-            due_date: punchlistDueDate || undefined,
-            assignee_ids: punchlistAssignees.length > 0 ? punchlistAssignees : undefined,
-          });
-
-          // Upload attachments if any
-          if (punchlistFiles.length > 0) {
-            for (const file of punchlistFiles) {
-              try {
-                await punchlistItemsApi.uploadAttachment(projectId, newItem.identifier, file);
-              } catch (error) {
-                console.error(`Failed to upload ${file.name}:`, error);
-              }
-            }
-          }
-        }
-      }
+      await gaPinsApi.create(projectId, createData, punchlistFiles);
     }
   };
 
@@ -280,7 +220,7 @@ export default function CreateGAPinModal({
       successMessage={isEditing ? t("updateSuccess") : t("createSuccess")}
       errorFallbackMessage={isEditing ? t("updateError") : t("createError")}
       onSuccessCallback={onSuccess}
-      submitDisabled={!isEditing && !selectedStageId}
+      submitDisabled={!isEditing && (!selectedStageId || !label.trim())}
       size="md"
     >
       <div className="space-y-5">
@@ -489,6 +429,7 @@ export default function CreateGAPinModal({
             value={label}
             onChange={(e) => setLabel(e.target.value)}
             placeholder={t("pinLabelPlaceholder")}
+            required={!isEditing}
           />
 
           {/* Color Picker */}
@@ -519,106 +460,44 @@ export default function CreateGAPinModal({
           </div>
         </div>
 
-        {/* Optional Remark or Punchlist Item (Create mode only) */}
-        {!isEditing && selectedStageId && (
+        {/* Punchlist Item Fields (Create mode only, when stage is NOT completed) */}
+        {!isEditing && selectedStageId && !isStageCompleted && (
           <div className="border-t border-gray-200 dark:border-gray-700 pt-5">
-            {/* Checkbox */}
-            <label className="flex items-center gap-2 cursor-pointer mb-4">
-              <input
-                type="checkbox"
-                checked={addRemarkOrPunchlist}
-                onChange={(e) => setAddRemarkOrPunchlist(e.target.checked)}
-                className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
-              />
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                {isStageCompleted ? t("addRemarkCheckbox") : t("addRemarkOrPunchlistCheckbox")}
-              </span>
-            </label>
-
-            {/* Tabs and Content */}
-            {addRemarkOrPunchlist && (
-              <>
-                {/* Tabs (only show if stage is NOT completed) */}
-                {!isStageCompleted && (
-                  <div className="flex border-b border-gray-200 dark:border-gray-700 mb-4">
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab("remark")}
-                      className={`px-4 py-2 text-sm font-medium transition-colors ${
-                        activeTab === "remark"
-                          ? "border-b-2 border-blue-600 text-blue-600 dark:text-blue-400"
-                          : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
-                      }`}
-                    >
-                      {t("remarkTab")}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab("punchlist")}
-                      className={`px-4 py-2 text-sm font-medium transition-colors ${
-                        activeTab === "punchlist"
-                          ? "border-b-2 border-blue-600 text-blue-600 dark:text-blue-400"
-                          : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
-                      }`}
-                    >
-                      {t("punchlistTab")}
-                    </button>
-                  </div>
-                )}
-
-                {/* Tab Content */}
-                <div className="space-y-4">
-                  {isStageCompleted || activeTab === "remark" ? (
-                    <RemarkForm
-                      content={remarkContent}
-                      onContentChange={setRemarkContent}
-                      files={remarkFiles}
-                      onFileChange={handleRemarkFileChange}
-                      onFileRemove={removeRemarkFile}
-                      translations={{
-                        remarkContent: t("remarkContent"),
-                        remarkPlaceholder: t("remarkPlaceholder"),
-                        attachments: t("attachments"),
-                        uploadAttachment: t("uploadAttachment"),
-                        maxFileSize: "Max 20MB",
-                      }}
-                    />
-                  ) : (
-                    <PunchlistItemForm
-                      title={punchlistTitle}
-                      onTitleChange={setPunchlistTitle}
-                      description={punchlistDescription}
-                      onDescriptionChange={setPunchlistDescription}
-                      priority={punchlistPriority}
-                      onPriorityChange={setPunchlistPriority}
-                      dueDate={punchlistDueDate}
-                      onDueDateChange={setPunchlistDueDate}
-                      assignees={punchlistAssignees}
-                      onToggleAssignee={toggleAssignee}
-                      files={punchlistFiles}
-                      onFileChange={handlePunchlistFileChange}
-                      onFileRemove={removePunchlistFile}
-                      projectMembers={projectMembers || undefined}
-                      translations={{
-                        punchlistItemTitle: t("punchlistItemTitle"),
-                        punchlistTitlePlaceholder: t("punchlistTitlePlaceholder"),
-                        punchlistDescription: t("punchlistDescription"),
-                        punchlistDescriptionPlaceholder: t("punchlistDescriptionPlaceholder"),
-                        punchlistPriority: t("punchlistPriority"),
-                        priorityLow: t("priorityLow"),
-                        priorityMedium: t("priorityMedium"),
-                        priorityHigh: t("priorityHigh"),
-                        punchlistDueDate: t("punchlistDueDate"),
-                        attachments: t("attachments"),
-                        uploadAttachment: t("uploadAttachment"),
-                        maxFileSize: "Max 20MB",
-                        assignees: t("assignees"),
-                      }}
-                    />
-                  )}
-                </div>
-              </>
-            )}
+            <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-4">
+              {t("punchlistDetails")}
+            </h4>
+            <PunchlistItemForm
+              title="" 
+              onTitleChange={() => {}}
+              description={punchlistDescription}
+              onDescriptionChange={setPunchlistDescription}
+              priority={punchlistPriority}
+              onPriorityChange={setPunchlistPriority}
+              dueDate={punchlistDueDate}
+              onDueDateChange={setPunchlistDueDate}
+              assignees={punchlistAssignees}
+              onToggleAssignee={toggleAssignee}
+              files={punchlistFiles}
+              onFileChange={handlePunchlistFileChange}
+              onFileRemove={removePunchlistFile}
+              projectMembers={projectMembers || undefined}
+              hideTitle={true}
+              translations={{
+                punchlistItemTitle: t("punchlistItemTitle"),
+                punchlistTitlePlaceholder: t("punchlistTitlePlaceholder"),
+                punchlistDescription: t("punchlistDescription"),
+                punchlistDescriptionPlaceholder: t("punchlistDescriptionPlaceholder"),
+                punchlistPriority: t("punchlistPriority"),
+                priorityLow: t("priorityLow"),
+                priorityMedium: t("priorityMedium"),
+                priorityHigh: t("priorityHigh"),
+                punchlistDueDate: t("punchlistDueDate"),
+                attachments: t("attachments"),
+                uploadAttachment: t("uploadAttachment"),
+                maxFileSize: "Max 10MB",
+                assignees: t("assignees"),
+              }}
+            />
           </div>
         )}
       </div>
