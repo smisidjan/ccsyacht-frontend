@@ -582,6 +582,8 @@ export interface Area {
   description?: string;
   position: number;
   stageCount: number;
+  completedStageCount?: number;
+  inProgressStageCount?: number;
   containedInPlace?: AreaDeck;
   containsPlace?: AreaStage[];
   dateCreated: string;
@@ -637,7 +639,13 @@ export interface ReorderStageTemplatesRequest {
 // ============ Stages ============
 export type StageStatus = "not_started" | "in_progress" | "pending_signoff" | "completed" | "rejected";
 
-export interface StageLocation {
+export interface StageArea {
+  "@type"?: string;
+  identifier: string;
+  name: string;
+}
+
+export interface StageDeck {
   "@type"?: string;
   identifier: string;
   name: string;
@@ -655,7 +663,8 @@ export interface Stage {
     name: StageStatus;
   };
   requiresReleaseForm: boolean;
-  location?: StageLocation;
+  area?: StageArea;
+  deck?: StageDeck;
   template?: {
     "@type"?: string;
     identifier: string;
@@ -742,6 +751,69 @@ export interface RejectSignoffRequest {
   notes: string;           // Required, max 1000 chars
 }
 
+// ============ GA Pins ============
+export interface GAPin {
+  "@context"?: string;
+  "@type"?: string;
+  identifier: string;
+  label: string | null;
+  x: number; // percentage 0-100
+  y: number; // percentage 0-100
+  color: string | null; // hex color
+  stage: {
+    "@type"?: string;
+    identifier: string;
+    name: string;
+    status: StageStatus;
+    remarksCount: number;
+    punchlistItemsCount: number;
+  };
+  area: {
+    "@type"?: string;
+    identifier: string;
+    name: string;
+  };
+  deck: {
+    "@type"?: string;
+    identifier: string;
+    name: string;
+  };
+  creator: {
+    "@type"?: string;
+    identifier: string;
+    name: string;
+  };
+  dateCreated: string;
+  dateModified: string;
+}
+
+export interface CreateGAPinRequest {
+  stage_id: string;
+  label?: string;
+  x: number; // percentage 0-100
+  y: number; // percentage 0-100
+  color?: string; // hex color
+}
+
+export interface UpdateGAPinRequest {
+  stage_id?: string;
+  label?: string;
+  x?: number;
+  y?: number;
+  color?: string;
+}
+
+export interface BulkSyncGAPinsRequest {
+  pins: Array<{
+    identifier?: string; // if updating existing
+    stage_id: string;
+    label?: string;
+    x: number;
+    y: number;
+    color?: string;
+  }>;
+}
+
 // ============ Logbook ============
 export interface LogbookEntry {
   "@context"?: string;
@@ -788,3 +860,158 @@ export interface AddMemberRequest {
 
 export type ProjectSigner = ProjectMember;
 export type AddSignerRequest = AddMemberRequest;
+
+// ============ Punchlist Items ============
+export type PunchlistItemStatus = "open" | "in_progress" | "done" | "cancelled";
+export type PunchlistItemPriority = "low" | "medium" | "high";
+
+export interface PunchlistItemAssignee {
+  "@type"?: string;
+  identifier: string;
+  name: string;
+  email: string;
+  assignedAt: string;
+}
+
+export interface PunchlistItem {
+  "@context"?: string;
+  "@type"?: string;
+  identifier: string;
+  name: string;
+  description?: string;
+  actionStatus: string;
+  status: PunchlistItemStatus;
+  priority: PunchlistItemPriority;
+  dueDate?: string;
+  isOverdue: boolean;
+  stage: {
+    "@type"?: string;
+    identifier: string;
+    name: string;
+    area?: {
+      "@type"?: string;
+      identifier: string;
+      name: string;
+      deck?: {
+        "@type"?: string;
+        identifier: string;
+        name: string;
+      };
+    };
+  };
+  creator: {
+    "@type"?: string;
+    identifier: string;
+    name: string;
+  };
+  assignees: PunchlistItemAssignee[];
+  attachmentCount: number;
+  dateCreated: string;
+  dateModified: string;
+  cancellation?: {
+    "@type"?: string;
+    cancelledBy: {
+      "@type"?: string;
+      identifier: string;
+      name: string;
+    };
+    cancelledAt: string;
+    reason: string;
+  };
+}
+
+export interface CreatePunchlistItemRequest {
+  title: string;
+  description?: string;
+  priority?: PunchlistItemPriority;
+  due_date?: string; // YYYY-MM-DD
+  assignee_ids?: string[];
+}
+
+export interface UpdatePunchlistItemRequest {
+  title?: string;
+  description?: string;
+  priority?: PunchlistItemPriority;
+  due_date?: string; // YYYY-MM-DD
+  assignee_ids?: string[];
+}
+
+export interface UpdatePunchlistItemStatusRequest {
+  status: PunchlistItemStatus;
+  reason?: string; // Required when status is "cancelled", max 1000 chars
+}
+
+export interface AddAssigneesRequest {
+  user_ids: string[];
+}
+
+export interface PunchlistItemAttachment {
+  "@context"?: string;
+  "@type"?: string;
+  identifier: string;
+  name: string;
+  encodingFormat: string;
+  contentSize: number;
+  contentSizeHuman: string;
+  isImage: boolean;
+  uploadedBy: {
+    "@type"?: string;
+    identifier: string;
+    name: string;
+  };
+  dateCreated: string;
+}
+
+// ============ Stage Remarks ============
+export interface StageRemarkAttachment {
+  "@context"?: string;
+  "@type"?: string; // "MediaObject"
+  identifier: string;
+  name: string;
+  encodingFormat: string;
+  contentSize: number;
+  contentSizeHuman: string;
+  isImage: boolean;
+  uploadedBy: {
+    "@type"?: string;
+    identifier: string;
+    name: string;
+  };
+  dateCreated: string;
+}
+
+export interface StageRemark {
+  "@context"?: string;
+  "@type"?: string; // "Comment"
+  identifier: string;
+  text: string;
+  author: {
+    "@type"?: string; // "Person"
+    identifier: string;
+    name: string;
+    email: string;
+  };
+  stage: {
+    "@type"?: string; // "HowToStep"
+    identifier: string;
+    name: string;
+  };
+  parentComment?: {
+    identifier: string;
+  };
+  replies?: StageRemark[];
+  replyCount: number;
+  attachments?: StageRemarkAttachment[];
+  attachmentCount: number;
+  dateCreated: string;
+  dateModified: string;
+}
+
+export interface CreateStageRemarkRequest {
+  content: string;
+  parent_id?: string;
+}
+
+export interface UpdateStageRemarkRequest {
+  content: string;
+}

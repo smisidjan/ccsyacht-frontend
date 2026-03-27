@@ -61,6 +61,9 @@ export const stagesApi = {
   getAll: (projectId: string, areaId: string): Promise<{ data: Stage[] }> =>
     apiFetch(`/projects/${projectId}/areas/${areaId}/stages`),
 
+  getAllForProject: (projectId: string): Promise<{ data: Stage[] }> =>
+    apiFetch(`/projects/${projectId}/stages`),
+
   getById: (projectId: string, stageId: string): Promise<Stage> =>
     apiFetch(`/projects/${projectId}/stages/${stageId}`),
 
@@ -154,5 +157,34 @@ export function useStages(projectId: string, areaId: string) {
     updateStage,
     updateStageStatus,
     deleteStage,
+  };
+}
+
+// ============ Project Stages Hook (all stages in a project) ============
+export function useProjectStages(projectId: string) {
+  const [state, setState] = useState<UseApiState<Stage[]>>({
+    data: null,
+    loading: true,
+    error: null,
+  });
+
+  const fetchStages = useCallback(async () => {
+    setState((prev) => ({ ...prev, loading: true, error: null }));
+    try {
+      const response = await stagesApi.getAllForProject(projectId);
+      const data = response.data || [];
+      setState({ data, loading: false, error: null });
+    } catch (err) {
+      setState({ data: null, loading: false, error: err as ApiError });
+    }
+  }, [projectId]);
+
+  useEffect(() => {
+    fetchStages();
+  }, [fetchStages]);
+
+  return {
+    ...state,
+    refetch: fetchStages,
   };
 }
