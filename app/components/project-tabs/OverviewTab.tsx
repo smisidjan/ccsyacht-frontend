@@ -209,17 +209,43 @@ export default function OverviewTab({
   }, [canEditProject, projectStatus, allSetupTasksComplete, setupTasks.length, projectId, onProjectUpdate, showToast, t]);
 
   // Map API Area to AreaCard Area format
-  const mapAreaToCardData = (area: Area): AreaCardData => ({
-    id: area.identifier,
-    name: area.name,
-    description: area.description,
-    deckName: area.containedInPlace?.name, // Add deck name
-    areasCount: 0, // Not applicable for areas, will be removed from card
-    stagesCount: area.stageCount,
-    completedCount: 0, // TODO: Calculate from stages when available
-    inProgressCount: 0, // TODO: Calculate from stages when available
-    progress: 0, // TODO: Calculate from stages when available
-  });
+  const mapAreaToCardData = (area: Area): AreaCardData => {
+    // Use aggregate counts from backend if available, otherwise calculate from stages data
+    let completedCount = 0;
+    let inProgressCount = 0;
+    let progress = 0;
+
+    if (area.completedStageCount !== undefined || area.inProgressStageCount !== undefined) {
+      // Backend provides aggregate counts - use them directly
+      completedCount = area.completedStageCount || 0;
+      inProgressCount = area.inProgressStageCount || 0;
+      progress = area.stageCount > 0
+        ? Math.round((completedCount / area.stageCount) * 100)
+        : 0;
+    } else if (area.containsPlace && area.containsPlace.length > 0) {
+      // Fall back to calculating from embedded stage data
+      const stages = area.containsPlace;
+      completedCount = stages.filter(s => s.status.name === "completed").length;
+      inProgressCount = stages.filter(s =>
+        s.status.name === "in_progress" || s.status.name === "pending_signoff"
+      ).length;
+      progress = stages.length > 0
+        ? Math.round((completedCount / stages.length) * 100)
+        : 0;
+    }
+
+    return {
+      id: area.identifier,
+      name: area.name,
+      description: area.description,
+      deckName: area.containedInPlace?.name,
+      areasCount: 0, // Not applicable for areas
+      stagesCount: area.stageCount,
+      completedCount,
+      inProgressCount,
+      progress,
+    };
+  };
 
   const handleCreateSuccess = () => {
     setIsCreateModalOpen(false);
