@@ -41,10 +41,10 @@ export default function ProjectCard({ project, isMember, userRole, memberCount, 
       <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 to-purple-600" />
 
       {/* Content */}
-      <div className="p-6 flex-1 flex flex-col">
+      <div className="p-8 flex-1 flex flex-col">
         {/* Header */}
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex items-center gap-3 flex-1 min-w-0">
+        <div className="flex items-start justify-between mb-5">
+          <div className="flex items-center gap-4 flex-1 min-w-0">
             <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-900/30 dark:to-blue-800/30 rounded-xl flex items-center justify-center shadow-sm">
               <FolderIcon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
             </div>
@@ -56,9 +56,9 @@ export default function ProjectCard({ project, isMember, userRole, memberCount, 
         </div>
 
         {/* Details */}
-        <div className="space-y-3 mb-4 flex-1">
+        <div className="space-y-4 mb-5 flex-1">
           {/* Shipyard - always render */}
-          <div className="flex items-center gap-3 text-sm h-5">
+          <div className="flex items-center gap-4 text-sm h-5">
             <BuildingOffice2Icon className="w-5 h-5 text-gray-400 flex-shrink-0" />
             <span className="text-gray-700 dark:text-gray-300 truncate">
               {project.producer?.name || '\u00A0'}
@@ -66,7 +66,7 @@ export default function ProjectCard({ project, isMember, userRole, memberCount, 
           </div>
 
           {/* Type & Dates - always render */}
-          <div className="flex items-start gap-3 text-sm min-h-[2.5rem]">
+          <div className="flex items-start gap-4 text-sm min-h-[2.5rem]">
             <CalendarIcon className="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5" />
             <div className="flex-1 min-w-0">
               <div className="text-gray-700 dark:text-gray-300 mb-1">
@@ -88,8 +88,8 @@ export default function ProjectCard({ project, isMember, userRole, memberCount, 
 
           {/* Description - always render with fixed height */}
         {/* Member Count */}
-          <div className="flex items-start justify-between mb-4">
-          <div className="flex items-center gap-3 flex-1 min-w-0">
+          <div className="flex items-start justify-between mb-5">
+          <div className="flex items-center gap-4 flex-1 min-w-0">
             <h3 className="text-sm text-gray-600 dark:text-gray-400">
               {project.description || '\u00A0'}
             </h3>
@@ -101,7 +101,7 @@ export default function ProjectCard({ project, isMember, userRole, memberCount, 
         </div>
 
         {/* Footer */}
-        <div className="pt-4 border-t border-gray-100 dark:border-gray-700 flex justify-end">
+        <div className="pt-5 border-t border-gray-100 dark:border-gray-700 flex justify-end">
           {isMember ? (
             // If user is a member, show "Open Project" button
             <Link

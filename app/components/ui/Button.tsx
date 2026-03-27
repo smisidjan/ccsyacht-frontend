@@ -24,9 +24,9 @@ const variantStyles = {
 };
 
 const sizeStyles = {
-  sm: "py-2 px-3 text-sm rounded-lg",
-  md: "py-3 px-4 rounded-lg",
-  lg: "py-4 px-6 text-lg rounded-xl",
+  sm: "py-2.5 px-4 text-sm rounded-lg",
+  md: "py-3 px-5 rounded-lg",
+  lg: "py-4 px-7 text-lg rounded-xl",
 };
 
 const Button = forwardRef<HTMLButtonElement, ButtonProps>(

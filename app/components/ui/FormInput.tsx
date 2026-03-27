@@ -45,7 +45,7 @@ const FormInput = forwardRef<HTMLInputElement | HTMLTextAreaElement, FormInputPr
     };
 
     const inputClassName = `
-      w-full px-4 py-3 rounded-lg border
+      w-full px-4 py-3.5 rounded-lg border
       ${error
         ? "border-red-500 focus:ring-red-500"
         : "border-gray-300 dark:border-gray-700 focus:ring-blue-500"
@@ -63,7 +63,7 @@ const FormInput = forwardRef<HTMLInputElement | HTMLTextAreaElement, FormInputPr
       <div>
         <label
           htmlFor={id}
-          className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+          className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2.5"
         >
           {label}
           {required && showRequiredMark && (

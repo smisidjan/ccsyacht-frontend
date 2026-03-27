@@ -61,10 +61,10 @@ export default function Alert({
 
   return (
     <div
-      className={`p-3 rounded-lg border ${styles.container} ${className}`}
+      className={`p-4 rounded-lg border ${styles.container} ${className}`}
       role="alert"
     >
-      <div className="flex items-start gap-2">
+      <div className="flex items-start gap-3">
         {icon && (
           <Icon className={`w-5 h-5 flex-shrink-0 mt-0.5 ${styles.icon}`} />
         )}
