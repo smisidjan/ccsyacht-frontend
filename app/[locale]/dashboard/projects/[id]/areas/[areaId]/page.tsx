@@ -26,6 +26,10 @@ import type { Stage } from "@/lib/api/types";
 import SignatureModal from "@/app/components/modals/SignatureModal";
 import RejectSignoffModal from "@/app/components/modals/RejectSignoffModal";
 import { useToast } from "@/app/context/ToastContext";
+import PunchlistList from "@/app/components/punchlist/PunchlistList";
+import RemarksList from "@/app/components/stage-remarks/RemarksList";
+import { useStageRemarks } from "@/lib/api/stage-remarks";
+import { usePunchlistItems } from "@/lib/api/punchlist-items";
 
 export default function AreaDetailPage() {
   const t = useTranslations("areaDetail");
@@ -33,6 +37,10 @@ export default function AreaDetailPage() {
   const params = useParams();
   const projectId = params.id as string;
   const areaId = params.areaId as string;
+
+  // Get query params for pre-selecting stage
+  const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+  const stageIdFromQuery = searchParams?.get('stage');
 
   const { data: project } = useProject(projectId);
   const { data: area, loading: areaLoading, error: areaError } = useArea(projectId, areaId);
@@ -55,18 +63,27 @@ export default function AreaDetailPage() {
   const totalStages = stages?.length || 0;
   const progress = totalStages > 0 ? Math.round((completedStages / totalStages) * 100) : 0;
 
-  // Auto-select first stage when stages load
+  // Auto-select stage from query param or first stage when stages load
   useEffect(() => {
     if (stages && stages.length > 0 && !selectedStageId) {
+      // If stage ID is in query params, try to select it
+      if (stageIdFromQuery) {
+        const stageExists = stages.find(s => s.identifier === stageIdFromQuery);
+        if (stageExists) {
+          setSelectedStageId(stageIdFromQuery);
+          return;
+        }
+      }
+      // Otherwise select first stage
       setSelectedStageId(stages[0].identifier);
     }
-  }, [stages, selectedStageId]);
+  }, [stages, selectedStageId, stageIdFromQuery]);
 
   // Get selected stage
   const selectedStage = stages?.find(s => s.identifier === selectedStageId);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
@@ -105,26 +122,26 @@ export default function AreaDetailPage() {
 
       {/* Area Info Card */}
       {area && (
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-100 dark:border-gray-700 p-6">
-          <div className="flex items-start gap-6">
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-100 dark:border-gray-700 p-8">
+          <div className="flex items-center gap-8">
             <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
               <MapPinIcon className="w-8 h-8 text-blue-600 dark:text-blue-400" />
             </div>
-            <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
               <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">{t("deck")}</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">{t("deck")}</p>
                 <p className="text-lg font-semibold text-gray-900 dark:text-white">
                   {area.containedInPlace?.name || "-"}
                 </p>
               </div>
               <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">{t("totalStages")}</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">{t("totalStages")}</p>
                 <p className="text-lg font-semibold text-gray-900 dark:text-white">
                   {area.stageCount}
                 </p>
               </div>
               <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">{t("progress")}</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">{t("progress")}</p>
                 <div className="flex items-center gap-3">
                   <ProgressCircle percentage={progress} size={64} strokeWidth={6} />
                   <div>
@@ -187,11 +204,11 @@ export default function AreaDetailPage() {
               )}
             </div>
           ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               {/* Left: Stages List */}
               <div className="lg:col-span-1">
                 <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-100 dark:border-gray-700 overflow-hidden">
-                  <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+                  <div className="p-6 border-b border-gray-200 dark:border-gray-700">
                     <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
                       {t("stages")} ({stages.length})
                     </h2>
@@ -276,7 +293,7 @@ function StageListItem({
   return (
     <button
       onClick={onClick}
-      className={`w-full text-left p-4 transition-colors ${
+      className={`w-full text-left p-5 transition-colors ${
         isSelected
           ? "bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-600"
           : "hover:bg-gray-50 dark:hover:bg-gray-700/50 border-l-4 border-transparent"
@@ -329,6 +346,11 @@ function StageDetailPanel({
   const { data: currentUser } = useCurrentUser();
   const { data: signoffs, loading: signoffsLoading, sign, reject, submitForSignoff } = useStageSignoffs(projectId, stage.identifier);
   const { data: projectSigners, loading: signersLoading } = useProjectSigners(projectId);
+
+  // Fetch remarks and punchlist counts to determine which tabs to show when completed
+  const { data: remarks } = useStageRemarks(projectId, stage.identifier, { include_replies: true });
+  const { data: punchlistItems } = usePunchlistItems(projectId, stage.identifier, { per_page: 1 });
+
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(stage.name);
   const [editRequiresReleaseForm, setEditRequiresReleaseForm] = useState(stage.requiresReleaseForm);
@@ -337,7 +359,7 @@ function StageDetailPanel({
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [selectedSignoffId, setSelectedSignoffId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [activeTab, setActiveTab] = useState<"releaseForms" | "comments" | "punchlist">("releaseForms");
+  const [activeTab, setActiveTab] = useState<"releaseForms" | "remarks" | "punchlist">("releaseForms");
 
   const statusColors = {
     not_started: "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300",
@@ -346,6 +368,30 @@ function StageDetailPanel({
     completed: "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400",
     rejected: "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400",
   };
+
+  // Determine which tabs to show
+  const isCompleted = stage.status.name === "completed";
+  const hasRemarks = remarks && remarks.length > 0;
+  const hasPunchlist = punchlistItems && punchlistItems.length > 0;
+
+  // When completed, only show tabs with content. Otherwise show all tabs.
+  // Release Forms tab is always hidden when completed since it only shows "coming soon" placeholder
+  const showReleaseFormsTab = !isCompleted;
+  const showRemarksTab = !isCompleted || hasRemarks;
+  const showPunchlistTab = !isCompleted || hasPunchlist;
+
+  // Get available tabs in order of preference
+  const availableTabs: Array<"releaseForms" | "remarks" | "punchlist"> = [];
+  if (showReleaseFormsTab) availableTabs.push("releaseForms");
+  if (showRemarksTab) availableTabs.push("remarks");
+  if (showPunchlistTab) availableTabs.push("punchlist");
+
+  // Auto-select first available tab if current tab is hidden
+  useEffect(() => {
+    if (availableTabs.length > 0 && !availableTabs.includes(activeTab)) {
+      setActiveTab(availableTabs[0]);
+    }
+  }, [availableTabs.join(","), activeTab]); // Use join for dependency array
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -374,7 +420,6 @@ function StageDetailPanel({
       await submitForSignoff();
       showToast("success", tSignoffs("submitSuccess"));
     } catch (error) {
-      console.error("Failed to submit for signoff:", error);
       const errorMessage = error && typeof error === 'object' && 'message' in error
         ? (error as { message: string }).message
         : tSignoffs("submitError");
@@ -387,8 +432,8 @@ function StageDetailPanel({
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-100 dark:border-gray-700">
       {/* Header */}
-      <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-        <div className="flex items-start justify-between gap-4">
+      <div className="p-8 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex items-start justify-between gap-6">
           <div className="flex-1">
             {isEditing ? (
               <FormInput
@@ -509,9 +554,9 @@ function StageDetailPanel({
       </div>
 
       {/* Content */}
-      <div className="p-6 space-y-6">
+      <div className="p-8 space-y-8">
         {/* Basic Info */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-6">
           <div>
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">
               {t("position")}
@@ -546,8 +591,8 @@ function StageDetailPanel({
         </div>
 
         {/* Signoffs Section */}
-        <div className="pt-6 border-t border-gray-200 dark:border-gray-700">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+        <div className="pt-8 border-t border-gray-200 dark:border-gray-700">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">
             {t("signoffs")}
           </h3>
           {(signoffsLoading || signersLoading) ? (
@@ -559,7 +604,7 @@ function StageDetailPanel({
                     {tSignoffs("noSigners")}
                   </p>
                 ) : (
-                  <div className="space-y-3">
+                  <div className="space-y-4">
                     {projectSigners.map((signer) => {
                       // Find corresponding signoff for this signer
                       const signoff = signoffs?.find(s => s.recipient.identifier === signer.member.identifier);
@@ -570,7 +615,7 @@ function StageDetailPanel({
                       return (
                         <div
                           key={signer.member.identifier}
-                          className="flex items-start justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg"
+                          className="flex items-start justify-between p-5 bg-gray-50 dark:bg-gray-700/50 rounded-lg"
                         >
                           <div className="flex-1">
                             <div className="flex items-center gap-3 mb-2">
@@ -679,43 +724,52 @@ function StageDetailPanel({
         </div>
 
         {/* Tabs Section */}
-        <div className="pt-6 border-t border-gray-200 dark:border-gray-700">
-          {/* Tab Headers */}
-          <div className="flex border-b border-gray-200 dark:border-gray-700 mb-6">
-            <button
-              onClick={() => setActiveTab("releaseForms")}
-              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === "releaseForms"
-                  ? "border-blue-600 text-blue-600 dark:text-blue-400"
-                  : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
-              }`}
-            >
-              {t("releaseForms")}
-            </button>
-            <button
-              onClick={() => setActiveTab("comments")}
-              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === "comments"
-                  ? "border-blue-600 text-blue-600 dark:text-blue-400"
-                  : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
-              }`}
-            >
-              {t("comments")}
-            </button>
-            <button
-              onClick={() => setActiveTab("punchlist")}
-              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === "punchlist"
-                  ? "border-blue-600 text-blue-600 dark:text-blue-400"
-                  : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
-              }`}
-            >
-              {t("punchlist")}
-            </button>
+        {availableTabs.length > 0 && (
+          <div className="pt-8 border-t border-gray-200 dark:border-gray-700">
+            {/* Tab Headers - only show if multiple tabs available */}
+            {availableTabs.length > 1 && (
+            <div className="flex border-b border-gray-200 dark:border-gray-700 mb-8 gap-2">
+            {showReleaseFormsTab && (
+              <button
+                onClick={() => setActiveTab("releaseForms")}
+                className={`px-5 py-3 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === "releaseForms"
+                    ? "border-blue-600 text-blue-600 dark:text-blue-400"
+                    : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+                }`}
+              >
+                {t("releaseForms")}
+              </button>
+            )}
+            {showRemarksTab && (
+              <button
+                onClick={() => setActiveTab("remarks")}
+                className={`px-5 py-3 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === "remarks"
+                    ? "border-blue-600 text-blue-600 dark:text-blue-400"
+                    : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+                }`}
+              >
+                {t("remarks")}
+              </button>
+            )}
+            {showPunchlistTab && (
+              <button
+                onClick={() => setActiveTab("punchlist")}
+                className={`px-5 py-3 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === "punchlist"
+                    ? "border-blue-600 text-blue-600 dark:text-blue-400"
+                    : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+                }`}
+              >
+                {t("punchlist")}
+              </button>
+            )}
           </div>
+          )}
 
           {/* Tab Content */}
-          <div className="py-4">
+          <div className="py-6">
             {activeTab === "releaseForms" && (
               <div>
                 <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -724,23 +778,24 @@ function StageDetailPanel({
               </div>
             )}
 
-            {activeTab === "comments" && (
-              <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  {t("commentsComingSoon")}
-                </p>
-              </div>
+            {activeTab === "remarks" && (
+              <RemarksList
+                projectId={projectId}
+                stageId={stage.identifier}
+                stageStatus={stage.status.name}
+              />
             )}
 
             {activeTab === "punchlist" && (
-              <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  {t("punchlistComingSoon")}
-                </p>
-              </div>
+              <PunchlistList
+                projectId={projectId}
+                stageId={stage.identifier}
+                stageStatus={stage.status.name}
+              />
             )}
           </div>
-        </div>
+          </div>
+        )}
 
         {/* Modals - Outside tabs so they're always available */}
         {selectedSignoffId && (
