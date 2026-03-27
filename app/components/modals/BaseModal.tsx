@@ -19,6 +19,8 @@ interface BaseModalProps {
   formId?: string;
   onSubmit: () => Promise<void>;
   successMessage: string;
+  // Callback after successful submit (before modal closes)
+  onSuccessCallback?: () => void;
   // Button customization
   submitLabel?: string;
   submitVariant?: ButtonVariant;
@@ -37,6 +39,7 @@ export default function BaseModal({
   formId,
   onSubmit,
   successMessage,
+  onSuccessCallback,
   submitLabel,
   submitVariant = "primary",
   submitDisabled = false,
@@ -63,6 +66,7 @@ export default function BaseModal({
 
       try {
         await onSubmit();
+        onSuccessCallback?.();
         onClose();
         showToast("success", successMessage);
       } catch (err) {
@@ -77,7 +81,7 @@ export default function BaseModal({
         setIsSubmitting(false);
       }
     },
-    [onSubmit, onClose, showToast, successMessage, errorFallbackMessage, t]
+    [onSubmit, onSuccessCallback, onClose, showToast, successMessage, errorFallbackMessage, t]
   );
 
   const handleClose = useCallback(() => {
