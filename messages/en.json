@@ -9,6 +9,7 @@
     "cancel": "Cancel",
     "save": "Save",
     "delete": "Delete",
+    "back": "Back",
     "error": "An error occurred"
   },
   "auth": {
@@ -1435,6 +1436,9 @@
     "allStatuses": "All Statuses",
     "statusNotStarted": "Not Started",
     "statusInProgress": "In Progress",
+    "pinTitle": "Title",
+    "pinDescription": "Description",
+    "dateCreated": "Created",
     "statusPendingSignoff": "Pending Signoff",
     "statusCompleted": "Completed",
     "statusRejected": "Rejected",

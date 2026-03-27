@@ -9,6 +9,7 @@
     "cancel": "Annuleren",
     "save": "Opslaan",
     "delete": "Verwijderen",
+    "back": "Terug",
     "error": "Er is een fout opgetreden"
   },
   "auth": {
@@ -1466,6 +1467,9 @@
     "allStatuses": "Alle Statussen",
     "statusNotStarted": "Niet Gestart",
     "statusInProgress": "In Uitvoering",
+    "pinTitle": "Titel",
+    "pinDescription": "Beschrijving",
+    "dateCreated": "Aangemaakt",
     "statusPendingSignoff": "Wacht op Handtekening",
     "statusCompleted": "Afgerond",
     "statusRejected": "Afgewezen",
