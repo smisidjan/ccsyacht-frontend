@@ -280,7 +280,6 @@ export default function GAViewer({
           setNewPinPosition(null);
         }}
         projectId={projectId}
-        stageId={stageId}
         initialPosition={selectedPin ? { x: selectedPin.x, y: selectedPin.y } : newPinPosition}
         initialData={selectedPin}
         onSuccess={() => {
