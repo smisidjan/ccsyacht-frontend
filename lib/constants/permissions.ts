@@ -75,6 +75,12 @@ export const PERMISSIONS = {
   MANAGE_PROJECT_MEMBERS: "manage_project_members",
   VIEW_PROJECT_SIGNERS: "view_project_signers",
   MANAGE_PROJECT_SIGNERS: "manage_project_signers",
+
+  // Punchlist Items
+  VIEW_PUNCHLIST_ITEMS: "view_punchlist_items",
+  CREATE_PUNCHLIST_ITEMS: "create_punchlist_items",
+  EDIT_PUNCHLIST_ITEMS: "edit_punchlist_items",
+  DELETE_PUNCHLIST_ITEMS: "delete_punchlist_items",
 } as const;
 
 // Extract all permission values as a union type
@@ -140,6 +146,12 @@ export const PERMISSION_GROUPS = {
     PERMISSIONS.CREATE_STAGES,
     PERMISSIONS.EDIT_STAGES,
     PERMISSIONS.DELETE_STAGES,
+  ],
+  PUNCHLIST_MANAGEMENT: [
+    PERMISSIONS.VIEW_PUNCHLIST_ITEMS,
+    PERMISSIONS.CREATE_PUNCHLIST_ITEMS,
+    PERMISSIONS.EDIT_PUNCHLIST_ITEMS,
+    PERMISSIONS.DELETE_PUNCHLIST_ITEMS,
   ],
 } as const;
 
