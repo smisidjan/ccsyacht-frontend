@@ -783,6 +783,21 @@ export interface GAPin {
     identifier: string;
     name: string;
   };
+  punchlistItem?: {
+    "@type"?: string;
+    identifier: string;
+    name: string;
+    description: string | null;
+    status: PunchlistItemStatus;
+    priority: PunchlistItemPriority;
+    dueDate: string | null;
+    assignees: {
+      identifier: string;
+      name: string;
+    }[];
+    attachmentCount: number;
+    dateCreated: string;
+  };
   dateCreated: string;
   dateModified: string;
 }
