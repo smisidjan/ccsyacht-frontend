@@ -788,11 +788,21 @@ export interface GAPin {
 }
 
 export interface CreateGAPinRequest {
+  // GA Pin fields
   stage_id: string;
-  label?: string;
+  label: string; // REQUIRED - wordt ook punchlist title
   x: number; // percentage 0-100
   y: number; // percentage 0-100
   color?: string; // hex color
+
+  // Punchlist item fields (optioneel)
+  description?: string;
+  priority?: PunchlistItemPriority; // low, medium, high
+  due_date?: string; // YYYY-MM-DD
+  assignee_ids?: string[];
+
+  // Attachments (sent as FormData in API call)
+  // attachments?: File[]; // max 10MB per file
 }
 
 export interface UpdateGAPinRequest {

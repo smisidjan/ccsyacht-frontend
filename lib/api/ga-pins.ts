@@ -61,12 +61,75 @@ export const gaPinsApi = {
   getAll: (projectId: string): Promise<{ data: GAPin[] }> =>
     apiFetch(`/projects/${projectId}/ga-pins`),
 
-  // Create a new pin
-  create: (projectId: string, data: CreateGAPinRequest): Promise<GAPin> =>
-    apiFetch(`/projects/${projectId}/ga-pins`, {
+  // Create a new pin (with punchlist item and attachments)
+  create: async (
+    projectId: string,
+    data: CreateGAPinRequest,
+    files?: File[]
+  ): Promise<GAPin> => {
+    const token = getAuthToken();
+    const tenantUrl = getTenantUrl();
+
+    const formData = new FormData();
+
+    // Add GA pin fields
+    formData.append("stage_id", data.stage_id);
+    formData.append("label", data.label);
+    formData.append("x", data.x.toString());
+    formData.append("y", data.y.toString());
+    if (data.color) {
+      formData.append("color", data.color);
+    }
+
+    // Add punchlist item fields (optioneel)
+    if (data.description) {
+      formData.append("description", data.description);
+    }
+    if (data.priority) {
+      formData.append("priority", data.priority);
+    }
+    if (data.due_date) {
+      formData.append("due_date", data.due_date);
+    }
+    if (data.assignee_ids && data.assignee_ids.length > 0) {
+      data.assignee_ids.forEach((id) => {
+        formData.append("assignee_ids[]", id);
+      });
+    }
+
+    // Add attachments
+    if (files && files.length > 0) {
+      files.forEach((file) => {
+        formData.append("attachments[]", file);
+      });
+    }
+
+    const headers: HeadersInit = {};
+    if (token) {
+      (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
+    }
+    if (tenantUrl) {
+      (headers as Record<string, string>)["X-Tenant-ID"] = tenantUrl;
+    }
+
+    const response = await fetch(`${API_BASE_URL}/projects/${projectId}/ga-pins`, {
       method: "POST",
-      body: JSON.stringify(data),
-    }),
+      headers,
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      const error: ApiError = {
+        message: errorData.message || errorData.error || `HTTP error ${response.status}`,
+        code: errorData.code,
+        status: response.status,
+      };
+      throw error;
+    }
+
+    return response.json();
+  },
 
   // Update a pin
   update: (projectId: string, pinId: string, data: UpdateGAPinRequest): Promise<GAPin> =>
@@ -113,8 +176,8 @@ export function useGAPins(projectId: string) {
   }, [fetchPins]);
 
   const createPin = useCallback(
-    async (pinData: CreateGAPinRequest) => {
-      const newPin = await gaPinsApi.create(projectId, pinData);
+    async (pinData: CreateGAPinRequest, files?: File[]) => {
+      const newPin = await gaPinsApi.create(projectId, pinData, files);
       setData((prev) => [...prev, newPin]);
       return newPin;
     },
