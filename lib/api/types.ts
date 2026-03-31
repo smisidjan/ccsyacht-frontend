@@ -398,7 +398,7 @@ export interface UpdateShipyardRequest {
 }
 
 // ============ Projects ============
-export type ProjectType = "new_built" | "refit";
+export type ProjectType = "new_build" | "refit";
 export type ProjectStatus = "setup" | "active" | "archived" | "completed";
 
 export interface ProjectProducer {
@@ -464,6 +464,7 @@ export interface DocumentType {
   identifier: string;
   name: string;
   isRequired: boolean;
+  isLocked: boolean;
   position: number;
   documentCount: number;
   dateCreated: string;
@@ -1039,4 +1040,40 @@ export interface CreateStageRemarkRequest {
 
 export interface UpdateStageRemarkRequest {
   content: string;
+}
+
+// ============ Document Type Templates ============
+export interface DocumentTypeTemplate {
+  "@context"?: string;
+  "@type"?: string;
+  identifier: string;
+  name: string;
+  isRequired: boolean;
+  isLocked: boolean;
+  position: number;
+  isActive: boolean;
+  dateCreated: string;
+  dateModified: string;
+}
+
+export interface CreateDocumentTypeTemplateRequest {
+  name: string;
+  is_required?: boolean;
+  sort_order?: number;
+  is_active?: boolean;
+}
+
+export interface UpdateDocumentTypeTemplateRequest {
+  name?: string;
+  is_required?: boolean;
+  sort_order?: number;
+  is_active?: boolean;
+}
+
+export interface ReorderDocumentTypeTemplatesRequest {
+  order: string[];
+}
+
+export interface GetDocumentTypeTemplatesParams {
+  active_only?: boolean;
 }

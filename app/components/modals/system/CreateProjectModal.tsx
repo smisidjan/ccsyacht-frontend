@@ -5,8 +5,10 @@ import { useTranslations } from "next-intl";
 import BaseModal from "../BaseModal";
 import FormInput from "@/app/components/ui/FormInput";
 import FormTextarea from "@/app/components/ui/FormTextarea";
-import Button from "@/app/components/ui/Button";
-import type { CreateProjectRequest, Shipyard, CreateShipyardRequest } from "@/lib/api/types";
+import InlineShipyardForm from "@/app/components/ui/InlineShipyardForm";
+import { useInlineShipyardCreation } from "@/lib/hooks/useInlineShipyardCreation";
+import { useToast } from "@/app/context/ToastContext";
+import type { CreateProjectRequest, Shipyard } from "@/lib/api/types";
 
 interface CreateProjectModalProps {
   isOpen: boolean;
@@ -28,39 +30,44 @@ export default function CreateProjectModal({
   const t = useTranslations("systemSettings.tenantDetail.projects.createModal");
   const tProjects = useTranslations("systemSettings.tenantDetail.projects");
 
+  const { showToast } = useToast();
+
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [projectType, setProjectType] = useState<"new_built" | "refit">("new_built");
+  const [projectType, setProjectType] = useState<"new_build" | "refit">("new_build");
   const [shipyardId, setShipyardId] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-  const [showInlineShipyardForm, setShowInlineShipyardForm] = useState(false);
-  const [isCreatingShipyard, setIsCreatingShipyard] = useState(false);
 
-  // Inline shipyard form fields
-  const [shipyardName, setShipyardName] = useState("");
-  const [shipyardAddress, setShipyardAddress] = useState("");
-  const [shipyardContactName, setShipyardContactName] = useState("");
-  const [shipyardContactEmail, setShipyardContactEmail] = useState("");
-  const [shipyardContactPhone, setShipyardContactPhone] = useState("");
+  // Inline shipyard creation using hook
+  const shipyardCreation = useInlineShipyardCreation({
+    tenantId,
+    onSuccess: (shipyard) => {
+      try {
+        onShipyardCreated({ identifier: shipyard.id, name: shipyard.name } as Shipyard);
+        setShipyardId(shipyard.id);
+        showToast("success", t("shipyardCreated"));
+      } catch (err) {
+        console.error("Error in onShipyardCreated callback:", err);
+      }
+    },
+    onError: (error) => {
+      showToast("error", t("shipyardCreateError"));
+    },
+  });
 
   // Reset form when modal closes
   useEffect(() => {
     if (!isOpen) {
       setName("");
       setDescription("");
-      setProjectType("new_built");
+      setProjectType("new_build");
       setShipyardId("");
       setStartDate("");
       setEndDate("");
-      setShowInlineShipyardForm(false);
-      setShipyardName("");
-      setShipyardAddress("");
-      setShipyardContactName("");
-      setShipyardContactEmail("");
-      setShipyardContactPhone("");
+      shipyardCreation.resetForm();
     }
-  }, [isOpen]);
+  }, [isOpen, shipyardCreation]);
 
   const handleSubmit = async () => {
     const data: CreateProjectRequest = {
@@ -74,50 +81,6 @@ export default function CreateProjectModal({
     if (endDate) data.end_date = endDate;
 
     await onSubmit(data);
-  };
-
-  const handleCreateInlineShipyard = async () => {
-    if (!shipyardName.trim()) return;
-
-    setIsCreatingShipyard(true);
-    try {
-      const { systemProjectsApi } = await import("@/lib/api/system");
-      const data: CreateShipyardRequest = {
-        name: shipyardName,
-      };
-
-      if (shipyardAddress) data.address = shipyardAddress;
-      if (shipyardContactName) data.contact_name = shipyardContactName;
-      if (shipyardContactEmail) data.contact_email = shipyardContactEmail;
-      if (shipyardContactPhone) data.contact_phone = shipyardContactPhone;
-
-      const response = await systemProjectsApi.createShipyard(tenantId, data);
-      const newShipyard = response.result;
-
-      // Add the new shipyard to the list and select it
-      onShipyardCreated(newShipyard);
-      setShipyardId(newShipyard.identifier);
-
-      // Reset inline form
-      setShowInlineShipyardForm(false);
-      setShipyardName("");
-      setShipyardAddress("");
-      setShipyardContactName("");
-      setShipyardContactEmail("");
-      setShipyardContactPhone("");
-    } finally {
-      setIsCreatingShipyard(false);
-    }
-  };
-
-  const handleShipyardSelectChange = (value: string) => {
-    if (value === "create_new") {
-      setShowInlineShipyardForm(true);
-      setShipyardId("");
-    } else {
-      setShowInlineShipyardForm(false);
-      setShipyardId(value);
-    }
   };
 
   return (
@@ -159,11 +122,11 @@ export default function CreateProjectModal({
             </label>
             <select
               value={projectType}
-              onChange={(e) => setProjectType(e.target.value as "new_built" | "refit")}
+              onChange={(e) => setProjectType(e.target.value as "new_build" | "refit")}
               className="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
             >
-              <option value="new_built">{tProjects("types.newBuilt")}</option>
+              <option value="new_build">{tProjects("types.newBuild")}</option>
               <option value="refit">{tProjects("types.refit")}</option>
             </select>
           </div>
@@ -173,8 +136,11 @@ export default function CreateProjectModal({
               {t("shipyard")}
             </label>
             <select
-              value={showInlineShipyardForm ? "create_new" : shipyardId}
-              onChange={(e) => handleShipyardSelectChange(e.target.value)}
+              value={shipyardCreation.showInlineForm ? "create_new" : shipyardId}
+              onChange={(e) => {
+                const newShipyardId = shipyardCreation.handleSelectChange(e.target.value, shipyardId);
+                setShipyardId(newShipyardId);
+              }}
               className="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">{t("selectShipyard")}</option>
@@ -191,93 +157,22 @@ export default function CreateProjectModal({
         </div>
 
         {/* Inline Shipyard Creation Form */}
-        {showInlineShipyardForm && (
-          <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 space-y-3">
-            <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-3">
-              {t("createShipyardInline")}
-            </h4>
-
-            <FormInput
-              id="inline-shipyard-name"
-              label={t("shipyardName")}
-              type="text"
-              value={shipyardName}
-              onChange={(e) => setShipyardName(e.target.value)}
-              placeholder={t("shipyardNamePlaceholder")}
-              required
-            />
-
-            <FormTextarea
-              id="inline-shipyard-address"
-              label={t("shipyardAddress")}
-              value={shipyardAddress}
-              onChange={(e) => setShipyardAddress(e.target.value)}
-              placeholder={t("shipyardAddressPlaceholder")}
-              rows={2}
-            />
-
-            <div className="border-t border-gray-200 dark:border-gray-700 pt-3 mt-3">
-              <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">
-                {t("contactInfoOptional")}
-              </p>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <FormInput
-                  id="inline-contact-name"
-                  label={t("contactName")}
-                  type="text"
-                  value={shipyardContactName}
-                  onChange={(e) => setShipyardContactName(e.target.value)}
-                  placeholder={t("contactNamePlaceholder")}
-                />
-
-                <FormInput
-                  id="inline-contact-phone"
-                  label={t("contactPhone")}
-                  type="tel"
-                  value={shipyardContactPhone}
-                  onChange={(e) => setShipyardContactPhone(e.target.value)}
-                  placeholder={t("contactPhonePlaceholder")}
-                />
-
-                <div className="md:col-span-2">
-                  <FormInput
-                    id="inline-contact-email"
-                    label={t("contactEmail")}
-                    type="email"
-                    value={shipyardContactEmail}
-                    onChange={(e) => setShipyardContactEmail(e.target.value)}
-                    placeholder={t("contactEmailPlaceholder")}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="flex gap-2 pt-2">
-              <Button
-                type="button"
-                variant="primary"
-                size="sm"
-                onClick={handleCreateInlineShipyard}
-                loading={isCreatingShipyard}
-                disabled={!shipyardName.trim() || isCreatingShipyard}
-              >
-                {t("createShipyard")}
-              </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={() => {
-                  setShowInlineShipyardForm(false);
-                  setShipyardId("");
-                }}
-                disabled={isCreatingShipyard}
-              >
-                {t("cancel")}
-              </Button>
-            </div>
-          </div>
+        {shipyardCreation.showInlineForm && (
+          <InlineShipyardForm
+            name={shipyardCreation.name}
+            address={shipyardCreation.address}
+            contactName={shipyardCreation.contactName}
+            contactEmail={shipyardCreation.contactEmail}
+            contactPhone={shipyardCreation.contactPhone}
+            onNameChange={shipyardCreation.setName}
+            onAddressChange={shipyardCreation.setAddress}
+            onContactNameChange={shipyardCreation.setContactName}
+            onContactEmailChange={shipyardCreation.setContactEmail}
+            onContactPhoneChange={shipyardCreation.setContactPhone}
+            onSubmit={shipyardCreation.handleCreate}
+            onCancel={shipyardCreation.handleCancel}
+            isLoading={shipyardCreation.isCreating}
+          />
         )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

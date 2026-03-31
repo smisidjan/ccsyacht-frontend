@@ -64,7 +64,7 @@ export default function SettingsTab({ projectId, onProjectUpdate }: SettingsTabP
 
   // Project types for modal
   const projectTypes = [
-    { id: "new_built", name: t("projectTypes.new_built") },
+    { id: "new_build", name: t("projectTypes.new_build") },
     { id: "refit", name: t("projectTypes.refit") },
   ];
 

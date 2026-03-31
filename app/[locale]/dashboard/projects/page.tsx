@@ -39,7 +39,7 @@ export default function ProjectsPage() {
 
   // API hooks
   const { data: projects, loading: projectsLoading, pagination, refetch } = useProjects({ page: currentPage });
-  const { data: shipyards, loading: shipyardsLoading } = useShipyards();
+  const { data: shipyards, loading: shipyardsLoading, refetch: refetchShipyards } = useShipyards();
   const { hasPermission, user: currentUser } = usePermission();
 
   // Permissions
@@ -58,7 +58,7 @@ export default function ProjectsPage() {
 
   // Project types for modal
   const projectTypeOptions = [
-    { id: "new_built", name: t("types.newBuilt") },
+    { id: "new_build", name: t("types.newBuild") },
     { id: "refit", name: t("types.refit") },
   ];
 
@@ -151,7 +151,7 @@ export default function ProjectsPage() {
       const newProject = await projectsApi.create({
         name: data.name,
         description: data.description,
-        project_type: data.projectTypeId as "new_built" | "refit",
+        project_type: data.projectTypeId as "new_build" | "refit",
         shipyard_id: data.shipyardId,
       });
 
@@ -163,8 +163,8 @@ export default function ProjectsPage() {
       }
       await projectsApi.uploadGeneralArrangement(projectId, data.generalArrangement);
 
-      // 3. Create document types
-      for (const docType of data.documentTypes) {
+      // 3. Create document types (only non-locked ones, backend handles locked templates)
+      for (const docType of data.documentTypes.filter(dt => !dt.isLocked)) {
         await documentTypesApi.create(projectId, {
           name: docType.name,
           is_required: docType.required,
@@ -334,6 +334,7 @@ export default function ProjectsPage() {
           onSubmit={handleCreateProject}
           shipyards={shipyardOptions}
           projectTypes={projectTypeOptions}
+          onShipyardCreated={() => refetchShipyards()}
         />
       </div>
     </ProtectedRoute>

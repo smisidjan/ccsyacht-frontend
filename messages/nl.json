@@ -131,7 +131,7 @@
       "completed": "Voltooid"
     },
     "types": {
-      "newBuilt": "Nieuwbouw",
+      "newBuild": "Nieuwbouw",
       "refit": "Refit"
     },
     "pagination": {
@@ -146,6 +146,7 @@
     "description": "Beschrijving",
     "yardOwner": "Werf/Eigenaar",
     "selectShipyard": "Selecteer een scheepswerf",
+    "addShipyard": "Werf Toevoegen",
     "projectType": "Project Type",
     "generalArrangement": "General Arrangement",
     "uploadPdfRequired": "Upload de General Arrangement PDF (verplicht)",
@@ -160,7 +161,23 @@
     "createProject": "Project Aanmaken",
     "creating": "Aanmaken...",
     "success": "Project succesvol aangemaakt",
-    "error": "Project aanmaken mislukt"
+    "error": "Project aanmaken mislukt",
+    "lockedDocumentTypeTooltip": "Dit documenttype is vergrendeld en altijd verplicht bij het aanmaken van een project. Neem contact op met uw systeembeheerder om wijzigingen aan te brengen of nieuwe toe te voegen.",
+    "createShipyardInline": "Nieuwe Werf Aanmaken",
+    "shipyardName": "Werf Naam",
+    "shipyardNamePlaceholder": "Voer werf naam in",
+    "shipyardAddress": "Adres",
+    "shipyardAddressPlaceholder": "Voer adres in (optioneel)",
+    "contactInfoOptional": "Contactinformatie (optioneel)",
+    "contactName": "Contactpersoon",
+    "contactNamePlaceholder": "Voer naam in",
+    "contactPhone": "Telefoonnummer",
+    "contactPhonePlaceholder": "Voer telefoonnummer in",
+    "contactEmail": "E-mailadres",
+    "contactEmailPlaceholder": "Voer e-mailadres in",
+    "createShipyard": "Werf Aanmaken",
+    "shipyardCreated": "Werf succesvol aangemaakt",
+    "shipyardCreateError": "Fout bij het aanmaken van werf"
   },
   "editProject": {
     "title": "Project Informatie Bewerken",
@@ -353,7 +370,7 @@
         "createdBy": "Aangemaakt Door"
       },
       "projectTypes": {
-        "new_built": "Nieuwbouw",
+        "new_build": "Nieuwbouw",
         "refit": "Refit"
       },
       "teamMembers": {
@@ -738,11 +755,11 @@
         },
         "typeFilters": {
           "all": "Alle Types",
-          "newBuilt": "Nieuwbouw",
+          "newBuild": "Nieuwbouw",
           "refit": "Refit"
         },
         "types": {
-          "newBuilt": "Nieuwbouw",
+          "newBuild": "Nieuwbouw",
           "refit": "Refit"
         },
         "columns": {
@@ -787,7 +804,9 @@
           "contactPhone": "Contacttelefoon",
           "contactPhonePlaceholder": "Voer contacttelefoon in",
           "createShipyard": "Scheepswerf Aanmaken",
-          "cancel": "Annuleren"
+          "cancel": "Annuleren",
+          "shipyardCreated": "Scheepswerf succesvol aangemaakt",
+          "shipyardCreateError": "Scheepswerf aanmaken mislukt"
         },
         "createShipyardModal": {
           "title": "Nieuwe Scheepswerf Aanmaken",
@@ -1491,5 +1510,38 @@
     "attachments": "Bijlagen",
     "uploadAttachment": "Upload Bijlage",
     "assignees": "Toegewezen Aan"
+  },
+  "documentTypes": {
+    "title": "Document Types",
+    "addNew": "Nieuw Toevoegen",
+    "edit": "Bewerken",
+    "delete": "Verwijderen",
+    "fields": {
+      "name": "Naam",
+      "namePlaceholder": "Voer document type naam in",
+      "required": "Verplicht document type"
+    },
+    "createModal": {
+      "title": "Document Type Aanmaken",
+      "create": "Aanmaken",
+      "success": "Document type succesvol aangemaakt",
+      "error": "Kan document type niet aanmaken"
+    },
+    "editModal": {
+      "title": "Document Type Bewerken",
+      "save": "Wijzigingen Opslaan",
+      "success": "Document type succesvol bijgewerkt",
+      "error": "Kan document type niet bijwerken",
+      "lockedError": "Dit document type is vergrendeld en kan niet worden bewerkt"
+    },
+    "deleteModal": {
+      "title": "Document Type Verwijderen",
+      "message": "Weet je zeker dat je \"{name}\" wilt verwijderen?",
+      "hasDocuments": "Dit document type heeft {count} gekoppelde documenten en kan niet worden verwijderd.",
+      "confirm": "Verwijderen",
+      "success": "Document type succesvol verwijderd",
+      "error": "Kan document type niet verwijderen",
+      "lockedError": "Dit document type is vergrendeld en kan niet worden verwijderd"
+    }
   }
 }

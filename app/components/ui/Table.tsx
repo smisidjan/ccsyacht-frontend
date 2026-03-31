@@ -17,6 +17,8 @@ interface TableProps<T> {
   rowClassName?: (item: T) => string;
   emptyMessage?: ReactNode;
   minWidth?: string;
+  footer?: ReactNode;
+  label?: string;
 }
 
 export default function Table<T>({
@@ -26,33 +28,40 @@ export default function Table<T>({
   rowClassName,
   emptyMessage,
   minWidth = "700px",
+  footer,
+  label,
 }: TableProps<T>) {
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg dark:shadow-gray-900/30 border border-gray-100 dark:border-gray-700 overflow-hidden">
-      <div className="overflow-x-auto">
+    <div>
+      {label && (
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          {label}
+        </label>
+      )}
+      <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
         <table className="w-full" style={{ minWidth }}>
-          <thead className="bg-gray-50 dark:bg-gray-900/50">
+          <thead className="bg-gray-50 dark:bg-gray-700/50">
             <tr>
               {columns.map((column) => (
                 <th
                   key={column.key}
-                  className={`px-3 py-2 md:px-6 md:py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider ${column.headerClassName || ""}`}
+                  className={`px-4 py-3 text-sm font-medium text-gray-700 dark:text-gray-300 ${column.headerClassName || ""}`}
                 >
                   {column.header}
                 </th>
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+          <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
             {data.map((item) => (
               <tr
                 key={keyExtractor(item)}
-                className={`hover:bg-gray-50 dark:hover:bg-gray-900/30 ${rowClassName?.(item) || ""}`}
+                className={rowClassName?.(item) || ""}
               >
                 {columns.map((column) => (
                   <td
                     key={column.key}
-                    className={`px-3 py-3 md:px-6 md:py-4 ${column.className || ""}`}
+                    className={`px-4 py-3 ${column.className || ""}`}
                   >
                     {column.cell(item)}
                   </td>
@@ -61,11 +70,17 @@ export default function Table<T>({
             ))}
           </tbody>
         </table>
+
+        {data.length === 0 && emptyMessage && (
+          <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+            {emptyMessage}
+          </div>
+        )}
       </div>
 
-      {data.length === 0 && emptyMessage && (
-        <div className="text-center py-12 text-gray-500 dark:text-gray-400">
-          {emptyMessage}
+      {footer && (
+        <div className="mt-3">
+          {footer}
         </div>
       )}
     </div>

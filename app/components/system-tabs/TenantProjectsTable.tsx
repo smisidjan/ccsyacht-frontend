@@ -20,7 +20,7 @@ interface TenantProjectsTableProps {
 }
 
 type StatusFilter = "all" | "setup" | "active" | "archived" | "completed";
-type TypeFilter = "all" | "new_built" | "refit";
+type TypeFilter = "all" | "new_build" | "refit";
 
 export default function TenantProjectsTable({
   tenantId,
@@ -142,7 +142,7 @@ export default function TenantProjectsTable({
 
   const typeFilters = [
     { key: "all", label: t("typeFilters.all") },
-    { key: "new_built", label: t("typeFilters.newBuilt") },
+    { key: "new_build", label: t("typeFilters.newBuild") },
     { key: "refit", label: t("typeFilters.refit") },
   ];
 
@@ -222,8 +222,8 @@ export default function TenantProjectsTable({
             header: t("columns.type"),
             cell: (project: Project) => (
               <span className="text-sm text-gray-600 dark:text-gray-400 capitalize">
-                {project.additionalType === "new_built"
-                  ? t("types.newBuilt")
+                {project.additionalType === "new_build"
+                  ? t("types.newBuild")
                   : t("types.refit")}
               </span>
             ),

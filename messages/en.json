@@ -131,7 +131,7 @@
       "completed": "Completed"
     },
     "types": {
-      "newBuilt": "New Built",
+      "newBuild": "New Build",
       "refit": "Refit"
     },
     "pagination": {
@@ -146,6 +146,7 @@
     "description": "Description",
     "yardOwner": "Yard/Owner",
     "selectShipyard": "Select a shipyard",
+    "addShipyard": "Add Shipyard",
     "projectType": "Project Type",
     "generalArrangement": "General Arrangement",
     "uploadPdfRequired": "Upload the General Arrangement PDF (required)",
@@ -160,7 +161,23 @@
     "createProject": "Create Project",
     "creating": "Creating...",
     "success": "Project created successfully",
-    "error": "Failed to create project"
+    "error": "Failed to create project",
+    "lockedDocumentTypeTooltip": "This document type is locked and always required when creating a project. To make changes or add new ones, contact your system administrator.",
+    "createShipyardInline": "Create New Shipyard",
+    "shipyardName": "Shipyard Name",
+    "shipyardNamePlaceholder": "Enter shipyard name",
+    "shipyardAddress": "Address",
+    "shipyardAddressPlaceholder": "Enter address (optional)",
+    "contactInfoOptional": "Contact Information (optional)",
+    "contactName": "Contact Name",
+    "contactNamePlaceholder": "Enter contact name",
+    "contactPhone": "Contact Phone",
+    "contactPhonePlaceholder": "Enter phone number",
+    "contactEmail": "Contact Email",
+    "contactEmailPlaceholder": "Enter email address",
+    "createShipyard": "Create Shipyard",
+    "shipyardCreated": "Shipyard created successfully",
+    "shipyardCreateError": "Failed to create shipyard"
   },
   "editProject": {
     "title": "Edit Project Information",
@@ -353,7 +370,7 @@
         "createdBy": "Created By"
       },
       "projectTypes": {
-        "new_built": "New Built",
+        "new_build": "New Build",
         "refit": "Refit"
       },
       "teamMembers": {
@@ -708,11 +725,11 @@
         },
         "typeFilters": {
           "all": "All Types",
-          "newBuilt": "New Built",
+          "newBuild": "New Build",
           "refit": "Refit"
         },
         "types": {
-          "newBuilt": "New Built",
+          "newBuild": "New Build",
           "refit": "Refit"
         },
         "columns": {
@@ -757,7 +774,9 @@
           "contactPhone": "Contact Phone",
           "contactPhonePlaceholder": "Enter contact phone",
           "createShipyard": "Create Shipyard",
-          "cancel": "Cancel"
+          "cancel": "Cancel",
+          "shipyardCreated": "Shipyard created successfully",
+          "shipyardCreateError": "Failed to create shipyard"
         },
         "createShipyardModal": {
           "title": "Create New Shipyard",
@@ -1460,5 +1479,38 @@
     "attachments": "Attachments",
     "uploadAttachment": "Upload Attachment",
     "assignees": "Assigned To"
+  },
+  "documentTypes": {
+    "title": "Document Types",
+    "addNew": "Add New",
+    "edit": "Edit",
+    "delete": "Delete",
+    "fields": {
+      "name": "Name",
+      "namePlaceholder": "Enter document type name",
+      "required": "Required document type"
+    },
+    "createModal": {
+      "title": "Create Document Type",
+      "create": "Create",
+      "success": "Document type created successfully",
+      "error": "Failed to create document type"
+    },
+    "editModal": {
+      "title": "Edit Document Type",
+      "save": "Save Changes",
+      "success": "Document type updated successfully",
+      "error": "Failed to update document type",
+      "lockedError": "This document type is locked and cannot be edited"
+    },
+    "deleteModal": {
+      "title": "Delete Document Type",
+      "message": "Are you sure you want to delete \"{name}\"?",
+      "hasDocuments": "This document type has {count} associated documents and cannot be deleted.",
+      "confirm": "Delete",
+      "success": "Document type deleted successfully",
+      "error": "Failed to delete document type",
+      "lockedError": "This document type is locked and cannot be deleted"
+    }
   }
 }

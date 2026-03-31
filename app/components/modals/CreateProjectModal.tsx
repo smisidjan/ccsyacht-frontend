@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
-import { PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { PlusIcon, XMarkIcon, LockClosedIcon } from "@heroicons/react/24/outline";
 import { DocumentIcon } from "@heroicons/react/24/solid";
 import Modal from "@/app/components/ui/Modal";
 import FormInput from "@/app/components/ui/FormInput";
@@ -10,13 +10,18 @@ import FormTextarea from "@/app/components/ui/FormTextarea";
 import FormSelect from "@/app/components/ui/FormSelect";
 import Button from "@/app/components/ui/Button";
 import Alert from "@/app/components/ui/Alert";
+import Table from "@/app/components/ui/Table";
+import InlineShipyardForm from "@/app/components/ui/InlineShipyardForm";
 import { useToast } from "@/app/context/ToastContext";
 import { getErrorMessage } from "@/lib/utils/errors";
+import { useDocumentTypeTemplates } from "@/lib/api/document-type-templates";
+import { useInlineShipyardCreation } from "@/lib/hooks/useInlineShipyardCreation";
 
 interface DocumentType {
   id: string;
   name: string;
   required: boolean;
+  isLocked: boolean;
 }
 
 interface CreateProjectModalProps {
@@ -25,6 +30,7 @@ interface CreateProjectModalProps {
   onSubmit: (data: ProjectFormData) => Promise<void>;
   shipyards: { id: string; name: string }[];
   projectTypes: { id: string; name: string }[];
+  onShipyardCreated: (shipyard: { id: string; name: string }) => void;
 }
 
 export interface ProjectFormData {
@@ -36,35 +42,62 @@ export interface ProjectFormData {
   documentTypes: DocumentType[];
 }
 
-const defaultDocumentTypes: DocumentType[] = [
-  { id: "1", name: "Contract", required: true },
-  { id: "2", name: "Planning painter", required: true },
-  { id: "3", name: "Acceptance report", required: false },
-  { id: "4", name: "Release form", required: false },
-  { id: "5", name: "Survey report", required: false },
-  { id: "6", name: "Other", required: false },
-];
-
 export default function CreateProjectModal({
   isOpen,
   onClose,
   onSubmit,
   shipyards,
   projectTypes,
+  onShipyardCreated,
 }: CreateProjectModalProps) {
   const t = useTranslations("createProject");
   const { showToast } = useToast();
+
+  // Fetch document type templates from backend
+  const { data: templates, loading: templatesLoading } = useDocumentTypeTemplates({ active_only: true });
+
   const [formData, setFormData] = useState<ProjectFormData>({
     name: "",
     description: "",
     shipyardId: "",
     projectTypeId: "",
     generalArrangement: null,
-    documentTypes: defaultDocumentTypes,
+    documentTypes: [],
   });
   const [newDocTypeName, setNewDocTypeName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // Inline shipyard creation using hook
+  const shipyardCreation = useInlineShipyardCreation({
+    onSuccess: (shipyard) => {
+      onShipyardCreated(shipyard);
+      setFormData((prev) => ({ ...prev, shipyardId: shipyard.id }));
+      showToast("success", t("shipyardCreated"));
+    },
+    onError: (error) => {
+      showToast("error", t("shipyardCreateError"));
+    },
+  });
+
+  // Initialize document types from templates when they load
+  useEffect(() => {
+    if (templates && templates.length > 0) {
+      const templateTypes: DocumentType[] = templates
+        .sort((a, b) => a.position - b.position)
+        .map((template) => ({
+          id: template.identifier,
+          name: template.name,
+          required: template.isRequired,
+          isLocked: template.isLocked,
+        }));
+
+      setFormData((prev) => ({
+        ...prev,
+        documentTypes: templateTypes,
+      }));
+    }
+  }, [templates]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,15 +108,16 @@ export default function CreateProjectModal({
       await onSubmit(formData);
       showToast("success", t("success"));
       onClose();
-      // Reset form
+      // Reset form - will be repopulated with templates via useEffect
       setFormData({
         name: "",
         description: "",
         shipyardId: "",
         projectTypeId: "",
         generalArrangement: null,
-        documentTypes: defaultDocumentTypes,
+        documentTypes: [],
       });
+      setNewDocTypeName("");
     } catch (err) {
       const errorMessage = getErrorMessage(err, t("error"));
       setError(errorMessage);
@@ -102,15 +136,17 @@ export default function CreateProjectModal({
     setFormData({
       ...formData,
       documentTypes: formData.documentTypes.map((dt) =>
-        dt.id === id ? { ...dt, required: !dt.required } : dt
+        // Only allow toggling if not locked
+        dt.id === id && !dt.isLocked ? { ...dt, required: !dt.required } : dt
       ),
     });
   };
 
   const removeDocType = (id: string) => {
+    // Only allow removing if not locked
     setFormData({
       ...formData,
-      documentTypes: formData.documentTypes.filter((dt) => dt.id !== id),
+      documentTypes: formData.documentTypes.filter((dt) => dt.id !== id || dt.isLocked),
     });
   };
 
@@ -124,6 +160,7 @@ export default function CreateProjectModal({
           id: Date.now().toString(),
           name: newDocTypeName.trim(),
           required: false,
+          isLocked: false,
         },
       ],
     });
@@ -132,6 +169,7 @@ export default function CreateProjectModal({
 
   const shipyardOptions = [
     { value: "", label: t("selectShipyard") },
+    { value: "create_new", label: `+ ${t("addShipyard")}` },
     ...shipyards.map((s) => ({ value: s.id, label: s.name })),
   ];
 
@@ -183,11 +221,32 @@ export default function CreateProjectModal({
         <FormSelect
           id="shipyard"
           label={t("yardOwner")}
-          value={formData.shipyardId}
-          onChange={(e) => setFormData({ ...formData, shipyardId: e.target.value })}
+          value={shipyardCreation.showInlineForm ? "create_new" : formData.shipyardId}
+          onChange={(e) => {
+            const newShipyardId = shipyardCreation.handleSelectChange(e.target.value, formData.shipyardId);
+            setFormData({ ...formData, shipyardId: newShipyardId });
+          }}
           options={shipyardOptions}
           required
         />
+
+        {shipyardCreation.showInlineForm && (
+          <InlineShipyardForm
+            name={shipyardCreation.name}
+            address={shipyardCreation.address}
+            contactName={shipyardCreation.contactName}
+            contactEmail={shipyardCreation.contactEmail}
+            contactPhone={shipyardCreation.contactPhone}
+            onNameChange={shipyardCreation.setName}
+            onAddressChange={shipyardCreation.setAddress}
+            onContactNameChange={shipyardCreation.setContactName}
+            onContactEmailChange={shipyardCreation.setContactEmail}
+            onContactPhoneChange={shipyardCreation.setContactPhone}
+            onSubmit={shipyardCreation.handleCreate}
+            onCancel={shipyardCreation.handleCancel}
+            isLoading={shipyardCreation.isCreating}
+          />
+        )}
 
         <FormSelect
           id="project-type"
@@ -214,79 +273,91 @@ export default function CreateProjectModal({
           </p>
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            {t("documentTypes")}
-          </label>
-          <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
-            <table className="w-full">
-              <thead className="bg-gray-50 dark:bg-gray-700/50">
-                <tr>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700 dark:text-gray-300">
-                    {t("name")}
-                  </th>
-                  <th className="px-4 py-3 text-center text-sm font-medium text-gray-700 dark:text-gray-300">
-                    {t("required")}
-                  </th>
-                  <th className="px-4 py-3 text-center text-sm font-medium text-gray-700 dark:text-gray-300">
-                    {t("delete")}
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                {formData.documentTypes.map((docType) => (
-                  <tr key={docType.id}>
-                    <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100">
-                      {docType.name}
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <input
-                        type="checkbox"
-                        checked={docType.required}
-                        onChange={() => toggleDocTypeRequired(docType.id)}
-                        className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                      />
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <button
-                        type="button"
-                        onClick={() => removeDocType(docType.id)}
-                        className="text-red-500 hover:text-red-700 transition-colors"
-                      >
-                        <XMarkIcon className="w-5 h-5" />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="mt-3 flex gap-2">
-            <input
-              type="text"
-              value={newDocTypeName}
-              onChange={(e) => setNewDocTypeName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  addDocType();
-                }
-              }}
-              placeholder={t("addDocumentTypePlaceholder")}
-              className="flex-1 px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-            <Button
-              type="button"
-              variant="primary"
-              onClick={addDocType}
-              disabled={!newDocTypeName.trim()}
-            >
-              <PlusIcon className="w-4 h-4" />
-              {t("add")}
-            </Button>
-          </div>
-        </div>
+        <Table
+          label={t("documentTypes")}
+          columns={[
+            {
+              key: "name",
+              header: t("name"),
+              cell: (docType: DocumentType) => (
+                <span className="text-sm text-gray-900 dark:text-gray-100">
+                  {docType.name}
+                </span>
+              ),
+              headerClassName: "text-left",
+            },
+            {
+              key: "required",
+              header: t("required"),
+              cell: (docType: DocumentType) => (
+                <input
+                  type="checkbox"
+                  checked={docType.required}
+                  disabled={docType.isLocked}
+                  onChange={() => !docType.isLocked && toggleDocTypeRequired(docType.id)}
+                  className={`w-5 h-5 rounded border-gray-300 text-blue-600 ${
+                    docType.isLocked
+                      ? "opacity-60 cursor-not-allowed"
+                      : "focus:ring-blue-500"
+                  }`}
+                />
+              ),
+              headerClassName: "text-center",
+              className: "text-center",
+            },
+            {
+              key: "delete",
+              header: t("delete"),
+              cell: (docType: DocumentType) => (
+                docType.isLocked ? (
+                  <LockClosedIcon className="w-5 h-5 text-gray-400 mx-auto" />
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => removeDocType(docType.id)}
+                    className="text-red-500 hover:text-red-700 transition-colors"
+                  >
+                    <XMarkIcon className="w-5 h-5" />
+                  </button>
+                )
+              ),
+              headerClassName: "text-center",
+              className: "text-center",
+            },
+          ]}
+          data={formData.documentTypes}
+          keyExtractor={(docType: DocumentType) => docType.id}
+          rowClassName={(docType: DocumentType) =>
+            docType.isLocked ? "bg-gray-50 dark:bg-gray-800/50" : ""
+          }
+          minWidth="100%"
+          footer={
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newDocTypeName}
+                onChange={(e) => setNewDocTypeName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    addDocType();
+                  }
+                }}
+                placeholder={t("addDocumentTypePlaceholder")}
+                className="flex-1 px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+              <Button
+                type="button"
+                variant="primary"
+                onClick={addDocType}
+                disabled={!newDocTypeName.trim()}
+              >
+                <PlusIcon className="w-4 h-4" />
+                {t("add")}
+              </Button>
+            </div>
+          }
+        />
       </form>
     </Modal>
   );

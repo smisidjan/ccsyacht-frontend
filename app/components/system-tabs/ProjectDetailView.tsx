@@ -285,8 +285,8 @@ export default function ProjectDetailView({
               {t("fields.type")}
             </label>
             <p className="text-gray-900 dark:text-white capitalize">
-              {project.additionalType === "new_built"
-                ? tProjects("types.newBuilt")
+              {project.additionalType === "new_build"
+                ? tProjects("types.newBuild")
                 : tProjects("types.refit")}
             </p>
           </div>

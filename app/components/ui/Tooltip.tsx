@@ -6,12 +6,16 @@ interface TooltipProps {
   children: ReactNode;
   content: string;
   position?: "top" | "bottom" | "left" | "right";
+  maxWidth?: string;
+  multiline?: boolean;
 }
 
 export default function Tooltip({
   children,
   content,
   position = "bottom",
+  maxWidth = "200px",
+  multiline = false,
 }: TooltipProps) {
   const [isVisible, setIsVisible] = useState(false);
 
@@ -40,7 +44,12 @@ export default function Tooltip({
         <div
           className={`absolute z-50 ${positionClasses[position]} pointer-events-none`}
         >
-          <div className="bg-gray-900 dark:bg-gray-700 text-white text-xs px-3 py-1.5 rounded-lg shadow-lg whitespace-nowrap">
+          <div
+            className={`bg-gray-900 dark:bg-gray-700 text-white text-xs px-3 py-2 rounded-lg shadow-lg ${
+              multiline ? "" : "whitespace-nowrap"
+            }`}
+            style={{ maxWidth }}
+          >
             {content}
           </div>
           <div
