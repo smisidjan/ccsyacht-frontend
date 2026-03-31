@@ -30,7 +30,6 @@ import Tooltip from "@/app/components/ui/Tooltip";
 import CreateGAPinModal from "@/app/components/modals/CreateGAPinModal";
 import ConfirmModal from "@/app/components/modals/ConfirmModal";
 import CreateRemarkModal from "@/app/components/modals/CreateRemarkModal";
-import CreatePunchlistItemModal from "@/app/components/modals/CreatePunchlistItemModal";
 import type { GAPin, StageStatus } from "@/lib/api/types";
 
 interface GeneralArrangementTabProps {
@@ -78,11 +77,9 @@ export default function GeneralArrangementTab({
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isRemarkModalOpen, setIsRemarkModalOpen] = useState(false);
-  const [isPunchlistModalOpen, setIsPunchlistModalOpen] = useState(false);
   const [selectedPin, setSelectedPin] = useState<GAPin | null>(null);
   const [pinToDelete, setPinToDelete] = useState<string | null>(null);
   const [pinForRemark, setPinForRemark] = useState<GAPin | null>(null);
-  const [pinForPunchlist, setPinForPunchlist] = useState<GAPin | null>(null);
   const [newPinPosition, setNewPinPosition] = useState<{ x: number; y: number } | null>(null);
   const [hoveredPinId, setHoveredPinId] = useState<string | null>(null);
   const [selectedPinDetail, setSelectedPinDetail] = useState<GAPin | null>(null);
@@ -246,15 +243,6 @@ export default function GeneralArrangementTab({
     (pin: GAPin) => {
       setPinForRemark(pin);
       setIsRemarkModalOpen(true);
-    },
-    []
-  );
-
-  // Handle add punchlist item to pin
-  const handleAddPunchlist = useCallback(
-    (pin: GAPin) => {
-      setPinForPunchlist(pin);
-      setIsPunchlistModalOpen(true);
     },
     []
   );
@@ -640,15 +628,6 @@ export default function GeneralArrangementTab({
                           <ChatBubbleLeftIcon className="w-4 h-4" />
                           {tPins("addRemark")}
                         </button>
-                        {selectedPinDetail.stage.status !== "completed" && (
-                          <button
-                            onClick={() => handleAddPunchlist(selectedPinDetail)}
-                            className="flex items-center gap-2 px-3 py-2 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-                          >
-                            <ClipboardDocumentListIcon className="w-4 h-4" />
-                            {tPins("addPunchlist")}
-                          </button>
-                        )}
                         <button
                           onClick={() => handleEditPin(selectedPinDetail)}
                           className="flex items-center gap-2 px-3 py-2 text-sm bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
@@ -712,20 +691,6 @@ export default function GeneralArrangementTab({
           }}
           projectId={projectId}
           stageId={pinForRemark.stage.identifier}
-          onSuccess={refetch}
-        />
-      )}
-
-      {/* Create Punchlist Item Modal */}
-      {pinForPunchlist && (
-        <CreatePunchlistItemModal
-          isOpen={isPunchlistModalOpen}
-          onClose={() => {
-            setIsPunchlistModalOpen(false);
-            setPinForPunchlist(null);
-          }}
-          projectId={projectId}
-          stageId={pinForPunchlist.stage.identifier}
           onSuccess={refetch}
         />
       )}
