@@ -187,21 +187,31 @@ export default function DocumentsTab({ projectId, projectStatus }: DocumentsTabP
 
   if (!documentTypes || documentTypes.length === 0) {
     return (
-      <div className="text-center py-16 bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 rounded-2xl border-2 border-dashed border-gray-300 dark:border-gray-700">
-        <DocumentTextIcon className="w-16 h-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-          {t("noDocumentTypes")}
-        </h3>
-        <p className="text-gray-600 dark:text-gray-400 mb-6 max-w-sm mx-auto">
-          {t("createFirstDocumentType")}
-        </p>
-        {canCreateDocumentTypes && !isReadOnly && (
-          <Button onClick={() => setIsCreateTypeModalOpen(true)}>
-            <PlusIcon className="w-4 h-4" />
-            {tDocTypes("addNew")}
-          </Button>
-        )}
-      </div>
+      <>
+        <div className="text-center py-16 bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 rounded-2xl border-2 border-dashed border-gray-300 dark:border-gray-700">
+          <DocumentTextIcon className="w-16 h-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+            {t("noDocumentTypes")}
+          </h3>
+          <p className="text-gray-600 dark:text-gray-400 mb-6 max-w-sm mx-auto">
+            {t("createFirstDocumentType")}
+          </p>
+          {canCreateDocumentTypes && !isReadOnly && (
+            <Button onClick={() => setIsCreateTypeModalOpen(true)}>
+              <PlusIcon className="w-4 h-4" />
+              {tDocTypes("addNew")}
+            </Button>
+          )}
+        </div>
+
+        {/* Create Document Type Modal */}
+        <DocumentTypeModal
+          isOpen={isCreateTypeModalOpen}
+          onClose={() => setIsCreateTypeModalOpen(false)}
+          onSubmit={handleCreateDocumentType}
+          projectId={projectId}
+        />
+      </>
     );
   }
 
