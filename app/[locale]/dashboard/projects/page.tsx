@@ -146,6 +146,8 @@ export default function ProjectsPage() {
   }, [currentPage]);
 
   const handleCreateProject = async (data: ProjectFormData) => {
+    let projectId: string | null = null;
+
     try {
       // 1. Create the project first
       const newProject = await projectsApi.create({
@@ -155,7 +157,7 @@ export default function ProjectsPage() {
         shipyard_id: data.shipyardId,
       });
 
-      const projectId = newProject.identifier;
+      projectId = newProject.identifier;
 
       // 2. Upload General Arrangement (required)
       if (!data.generalArrangement) {
@@ -176,6 +178,17 @@ export default function ProjectsPage() {
       // Modal will close itself after successful submit
     } catch (error) {
       console.error("Error creating project:", error);
+
+      // Cleanup: if project was created but later steps failed, delete it
+      if (projectId) {
+        try {
+          await projectsApi.delete(projectId);
+          console.log("Successfully cleaned up partially created project:", projectId);
+        } catch (deleteError) {
+          console.error("Failed to cleanup project after error:", deleteError);
+        }
+      }
+
       throw error;
     }
   };
