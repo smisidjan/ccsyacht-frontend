@@ -12,6 +12,12 @@ export { systemUsersApi } from "./users";
 export { systemInvitationsApi } from "./invitations";
 export { systemRolesApi } from "./roles";
 export { systemProjectsApi } from "./projects";
+export {
+  systemStageTemplatesApi,
+  systemDocumentTypeTemplatesApi,
+  systemAreaTemplatesApi,
+  systemChecklistTemplatesApi,
+} from "./templates";
 
 // Combined systemApi object for backwards compatibility and convenience
 import { systemAuthApi } from "./auth";
@@ -20,6 +26,12 @@ import { systemUsersApi } from "./users";
 import { systemInvitationsApi } from "./invitations";
 import { systemRolesApi } from "./roles";
 import { systemProjectsApi } from "./projects";
+import {
+  systemStageTemplatesApi,
+  systemDocumentTypeTemplatesApi,
+  systemAreaTemplatesApi,
+  systemChecklistTemplatesApi,
+} from "./templates";
 
 export const systemApi = {
   ...systemAuthApi,
@@ -28,4 +40,8 @@ export const systemApi = {
   ...systemInvitationsApi,
   ...systemRolesApi,
   ...systemProjectsApi,
+  stageTemplates: systemStageTemplatesApi,
+  documentTypeTemplates: systemDocumentTypeTemplatesApi,
+  areaTemplates: systemAreaTemplatesApi,
+  checklistTemplates: systemChecklistTemplatesApi,
 };

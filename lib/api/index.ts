@@ -60,6 +60,9 @@ export type { PunchlistItemsQueryParams } from "./punchlist-items";
 // GA Pins
 export { gaPinsApi, useGAPins } from "./ga-pins";
 
+// Setup Tasks
+export { setupTasksApi } from "./setup-tasks";
+
 // Hooks
 export {
   useCurrentUser,

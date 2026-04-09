@@ -84,6 +84,10 @@ export interface CurrentUser {
   permissions: string[];
   employmentType?: "employee" | "guest";
   memberOf: CurrentUserOrganization;
+  homeOrganization?: {
+    "@type"?: string;
+    name: string;
+  };
 }
 
 // ============ Roles ============
@@ -377,12 +381,21 @@ export interface Shipyard {
   name: string;
   address?: string;
   contactPoint?: ShipyardContactPoint;
+  linkedUser?: {
+    identifier: string;
+    name: string;
+    email: string;
+  };
+  invitationStatus?: 'pending' | 'accepted';
   dateCreated?: string;
   dateModified?: string;
 }
 
 export interface CreateShipyardRequest {
   name: string;
+  // Option 1: Link existing user by ID
+  contact_user_id?: string;
+  // Option 2: New contact person (requires both name + email if not using contact_user_id)
   contact_name?: string;
   contact_email?: string;
   contact_phone?: string;
@@ -391,6 +404,9 @@ export interface CreateShipyardRequest {
 
 export interface UpdateShipyardRequest {
   name?: string;
+  // Option 1: Link existing user by ID
+  contact_user_id?: string;
+  // Option 2: Update contact person details
   contact_name?: string;
   contact_email?: string;
   contact_phone?: string;
@@ -465,7 +481,6 @@ export interface DocumentType {
   name: string;
   isRequired: boolean;
   isLocked: boolean;
-  position: number;
   documentCount: number;
   dateCreated: string;
   dateModified: string;
@@ -547,13 +562,11 @@ export interface Deck {
 export interface CreateDeckRequest {
   name: string;
   description?: string;
-  sort_order?: number;
 }
 
 export interface UpdateDeckRequest {
   name?: string;
   description?: string;
-  sort_order?: number;
 }
 
 // ============ Areas ============
@@ -594,13 +607,19 @@ export interface Area {
 export interface CreateAreaRequest {
   name: string;
   description?: string;
-  sort_order?: number;
 }
 
 export interface UpdateAreaRequest {
   name?: string;
   description?: string;
-  sort_order?: number;
+}
+
+export interface BulkCreateAreasRequest {
+  areas: {
+    name: string;
+    description?: string;
+    sort_order: number;
+  }[];
 }
 
 // ============ Stage Templates ============
@@ -613,6 +632,7 @@ export interface StageTemplate {
   position: number;
   requiresReleaseForm: boolean;
   isActive: boolean;
+  canDelete: boolean;
   dateCreated: string;
   dateModified: string;
 }
@@ -1050,8 +1070,8 @@ export interface DocumentTypeTemplate {
   name: string;
   isRequired: boolean;
   isLocked: boolean;
-  position: number;
   isActive: boolean;
+  canDelete: boolean;
   dateCreated: string;
   dateModified: string;
 }
@@ -1075,5 +1095,220 @@ export interface ReorderDocumentTypeTemplatesRequest {
 }
 
 export interface GetDocumentTypeTemplatesParams {
+  active_only?: boolean;
+}
+
+// ============ Area Templates ============
+export interface AreaTemplate {
+  "@context"?: string;
+  "@type"?: string;
+  identifier: string;
+  name: string;
+  description?: string;
+  isActive: boolean;
+  canDelete: boolean;
+  dateCreated: string;
+  dateModified: string;
+}
+
+export interface CreateAreaTemplateRequest {
+  name: string;
+  description?: string;
+  sort_order?: number;
+  is_active?: boolean;
+}
+
+export interface UpdateAreaTemplateRequest {
+  name?: string;
+  description?: string;
+  sort_order?: number;
+  is_active?: boolean;
+}
+
+export interface ReorderAreaTemplatesRequest {
+  order: string[];
+}
+
+export interface GetAreaTemplatesParams {
+  active_only?: boolean;
+}
+
+// ============ Setup Tasks ============
+
+export type SetupTaskType = "upload_documents" | "add_members" | "add_signers" | "kickoff_meeting" | "custom";
+export type SetupTaskStatus = "pending" | "scheduled" | "completed";
+
+export interface SetupTaskAssignee {
+  "@type": "Person";
+  identifier: string;
+  name: string;
+  email: string;
+  hasSigned: boolean;
+  signedAt: string | null;
+}
+
+export interface SetupTaskChecklistItemCheck {
+  "@type": "AssessAction";
+  identifier: string;
+  agent: {
+    "@type": "Person";
+    identifier: string;
+    name: string;
+  };
+  dateCreated: string;
+}
+
+export interface SetupTaskChecklistItem {
+  "@type": "CheckAction";
+  identifier: string;
+  description: string;
+  sortOrder: number;
+  isCompleted: boolean;
+  fromTemplate: boolean;
+  checks?: SetupTaskChecklistItemCheck[];
+}
+
+export interface SetupTaskNote {
+  "@type": "Comment";
+  identifier: string;
+  text: string;
+  author: {
+    "@type": "Person";
+    identifier: string;
+    name: string;
+  };
+  dateCreated: string;
+}
+
+export interface SetupTaskDocument {
+  "@context"?: string;
+  "@type"?: "DigitalDocument";
+  identifier: string;
+  name: string; // document name/filename
+  fileName: string; // original file name
+  encodingFormat: string; // MIME type (e.g., "application/pdf")
+  contentSize: string; // human-readable size (e.g., "84.61 KB")
+  contentSizeBytes: number; // size in bytes
+  dateCreated: string; // ISO date string
+  dateModified: string; // ISO date string
+  author: {
+    "@type"?: string; // e.g., "Organization" or "Person"
+    identifier?: string; // uploader ID
+    name: string; // uploader name
+  };
+}
+
+export interface SetupTask {
+  "@context"?: "https://schema.org";
+  "@type": "Action";
+  identifier: string;
+  name: string;
+  description: string;
+  additionalType: SetupTaskType;
+  actionStatus: SetupTaskStatus;
+  scheduledDate: string | null;
+  completedAt: string | null;
+  sortOrder: number;
+  allSigned: boolean;
+  allItemsCompleted: boolean;
+  isComplete: boolean;
+  assignees: SetupTaskAssignee[];
+  checklistItems: SetupTaskChecklistItem[];
+  notes: SetupTaskNote[];
+  documents: SetupTaskDocument[];
+}
+
+export interface CreateSetupTaskNoteRequest {
+  content: string;
+}
+
+export interface UpdateSetupTaskNoteRequest {
+  content: string;
+}
+
+export interface UploadSetupTaskDocumentRequest {
+  file: File;
+  name?: string;
+}
+
+export interface SetupTasksUnifiedStatus {
+  "@context": "https://schema.org";
+  "@type": "ItemList";
+  documents: {
+    isComplete: boolean;
+    required: string[];
+    uploaded: string[];
+    missing: string[];
+  };
+  members: {
+    isComplete: boolean;
+    count: number;
+    minimum: number;
+  };
+  signers: {
+    isComplete: boolean;
+    required: string[];
+    assigned: string[];
+    missing: string[];
+  };
+  kickoffMeeting: {
+    isComplete: boolean;
+    exists: boolean;
+    scheduledDate: string | null;
+    allChecklistItemsCompleted: boolean;
+    allAttendeesSigned: boolean;
+    details: {
+      attendeeCount: number;
+      signedCount: number;
+      checklistItemCount: number;
+      completedChecklistItemCount: number;
+    };
+  };
+  customTasks: any[];
+}
+
+export interface UpdateSetupTaskRequest {
+  scheduled_date?: string;
+  description?: string;
+}
+
+export interface AddSetupTaskAssigneeRequest {
+  user_id: string;
+}
+
+export interface CreateChecklistItemRequest {
+  description: string;
+}
+
+export interface ChecklistTemplate {
+  "@context"?: "https://schema.org";
+  "@type": "Thing";
+  identifier: string;
+  additionalType: SetupTaskType;
+  description: string;
+  sortOrder: number;
+  isActive: boolean;
+  canDelete: boolean;
+}
+
+export interface CreateChecklistTemplateRequest {
+  type: SetupTaskType;
+  description: string;
+  sort_order: number;
+  is_active: boolean;
+}
+
+export interface UpdateChecklistTemplateRequest {
+  description?: string;
+  sort_order?: number;
+  is_active?: boolean;
+}
+
+export interface ReorderChecklistTemplatesRequest {
+  order: string[];
+}
+
+export interface GetChecklistTemplatesParams {
+  type?: SetupTaskType;
   active_only?: boolean;
 }
