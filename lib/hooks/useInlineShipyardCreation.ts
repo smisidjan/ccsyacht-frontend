@@ -42,7 +42,7 @@ export function useInlineShipyardCreation({
   };
 
   const handleCreate = async () => {
-    if (!name.trim()) return;
+    if (!name.trim() || !contactName.trim() || !contactEmail.trim()) return;
 
     setIsCreating(true);
     let newShipyard: Shipyard | null = null;
@@ -98,6 +98,7 @@ export function useInlineShipyardCreation({
     contactPhone,
 
     // Setters
+    setShowInlineForm,
     setName,
     setAddress,
     setContactName,

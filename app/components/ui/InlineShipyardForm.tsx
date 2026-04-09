@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import FormInput from "./FormInput";
 import FormTextarea from "./FormTextarea";
 import Button from "./Button";
+import Alert from "./Alert";
 
 interface InlineShipyardFormProps {
   name: string;
@@ -64,8 +65,8 @@ export default function InlineShipyardForm({
       />
 
       <div className="border-t border-gray-200 dark:border-gray-700 pt-3 mt-3">
-        <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">
-          {t("contactInfoOptional")}
+        <p className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-3">
+          {t("contactPersonRequired")}
         </p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -76,6 +77,8 @@ export default function InlineShipyardForm({
             value={contactName}
             onChange={(e) => onContactNameChange(e.target.value)}
             placeholder={t("contactNamePlaceholder")}
+            required
+            hint={t("contactNameHint")}
           />
 
           <FormInput
@@ -95,9 +98,13 @@ export default function InlineShipyardForm({
               value={contactEmail}
               onChange={(e) => onContactEmailChange(e.target.value)}
               placeholder={t("contactEmailPlaceholder")}
+              required
+              hint={t("contactEmailHint")}
             />
           </div>
         </div>
+
+        <Alert type="info" message={t("shipyardContactAutoAdd")} className="mt-3" />
       </div>
 
       <div className="flex gap-2 pt-2">
