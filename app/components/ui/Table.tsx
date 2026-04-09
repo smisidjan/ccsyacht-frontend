@@ -1,6 +1,8 @@
 "use client";
 
 import { ReactNode } from "react";
+import Spinner from "./Spinner";
+import Alert from "./Alert";
 
 interface Column<T> {
   key: string;
@@ -19,6 +21,8 @@ interface TableProps<T> {
   minWidth?: string;
   footer?: ReactNode;
   label?: string;
+  loading?: boolean;
+  error?: string | null;
 }
 
 export default function Table<T>({
@@ -30,7 +34,23 @@ export default function Table<T>({
   minWidth = "700px",
   footer,
   label,
+  loading = false,
+  error = null,
 }: TableProps<T>) {
+  // Loading state
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Spinner />
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return <Alert type="error" message={error} />;
+  }
+
   return (
     <div>
       {label && (
@@ -45,7 +65,7 @@ export default function Table<T>({
               {columns.map((column) => (
                 <th
                   key={column.key}
-                  className={`px-4 py-3 text-sm font-medium text-gray-700 dark:text-gray-300 ${column.headerClassName || ""}`}
+                  className={`px-4 py-3 ${column.headerClassName || "text-left"} text-sm font-medium text-gray-700 dark:text-gray-300`}
                 >
                   {column.header}
                 </th>

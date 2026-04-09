@@ -1,15 +1,40 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { XMarkIcon } from "@heroicons/react/24/outline";
+import Button from "./Button";
+import Alert from "./Alert";
+
+interface ModalAction {
+  label: string;
+  onClick?: () => void | Promise<void>;
+  variant?: "primary" | "secondary" | "danger" | "success" | "ghost";
+  type?: "button" | "submit";
+  disabled?: boolean;
+  loading?: boolean;
+}
 
 interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
   title: string;
   children: React.ReactNode;
-  footer?: React.ReactNode;
   size?: "sm" | "md" | "lg" | "xl";
+
+  // Footer options
+  footer?: React.ReactNode; // Custom footer (overrides actions)
+  actions?: ModalAction[]; // Button configuration
+
+  // Form mode
+  isForm?: boolean;
+  onSubmit?: (e: React.FormEvent<HTMLFormElement>) => void | Promise<void>;
+  formId?: string;
+
+  // Error handling
+  error?: string | null;
+
+  // Disable backdrop click to close
+  disableBackdropClick?: boolean;
 }
 
 const sizeClasses = {
@@ -25,9 +50,16 @@ export default function Modal({
   title,
   children,
   footer,
+  actions,
   size = "md",
+  isForm = false,
+  onSubmit,
+  formId,
+  error,
+  disableBackdropClick = false,
 }: ModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -46,12 +78,70 @@ export default function Modal({
   }, [isOpen, onClose]);
 
   const handleBackdropClick = (e: React.MouseEvent) => {
+    if (disableBackdropClick) return;
     if (modalRef.current && !modalRef.current.contains(e.target as Node)) {
       onClose();
     }
   };
 
+  const handleActionClick = async (action: ModalAction) => {
+    if (!action.onClick) return;
+
+    setIsSubmitting(true);
+    try {
+      await action.onClick();
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleFormSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!onSubmit) return;
+
+    setIsSubmitting(true);
+    try {
+      await onSubmit(e);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   if (!isOpen) return null;
+
+  // Build footer from actions if no custom footer provided
+  const footerContent = footer ? (
+    footer
+  ) : actions ? (
+    <div className="flex justify-end gap-3">
+      {actions.map((action, index) => (
+        <Button
+          key={index}
+          type={action.type || "button"}
+          variant={action.variant || "secondary"}
+          onClick={action.onClick ? () => handleActionClick(action) : undefined}
+          disabled={action.disabled || isSubmitting}
+          loading={action.loading || (action.type === "submit" && isSubmitting)}
+          form={action.type === "submit" && formId ? formId : undefined}
+        >
+          {action.label}
+        </Button>
+      ))}
+    </div>
+  ) : null;
+
+  // Wrap content in form if needed
+  const content = isForm && onSubmit ? (
+    <form id={formId} onSubmit={handleFormSubmit} className="space-y-4">
+      {error && <Alert type="error" message={error} />}
+      {children}
+    </form>
+  ) : (
+    <>
+      {error && <Alert type="error" message={error} className="mb-4" />}
+      {children}
+    </>
+  );
 
   return (
     <div
@@ -74,11 +164,13 @@ export default function Modal({
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-6 py-5 md:px-8 md:py-6">{children}</div>
+        <div className="flex-1 overflow-y-auto px-6 py-5 md:px-8 md:py-6">
+          {content}
+        </div>
 
-        {footer && (
+        {footerContent && (
           <div className="px-6 py-5 md:px-8 md:py-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 rounded-b-2xl">
-            {footer}
+            {footerContent}
           </div>
         )}
       </div>
