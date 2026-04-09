@@ -1,13 +1,11 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useMemo, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
+import dynamic from "next/dynamic";
 import {
   DocumentTextIcon,
-  MagnifyingGlassPlusIcon,
-  MagnifyingGlassMinusIcon,
-  ArrowsPointingOutIcon,
   PencilIcon,
   TrashIcon,
   ChatBubbleLeftIcon,
@@ -15,7 +13,7 @@ import {
   ArrowTopRightOnSquareIcon,
   ArrowLeftIcon,
 } from "@heroicons/react/24/outline";
-import { documentsApi } from "@/lib/api/documents";
+import { useGAData, useGALoading } from "@/app/context/GAContext";
 import { useGAPins } from "@/lib/api/ga-pins";
 import { useDecks } from "@/lib/api/decks";
 import { useAreas } from "@/lib/api/areas";
@@ -31,6 +29,9 @@ import CreateGAPinModal from "@/app/components/modals/CreateGAPinModal";
 import ConfirmModal from "@/app/components/modals/ConfirmModal";
 import CreateRemarkModal from "@/app/components/modals/CreateRemarkModal";
 import type { GAPin, StageStatus } from "@/lib/api/types";
+
+// Dynamically import PDF viewer to avoid SSR issues with react-pdf
+const PDFViewer = dynamic(() => import("./PDFViewer"), { ssr: false });
 
 interface GeneralArrangementTabProps {
   projectId: string;
@@ -67,11 +68,14 @@ export default function GeneralArrangementTab({
   const { showToast } = useToast();
   const imageRef = useRef<HTMLDivElement>(null);
 
-  const [zoom, setZoom] = useState(100);
-  const [gaUrl, setGaUrl] = useState<string | null>(null);
-  const [fileType, setFileType] = useState<string | null>(null);
-  const [rawLoading, setRawLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // Use GA context
+  const { pdfData, blobUrl, error, fileType } = useGAData();
+  const { isDownloading } = useGALoading();
+
+  // PDF page state for react-pdf
+  const [numPages, setNumPages] = useState<number>(0);
+  const [pageWidth, setPageWidth] = useState<number>(0);
+  const [pdfRendered, setPdfRendered] = useState<boolean>(false);
 
   // Pin state
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -90,7 +94,53 @@ export default function GeneralArrangementTab({
   const [selectedStageFilter, setSelectedStageFilter] = useState<string | null>(null);
   const [selectedStatusFilter, setSelectedStatusFilter] = useState<string | null>(null);
 
+  // Banner state - shows for 12 seconds or until dismissed
+  const [showBanner, setShowBanner] = useState(false);
+  const bannerTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Show loading skeleton only while downloading
+  // PDF rendering happens after, we'll show a different loading state for that
+  const rawLoading = isDownloading;
   const loading = useMinimumLoadingTime(rawLoading);
+
+  // Show banner when PDF is loading, auto-hide after 12 seconds
+  useEffect(() => {
+    if (!loading && !pdfRendered && generalArrangementUrl) {
+      setShowBanner(true);
+      // Clear any existing timer
+      if (bannerTimerRef.current) {
+        clearTimeout(bannerTimerRef.current);
+      }
+      // Set new timer
+      bannerTimerRef.current = setTimeout(() => {
+        setShowBanner(false);
+      }, 12000);
+    }
+  }, [loading, generalArrangementUrl]); // Don't include pdfRendered - we want timer to run independently
+
+  // Reset banner when switching projects
+  useEffect(() => {
+    setShowBanner(false);
+    if (bannerTimerRef.current) {
+      clearTimeout(bannerTimerRef.current);
+    }
+  }, [projectId]);
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (bannerTimerRef.current) {
+        clearTimeout(bannerTimerRef.current);
+      }
+    };
+  }, []);
+
+  const dismissBanner = () => {
+    setShowBanner(false);
+    if (bannerTimerRef.current) {
+      clearTimeout(bannerTimerRef.current);
+    }
+  };
   const { data: allPins, deletePin, refetch } = useGAPins(projectId);
 
   // Fetch data for filters
@@ -108,6 +158,39 @@ export default function GeneralArrangementTab({
     if (selectedStatusFilter && pin.stage.status !== selectedStatusFilter) return false;
     return true;
   });
+
+  // Reset PDF rendered state when blobUrl changes (new PDF loaded)
+  useEffect(() => {
+    setPdfRendered(false);
+  }, [blobUrl]);
+
+  // Memoize file prop to prevent unnecessary reloads
+  // Use blob URL instead of raw data - this allows react-pdf to cache the parsed document
+  // and prevents re-parsing on every component mount
+  const pdfFile = useMemo(() => {
+    console.log("🔍 pdfFile useMemo - blobUrl:", blobUrl);
+    if (!blobUrl) {
+      console.log("❌ pdfFile is NULL because blobUrl is null");
+      return null;
+    }
+    const file = { url: blobUrl };
+    console.log("✅ pdfFile created:", file);
+    return file;
+  }, [blobUrl]);
+
+  // Callback when PDF loads successfully
+  const onDocumentLoadSuccess = (pdf: any) => {
+    setNumPages(pdf.numPages);
+    setPdfRendered(true);
+    console.log("✅ PDF loaded successfully, pages:", pdf.numPages);
+  };
+
+  // Callback when page loads to get width
+  const onPageLoadSuccess = () => {
+    if (imageRef.current) {
+      setPageWidth(imageRef.current.clientWidth);
+    }
+  };
 
   // Handle filter changes with cascading reset
   const handleDeckFilterChange = (deckId: string | null) => {
@@ -145,48 +228,6 @@ export default function GeneralArrangementTab({
       }
     }
   };
-
-  // Fetch general arrangement on mount
-  useEffect(() => {
-    async function fetchGA() {
-      try {
-        setRawLoading(true);
-        setError(null);
-        const blob = await documentsApi.downloadGeneralArrangement(projectId);
-
-        // Debug logging
-        console.log("GA blob fetched:", {
-          type: blob.type,
-          size: blob.size,
-        });
-
-        const url = window.URL.createObjectURL(blob);
-        setGaUrl(url);
-        setFileType(blob.type);
-      } catch (err: any) {
-        console.error("Failed to fetch general arrangement:", err);
-        if (err.status === 404) {
-          setGaUrl(null);
-        } else {
-          setError(err.message || "Failed to load general arrangement");
-        }
-      } finally {
-        setRawLoading(false);
-      }
-    }
-
-    fetchGA();
-
-    return () => {
-      if (gaUrl) {
-        window.URL.revokeObjectURL(gaUrl);
-      }
-    };
-  }, [projectId]);
-
-  const handleZoomIn = () => setZoom((prev) => Math.min(prev + 10, 200));
-  const handleZoomOut = () => setZoom((prev) => Math.max(prev - 10, 50));
-  const handleZoomReset = () => setZoom(100);
 
   // Handle click on GA image to add new pin
   const handleImageClick = useCallback(
@@ -262,7 +303,7 @@ export default function GeneralArrangementTab({
   }
 
   // No document state
-  if (!loading && !gaUrl) {
+  if (!loading && !blobUrl) {
     return (
       <div className="flex flex-col items-center justify-center py-16 bg-white dark:bg-gray-800 rounded-2xl border-2 border-dashed border-gray-300 dark:border-gray-700">
         <DocumentTextIcon className="w-16 h-16 text-gray-300 dark:text-gray-600 mb-4" />
@@ -281,36 +322,6 @@ export default function GeneralArrangementTab({
       {/* Header with Controls */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          {/* Zoom Controls */}
-          {fileType !== "application/pdf" && (
-            <div className="flex items-center gap-1 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600 p-1">
-              <button
-                onClick={handleZoomOut}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
-                title={t("zoomOut")}
-              >
-                <MagnifyingGlassMinusIcon className="w-4 h-4 text-gray-700 dark:text-gray-300" />
-              </button>
-              <span className="px-3 text-sm font-medium text-gray-700 dark:text-gray-300 min-w-[60px] text-center">
-                {zoom}%
-              </span>
-              <button
-                onClick={handleZoomIn}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
-                title={t("zoomIn")}
-              >
-                <MagnifyingGlassPlusIcon className="w-4 h-4 text-gray-700 dark:text-gray-300" />
-              </button>
-              <button
-                onClick={handleZoomReset}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
-                title={t("resetZoom")}
-              >
-                <ArrowsPointingOutIcon className="w-4 h-4 text-gray-700 dark:text-gray-300" />
-              </button>
-            </div>
-          )}
-
           {/* Filter Dropdowns */}
           {/* Deck Filter */}
           {decks && decks.length > 0 && (
@@ -383,6 +394,27 @@ export default function GeneralArrangementTab({
         </div>
       </div>
 
+      {/* PDF Rendering Banner - shown for 12 seconds or until dismissed */}
+      {showBanner && (
+        <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg mb-4">
+          <div className="flex items-center gap-3">
+            <div className="animate-spin rounded-full h-5 w-5 border-2 border-blue-600 border-t-transparent" />
+            <p className="text-sm text-blue-700 dark:text-blue-300">
+              {t("renderingPDF")}
+            </p>
+          </div>
+          <button
+            onClick={dismissBanner}
+            className="p-1 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-800 rounded transition-colors"
+            aria-label="Dismiss"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      )}
+
       {/* GA Image with Pins - 60/40 Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-[60%_40%] gap-6">
         {/* Left: PDF Viewer (60%) */}
@@ -391,39 +423,32 @@ export default function GeneralArrangementTab({
             ref={imageRef}
             className="relative w-full bg-gray-50 dark:bg-gray-900"
             style={{
-              minHeight: "800px",
+              minHeight: "1010px",
             }}
           >
-            {/* Render PDF or Image */}
-            {fileType === "application/pdf" ? (
-              <>
-                <object
-                  data={`${gaUrl}#toolbar=0&navpanes=0&scrollbar=1&view=FitH`}
-                  type="application/pdf"
-                  className="w-full"
-                  style={{ minHeight: "1010px", height: "100vh" }}
-                >
-                  <p>PDF cannot be displayed</p>
-                </object>
-                {/* Transparent overlay for pin placement - only when canEdit */}
-                {canEdit && (
-                  <div
-                    onClick={handleImageClick}
-                    className="absolute inset-0 cursor-crosshair"
-                    style={{ pointerEvents: "auto" }}
-                    title="Click to add pin"
-                  />
-                )}
-              </>
-            ) : (
+            {/* Render PDF with react-pdf */}
+            {(() => {
+              console.log("🎬 About to render PDFViewer, pdfFile:", pdfFile);
+              return null;
+            })()}
+            {pdfFile && (
+              <PDFViewer
+                file={pdfFile}
+                onLoadSuccess={onDocumentLoadSuccess}
+                onLoadError={(error: Error) => console.error("PDF load error:", error)}
+                onPageLoadSuccess={onPageLoadSuccess}
+                pageWidth={pageWidth}
+              />
+            )}
+
+
+            {/* Transparent overlay for pin placement - only when canEdit */}
+            {canEdit && pdfFile && (
               <div
-                className="w-full h-full absolute inset-0 pointer-events-none"
-                style={{
-                  backgroundImage: `url(${gaUrl})`,
-                  backgroundSize: `${zoom}%`,
-                  backgroundPosition: "center",
-                  backgroundRepeat: "no-repeat",
-                }}
+                onClick={handleImageClick}
+                className="absolute inset-0 cursor-crosshair bg-transparent"
+                style={{ pointerEvents: "auto", zIndex: 5 }}
+                title="Click to add pin"
               />
             )}
             {/* Render pins on PDF */}
@@ -435,6 +460,8 @@ export default function GeneralArrangementTab({
                 left: `${pin.x}%`,
                 top: `${pin.y}%`,
                 transform: "translate(-50%, -100%)",
+                zIndex: 10,
+                pointerEvents: "auto",
               }}
               onMouseEnter={() => setHoveredPinId(pin.identifier)}
               onMouseLeave={() => setHoveredPinId(null)}

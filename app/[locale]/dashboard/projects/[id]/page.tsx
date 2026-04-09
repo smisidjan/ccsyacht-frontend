@@ -15,6 +15,7 @@ import { useProject, projectsApi } from "@/lib/api";
 import { useMinimumLoadingTime } from "@/lib/hooks/useMinimumLoadingTime";
 import { usePermission } from "@/lib/hooks/usePermission";
 import { useToast } from "@/app/context/ToastContext";
+import { GAProvider, useGA } from "@/app/context/GAContext";
 import { PERMISSIONS } from "@/lib/constants/permissions";
 
 // Tab content components
@@ -28,13 +29,12 @@ import SettingsTab from "@/app/components/project-tabs/SettingsTab";
 
 type TabKey = "overview" | "documents" | "generalArrangement" | "punchlist" | "logbook" | "reporting" | "settings";
 
-export default function ProjectDetailPage() {
+function ProjectDetailPageContent({ projectId }: { projectId: string }) {
   const t = useTranslations("projectDetail");
-  const params = useParams();
-  const projectId = params.id as string;
   const [activeTab, setActiveTab] = useState<TabKey>("overview");
   const { hasPermission } = usePermission();
   const { showToast } = useToast();
+  const { loadGA } = useGA(); // TODO: re-add isDownloading, downloadProgress when GA progress indicator is fixed
 
   // Fetch project from API
   const { data: project, loading: rawLoading, error, refetch } = useProject(projectId);
@@ -65,6 +65,15 @@ export default function ProjectDetailPage() {
     window.addEventListener("hashchange", handleHashChange);
     return () => window.removeEventListener("hashchange", handleHashChange);
   }, []);
+
+  // Preload GA when project loads
+  // Reload if generalArrangement URL changes (e.g., new GA uploaded)
+  useEffect(() => {
+    if (project && project.generalArrangement) {
+      loadGA(projectId, project.generalArrangement);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [project?.generalArrangement, projectId]);
 
   // Update hash when tab changes
   const handleTabChange = (key: string) => {
@@ -113,38 +122,47 @@ export default function ProjectDetailPage() {
     { key: "settings", label: t("tabs.settings") },
   ];
 
+  // Render tabs with hybrid approach:
+  // - GA tab: Always mounted (hidden when inactive) to preserve PDF rendering state
+  // - Other tabs: Conditionally rendered to get fresh data on each visit
   const renderTabContent = () => {
     if (!project) return null;
 
-    switch (activeTab) {
-      case "overview":
-        return (
+    return (
+      <>
+        {/* GA Tab - Always mounted but hidden to prevent re-rendering PDF */}
+        <div style={{ display: activeTab === "generalArrangement" ? "block" : "none" }}>
+          <GeneralArrangementTab
+            projectId={projectId}
+            generalArrangementUrl={project.generalArrangement}
+          />
+        </div>
+
+        {/* Other tabs - Conditionally rendered for fresh data */}
+        {activeTab === "overview" && (
           <OverviewTab
             projectId={projectId}
             projectStatus={project.status}
             onProjectUpdate={refetch}
           />
-        );
-      case "generalArrangement":
-        return (
-          <GeneralArrangementTab
-            projectId={projectId}
-            generalArrangementUrl={project.generalArrangement}
-          />
-        );  
-      case "documents":
-        return <DocumentsTab projectId={projectId} projectStatus={project.status} />;
-      case "punchlist":
-        return <PunchlistTab projectId={projectId} />;
-      case "logbook":
-        return <LogbookTab projectId={projectId} />;
-      case "reporting":
-        return <ReportingTab />;
-      case "settings":
-        return <SettingsTab projectId={projectId} onProjectUpdate={refetch} />;
-      default:
-        return null;
-    }
+        )}
+        {activeTab === "documents" && (
+          <DocumentsTab projectId={projectId} projectStatus={project.status} />
+        )}
+        {activeTab === "punchlist" && (
+          <PunchlistTab projectId={projectId} />
+        )}
+        {activeTab === "logbook" && (
+          <LogbookTab projectId={projectId} />
+        )}
+        {activeTab === "reporting" && (
+          <ReportingTab />
+        )}
+        {activeTab === "settings" && (
+          <SettingsTab projectId={projectId} onProjectUpdate={refetch} />
+        )}
+      </>
+    );
   };
 
   // Loading state
@@ -192,6 +210,26 @@ export default function ProjectDetailPage() {
 
   return (
     <div>
+{/* TODO: GA Download Progress Indicator - disabled, fix later
+      {isDownloading && (
+        <div className="fixed top-20 right-4 bg-white dark:bg-gray-800 shadow-lg rounded-lg p-3 z-50 border border-gray-200 dark:border-gray-700">
+          <div className="flex items-center gap-3">
+            <div className="w-48">
+              <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">
+                {t("loadingGA")} ({downloadProgress}%)
+              </p>
+              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
+                <div
+                  className="bg-blue-600 h-1.5 rounded-full transition-all duration-500 ease-out"
+                  style={{ width: `${downloadProgress}%` }}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      */}
+
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-5">
@@ -297,5 +335,16 @@ export default function ProjectDetailPage() {
         cancelLabel={t("statusActions.cancel")}
       />
     </div>
+  );
+}
+
+export default function ProjectDetailPage() {
+  const params = useParams();
+  const projectId = params.id as string;
+
+  return (
+    <GAProvider>
+      <ProjectDetailPageContent projectId={projectId} />
+    </GAProvider>
   );
 }
