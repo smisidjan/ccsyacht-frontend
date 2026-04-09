@@ -6,13 +6,13 @@ import { PlusIcon, ChevronDownIcon } from "@heroicons/react/24/outline";
 import AreaCard from "@/app/components/ui/AreaCard";
 import type { Area as AreaCardData } from "@/app/components/ui/AreaCard";
 import SetupTaskCard from "@/app/components/ui/SetupTaskCard";
-import type { SetupTask } from "@/app/components/ui/SetupTaskCard";
 import type { ProjectStatus } from "@/app/components/ui/StatusBadge";
 import Button from "@/app/components/ui/Button";
 import Alert from "@/app/components/ui/Alert";
 import CreateAreaModal from "@/app/components/modals/CreateAreaModal";
-import { useAreas, useProjectMembers, useProjectSigners } from "@/lib/api";
-import { useDocumentTypes } from "@/lib/api/document-types";
+import KickoffMeetingModal from "@/app/components/modals/KickoffMeetingModal";
+import { useAreas, setupTasksApi, useCurrentUser } from "@/lib/api";
+import type { SetupTask } from "@/lib/api/types";
 import { usePermission } from "@/lib/hooks/usePermission";
 import { useMinimumLoadingTime } from "@/lib/hooks/useMinimumLoadingTime";
 import { useRealtimeAreas, useRealtimeMembers, useRealtimeProject } from "@/lib/hooks/useRealtimeProject";
@@ -34,20 +34,24 @@ export default function OverviewTab({
 }: OverviewTabProps) {
   const t = useTranslations("projectDetail");
   const { data: areas, loading: rawLoading, error, refetch } = useAreas(projectId);
-  const { data: documentTypes, loading: rawDocTypesLoading } = useDocumentTypes(projectId);
-  const { data: members } = useProjectMembers(projectId);
-  const { data: signers } = useProjectSigners(projectId);
   const { hasPermission } = usePermission();
   const { showToast } = useToast();
+  const { data: currentUser } = useCurrentUser();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isKickoffModalOpen, setIsKickoffModalOpen] = useState(false);
+  const [selectedTaskId, setSelectedTaskId] = useState<string>("");
   const [selectedDeckId, setSelectedDeckId] = useState<string>("all");
   const [isDeckFilterOpen, setIsDeckFilterOpen] = useState(false);
   const hasUpdatedStatusRef = useRef(false);
   const deckFilterRef = useRef<HTMLDivElement>(null);
 
-  const loading = useMinimumLoadingTime(rawLoading || rawDocTypesLoading);
+  const loading = useMinimumLoadingTime(rawLoading);
   const canCreateAreas = hasPermission(PERMISSIONS.CREATE_AREAS);
   const canEditProject = hasPermission(PERMISSIONS.EDIT_PROJECTS);
+
+  // Setup tasks state
+  const [setupTasks, setSetupTasks] = useState<SetupTask[]>([]);
+  const [setupTasksLoading, setSetupTasksLoading] = useState(true);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -96,82 +100,45 @@ export default function OverviewTab({
   // Real-time updates
   useRealtimeProject(projectId, onProjectUpdate);
   useRealtimeAreas(projectId, refetch);
-  useRealtimeMembers(projectId, () => {
-    // Refetch project data when members change (affects setup tasks)
-    if (onProjectUpdate) onProjectUpdate();
-  });
 
-  // Generate setup tasks dynamically based on project data
-  const setupTasks = useMemo<SetupTask[]>(() => {
-    if (!documentTypes) return [];
-
-    const tasks: SetupTask[] = [];
-
-    // Task 1: Upload Required Documents
-    const requiredDocTypes = documentTypes.filter((type) => type.isRequired);
-    const allRequiredDocsUploaded = requiredDocTypes.every((type) => type.documentCount > 0);
-
-    // Build description based on completion status
-    let uploadDocsDescription: string;
-    if (allRequiredDocsUploaded) {
-      // When completed: show all required document types
-      const allDocTypesList = requiredDocTypes.map((type) => type.name).join(", ");
-      uploadDocsDescription = requiredDocTypes.length > 0
-        ? `Upload all required project documentation: ${allDocTypesList}`
-        : t("setupTasks.uploadDocuments.description");
-    } else {
-      // When pending: show only missing document types
-      const missingDocTypes = requiredDocTypes.filter((type) => type.documentCount === 0);
-      const missingDocTypesList = missingDocTypes.map((type) => type.name).join(", ");
-      uploadDocsDescription = missingDocTypes.length > 0
-        ? `Upload the following required documents: ${missingDocTypesList}`
-        : t("setupTasks.uploadDocuments.description");
+  // Fetch setup tasks from backend
+  useEffect(() => {
+    async function fetchSetupTasks() {
+      try {
+        setSetupTasksLoading(true);
+        const response = await setupTasksApi.getAll(projectId);
+        setSetupTasks(response.data || []);
+      } catch (error) {
+        console.error("Failed to load setup tasks:", error);
+        setSetupTasks([]);
+      } finally {
+        setSetupTasksLoading(false);
+      }
     }
 
-    tasks.push({
-      id: "upload-documents",
-      title: t("setupTasks.uploadDocuments.title"),
-      description: uploadDocsDescription,
-      status: allRequiredDocsUploaded ? "completed" : "pending",
-      // Only show action button when not completed
-      ...(allRequiredDocsUploaded ? {} : {
-        actionLabel: t("setupTasks.uploadDocuments.action"),
-        actionHref: "#documents",
-      }),
-    });
+    // Fetch setup tasks for all users if project is in setup status
+    if (projectStatus === "setup") {
+      fetchSetupTasks();
+    } else {
+      setSetupTasksLoading(false);
+    }
+  }, [projectId, projectStatus]);
 
-    // Task 2: Add Project Members
-    // Project creator is automatically added, so check for more than 1 member
-    const hasMembersAdded = members && members.length > 1;
-    tasks.push({
-      id: "add-members",
-      title: t("setupTasks.addMembers.title"),
-      description: t("setupTasks.addMembers.description"),
-      status: hasMembersAdded ? "completed" : "pending",
-      ...(hasMembersAdded ? {} : {
-        actionLabel: t("setupTasks.addMembers.action"),
-        actionHref: "#settings",
-      }),
-    });
+  // Filter tasks based on user permission
+  const visibleSetupTasks = useMemo(() => {
+    if (!currentUser) return [];
 
-    // Task 3: Add Default Signers
-    const hasSignersAdded = signers && signers.length > 0;
-    tasks.push({
-      id: "add-signers",
-      title: t("setupTasks.addSigners.title"),
-      description: t("setupTasks.addSigners.description"),
-      status: hasSignersAdded ? "completed" : "pending",
-      ...(hasSignersAdded ? {} : {
-        actionLabel: t("setupTasks.addSigners.action"),
-        actionHref: "#settings",
-      }),
-    });
+    // Users with edit permission see all tasks
+    if (canEditProject) return setupTasks;
 
-    return tasks;
-  }, [documentTypes, members, signers, projectId, t]);
+    // Other users only see tasks where they are assignees
+    return setupTasks.filter(task =>
+      task.assignees?.some(assignee => assignee.identifier === currentUser.identifier)
+    );
+  }, [setupTasks, currentUser, canEditProject]);
 
-  const pendingTasksCount = setupTasks.filter((task) => task.status === "pending").length;
-  const allSetupTasksComplete = pendingTasksCount === 0;
+  const pendingTasksCount = visibleSetupTasks.filter((task) => !(task.isComplete || task.actionStatus === "completed")).length;
+  const allSetupTasksComplete = pendingTasksCount === 0 && visibleSetupTasks.length > 0;
 
   // Automatically update project status to "active" when all setup tasks are complete
   useEffect(() => {
@@ -252,10 +219,34 @@ export default function OverviewTab({
     refetch();
   };
 
+  const handleViewTaskDetails = (taskId: string) => {
+    setSelectedTaskId(taskId);
+    setIsKickoffModalOpen(true);
+  };
+
+  const handleKickoffModalClose = () => {
+    setIsKickoffModalOpen(false);
+    setSelectedTaskId("");
+    // Refetch setup tasks to get latest status (e.g., completed)
+    handleTaskUpdate();
+  };
+
+  const handleTaskUpdate = async () => {
+    // Refetch setup tasks when kickoff meeting is updated
+    if (projectStatus === "setup") {
+      try {
+        const response = await setupTasksApi.getAll(projectId);
+        setSetupTasks(response.data || []);
+      } catch (error) {
+        console.error("Failed to reload setup tasks:", error);
+      }
+    }
+  };
+
   return (
     <div className="space-y-8">
-      {/* Setup Tasks Section (only shown for users with edit permission in setup status with pending tasks) */}
-      {projectStatus === "setup" && canEditProject && setupTasks.length > 0 && !allSetupTasksComplete && (
+      {/* Setup Tasks Section (shown to users with edit permission OR users assigned to tasks) */}
+      {projectStatus === "setup" && visibleSetupTasks.length > 0 && !allSetupTasksComplete && (
         <section>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
@@ -268,18 +259,19 @@ export default function OverviewTab({
             )}
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-            {setupTasks.map((task) => (
+            {visibleSetupTasks.map((task) => (
               <SetupTaskCard
-                key={task.id}
+                key={task.identifier}
                 task={task}
+                onViewDetails={handleViewTaskDetails}
               />
             ))}
           </div>
         </section>
       )}
 
-      {/* Info message for users without edit permission when project is in setup */}
-      {projectStatus === "setup" && !canEditProject ? (
+      {/* Info message for users without edit permission and not assigned to any tasks when project is in setup */}
+      {projectStatus === "setup" && !canEditProject && visibleSetupTasks.length === 0 ? (
         <Alert
           type="info"
           message={t("setupTasks.setupPhaseInfo")}
@@ -400,6 +392,17 @@ export default function OverviewTab({
           onClose={() => setIsCreateModalOpen(false)}
           projectId={projectId}
           onSuccess={handleCreateSuccess}
+        />
+      )}
+
+      {/* Kickoff Meeting Modal */}
+      {isKickoffModalOpen && selectedTaskId && (
+        <KickoffMeetingModal
+          isOpen={isKickoffModalOpen}
+          onClose={handleKickoffModalClose}
+          projectId={projectId}
+          taskId={selectedTaskId}
+          onUpdate={handleTaskUpdate}
         />
       )}
     </div>

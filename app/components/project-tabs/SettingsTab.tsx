@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
-import { UserPlusIcon, TrashIcon, PencilIcon, UserCircleIcon, StarIcon, DocumentTextIcon, TagIcon, BuildingOffice2Icon, CalendarIcon, UserIcon } from "@heroicons/react/24/outline";
+import { UserPlusIcon, TrashIcon, PencilIcon, UserCircleIcon, StarIcon, DocumentTextIcon, TagIcon, BuildingOffice2Icon, CalendarIcon, UserIcon, CheckIcon, UserGroupIcon } from "@heroicons/react/24/outline";
 import { StarIcon as StarIconSolid } from "@heroicons/react/24/solid";
-import { useProjectMembers, useProjectSigners, useUsers, useProject, projectsApi } from "@/lib/api";
+import { useProjectMembers, useProjectSigners, useUsers, useProject, projectsApi, setupTasksApi } from "@/lib/api";
 import { usePermission } from "@/lib/hooks/usePermission";
 import { useMinimumLoadingTime } from "@/lib/hooks/useMinimumLoadingTime";
 import { useRealtimeMembers, useRealtimeSigners } from "@/lib/hooks/useRealtimeProject";
@@ -15,7 +15,7 @@ import Alert from "@/app/components/ui/Alert";
 import BaseModal from "@/app/components/modals/BaseModal";
 import ProfileInfoItem from "@/app/components/ui/ProfileInfoItem";
 import EditProjectModal from "@/app/components/modals/EditProjectModal";
-import type { User, ProjectType } from "@/lib/api/types";
+import type { User, ProjectType, SetupTask } from "@/lib/api/types";
 
 interface SettingsTabProps {
   projectId: string;
@@ -24,8 +24,13 @@ interface SettingsTabProps {
 
 export default function SettingsTab({ projectId, onProjectUpdate }: SettingsTabProps) {
   const t = useTranslations("projectDetail.settings");
+  const tTasks = useTranslations("projectDetail.setupTasks");
   const locale = "en"; // TODO: Get from useLocale() if needed
   const { hasPermission, user: currentUser } = usePermission();
+
+  // Kickoff meeting state
+  const [kickoffMeeting, setKickoffMeeting] = useState<SetupTask | null>(null);
+  const [kickoffLoading, setKickoffLoading] = useState(false);
 
   const formatDate = (dateString: string | undefined) => {
     if (!dateString) return "-";
@@ -110,6 +115,24 @@ export default function SettingsTab({ projectId, onProjectUpdate }: SettingsTabP
     onProjectUpdate?.();
   };
 
+  // Fetch kickoff meeting task
+  useEffect(() => {
+    async function fetchKickoffMeeting() {
+      try {
+        setKickoffLoading(true);
+        const response = await setupTasksApi.getAll(projectId);
+        const kickoff = response.data.find(task => task.additionalType === "kickoff_meeting");
+        setKickoffMeeting(kickoff || null);
+      } catch (error) {
+        console.error("Failed to load kickoff meeting:", error);
+      } finally {
+        setKickoffLoading(false);
+      }
+    }
+
+    fetchKickoffMeeting();
+  }, [projectId]);
+
   return (
     <div className="space-y-8">
       {/* General Information */}
@@ -119,7 +142,8 @@ export default function SettingsTab({ projectId, onProjectUpdate }: SettingsTabP
         </h3>
 
         {project && (
-          <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto_1fr] gap-8">
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto_1fr] gap-8">
             {/* Editable Fields */}
             <div>
               {canEditProject && project.status !== "archived" && project.status !== "completed" && (
@@ -207,6 +231,59 @@ export default function SettingsTab({ projectId, onProjectUpdate }: SettingsTabP
                 )}
               </div>
             </div>
+            </div>
+
+            {/* Kickoff Meeting Info (inline) */}
+            {kickoffMeeting && (kickoffMeeting.actionStatus === "scheduled" || kickoffMeeting.actionStatus === "completed") && (
+              <>
+                <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <CalendarIcon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                    <h4 className="text-sm font-semibold text-gray-900 dark:text-white">
+                      {tTasks("kickoffMeeting.title")}
+                    </h4>
+                  </div>
+
+                  {kickoffLoading ? (
+                    <LoadingSkeleton type="list" rows={2} />
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      <ProfileInfoItem
+                        icon={CalendarIcon}
+                        iconBgColor="bg-blue-100 dark:bg-blue-900/30"
+                        iconColor="text-blue-600 dark:text-blue-400"
+                        label="Status"
+                        value={kickoffMeeting.actionStatus === "completed" ? tTasks("completed") : tTasks("scheduled")}
+                      />
+
+                      {kickoffMeeting.scheduledDate && (
+                        <ProfileInfoItem
+                          icon={CalendarIcon}
+                          iconBgColor="bg-purple-100 dark:bg-purple-900/30"
+                          iconColor="text-purple-600 dark:text-purple-400"
+                          label={tTasks("kickoffMeeting.scheduledDate")}
+                          value={new Date(kickoffMeeting.scheduledDate).toLocaleDateString(locale, {
+                            year: "numeric",
+                            month: "short",
+                            day: "numeric",
+                          })}
+                        />
+                      )}
+
+                      {kickoffMeeting.assignees && kickoffMeeting.assignees.length > 0 && (
+                        <ProfileInfoItem
+                          icon={UserGroupIcon}
+                          iconBgColor="bg-green-100 dark:bg-green-900/30"
+                          iconColor="text-green-600 dark:text-green-400"
+                          label={tTasks("kickoffMeeting.attendees")}
+                          value={`${kickoffMeeting.assignees.filter(a => a.hasSigned).length}/${kickoffMeeting.assignees.length} ${kickoffMeeting.actionStatus === "completed" ? tTasks("kickoffMeeting.signed") : ""}`}
+                        />
+                      )}
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
           </div>
         )}
       </section>
