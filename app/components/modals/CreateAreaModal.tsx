@@ -5,10 +5,10 @@ import { useTranslations } from "next-intl";
 import BaseModal from "./BaseModal";
 import FormInput from "@/app/components/ui/FormInput";
 import FormTextarea from "@/app/components/ui/FormTextarea";
-import FormSelect from "@/app/components/ui/FormSelect";
-import Alert from "@/app/components/ui/Alert";
+import SelectOrCreateSection from "@/app/components/ui/SelectOrCreateSection";
 import { areasApi, decksApi, useDecks } from "@/lib/api";
-import type { CreateAreaRequest, CreateDeckRequest } from "@/lib/api/types";
+import { areaTemplatesApi } from "@/lib/api/area-templates";
+import type { CreateAreaRequest, CreateDeckRequest, AreaTemplate } from "@/lib/api/types";
 
 interface CreateAreaModalProps {
   isOpen: boolean;
@@ -26,28 +26,72 @@ export default function CreateAreaModal({
   const t = useTranslations("areas");
   const { data: decks, loading: decksLoading } = useDecks(projectId);
 
+  const [areaTemplates, setAreaTemplates] = useState<AreaTemplate[]>([]);
+  const [areaOption, setAreaOption] = useState<"template" | "new">("template");
+  const [selectedTemplateId, setSelectedTemplateId] = useState("");
   const [areaName, setAreaName] = useState("");
   const [areaDescription, setAreaDescription] = useState("");
-  const [areaPosition, setAreaPosition] = useState("1");
   const [deckOption, setDeckOption] = useState<"existing" | "new">("existing");
   const [selectedDeckId, setSelectedDeckId] = useState("");
   const [newDeckName, setNewDeckName] = useState("");
   const [newDeckDescription, setNewDeckDescription] = useState("");
-  const [newDeckPosition, setNewDeckPosition] = useState("1");
+
+  // Load area templates
+  useEffect(() => {
+    if (isOpen) {
+      loadTemplates();
+    }
+  }, [isOpen]);
+
+  const loadTemplates = async () => {
+    try {
+      const response = await areaTemplatesApi.getAll({ active_only: true });
+      setAreaTemplates(response.data || []);
+    } catch (error) {
+      console.error("Failed to load area templates:", error);
+      setAreaTemplates([]);
+    }
+  };
+
+  // Handle template selection
+  useEffect(() => {
+    if (selectedTemplateId && areaOption === "template") {
+      const template = areaTemplates.find((t) => t.identifier === selectedTemplateId);
+      if (template) {
+        setAreaName(template.name);
+        setAreaDescription(template.description || "");
+      }
+    }
+  }, [selectedTemplateId, areaTemplates, areaOption]);
 
   // Reset form when modal opens
   useEffect(() => {
     if (isOpen) {
+      setAreaOption("template");
+      setSelectedTemplateId("");
       setAreaName("");
       setAreaDescription("");
-      setAreaPosition("1");
       setDeckOption("existing");
       setSelectedDeckId("");
       setNewDeckName("");
       setNewDeckDescription("");
-      setNewDeckPosition("1");
     }
   }, [isOpen]);
+
+  // Auto-select first template if available
+  useEffect(() => {
+    if (areaTemplates && areaTemplates.length > 0 && !selectedTemplateId && areaOption === "template") {
+      setSelectedTemplateId(areaTemplates[0].identifier);
+    }
+  }, [areaTemplates, selectedTemplateId, areaOption]);
+
+  // Clear form fields when switching to "new" mode
+  useEffect(() => {
+    if (areaOption === "new") {
+      setAreaName("");
+      setAreaDescription("");
+    }
+  }, [areaOption]);
 
   // Auto-select first deck if available
   useEffect(() => {
@@ -64,7 +108,6 @@ export default function CreateAreaModal({
       const deckData: CreateDeckRequest = {
         name: newDeckName,
         description: newDeckDescription || undefined,
-        sort_order: parseInt(newDeckPosition, 10),
       };
       const newDeck = await decksApi.create(projectId, deckData);
       deckId = newDeck.identifier;
@@ -72,19 +115,29 @@ export default function CreateAreaModal({
 
     // Create the area
     const areaData: CreateAreaRequest = {
-      name: areaName,
-      description: areaDescription || undefined,
-      sort_order: parseInt(areaPosition, 10),
+      name: areaName.trim(),
+      description: areaDescription.trim() || undefined,
     };
 
     await areasApi.create(projectId, deckId, areaData);
     onSuccess?.();
   };
 
+  const templateOptions = [
+    ...(areaTemplates || []).map((template) => ({
+      value: template.identifier,
+      label: template.description
+        ? `${template.name} - ${template.description}`
+        : template.name,
+    })),
+  ];
+
   const deckOptions = [
     ...(decks || []).map((deck) => ({
       value: deck.identifier,
-      label: deck.name,
+      label: deck.description
+        ? `${deck.name} - ${deck.description}`
+        : deck.name,
     })),
   ];
 
@@ -100,111 +153,68 @@ export default function CreateAreaModal({
       errorFallbackMessage={t("areaCreatedError")}
     >
       <div className="space-y-4">
-        {/* Area Details */}
+        {/* Area Selection */}
         <div>
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
-            {t("areaDetails")}
-          </h3>
+          <SelectOrCreateSection
+            title={t("areaSelection")}
+            mode={areaOption}
+            onModeChange={(mode) => setAreaOption(mode)}
+            selectLabel={t("areaFromTemplate")}
+            createLabel={t("createNewArea")}
+            selectModeValue="template"
+            selectDropdownLabel={t("selectArea")}
+            selectDropdownValue={selectedTemplateId}
+            selectDropdownOptions={templateOptions}
+            onSelectChange={(value) => setSelectedTemplateId(value)}
+            selectRequired={true}
+            selectDisabled={!areaTemplates || areaTemplates.length === 0}
+            noItemsMessage={t("noAreaTemplatesAvailable")}
+            createFormContent={
+              <>
+                <FormInput
+                  id="area-name"
+                  label={t("areaName")}
+                  value={areaName}
+                  onChange={(e) => setAreaName(e.target.value)}
+                  required
+                  placeholder={t("areaNamePlaceholder")}
+                />
 
-          <div className="space-y-4">
-            <FormInput
-              id="area-name"
-              label={t("areaName")}
-              value={areaName}
-              onChange={(e) => setAreaName(e.target.value)}
-              required
-              placeholder={t("areaNamePlaceholder")}
-            />
-
-            <FormTextarea
-              id="area-description"
-              label={t("areaDescription")}
-              value={areaDescription}
-              onChange={(e) => setAreaDescription(e.target.value)}
-              rows={3}
-              placeholder={t("areaDescriptionPlaceholder")}
-            />
-
-            <FormInput
-              id="area-position"
-              type="number"
-              label={t("position")}
-              value={areaPosition}
-              onChange={(e) => setAreaPosition(e.target.value)}
-              required
-              min="1"
-              hint={t("positionHint")}
-            />
-          </div>
+                <FormTextarea
+                  id="area-description"
+                  label={t("areaDescription")}
+                  value={areaDescription}
+                  onChange={(e) => setAreaDescription(e.target.value)}
+                  rows={3}
+                  placeholder={t("areaDescriptionPlaceholder")}
+                />
+              </>
+            }
+          />
         </div>
 
         {/* Deck Selection */}
         <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
-            {t("deckSelection")}
-          </h3>
-
-          {decksLoading && (
+          {decksLoading ? (
             <div className="animate-pulse">
               <div className="h-10 bg-gray-200 dark:bg-gray-700 rounded" />
             </div>
-          )}
-
-          {!decksLoading && (
-            <>
-              <div className="flex gap-4 mb-4">
-                <label className="flex items-center">
-                  <input
-                    type="radio"
-                    name="deck-option"
-                    value="existing"
-                    checked={deckOption === "existing"}
-                    onChange={() => setDeckOption("existing")}
-                    className="mr-2"
-                    disabled={!decks || decks.length === 0}
-                  />
-                  <span className="text-sm text-gray-700 dark:text-gray-300">
-                    {t("selectExistingDeck")}
-                  </span>
-                </label>
-
-                <label className="flex items-center">
-                  <input
-                    type="radio"
-                    name="deck-option"
-                    value="new"
-                    checked={deckOption === "new"}
-                    onChange={() => setDeckOption("new")}
-                    className="mr-2"
-                  />
-                  <span className="text-sm text-gray-700 dark:text-gray-300">
-                    {t("createNewDeck")}
-                  </span>
-                </label>
-              </div>
-
-              {deckOption === "existing" && (
+          ) : (
+            <SelectOrCreateSection
+              title={t("deckSelection")}
+              mode={deckOption}
+              onModeChange={(mode) => setDeckOption(mode)}
+              selectLabel={t("selectExistingDeck")}
+              createLabel={t("createNewDeck")}
+              selectDropdownLabel={t("selectDeck")}
+              selectDropdownValue={selectedDeckId}
+              selectDropdownOptions={deckOptions}
+              onSelectChange={(value) => setSelectedDeckId(value)}
+              selectRequired={true}
+              selectDisabled={!decks || decks.length === 0}
+              noItemsMessage={t("noDecksAvailable")}
+              createFormContent={
                 <>
-                  {decks && decks.length > 0 ? (
-                    <FormSelect
-                      id="deck-select"
-                      label={t("selectDeck")}
-                      value={selectedDeckId}
-                      onChange={(e) => setSelectedDeckId(e.target.value)}
-                      options={deckOptions}
-                      required
-                    />
-                  ) : (
-                    <Alert
-                      type="info"
-                      message={t("noDecksAvailable")}
-                    />
-                  )}
-                </>
-              )}
-
-              {deckOption === "new" && (
-                <div className="space-y-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
                   <FormInput
                     id="new-deck-name"
                     label={t("deckName")}
@@ -222,20 +232,9 @@ export default function CreateAreaModal({
                     rows={2}
                     placeholder={t("deckDescriptionPlaceholder")}
                   />
-
-                  <FormInput
-                    id="new-deck-position"
-                    type="number"
-                    label={t("position")}
-                    value={newDeckPosition}
-                    onChange={(e) => setNewDeckPosition(e.target.value)}
-                    required
-                    min="1"
-                    hint={t("positionHint")}
-                  />
-                </div>
-              )}
-            </>
+                </>
+              }
+            />
           )}
         </div>
       </div>

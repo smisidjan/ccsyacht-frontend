@@ -11,6 +11,7 @@ import FormSelect from "@/app/components/ui/FormSelect";
 import Button from "@/app/components/ui/Button";
 import Alert from "@/app/components/ui/Alert";
 import Table from "@/app/components/ui/Table";
+import SelectOrCreateSection from "@/app/components/ui/SelectOrCreateSection";
 import InlineShipyardForm from "@/app/components/ui/InlineShipyardForm";
 import { useToast } from "@/app/context/ToastContext";
 import { getErrorMessage } from "@/lib/utils/errors";
@@ -84,7 +85,18 @@ export default function CreateProjectModal({
   useEffect(() => {
     if (templates && templates.length > 0) {
       const templateTypes: DocumentType[] = templates
-        .sort((a, b) => a.position - b.position)
+        .sort((a, b) => {
+          // First: is_locked=true items
+          if (a.isLocked && !b.isLocked) return -1;
+          if (!a.isLocked && b.isLocked) return 1;
+
+          // Second: is_required=true items
+          if (a.isRequired && !b.isRequired) return -1;
+          if (!a.isRequired && b.isRequired) return 1;
+
+          // Rest: maintain original order
+          return 0;
+        })
         .map((template) => ({
           id: template.identifier,
           name: template.name,
@@ -167,9 +179,8 @@ export default function CreateProjectModal({
     setNewDocTypeName("");
   };
 
-  const shipyardOptions = [
-    { value: "", label: t("selectShipyard") },
-    { value: "create_new", label: `+ ${t("addShipyard")}` },
+  const shipyardSelectOptions = [
+    { value: "", label: "---------" },
     ...shipyards.map((s) => ({ value: s.id, label: s.name })),
   ];
 
@@ -218,35 +229,47 @@ export default function CreateProjectModal({
           rows={3}
         />
 
-        <FormSelect
-          id="shipyard"
-          label={t("yardOwner")}
-          value={shipyardCreation.showInlineForm ? "create_new" : formData.shipyardId}
-          onChange={(e) => {
-            const newShipyardId = shipyardCreation.handleSelectChange(e.target.value, formData.shipyardId);
-            setFormData({ ...formData, shipyardId: newShipyardId });
+        <SelectOrCreateSection
+          title={t("yardOwner")}
+          mode={shipyardCreation.showInlineForm ? "new" : "existing"}
+          onModeChange={(mode) => {
+            if (mode === "new") {
+              shipyardCreation.setShowInlineForm(true);
+            } else {
+              shipyardCreation.handleCancel();
+            }
           }}
-          options={shipyardOptions}
-          required
-        />
-
-        {shipyardCreation.showInlineForm && (
-          <InlineShipyardForm
-            name={shipyardCreation.name}
-            address={shipyardCreation.address}
-            contactName={shipyardCreation.contactName}
-            contactEmail={shipyardCreation.contactEmail}
-            contactPhone={shipyardCreation.contactPhone}
-            onNameChange={shipyardCreation.setName}
-            onAddressChange={shipyardCreation.setAddress}
-            onContactNameChange={shipyardCreation.setContactName}
-            onContactEmailChange={shipyardCreation.setContactEmail}
-            onContactPhoneChange={shipyardCreation.setContactPhone}
-            onSubmit={shipyardCreation.handleCreate}
-            onCancel={shipyardCreation.handleCancel}
-            isLoading={shipyardCreation.isCreating}
-          />
-        )}
+          selectLabel={t("selectShipyard")}
+          createLabel={t("addShipyard")}
+          selectDropdownLabel={t("selectShipyard")}
+          selectDropdownValue={formData.shipyardId}
+          selectDropdownOptions={shipyardSelectOptions}
+          onSelectChange={(value) => setFormData({ ...formData, shipyardId: value })}
+          selectRequired={true}
+          selectDisabled={shipyards.length === 0}
+          noItemsMessage={t("noShipyardsAvailable")}
+          createFormContent={
+            <InlineShipyardForm
+              name={shipyardCreation.name}
+              address={shipyardCreation.address}
+              contactName={shipyardCreation.contactName}
+              contactEmail={shipyardCreation.contactEmail}
+              contactPhone={shipyardCreation.contactPhone}
+              onNameChange={shipyardCreation.setName}
+              onAddressChange={shipyardCreation.setAddress}
+              onContactNameChange={shipyardCreation.setContactName}
+              onContactEmailChange={shipyardCreation.setContactEmail}
+              onContactPhoneChange={shipyardCreation.setContactPhone}
+              onSubmit={shipyardCreation.handleCreate}
+              onCancel={shipyardCreation.handleCancel}
+              isLoading={shipyardCreation.isCreating}
+            />
+          }
+        >
+          {formData.shipyardId && (
+            <Alert type="info" message={t("shipyardContactAutoAdd")} className="mt-3" />
+          )}
+        </SelectOrCreateSection>
 
         <FormSelect
           id="project-type"

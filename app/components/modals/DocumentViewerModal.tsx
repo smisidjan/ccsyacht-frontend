@@ -2,14 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { XMarkIcon, ArrowDownTrayIcon } from "@heroicons/react/24/outline";
-import type { PunchlistItemAttachment } from "@/lib/api/types";
+import type { PunchlistItemAttachment, SetupTaskDocument } from "@/lib/api/types";
 import { useTranslations } from "next-intl";
 import { getAuthToken, getTenantUrl } from "@/lib/api/client";
 
 interface DocumentViewerModalProps {
   isOpen: boolean;
   onClose: () => void;
-  attachment: PunchlistItemAttachment;
+  attachment: PunchlistItemAttachment | SetupTaskDocument;
   downloadUrl: string;
 }
 
@@ -23,6 +23,21 @@ export default function DocumentViewerModal({
   const [blobUrl, setBlobUrl] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+
+  // Helper functions to normalize field access between types
+  const getContentSize = () => {
+    if ("contentSizeHuman" in attachment) {
+      return attachment.contentSizeHuman;
+    }
+    return attachment.contentSize;
+  };
+
+  const getUploadedBy = () => {
+    if ("uploadedBy" in attachment) {
+      return attachment.uploadedBy.name;
+    }
+    return attachment.author.name;
+  };
 
   const isPDF = attachment.encodingFormat.toLowerCase() === "application/pdf";
 
@@ -125,7 +140,7 @@ export default function DocumentViewerModal({
               {attachment.name}
             </h3>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              {attachment.contentSizeHuman} • {attachment.encodingFormat}
+              {getContentSize()} • {attachment.encodingFormat}
             </p>
           </div>
 
@@ -207,7 +222,7 @@ export default function DocumentViewerModal({
                 </h4>
 
                 <p className="text-gray-600 dark:text-gray-400 mb-6">
-                  {attachment.contentSizeHuman} • {attachment.encodingFormat}
+                  {getContentSize()} • {attachment.encodingFormat}
                 </p>
 
                 <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
@@ -230,7 +245,7 @@ export default function DocumentViewerModal({
         <div className="p-4 bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700">
           <div className="flex items-center justify-between text-sm">
             <span className="text-gray-600 dark:text-gray-400">
-              Toegevoegd door {attachment.uploadedBy.name}
+              Toegevoegd door {getUploadedBy()}
             </span>
             <span className="text-gray-500 dark:text-gray-500">
               {new Date(attachment.dateCreated).toLocaleString()}
