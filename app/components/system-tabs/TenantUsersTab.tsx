@@ -24,7 +24,6 @@ const ROLES: UserRole[] = [
 
 export default function TenantUsersTab() {
   const t = useTranslations("systemSettings.tenantUsers");
-  const tRoles = useTranslations("usersPage.users.roleNames");
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -92,7 +91,7 @@ export default function TenantUsersTab() {
 
   const roleOptions = ROLES.map((r) => ({
     value: r,
-    label: tRoles(r),
+    label: r,
   }));
 
   if (loading) {

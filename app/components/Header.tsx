@@ -85,9 +85,9 @@ export default function Header() {
                             <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
                               {currentUser.email}
                             </p>
-                            {currentUser.memberOf && (
+                            {(currentUser.homeOrganization || currentUser.memberOf) && (
                               <p className="text-xs text-gray-400 dark:text-gray-500 truncate mt-0.5">
-                                {currentUser.memberOf.name}
+                                {currentUser.homeOrganization?.name || currentUser.memberOf.name}
                               </p>
                             )}
                           </div>

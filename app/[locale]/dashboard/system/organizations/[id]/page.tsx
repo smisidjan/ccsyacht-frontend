@@ -22,9 +22,10 @@ import TenantUsersTable from "@/app/components/system-tabs/TenantUsersTable";
 import TenantInvitationsTable from "@/app/components/system-tabs/TenantInvitationsTable";
 import TenantRolesTable from "@/app/components/system-tabs/TenantRolesTable";
 import TenantProjectsTable from "@/app/components/system-tabs/TenantProjectsTable";
+import TenantTemplatesTab from "@/app/components/system-tabs/TenantTemplatesTab";
 import TenantSettingsModal from "@/app/components/modals/TenantSettingsModal";
 
-type TabType = "users" | "invitations" | "roles" | "projects";
+type TabType = "users" | "invitations" | "roles" | "projects" | "templates";
 
 export default function TenantDetailPage() {
   const t = useTranslations("systemSettings.tenantDetail");
@@ -56,6 +57,7 @@ export default function TenantDetailPage() {
     { key: "invitations", label: t("invitationsTab") },
     { key: "roles", label: t("rolesTab") },
     { key: "projects", label: t("projectsTab") },
+    { key: "templates", label: t("templatesTab") },
   ];
 
   useEffect(() => {
@@ -192,6 +194,7 @@ export default function TenantDetailPage() {
         )}
         {activeTab === "roles" && <TenantRolesTable tenantId={tenantId} isCcsYacht={isCcsYacht} />}
         {activeTab === "projects" && <TenantProjectsTable tenantId={tenantId} />}
+        {activeTab === "templates" && <TenantTemplatesTab tenantId={tenantId} />}
       </div>
 
       {/* Settings Modal */}
