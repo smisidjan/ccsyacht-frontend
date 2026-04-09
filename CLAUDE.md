@@ -91,17 +91,23 @@ npm run lint   # Run ESLint
    showToast("error", "Er ging iets mis");
    ```
 
-4. **Modal componenten in `app/components/modals/`:**
-   - Plaats ALLE modal componenten in deze folder
-   - Gebruik `BaseModal.tsx` voor modals met formulieren (automatische toast, error handling, loading state)
-   - Gebruik `Modal.tsx` direct alleen voor simpele informatie modals
+4. **Modal componenten - BELANGRIJK PATROON:**
+   - **NOOIT nieuwe modal wrapper componenten maken** (zoals DeleteConfirmModal, etc.)
+   - Gebruik ALTIJD direct de bestaande `Modal.tsx` of `BaseModal.tsx` componenten
+   - Alle modal logica moet in de parent component staan, niet in een nieuwe wrapper
+   - Dit voorkomt duplicate code en houdt modals simpel en configureerbaar
 
-   **BaseModal pattern (aanbevolen voor formulieren):**
+   **Modal keuze:**
+   - Gebruik `BaseModal.tsx` voor modals met formulieren (automatische toast, error handling, loading state)
+   - Gebruik `Modal.tsx` voor simpele modals (confirmatie, info, etc.)
+
+   **BaseModal pattern (voor formulieren):**
    ```tsx
-   import BaseModal from "./BaseModal";
+   import BaseModal from "@/app/components/modals/BaseModal";
    import FormInput from "@/app/components/ui/FormInput";
 
-   export default function MyModal({ isOpen, onClose }) {
+   export default function MyComponent() {
+     const [isOpen, setIsOpen] = useState(false);
      const [value, setValue] = useState("");
 
      const handleSubmit = async () => {
@@ -109,32 +115,66 @@ npm run lint   # Run ESLint
      };
 
      return (
-       <BaseModal
-         isOpen={isOpen}
-         onClose={onClose}
-         title={t("title")}
-         formId="my-form"
-         onSubmit={handleSubmit}
-         successMessage={t("success")}
-         errorFallbackMessage={t("error")}
-       >
-         <FormInput
-           id="field"
-           label={t("label")}
-           value={value}
-           onChange={(e) => setValue(e.target.value)}
-           required
-         />
-       </BaseModal>
+       <>
+         <Button onClick={() => setIsOpen(true)}>Open</Button>
+         <BaseModal
+           isOpen={isOpen}
+           onClose={() => setIsOpen(false)}
+           title={t("title")}
+           formId="my-form"
+           onSubmit={handleSubmit}
+           successMessage={t("success")}
+           errorFallbackMessage={t("error")}
+         >
+           <FormInput
+             id="field"
+             label={t("label")}
+             value={value}
+             onChange={(e) => setValue(e.target.value)}
+             required
+           />
+         </BaseModal>
+       </>
      );
    }
    ```
 
-   **BaseModal voordelen:**
-   - Automatische toast notificatie bij succes
-   - Error handling met Alert component
-   - Loading state voor submit button
-   - Cancel en Save buttons automatisch toegevoegd
+   **Modal pattern (voor confirmatie/info):**
+   ```tsx
+   import Modal from "@/app/components/ui/Modal";
+   import Button from "@/app/components/ui/Button";
+
+   export default function MyComponent() {
+     const [isOpen, setIsOpen] = useState(false);
+
+     const handleConfirm = async () => {
+       await api.doSomething();
+       setIsOpen(false);
+     };
+
+     return (
+       <>
+         <Button onClick={() => setIsOpen(true)}>Delete</Button>
+         <Modal
+           isOpen={isOpen}
+           onClose={() => setIsOpen(false)}
+           title={t("confirmDelete")}
+           actions={[
+             { label: t("cancel"), onClick: () => setIsOpen(false), variant: "secondary" },
+             { label: t("delete"), onClick: handleConfirm, variant: "danger" }
+           ]}
+         >
+           <p>{t("deleteWarning")}</p>
+         </Modal>
+       </>
+     );
+   }
+   ```
+
+   **Voordelen van dit patroon:**
+   - Geen duplicate modal componenten
+   - Alle modal state en logica op één plek (parent component)
+   - Makkelijker te onderhouden
    - Consistent gedrag voor alle modals
 
 5. **Pattern voor nieuwe UI componenten:**
