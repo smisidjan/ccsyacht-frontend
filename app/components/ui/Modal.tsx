@@ -19,7 +19,7 @@ interface ModalProps {
   onClose: () => void;
   title: string;
   children: React.ReactNode;
-  size?: "sm" | "md" | "lg" | "xl";
+  size?: "sm" | "md" | "lg" | "xl" | "2xl";
 
   // Footer options
   footer?: React.ReactNode; // Custom footer (overrides actions)
@@ -42,6 +42,7 @@ const sizeClasses = {
   md: "max-w-[calc(100%-2rem)] sm:max-w-lg",
   lg: "max-w-[calc(100%-2rem)] md:max-w-2xl",
   xl: "max-w-[calc(100%-2rem)] md:max-w-4xl",
+  "2xl": "max-w-[calc(100%-2rem)] md:max-w-6xl",
 };
 
 export default function Modal({
@@ -145,7 +146,7 @@ export default function Modal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+      className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
       onClick={handleBackdropClick}
     >
       <div

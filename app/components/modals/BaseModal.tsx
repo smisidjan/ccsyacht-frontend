@@ -13,7 +13,7 @@ interface BaseModalProps {
   isOpen: boolean;
   onClose: () => void;
   title: string;
-  size?: "sm" | "md" | "lg" | "xl";
+  size?: "sm" | "md" | "lg" | "xl" | "2xl";
   children: ReactNode;
   // Form handling (optional - omit formId for non-form modals like confirmations)
   formId?: string;
