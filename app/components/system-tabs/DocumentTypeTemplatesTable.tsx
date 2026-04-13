@@ -196,9 +196,9 @@ export default function DocumentTypeTemplatesTable({ tenantId }: DocumentTypeTem
           translations={{
             name: t("name"),
             namePlaceholder: "Enter document type name",
-            isRequired: t("required"),
-            isLocked: t("locked"),
-            isActive: t("active"),
+            required: t("required"),
+            locked: t("locked"),
+            active: t("active"),
           }}
         />
       </Modal>
