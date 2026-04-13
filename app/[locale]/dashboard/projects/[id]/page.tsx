@@ -17,6 +17,20 @@ import { usePermission } from "@/lib/hooks/usePermission";
 import { useToast } from "@/app/context/ToastContext";
 import { GAProvider, useGA } from "@/app/context/GAContext";
 import { PERMISSIONS } from "@/lib/constants/permissions";
+import type { GeneralArrangement } from "@/lib/api/types";
+
+// Helper to get URL from generalArrangement (can be string or object)
+function getGAContentUrl(ga: string | GeneralArrangement | undefined): string | undefined {
+  if (!ga) return undefined;
+  if (typeof ga === "string") return ga;
+  return ga.contentUrl;
+}
+
+// Helper to get GeneralArrangement object (ignores legacy string URLs)
+function getGAObject(ga: string | GeneralArrangement | undefined): GeneralArrangement | undefined {
+  if (!ga || typeof ga === "string") return undefined;
+  return ga;
+}
 
 // Tab content components
 import OverviewTab from "@/app/components/project-tabs/OverviewTab";
@@ -68,12 +82,13 @@ function ProjectDetailPageContent({ projectId }: { projectId: string }) {
 
   // Preload GA when project loads
   // Reload if generalArrangement URL changes (e.g., new GA uploaded)
+  const gaContentUrl = getGAContentUrl(project?.generalArrangement);
   useEffect(() => {
-    if (project && project.generalArrangement) {
-      loadGA(projectId, project.generalArrangement);
+    if (project && gaContentUrl) {
+      loadGA(projectId, gaContentUrl);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [project?.generalArrangement, projectId]);
+  }, [gaContentUrl, projectId]);
 
   // Update hash when tab changes
   const handleTabChange = (key: string) => {
@@ -130,11 +145,11 @@ function ProjectDetailPageContent({ projectId }: { projectId: string }) {
 
     return (
       <>
-        {/* GA Tab - Always mounted but hidden to prevent re-rendering PDF */}
+        {/* GA Tab - Always mounted but hidden to preserve viewer state */}
         <div style={{ display: activeTab === "generalArrangement" ? "block" : "none" }}>
           <GeneralArrangementTab
             projectId={projectId}
-            generalArrangementUrl={project.generalArrangement}
+            generalArrangement={getGAObject(project.generalArrangement)}
           />
         </div>
 

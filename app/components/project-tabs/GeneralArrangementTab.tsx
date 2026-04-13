@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, useRef, useCallback, useMemo, useEffect } from "react";
+import { useState, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
-import dynamic from "next/dynamic";
 import {
   DocumentTextIcon,
   PencilIcon,
@@ -13,13 +12,12 @@ import {
   ArrowTopRightOnSquareIcon,
   ArrowLeftIcon,
 } from "@heroicons/react/24/outline";
-import { useGAData, useGALoading } from "@/app/context/GAContext";
 import { useGAPins } from "@/lib/api/ga-pins";
 import { useDecks } from "@/lib/api/decks";
 import { useAreas } from "@/lib/api/areas";
 import { useProjectStages } from "@/lib/api/stages";
-import { useMinimumLoadingTime } from "@/lib/hooks/useMinimumLoadingTime";
 import { usePermission } from "@/lib/hooks/usePermission";
+import { useGAImage } from "@/lib/hooks/useGAImage";
 import { PERMISSIONS } from "@/lib/constants/permissions";
 import { useToast } from "@/app/context/ToastContext";
 import LoadingSkeleton from "@/app/components/ui/LoadingSkeleton";
@@ -28,14 +26,45 @@ import Tooltip from "@/app/components/ui/Tooltip";
 import CreateGAPinModal from "@/app/components/modals/CreateGAPinModal";
 import ConfirmModal from "@/app/components/modals/ConfirmModal";
 import CreateRemarkModal from "@/app/components/modals/CreateRemarkModal";
-import type { GAPin, StageStatus } from "@/lib/api/types";
-
-// Dynamically import PDF viewer to avoid SSR issues with react-pdf
-const PDFViewer = dynamic(() => import("./PDFViewer"), { ssr: false });
+import type { GAPin, StageStatus, GeneralArrangement } from "@/lib/api/types";
+import GALeafletViewer from "@/app/components/ga/GALeafletViewer";
 
 interface GeneralArrangementTabProps {
   projectId: string;
-  generalArrangementUrl?: string;
+  generalArrangement?: GeneralArrangement;
+}
+
+// Helper to check if we have valid GA image data
+function hasGAImageData(ga: GeneralArrangement | undefined): boolean {
+  return (
+    !!ga &&
+    !!ga.imageUrl &&
+    typeof ga.imageWidth === "number" &&
+    typeof ga.imageHeight === "number"
+  );
+}
+
+// Helper to fix image URL to use the correct API base
+function getFixedImageUrl(imageUrl: string): string {
+  const apiBase = process.env.NEXT_PUBLIC_API_URL || "/api";
+
+  if (imageUrl.startsWith("/")) {
+    return imageUrl;
+  }
+
+  try {
+    const url = new URL(imageUrl);
+    const path = url.pathname;
+
+    if (apiBase.startsWith("/")) {
+      return path;
+    }
+
+    const apiUrl = new URL(apiBase);
+    return `${apiUrl.origin}${path}`;
+  } catch {
+    return imageUrl;
+  }
 }
 
 // Helper to render stage status badge
@@ -58,7 +87,7 @@ const getStageStatusBadge = (status: StageStatus) => {
 
 export default function GeneralArrangementTab({
   projectId,
-  generalArrangementUrl,
+  generalArrangement,
 }: GeneralArrangementTabProps) {
   const t = useTranslations("projectDetail.generalArrangement");
   const tPins = useTranslations("gaViewer");
@@ -66,18 +95,18 @@ export default function GeneralArrangementTab({
   const { hasPermission } = usePermission();
   const router = useRouter();
   const { showToast } = useToast();
-  const imageRef = useRef<HTMLDivElement>(null);
 
-  // Use GA context
-  const { pdfData, blobUrl, error, fileType } = useGAData();
-  const { isDownloading } = useGALoading();
+  // Check if we have valid GA image data
+  const hasValidGA = hasGAImageData(generalArrangement);
 
-  // PDF page state for react-pdf
-  const [numPages, setNumPages] = useState<number>(0);
-  const [pageWidth, setPageWidth] = useState<number>(0);
-  const [pdfRendered, setPdfRendered] = useState<boolean>(false);
+  // Fetch GA image with authentication
+  const gaImageUrl = hasValidGA && generalArrangement
+    ? getFixedImageUrl(generalArrangement.imageUrl!)
+    : undefined;
+  const { imageBlobUrl, isLoading: isImageLoading, error: imageError } = useGAImage(gaImageUrl);
 
   // Pin state
+  const [isAddPinMode, setIsAddPinMode] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isRemarkModalOpen, setIsRemarkModalOpen] = useState(false);
@@ -94,59 +123,11 @@ export default function GeneralArrangementTab({
   const [selectedStageFilter, setSelectedStageFilter] = useState<string | null>(null);
   const [selectedStatusFilter, setSelectedStatusFilter] = useState<string | null>(null);
 
-  // Banner state - shows for 12 seconds or until dismissed
-  const [showBanner, setShowBanner] = useState(false);
-  const bannerTimerRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Show loading skeleton only while downloading
-  // PDF rendering happens after, we'll show a different loading state for that
-  const rawLoading = isDownloading;
-  const loading = useMinimumLoadingTime(rawLoading);
-
-  // Show banner when PDF is loading, auto-hide after 12 seconds
-  useEffect(() => {
-    if (!loading && !pdfRendered && generalArrangementUrl) {
-      setShowBanner(true);
-      // Clear any existing timer
-      if (bannerTimerRef.current) {
-        clearTimeout(bannerTimerRef.current);
-      }
-      // Set new timer
-      bannerTimerRef.current = setTimeout(() => {
-        setShowBanner(false);
-      }, 12000);
-    }
-  }, [loading, generalArrangementUrl]); // Don't include pdfRendered - we want timer to run independently
-
-  // Reset banner when switching projects
-  useEffect(() => {
-    setShowBanner(false);
-    if (bannerTimerRef.current) {
-      clearTimeout(bannerTimerRef.current);
-    }
-  }, [projectId]);
-
-  // Cleanup timer on unmount
-  useEffect(() => {
-    return () => {
-      if (bannerTimerRef.current) {
-        clearTimeout(bannerTimerRef.current);
-      }
-    };
-  }, []);
-
-  const dismissBanner = () => {
-    setShowBanner(false);
-    if (bannerTimerRef.current) {
-      clearTimeout(bannerTimerRef.current);
-    }
-  };
+  // Fetch pins and filter data
   const { data: allPins, deletePin, refetch } = useGAPins(projectId);
-
-  // Fetch data for filters
   const { data: decks } = useDecks(projectId);
-  const { data: areas } = useAreas(projectId, undefined); // Fetch all areas
-  const { data: stages } = useProjectStages(projectId); // Fetch all stages
+  const { data: areas } = useAreas(projectId, undefined);
+  const { data: stages } = useProjectStages(projectId);
 
   const canEdit = hasPermission(PERMISSIONS.EDIT_PROJECTS);
 
@@ -159,40 +140,7 @@ export default function GeneralArrangementTab({
     return true;
   });
 
-  // Reset PDF rendered state when blobUrl changes (new PDF loaded)
-  useEffect(() => {
-    setPdfRendered(false);
-  }, [blobUrl]);
-
-  // Memoize file prop to prevent unnecessary reloads
-  // Use blob URL instead of raw data - this allows react-pdf to cache the parsed document
-  // and prevents re-parsing on every component mount
-  const pdfFile = useMemo(() => {
-    console.log("🔍 pdfFile useMemo - blobUrl:", blobUrl);
-    if (!blobUrl) {
-      console.log("❌ pdfFile is NULL because blobUrl is null");
-      return null;
-    }
-    const file = { url: blobUrl };
-    console.log("✅ pdfFile created:", file);
-    return file;
-  }, [blobUrl]);
-
-  // Callback when PDF loads successfully
-  const onDocumentLoadSuccess = (pdf: any) => {
-    setNumPages(pdf.numPages);
-    setPdfRendered(true);
-    console.log("✅ PDF loaded successfully, pages:", pdf.numPages);
-  };
-
-  // Callback when page loads to get width
-  const onPageLoadSuccess = () => {
-    if (imageRef.current) {
-      setPageWidth(imageRef.current.clientWidth);
-    }
-  };
-
-  // Handle filter changes with cascading reset
+  // Handle filter changes
   const handleDeckFilterChange = (deckId: string | null) => {
     setSelectedDeckFilter(deckId);
     setSelectedAreaFilter(null);
@@ -202,8 +150,6 @@ export default function GeneralArrangementTab({
   const handleAreaFilterChange = (areaId: string | null) => {
     setSelectedAreaFilter(areaId);
     setSelectedStageFilter(null);
-
-    // Auto-select the deck that contains this area
     if (areaId && areas) {
       const selectedArea = areas.find((area) => area.identifier === areaId);
       if (selectedArea?.containedInPlace?.identifier) {
@@ -214,8 +160,6 @@ export default function GeneralArrangementTab({
 
   const handleStageFilterChange = (stageId: string | null) => {
     setSelectedStageFilter(stageId);
-
-    // Auto-select the area and deck that contain this stage
     if (stageId && stages) {
       const selectedStage = stages.find((stage) => stage.identifier === stageId);
       if (selectedStage) {
@@ -229,32 +173,12 @@ export default function GeneralArrangementTab({
     }
   };
 
-  // Handle click on GA image to add new pin
-  const handleImageClick = useCallback(
-    (e: React.MouseEvent<HTMLDivElement>) => {
-      if (!canEdit) return;
+  // Handle pin deletion
+  const handleDeletePin = useCallback((pinId: string) => {
+    setPinToDelete(pinId);
+    setIsDeleteModalOpen(true);
+  }, []);
 
-      const rect = e.currentTarget.getBoundingClientRect();
-      const x = ((e.clientX - rect.left) / rect.width) * 100;
-      const y = ((e.clientY - rect.top) / rect.height) * 100;
-
-      setNewPinPosition({ x, y });
-      setSelectedPin(null);
-      setIsCreateModalOpen(true);
-    },
-    [canEdit]
-  );
-
-  // Handle pin deletion - open confirmation modal
-  const handleDeletePin = useCallback(
-    (pinId: string) => {
-      setPinToDelete(pinId);
-      setIsDeleteModalOpen(true);
-    },
-    []
-  );
-
-  // Confirm delete pin
   const confirmDeletePin = useCallback(async () => {
     if (!pinToDelete) return;
     try {
@@ -270,40 +194,20 @@ export default function GeneralArrangementTab({
   }, [pinToDelete, deletePin, showToast, tPins]);
 
   // Handle pin edit
-  const handleEditPin = useCallback(
-    (pin: GAPin) => {
-      setSelectedPin(pin);
-      setNewPinPosition(null);
-      setIsCreateModalOpen(true);
-    },
-    []
-  );
+  const handleEditPin = useCallback((pin: GAPin) => {
+    setSelectedPin(pin);
+    setNewPinPosition(null);
+    setIsCreateModalOpen(true);
+  }, []);
 
-  // Handle add remark to pin
-  const handleAddRemark = useCallback(
-    (pin: GAPin) => {
-      setPinForRemark(pin);
-      setIsRemarkModalOpen(true);
-    },
-    []
-  );
-
-  // Loading state
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-16">
-        <LoadingSkeleton type="list" rows={3} />
-      </div>
-    );
-  }
-
-  // Error state
-  if (error) {
-    return <Alert type="error" message={error} />;
-  }
+  // Handle add remark
+  const handleAddRemark = useCallback((pin: GAPin) => {
+    setPinForRemark(pin);
+    setIsRemarkModalOpen(true);
+  }, []);
 
   // No document state
-  if (!loading && !blobUrl) {
+  if (!hasValidGA) {
     return (
       <div className="flex flex-col items-center justify-center py-16 bg-white dark:bg-gray-800 rounded-2xl border-2 border-dashed border-gray-300 dark:border-gray-700">
         <DocumentTextIcon className="w-16 h-16 text-gray-300 dark:text-gray-600 mb-4" />
@@ -323,7 +227,6 @@ export default function GeneralArrangementTab({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           {/* Filter Dropdowns */}
-          {/* Deck Filter */}
           {decks && decks.length > 0 && (
             <select
               value={selectedDeckFilter || "all"}
@@ -339,7 +242,6 @@ export default function GeneralArrangementTab({
             </select>
           )}
 
-          {/* Area Filter */}
           {areas && areas.length > 0 && (
             <select
               value={selectedAreaFilter || "all"}
@@ -355,7 +257,6 @@ export default function GeneralArrangementTab({
             </select>
           )}
 
-          {/* Stage Filter */}
           {stages && stages.length > 0 && (
             <select
               value={selectedStageFilter || "all"}
@@ -371,7 +272,6 @@ export default function GeneralArrangementTab({
             </select>
           )}
 
-          {/* Status Filter */}
           <select
             value={selectedStatusFilter || "all"}
             onChange={(e) => setSelectedStatusFilter(e.target.value === "all" ? null : e.target.value)}
@@ -385,7 +285,6 @@ export default function GeneralArrangementTab({
             <option value="rejected">{tPins("statusRejected")}</option>
           </select>
 
-          {/* Pins Count */}
           {displayedPins.length > 0 && (
             <span className="text-sm text-gray-500 dark:text-gray-400">
               {displayedPins.length} {tPins("pins")}
@@ -394,116 +293,86 @@ export default function GeneralArrangementTab({
         </div>
       </div>
 
-      {/* PDF Rendering Banner - shown for 12 seconds or until dismissed */}
-      {showBanner && (
-        <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg mb-4">
-          <div className="flex items-center gap-3">
-            <div className="animate-spin rounded-full h-5 w-5 border-2 border-blue-600 border-t-transparent" />
-            <p className="text-sm text-blue-700 dark:text-blue-300">
-              {t("renderingPDF")}
-            </p>
-          </div>
-          <button
-            onClick={dismissBanner}
-            className="p-1 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-800 rounded transition-colors"
-            aria-label="Dismiss"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-      )}
-
-      {/* GA Image with Pins - 60/40 Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-[60%_40%] gap-6">
-        {/* Left: PDF Viewer (60%) */}
-        <div className="rounded-xl shadow-lg overflow-hidden bg-gray-50 dark:bg-gray-900">
-          <div
-            ref={imageRef}
-            className="relative w-full bg-gray-50 dark:bg-gray-900"
-            style={{
-              minHeight: "1010px",
-            }}
-          >
-            {/* Render PDF with react-pdf */}
-            {(() => {
-              console.log("🎬 About to render PDFViewer, pdfFile:", pdfFile);
-              return null;
-            })()}
-            {pdfFile && (
-              <PDFViewer
-                file={pdfFile}
-                onLoadSuccess={onDocumentLoadSuccess}
-                onLoadError={(error: Error) => console.error("PDF load error:", error)}
-                onPageLoadSuccess={onPageLoadSuccess}
-                pageWidth={pageWidth}
-              />
-            )}
-
-
-            {/* Transparent overlay for pin placement - only when canEdit */}
-            {canEdit && pdfFile && (
-              <div
-                onClick={handleImageClick}
-                className="absolute inset-0 cursor-crosshair bg-transparent"
-                style={{ pointerEvents: "auto", zIndex: 5 }}
-                title="Click to add pin"
-              />
-            )}
-            {/* Render pins on PDF */}
-            {displayedPins.map((pin) => (
-            <div
-              key={pin.identifier}
-              className="absolute group"
-              style={{
-                left: `${pin.x}%`,
-                top: `${pin.y}%`,
-                transform: "translate(-50%, -100%)",
-                zIndex: 10,
-                pointerEvents: "auto",
-              }}
-              onMouseEnter={() => setHoveredPinId(pin.identifier)}
-              onMouseLeave={() => setHoveredPinId(null)}
-            >
-              {/* Pin marker */}
-              <div
-                className={`w-8 h-8 rounded-full border-4 border-white dark:border-gray-800 shadow-lg transition-transform ${
-                  hoveredPinId === pin.identifier ? "scale-125" : ""
-                }`}
-                style={{
-                  backgroundColor: pin.color || "#3B82F6",
-                }}
-              />
-
-              {/* Pin label */}
-              <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-3 py-1.5 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
-                <p className="text-xs font-medium text-gray-900 dark:text-white">
-                  {pin.label || tPins("unnamedPin")}
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                  {pin.area?.name} &gt; {pin.stage.name}
-                </p>
-              </div>
-            </div>
-          ))}
-
-          {/* Instruction text */}
-          {canEdit && displayedPins.length === 0 && (
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <p className="text-sm text-gray-500 dark:text-gray-400 bg-white/90 dark:bg-gray-800/90 px-4 py-2 rounded-lg">
-                {tPins("clickToAddPin")}
-              </p>
+      {/* GA Image with Pins - Flex Layout */}
+      <div className="flex flex-col lg:flex-row gap-6">
+        {/* Left: GA Viewer */}
+        <div className="flex-shrink-0">
+          {/* Add Pin Mode Controls */}
+          {canEdit && (
+            <div className="mb-4 flex items-center gap-4">
+              {isAddPinMode ? (
+                <>
+                  <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
+                    <span className="text-sm text-blue-700 dark:text-blue-300">
+                      {tPins("clickToAddPin") || "Click on the drawing to place a pin"}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => setIsAddPinMode(false)}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors"
+                  >
+                    {tCommon("cancel")}
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={() => setIsAddPinMode(true)}
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  {tPins("addPin") || "Add Pin"}
+                </button>
+              )}
             </div>
           )}
+
+          <div className="rounded-xl shadow-lg overflow-hidden bg-white dark:bg-gray-900">
+            {isImageLoading ? (
+              <div className="flex items-center justify-center min-h-[600px]">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-10 w-10 border-2 border-blue-600 border-t-transparent mx-auto mb-4" />
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    {t("loadingImage") || "Loading image..."}
+                  </p>
+                </div>
+              </div>
+            ) : imageError ? (
+              <div className="flex items-center justify-center min-h-[600px]">
+                <Alert type="error" message={imageError} />
+              </div>
+            ) : imageBlobUrl && hasValidGA && generalArrangement ? (
+              <GALeafletViewer
+                imageUrl={imageBlobUrl}
+                imageWidth={generalArrangement.imageWidth!}
+                imageHeight={generalArrangement.imageHeight!}
+                pins={displayedPins}
+                selectedPinId={selectedPinDetail?.identifier}
+                onPinClick={(pin) => setSelectedPinDetail(pin)}
+                onImageClick={(x, y) => {
+                  if (canEdit && isAddPinMode) {
+                    setNewPinPosition({ x, y });
+                    setSelectedPin(null);
+                    setIsAddPinMode(false);
+                    setIsCreateModalOpen(true);
+                  }
+                }}
+                canEdit={canEdit && isAddPinMode}
+              />
+            ) : (
+              <div className="flex items-center justify-center min-h-[600px]">
+                <LoadingSkeleton type="list" rows={3} />
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Right: Pin Info (40%) */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+        {/* Right: Pin Info */}
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 flex-1 min-w-0">
           {!selectedPinDetail ? (
             <>
-              {/* Table View */}
               <h4 className="font-semibold text-gray-900 dark:text-white mb-4">
                 {tPins("pinsList")}
               </h4>
@@ -569,7 +438,6 @@ export default function GeneralArrangementTab({
             <>
               {/* Detail View */}
               <div className="space-y-4">
-                {/* Back button */}
                 <button
                   onClick={() => setSelectedPinDetail(null)}
                   className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
@@ -578,7 +446,6 @@ export default function GeneralArrangementTab({
                   {tCommon("back")}
                 </button>
 
-                {/* Pin details */}
                 <div className="space-y-4">
                   <div className="flex items-start gap-3">
                     <div
@@ -595,7 +462,6 @@ export default function GeneralArrangementTab({
                     </div>
                   </div>
 
-                  {/* Location info */}
                   <div className="space-y-2 text-sm border-t border-gray-200 dark:border-gray-700 pt-4">
                     <div>
                       <span className="text-gray-500 dark:text-gray-400">Deck: </span>
@@ -611,7 +477,6 @@ export default function GeneralArrangementTab({
                     </div>
                   </div>
 
-                  {/* Metadata */}
                   <div className="space-y-2 text-sm border-t border-gray-200 dark:border-gray-700 pt-4">
                     <div>
                       <span className="text-gray-500 dark:text-gray-400">{tPins("createdBy")}: </span>
@@ -625,7 +490,6 @@ export default function GeneralArrangementTab({
                     </div>
                   </div>
 
-                  {/* Counts */}
                   <div className="flex gap-4 text-sm border-t border-gray-200 dark:border-gray-700 pt-4">
                     <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
                       <ChatBubbleLeftIcon className="w-4 h-4" />
@@ -637,7 +501,6 @@ export default function GeneralArrangementTab({
                     </div>
                   </div>
 
-                  {/* Actions */}
                   <div className="flex flex-wrap gap-2 border-t border-gray-200 dark:border-gray-700 pt-4">
                     <button
                       onClick={() => router.push(`/dashboard/projects/${projectId}/areas/${selectedPinDetail.area.identifier}?stage=${selectedPinDetail.stage.identifier}`)}
@@ -691,6 +554,9 @@ export default function GeneralArrangementTab({
         initialPosition={selectedPin ? { x: selectedPin.x, y: selectedPin.y } : newPinPosition}
         initialData={selectedPin}
         onSuccess={refetch}
+        gaImageUrl={imageBlobUrl || undefined}
+        gaImageWidth={generalArrangement?.imageWidth}
+        gaImageHeight={generalArrangement?.imageHeight}
       />
 
       {/* Delete Confirmation Modal */}
