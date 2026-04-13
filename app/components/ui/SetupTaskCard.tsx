@@ -9,6 +9,7 @@ interface SetupTaskCardProps {
   task: SetupTask;
   onMarkComplete?: (taskId: string) => void;
   onViewDetails?: (taskId: string) => void;
+  onDefineDecks?: () => void;
 }
 
 // Helper to convert snake_case task type to camelCase for translations
@@ -22,6 +23,8 @@ function taskTypeToCamelCase(taskType: SetupTaskType): string {
       return "addSigners";
     case "kickoff_meeting":
       return "kickoffMeeting";
+    case "define_decks":
+      return "defineDecks";
     default:
       return taskType;
   }
@@ -40,7 +43,7 @@ function getActionHref(taskType: SetupTaskType): string | undefined {
   }
 }
 
-export default function SetupTaskCard({ task, onMarkComplete, onViewDetails }: SetupTaskCardProps) {
+export default function SetupTaskCard({ task, onMarkComplete, onViewDetails, onDefineDecks }: SetupTaskCardProps) {
   const t = useTranslations("projectDetail.setupTasks");
   const { data: currentUser } = useCurrentUser();
 
@@ -122,6 +125,17 @@ export default function SetupTaskCard({ task, onMarkComplete, onViewDetails }: S
                   : t("view")
                 : t(`${translationKey}.action`)
             }
+          </button>
+        )}
+
+        {/* Define Decks button */}
+        {!isCompleted && task.additionalType === "define_decks" && onDefineDecks && (
+          <button
+            onClick={onDefineDecks}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-all shadow-md hover:shadow-lg"
+          >
+            <ArrowRightIcon className="w-4 h-4" />
+            {t(`${translationKey}.action`)}
           </button>
         )}
 

@@ -1149,7 +1149,7 @@ export interface GetAreaTemplatesParams {
 
 // ============ Setup Tasks ============
 
-export type SetupTaskType = "upload_documents" | "add_members" | "add_signers" | "kickoff_meeting" | "custom";
+export type SetupTaskType = "upload_documents" | "add_members" | "add_signers" | "kickoff_meeting" | "define_decks" | "custom";
 export type SetupTaskStatus = "pending" | "scheduled" | "completed";
 
 export interface SetupTaskAssignee {
