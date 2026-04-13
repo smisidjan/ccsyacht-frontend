@@ -262,6 +262,11 @@
         "description": "Configureer de standaard ondertekenaars voor documentgoedkeuringen",
         "action": "Voeg Ondertekenaars Toe"
       },
+      "defineDecks": {
+        "title": "Definieer Dekken",
+        "description": "Definieer de dekken voor dit project",
+        "action": "Definieer Dekken"
+      },
       "kickoffMeeting": {
         "title": "Kickoff Meeting",
         "description": "Plan en voer de project kickoff meeting uit met alle belanghebbenden",
@@ -1296,6 +1301,21 @@
     "deckNamePlaceholder": "bijv. Hoofddek, Bovendek",
     "deckDescription": "Dek Beschrijving",
     "deckDescriptionPlaceholder": "Beschrijf het dek..."
+  },
+  "decks": {
+    "createDeck": "Dek Aanmaken",
+    "editDeck": "Dek Bewerken",
+    "name": "Dek Naam",
+    "namePlaceholder": "bijv. Hoofddek, Bovendek",
+    "description": "Beschrijving",
+    "descriptionPlaceholder": "Beschrijf het dek...",
+    "color": "Dek Kleur",
+    "deckLocation": "Dek Locatie",
+    "markDeckArea": "Gebruik de tekening om de deklocatie aan te geven",
+    "createSuccess": "Dek succesvol aangemaakt",
+    "updateSuccess": "Dek succesvol bijgewerkt",
+    "createError": "Kan dek niet aanmaken",
+    "updateError": "Kan dek niet bijwerken"
   },
   "areaDetail": {
     "loading": "Laden...",

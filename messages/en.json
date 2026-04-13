@@ -262,6 +262,11 @@
         "description": "Configure the default signers for document approvals",
         "action": "Add Signers"
       },
+      "defineDecks": {
+        "title": "Define Decks",
+        "description": "Define the yacht decks for this project",
+        "action": "Define Decks"
+      },
       "kickoffMeeting": {
         "title": "Kickoff Meeting",
         "description": "Schedule and conduct the project kickoff meeting with all stakeholders",
@@ -1265,6 +1270,21 @@
     "deckNamePlaceholder": "e.g., Main Deck, Upper Deck",
     "deckDescription": "Deck Description",
     "deckDescriptionPlaceholder": "Describe the deck..."
+  },
+  "decks": {
+    "createDeck": "Create Deck",
+    "editDeck": "Edit Deck",
+    "name": "Deck Name",
+    "namePlaceholder": "e.g., Main Deck, Upper Deck",
+    "description": "Description",
+    "descriptionPlaceholder": "Describe the deck...",
+    "color": "Deck Color",
+    "deckLocation": "Deck Location",
+    "markDeckArea": "Use the drawing to identify the deck location",
+    "createSuccess": "Deck created successfully",
+    "updateSuccess": "Deck updated successfully",
+    "createError": "Failed to create deck",
+    "updateError": "Failed to update deck"
   },
   "areaDetail": {
     "loading": "Loading...",
