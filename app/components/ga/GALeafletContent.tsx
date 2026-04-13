@@ -31,7 +31,7 @@ interface GALeafletContentProps {
   className?: string;
 }
 
-// Component to fit bounds when image loads
+// Component to fit bounds when image loads and set minZoom to prevent zooming out beyond initial fit
 function FitBounds({ bounds }: { bounds: L.LatLngBoundsExpression }) {
   const map = useMap();
 
@@ -49,6 +49,11 @@ function FitBounds({ bounds }: { bounds: L.LatLngBoundsExpression }) {
         padding: [0, 0],
         animate: false,
       });
+
+      // Set minZoom to the current zoom level (the level that fits the image)
+      // This prevents zooming out beyond the initial fit
+      const fitZoom = map.getBoundsZoom(bounds as L.LatLngBoundsExpression);
+      map.setMinZoom(fitZoom);
     }, 100);
   }, [map, bounds]);
 
