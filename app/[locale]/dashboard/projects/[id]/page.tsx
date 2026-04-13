@@ -137,23 +137,18 @@ function ProjectDetailPageContent({ projectId }: { projectId: string }) {
     { key: "settings", label: t("tabs.settings") },
   ];
 
-  // Render tabs with hybrid approach:
-  // - GA tab: Always mounted (hidden when inactive) to preserve PDF rendering state
-  // - Other tabs: Conditionally rendered to get fresh data on each visit
+  // Render tab content - all tabs are conditionally rendered for fresh data
   const renderTabContent = () => {
     if (!project) return null;
 
     return (
       <>
-        {/* GA Tab - Always mounted but hidden to preserve viewer state */}
-        <div style={{ display: activeTab === "generalArrangement" ? "block" : "none" }}>
+        {activeTab === "generalArrangement" && (
           <GeneralArrangementTab
             projectId={projectId}
             generalArrangement={getGAObject(project.generalArrangement)}
           />
-        </div>
-
-        {/* Other tabs - Conditionally rendered for fresh data */}
+        )}
         {activeTab === "overview" && (
           <OverviewTab
             projectId={projectId}
