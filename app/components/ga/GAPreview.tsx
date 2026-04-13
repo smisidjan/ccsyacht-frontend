@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import LoadingSkeleton from "@/app/components/ui/LoadingSkeleton";
+import type { Deck } from "@/lib/api/types";
 
 // Dynamic import - Leaflet doesn't work with SSR
 const GAPreviewMarker = dynamic(() => import("./GAPreviewMarker"), {
@@ -21,6 +22,8 @@ export interface GAPreviewProps {
   y: number;
   color: string;
   onPositionChange: (x: number, y: number) => void;
+  // Optional: deck to zoom to initially (for zoom-to-deck feature)
+  initialDeck?: Deck | null;
 }
 
 export default function GAPreview(props: GAPreviewProps) {

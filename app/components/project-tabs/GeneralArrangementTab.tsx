@@ -27,7 +27,7 @@ import Tooltip from "@/app/components/ui/Tooltip";
 import CreateGAPinModal from "@/app/components/modals/CreateGAPinModal";
 import ConfirmModal from "@/app/components/modals/ConfirmModal";
 import CreateRemarkModal from "@/app/components/modals/CreateRemarkModal";
-import type { GAPin, StageStatus, GeneralArrangement } from "@/lib/api/types";
+import type { GAPin, StageStatus, GeneralArrangement, Deck } from "@/lib/api/types";
 import GALeafletViewer from "@/app/components/ga/GALeafletViewer";
 
 interface GeneralArrangementTabProps {
@@ -115,6 +115,7 @@ export default function GeneralArrangementTab({
   const [pinToDelete, setPinToDelete] = useState<string | null>(null);
   const [pinForRemark, setPinForRemark] = useState<GAPin | null>(null);
   const [newPinPosition, setNewPinPosition] = useState<{ x: number; y: number } | null>(null);
+  const [clickedDeck, setClickedDeck] = useState<Deck | null>(null);
   const [hoveredPinId, setHoveredPinId] = useState<string | null>(null);
   const [selectedPinDetail, setSelectedPinDetail] = useState<GAPin | null>(null);
 
@@ -362,6 +363,7 @@ export default function GeneralArrangementTab({
                 onDeckClick={(deck, x, y) => {
                   if (canEdit && isAddPinMode) {
                     setNewPinPosition({ x, y });
+                    setClickedDeck(deck);
                     setSelectedPin(null);
                     setIsCreateModalOpen(true);
                   }
@@ -557,6 +559,7 @@ export default function GeneralArrangementTab({
           setIsCreateModalOpen(false);
           setSelectedPin(null);
           setNewPinPosition(null);
+          setClickedDeck(null);
         }}
         projectId={projectId}
         initialPosition={selectedPin ? { x: selectedPin.x, y: selectedPin.y } : newPinPosition}
@@ -565,6 +568,7 @@ export default function GeneralArrangementTab({
         gaImageUrl={imageBlobUrl || undefined}
         gaImageWidth={generalArrangement?.imageWidth}
         gaImageHeight={generalArrangement?.imageHeight}
+        initialDeck={clickedDeck}
       />
 
       {/* Delete Confirmation Modal */}

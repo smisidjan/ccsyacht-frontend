@@ -12,7 +12,7 @@ import { useDecks } from "@/lib/api/decks";
 import { useAreas } from "@/lib/api/areas";
 import { useStages } from "@/lib/api/stages";
 import { useProjectMembers } from "@/lib/api";
-import type { GAPin, CreateGAPinRequest, UpdateGAPinRequest, PunchlistItemPriority } from "@/lib/api/types";
+import type { GAPin, CreateGAPinRequest, UpdateGAPinRequest, PunchlistItemPriority, Deck } from "@/lib/api/types";
 
 interface CreateGAPinModalProps {
   isOpen: boolean;
@@ -25,6 +25,8 @@ interface CreateGAPinModalProps {
   gaImageUrl?: string;
   gaImageWidth?: number;
   gaImageHeight?: number;
+  // Optional: deck that was clicked to add pin (for zoom-to-deck feature)
+  initialDeck?: Deck | null;
 }
 
 const DEFAULT_COLORS = [
@@ -48,6 +50,7 @@ export default function CreateGAPinModal({
   gaImageUrl,
   gaImageWidth,
   gaImageHeight,
+  initialDeck,
 }: CreateGAPinModalProps) {
   const t = useTranslations("gaViewer");
   const isEditing = !!initialData;
@@ -93,8 +96,8 @@ export default function CreateGAPinModal({
       setY(initialPosition.y);
       setLabel("");
       setColor(DEFAULT_COLORS[0]);
-      // Reset selections for new pin
-      setSelectedDeckId("");
+      // Pre-select deck if provided (from clicking on deck bounding box)
+      setSelectedDeckId(initialDeck?.identifier || "");
       setSelectedAreaId("");
       setSelectedStageId("");
       // Reset punchlist fields
@@ -110,7 +113,7 @@ export default function CreateGAPinModal({
       setSelectedAreaId("");
       setSelectedStageId("");
     }
-  }, [initialData, initialPosition]);
+  }, [initialData, initialPosition, initialDeck]);
 
   // Auto-select if only one deck available
   useEffect(() => {
@@ -259,6 +262,7 @@ export default function CreateGAPinModal({
                 y={y}
                 color={color}
                 onPositionChange={handlePositionChange}
+                initialDeck={initialDeck}
               />
             </div>
           </div>
