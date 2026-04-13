@@ -1,0 +1,26 @@
+/* Smooth zoom styles for Leaflet maps */
+
+/* GPU acceleration only - no transitions on map panes */
+.smooth-zoom-map .leaflet-map-pane,
+.smooth-zoom-map .leaflet-tile-pane,
+.smooth-zoom-map .leaflet-overlay-pane,
+.smooth-zoom-map .leaflet-marker-pane {
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+/* Crisp image rendering */
+.smooth-zoom-map .leaflet-image-layer {
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+}
+
+/* Smooth marker icon only */
+.smooth-zoom-map .leaflet-marker-icon {
+  transition: opacity 0.15s ease-out;
+}
+
+/* Smooth panning with inertia */
+.smooth-zoom-map.leaflet-pan-anim .leaflet-map-pane {
+  transition: transform 0.25s cubic-bezier(0, 0, 0.25, 1);
+}
