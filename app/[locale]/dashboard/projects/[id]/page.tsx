@@ -159,6 +159,7 @@ function ProjectDetailPageContent({ projectId }: { projectId: string }) {
             projectId={projectId}
             projectStatus={project.status}
             onProjectUpdate={refetch}
+            generalArrangement={getGAObject(project.generalArrangement)}
           />
         )}
         {activeTab === "documents" && (

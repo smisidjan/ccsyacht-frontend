@@ -11,26 +11,30 @@ import Button from "@/app/components/ui/Button";
 import Alert from "@/app/components/ui/Alert";
 import CreateAreaModal from "@/app/components/modals/CreateAreaModal";
 import KickoffMeetingModal from "@/app/components/modals/KickoffMeetingModal";
+import CreateDeckModal from "@/app/components/modals/CreateDeckModal";
 import { useAreas, setupTasksApi, useCurrentUser } from "@/lib/api";
 import type { SetupTask } from "@/lib/api/types";
 import { usePermission } from "@/lib/hooks/usePermission";
 import { useMinimumLoadingTime } from "@/lib/hooks/useMinimumLoadingTime";
+import { useGAImage } from "@/lib/hooks/useGAImage";
 import { useRealtimeAreas, useRealtimeMembers, useRealtimeProject } from "@/lib/hooks/useRealtimeProject";
 import { PERMISSIONS } from "@/lib/constants/permissions";
 import { projectsApi } from "@/lib/api/client";
 import { useToast } from "@/app/context/ToastContext";
-import type { Area } from "@/lib/api/types";
+import type { Area, GeneralArrangement } from "@/lib/api/types";
 
 interface OverviewTabProps {
   projectId: string;
   projectStatus: ProjectStatus;
   onProjectUpdate?: () => void;
+  generalArrangement?: GeneralArrangement;
 }
 
 export default function OverviewTab({
   projectId,
   projectStatus,
   onProjectUpdate,
+  generalArrangement,
 }: OverviewTabProps) {
   const t = useTranslations("projectDetail");
   const { data: areas, loading: rawLoading, error, refetch } = useAreas(projectId);
@@ -39,6 +43,7 @@ export default function OverviewTab({
   const { data: currentUser } = useCurrentUser();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isKickoffModalOpen, setIsKickoffModalOpen] = useState(false);
+  const [isDeckModalOpen, setIsDeckModalOpen] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState<string>("");
   const [selectedDeckId, setSelectedDeckId] = useState<string>("all");
   const [isDeckFilterOpen, setIsDeckFilterOpen] = useState(false);
@@ -48,6 +53,14 @@ export default function OverviewTab({
   const loading = useMinimumLoadingTime(rawLoading);
   const canCreateAreas = hasPermission(PERMISSIONS.CREATE_AREAS);
   const canEditProject = hasPermission(PERMISSIONS.EDIT_PROJECTS);
+
+  // GA Image for deck modal
+  const gaImageUrl = generalArrangement?.imageUrl
+    ? (process.env.NEXT_PUBLIC_API_URL || "/api").startsWith("/")
+      ? new URL(generalArrangement.imageUrl).pathname
+      : generalArrangement.imageUrl
+    : undefined;
+  const { imageBlobUrl: gaBlobUrl } = useGAImage(gaImageUrl);
 
   // Setup tasks state
   const [setupTasks, setSetupTasks] = useState<SetupTask[]>([]);
@@ -264,6 +277,7 @@ export default function OverviewTab({
                 key={task.identifier}
                 task={task}
                 onViewDetails={handleViewTaskDetails}
+                onDefineDecks={() => setIsDeckModalOpen(true)}
               />
             ))}
           </div>
@@ -403,6 +417,22 @@ export default function OverviewTab({
           projectId={projectId}
           taskId={selectedTaskId}
           onUpdate={handleTaskUpdate}
+        />
+      )}
+
+      {/* Create Deck Modal */}
+      {isDeckModalOpen && (
+        <CreateDeckModal
+          isOpen={isDeckModalOpen}
+          onClose={() => setIsDeckModalOpen(false)}
+          projectId={projectId}
+          onSuccess={() => {
+            setIsDeckModalOpen(false);
+            handleTaskUpdate();
+          }}
+          gaImageUrl={gaBlobUrl || undefined}
+          gaImageWidth={generalArrangement?.imageWidth}
+          gaImageHeight={generalArrangement?.imageHeight}
         />
       )}
     </div>
