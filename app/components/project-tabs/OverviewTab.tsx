@@ -13,6 +13,7 @@ import CreateAreaModal from "@/app/components/modals/CreateAreaModal";
 import KickoffMeetingModal from "@/app/components/modals/KickoffMeetingModal";
 import CreateDeckModal from "@/app/components/modals/CreateDeckModal";
 import { useAreas, setupTasksApi, useCurrentUser } from "@/lib/api";
+import { useDecks } from "@/lib/api/decks";
 import type { SetupTask } from "@/lib/api/types";
 import { usePermission } from "@/lib/hooks/usePermission";
 import { useMinimumLoadingTime } from "@/lib/hooks/useMinimumLoadingTime";
@@ -44,6 +45,7 @@ export default function OverviewTab({
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isKickoffModalOpen, setIsKickoffModalOpen] = useState(false);
   const [isDeckModalOpen, setIsDeckModalOpen] = useState(false);
+  const [isDeckEditMode, setIsDeckEditMode] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState<string>("");
   const [selectedDeckId, setSelectedDeckId] = useState<string>("all");
   const [isDeckFilterOpen, setIsDeckFilterOpen] = useState(false);
@@ -53,6 +55,9 @@ export default function OverviewTab({
   const loading = useMinimumLoadingTime(rawLoading);
   const canCreateAreas = hasPermission(PERMISSIONS.CREATE_AREAS);
   const canEditProject = hasPermission(PERMISSIONS.EDIT_PROJECTS);
+
+  // Fetch decks for edit mode
+  const { data: decks, refetch: refetchDecks } = useDecks(projectId);
 
   // GA Image for deck modal
   const gaImageUrl = generalArrangement?.imageUrl
@@ -277,7 +282,14 @@ export default function OverviewTab({
                 key={task.identifier}
                 task={task}
                 onViewDetails={handleViewTaskDetails}
-                onDefineDecks={() => setIsDeckModalOpen(true)}
+                onDefineDecks={() => {
+                  setIsDeckEditMode(false);
+                  setIsDeckModalOpen(true);
+                }}
+                onViewDecks={() => {
+                  setIsDeckEditMode(true);
+                  setIsDeckModalOpen(true);
+                }}
               />
             ))}
           </div>
@@ -420,19 +432,26 @@ export default function OverviewTab({
         />
       )}
 
-      {/* Create Deck Modal */}
+      {/* Create/Edit Deck Modal */}
       {isDeckModalOpen && (
         <CreateDeckModal
           isOpen={isDeckModalOpen}
-          onClose={() => setIsDeckModalOpen(false)}
+          onClose={() => {
+            setIsDeckModalOpen(false);
+            setIsDeckEditMode(false);
+          }}
           projectId={projectId}
           onSuccess={() => {
             setIsDeckModalOpen(false);
+            setIsDeckEditMode(false);
             handleTaskUpdate();
+            refetchDecks();
           }}
           gaImageUrl={gaBlobUrl || undefined}
           gaImageWidth={generalArrangement?.imageWidth}
           gaImageHeight={generalArrangement?.imageHeight}
+          existingDecks={isDeckEditMode ? (decks || []) : undefined}
+          editMode={isDeckEditMode}
         />
       )}
     </div>
