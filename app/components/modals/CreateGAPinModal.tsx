@@ -6,6 +6,7 @@ import { PencilIcon } from "@heroicons/react/24/outline";
 import BaseModal from "./BaseModal";
 import FormInput from "@/app/components/ui/FormInput";
 import PunchlistItemForm from "@/app/components/forms/PunchlistItemForm";
+import GAPreview from "@/app/components/ga/GAPreview";
 import { gaPinsApi } from "@/lib/api/ga-pins";
 import { useDecks } from "@/lib/api/decks";
 import { useAreas } from "@/lib/api/areas";
@@ -20,6 +21,10 @@ interface CreateGAPinModalProps {
   initialPosition: { x: number; y: number } | null;
   initialData?: GAPin | null;
   onSuccess?: () => void;
+  // GA Image props for preview (optional - only shown when provided)
+  gaImageUrl?: string;
+  gaImageWidth?: number;
+  gaImageHeight?: number;
 }
 
 const DEFAULT_COLORS = [
@@ -40,6 +45,9 @@ export default function CreateGAPinModal({
   initialPosition,
   initialData,
   onSuccess,
+  gaImageUrl,
+  gaImageWidth,
+  gaImageHeight,
 }: CreateGAPinModalProps) {
   const t = useTranslations("gaViewer");
   const isEditing = !!initialData;
@@ -210,6 +218,15 @@ export default function CreateGAPinModal({
     }
   };
 
+  // Check if we should show the GA preview
+  const showGAPreview = !!(gaImageUrl && gaImageWidth && gaImageHeight);
+
+  // Handle position change from dragging marker in preview
+  const handlePositionChange = (newX: number, newY: number) => {
+    setX(newX);
+    setY(newY);
+  };
+
   return (
     <BaseModal
       isOpen={isOpen}
@@ -221,9 +238,34 @@ export default function CreateGAPinModal({
       errorFallbackMessage={isEditing ? t("updateError") : t("createError")}
       onSuccessCallback={onSuccess}
       submitDisabled={!isEditing && (!selectedStageId || !label.trim())}
-      size="md"
+      size={showGAPreview ? "2xl" : "md"}
     >
-      <div className="space-y-5">
+      <div className={showGAPreview ? "flex gap-6" : ""}>
+        {/* Left: GA Preview with draggable marker */}
+        {showGAPreview && (
+          <div className="w-1/2 flex-shrink-0">
+            <p className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+              {t("pinLocation") || "Pin Location"}
+            </p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+              {t("dragToAdjust") || "Drag the pin to adjust position"}
+            </p>
+            <div className="h-[400px]">
+              <GAPreview
+                imageUrl={gaImageUrl}
+                imageWidth={gaImageWidth}
+                imageHeight={gaImageHeight}
+                x={x}
+                y={y}
+                color={color}
+                onPositionChange={handlePositionChange}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Right: Form fields */}
+        <div className={showGAPreview ? "w-1/2 space-y-5" : "space-y-5"}>
         {/* Deck and Area Selection (side by side) */}
         <div className="grid grid-cols-2 gap-4">
           {/* Deck Selection */}
@@ -500,6 +542,7 @@ export default function CreateGAPinModal({
             />
           </div>
         )}
+        </div>
       </div>
     </BaseModal>
   );
