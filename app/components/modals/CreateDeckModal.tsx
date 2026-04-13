@@ -303,7 +303,15 @@ export default function CreateDeckModal({
             <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
               {t("markDeckArea")}
             </p>
-            <div className="h-[500px]">
+            <div
+              className="h-[800px]"
+              style={{
+                width: gaImageWidth && gaImageHeight
+                  ? `${800 * (gaImageWidth / gaImageHeight)}px`
+                  : "100%",
+                maxWidth: "100%",
+              }}
+            >
               <GAViewerWithDraw
                 imageUrl={gaImageUrl}
                 imageWidth={gaImageWidth}

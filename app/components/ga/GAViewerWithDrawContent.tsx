@@ -33,7 +33,7 @@ interface GAViewerWithDrawContentProps {
 
 type ResizeCorner = "nw" | "ne" | "sw" | "se" | null;
 
-// Component to fit the full image in the view
+// Component to fit the full image in the view and set minZoom to prevent zooming out beyond initial fit
 function FitFullImage({ bounds }: { bounds: L.LatLngBoundsExpression }) {
   const map = useMap();
 
@@ -54,13 +54,18 @@ function FitFullImage({ bounds }: { bounds: L.LatLngBoundsExpression }) {
       });
     }, 100);
 
-    // Fit again after longer delay (for slower renders)
+    // Fit again after longer delay (for slower renders) and set minZoom
     const timer2 = setTimeout(() => {
       map.invalidateSize();
       map.fitBounds(bounds, {
         padding: [0, 0],
         animate: false,
       });
+
+      // Set minZoom to the current zoom level (the level that fits the image)
+      // This prevents zooming out beyond the initial fit
+      const fitZoom = map.getBoundsZoom(bounds as L.LatLngBoundsExpression);
+      map.setMinZoom(fitZoom);
     }, 300);
 
     return () => {
