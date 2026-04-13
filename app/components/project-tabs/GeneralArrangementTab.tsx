@@ -17,6 +17,7 @@ import { useDecks } from "@/lib/api/decks";
 import { useAreas } from "@/lib/api/areas";
 import { useProjectStages } from "@/lib/api/stages";
 import { usePermission } from "@/lib/hooks/usePermission";
+import { useMinimumLoadingTime } from "@/lib/hooks/useMinimumLoadingTime";
 import { useGAImage } from "@/lib/hooks/useGAImage";
 import { PERMISSIONS } from "@/lib/constants/permissions";
 import { useToast } from "@/app/context/ToastContext";
@@ -124,10 +125,13 @@ export default function GeneralArrangementTab({
   const [selectedStatusFilter, setSelectedStatusFilter] = useState<string | null>(null);
 
   // Fetch pins and filter data
-  const { data: allPins, deletePin, refetch } = useGAPins(projectId);
+  const { data: allPins, loading: rawLoading, deletePin, refetch } = useGAPins(projectId);
   const { data: decks } = useDecks(projectId);
   const { data: areas } = useAreas(projectId, undefined);
   const { data: stages } = useProjectStages(projectId);
+
+  // Enforce minimum loading time to prevent flickering
+  const loading = useMinimumLoadingTime(rawLoading);
 
   const canEdit = hasPermission(PERMISSIONS.EDIT_PROJECTS);
 
@@ -205,6 +209,11 @@ export default function GeneralArrangementTab({
     setPinForRemark(pin);
     setIsRemarkModalOpen(true);
   }, []);
+
+  // Loading state
+  if (loading) {
+    return <LoadingSkeleton type="list" rows={5} />;
+  }
 
   // No document state
   if (!hasValidGA) {
