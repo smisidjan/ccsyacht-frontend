@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
-import { MapContainer, ImageOverlay, useMap, useMapEvents } from "react-leaflet";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { MapContainer, ImageOverlay, Rectangle, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import type { GAPin } from "@/lib/api/types";
+import type { GAPin, Deck } from "@/lib/api/types";
 import PinMarker from "./PinMarker";
 
 // Fix Leaflet default marker icon issue in Next.js
@@ -27,7 +27,9 @@ interface GALeafletContentProps {
   selectedPinId?: string | null;
   onPinClick?: (pin: GAPin) => void;
   onImageClick?: (x: number, y: number) => void;
+  onDeckClick?: (deck: Deck, x: number, y: number) => void;
   canEdit?: boolean;
+  decks?: Deck[];
   className?: string;
 }
 
@@ -98,10 +100,13 @@ export default function GALeafletContent({
   selectedPinId,
   onPinClick,
   onImageClick,
+  onDeckClick,
   canEdit = false,
+  decks = [],
   className = "",
 }: GALeafletContentProps) {
   const mapRef = useRef<L.Map | null>(null);
+  const [hoveredDeckId, setHoveredDeckId] = useState<string | null>(null);
 
   // Calculate bounds based on image dimensions
   // Leaflet uses [y, x] / [lat, lng] order
@@ -122,6 +127,24 @@ export default function GALeafletContent({
     const leafletX = (pin.x / 100) * imageWidth;
     return [leafletY, leafletX]; // [lat, lng] order
   };
+
+  // Convert deck bounding box (percentage) to Leaflet bounds
+  const convertDeckToLeafletBounds = (deck: Deck): L.LatLngBoundsExpression | null => {
+    if (!deck.boundingBox) return null;
+    const { x, y, width, height } = deck.boundingBox;
+    // Convert percentage to pixel coordinates
+    const x1 = (x / 100) * imageWidth;
+    const y1 = (y / 100) * imageHeight;
+    const x2 = ((x + width) / 100) * imageWidth;
+    const y2 = ((y + height) / 100) * imageHeight;
+    return [
+      [y1, x1], // Southwest [lat, lng]
+      [y2, x2], // Northeast [lat, lng]
+    ];
+  };
+
+  // Get decks with valid bounding boxes
+  const decksWithBounds = decks.filter((d) => d.boundingBox);
 
   return (
     <div
@@ -185,7 +208,48 @@ export default function GALeafletContent({
             onClick={onPinClick}
           />
         ))}
+
+        {/* Render deck bounding boxes on hover when in edit mode */}
+        {canEdit && decksWithBounds.map((deck) => {
+          const deckBounds = convertDeckToLeafletBounds(deck);
+          if (!deckBounds) return null;
+          const isHovered = hoveredDeckId === deck.identifier;
+
+          return (
+            <Rectangle
+              key={deck.identifier}
+              bounds={deckBounds}
+              pathOptions={{
+                color: "#3B82F6",
+                weight: isHovered ? 3 : 2,
+                fillColor: "#3B82F6",
+                fillOpacity: isHovered ? 0.3 : 0.1,
+                dashArray: isHovered ? undefined : "5, 5",
+              }}
+              eventHandlers={{
+                mouseover: () => setHoveredDeckId(deck.identifier),
+                mouseout: () => setHoveredDeckId(null),
+                click: (e) => {
+                  L.DomEvent.stopPropagation(e.originalEvent);
+                  if (onDeckClick) {
+                    // Convert click position to percentage
+                    const x = (e.latlng.lng / imageWidth) * 100;
+                    const y = (e.latlng.lat / imageHeight) * 100;
+                    onDeckClick(deck, x, y);
+                  }
+                },
+              }}
+            />
+          );
+        })}
       </MapContainer>
+
+      {/* Deck hover tooltip */}
+      {canEdit && hoveredDeckId && (
+        <div className="absolute top-4 left-4 z-[1000] bg-blue-600 text-white px-3 py-2 rounded-lg shadow-lg text-sm font-medium pointer-events-none">
+          Add pin in {decks.find(d => d.identifier === hoveredDeckId)?.name}
+        </div>
+      )}
 
       {/* Zoom controls info */}
       <div className="absolute bottom-4 right-4 bg-white/90 dark:bg-gray-800/90 px-3 py-2 rounded-lg shadow-lg text-xs text-gray-600 dark:text-gray-400 pointer-events-none">

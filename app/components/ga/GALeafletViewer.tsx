@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import LoadingSkeleton from "@/app/components/ui/LoadingSkeleton";
-import type { GAPin } from "@/lib/api/types";
+import type { GAPin, Deck } from "@/lib/api/types";
 
 // Dynamic import - Leaflet doesn't work with SSR
 const GALeafletContent = dynamic(() => import("./GALeafletContent"), {
@@ -22,7 +22,9 @@ export interface GALeafletViewerProps {
   selectedPinId?: string | null;
   onPinClick?: (pin: GAPin) => void;
   onImageClick?: (x: number, y: number) => void;
+  onDeckClick?: (deck: Deck, x: number, y: number) => void;
   canEdit?: boolean;
+  decks?: Deck[];
   className?: string;
 }
 

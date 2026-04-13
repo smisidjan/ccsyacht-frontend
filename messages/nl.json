@@ -1618,6 +1618,8 @@
     "pinLocation": "Pin Locatie",
     "dragToAdjust": "Sleep de pin om de positie aan te passen",
     "clickToAddPin": "Klik ergens op de GA om een pin toe te voegen",
+    "editMode": "Bewerkmodus",
+    "hoverDeckToAdd": "Beweeg over een dek om een pin toe te voegen",
     "pinsList": "Pins Lijst",
     "noPins": "Nog geen pins toegevoegd",
     "allStages": "Alle Stages",

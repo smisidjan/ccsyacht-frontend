@@ -306,34 +306,33 @@ export default function GeneralArrangementTab({
       <div className="flex flex-col lg:flex-row gap-6">
         {/* Left: GA Viewer */}
         <div className="flex-shrink-0">
-          {/* Add Pin Mode Controls */}
+          {/* Edit Mode Toggle */}
           {canEdit && (
             <div className="mb-4 flex items-center gap-4">
-              {isAddPinMode ? (
-                <>
-                  <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
-                    <span className="text-sm text-blue-700 dark:text-blue-300">
-                      {tPins("clickToAddPin") || "Click on the drawing to place a pin"}
-                    </span>
+              <label className="flex items-center gap-3 cursor-pointer">
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  {tPins("editMode") || "Edit mode"}
+                </span>
+                <div className="relative">
+                  <input
+                    type="checkbox"
+                    checked={isAddPinMode}
+                    onChange={(e) => setIsAddPinMode(e.target.checked)}
+                    className="sr-only"
+                  />
+                  <div className={`w-11 h-6 rounded-full transition-colors ${
+                    isAddPinMode ? "bg-blue-600" : "bg-gray-300 dark:bg-gray-600"
+                  }`}>
+                    <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                      isAddPinMode ? "translate-x-5" : "translate-x-0"
+                    }`} />
                   </div>
-                  <button
-                    onClick={() => setIsAddPinMode(false)}
-                    className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors"
-                  >
-                    {tCommon("cancel")}
-                  </button>
-                </>
-              ) : (
-                <button
-                  onClick={() => setIsAddPinMode(true)}
-                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
-                >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                  {tPins("addPin") || "Add Pin"}
-                </button>
+                </div>
+              </label>
+              {isAddPinMode && (
+                <span className="text-sm text-blue-600 dark:text-blue-400">
+                  {tPins("hoverDeckToAdd") || "Hover over a deck to add a pin"}
+                </span>
               )}
             </div>
           )}
@@ -360,15 +359,15 @@ export default function GeneralArrangementTab({
                 pins={displayedPins}
                 selectedPinId={selectedPinDetail?.identifier}
                 onPinClick={(pin) => setSelectedPinDetail(pin)}
-                onImageClick={(x, y) => {
+                onDeckClick={(deck, x, y) => {
                   if (canEdit && isAddPinMode) {
                     setNewPinPosition({ x, y });
                     setSelectedPin(null);
-                    setIsAddPinMode(false);
                     setIsCreateModalOpen(true);
                   }
                 }}
                 canEdit={canEdit && isAddPinMode}
+                decks={decks || []}
               />
             ) : (
               <div className="flex items-center justify-center min-h-[600px]">

@@ -1587,6 +1587,8 @@
     "pinLocation": "Pin Location",
     "dragToAdjust": "Drag the pin to adjust position",
     "clickToAddPin": "Click anywhere on the GA to add a pin",
+    "editMode": "Edit mode",
+    "hoverDeckToAdd": "Hover over a deck to add a pin",
     "pinsList": "Pins List",
     "noPins": "No pins added yet",
     "allStages": "All Stages",
