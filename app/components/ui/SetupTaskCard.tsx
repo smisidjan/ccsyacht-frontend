@@ -10,6 +10,7 @@ interface SetupTaskCardProps {
   onMarkComplete?: (taskId: string) => void;
   onViewDetails?: (taskId: string) => void;
   onDefineDecks?: () => void;
+  onViewDecks?: () => void;
 }
 
 // Helper to convert snake_case task type to camelCase for translations
@@ -43,7 +44,7 @@ function getActionHref(taskType: SetupTaskType): string | undefined {
   }
 }
 
-export default function SetupTaskCard({ task, onMarkComplete, onViewDetails, onDefineDecks }: SetupTaskCardProps) {
+export default function SetupTaskCard({ task, onMarkComplete, onViewDetails, onDefineDecks, onViewDecks }: SetupTaskCardProps) {
   const t = useTranslations("projectDetail.setupTasks");
   const { data: currentUser } = useCurrentUser();
 
@@ -128,7 +129,7 @@ export default function SetupTaskCard({ task, onMarkComplete, onViewDetails, onD
           </button>
         )}
 
-        {/* Define Decks button */}
+        {/* Define Decks button (when not completed) */}
         {!isCompleted && task.additionalType === "define_decks" && onDefineDecks && (
           <button
             onClick={onDefineDecks}
@@ -136,6 +137,17 @@ export default function SetupTaskCard({ task, onMarkComplete, onViewDetails, onD
           >
             <ArrowRightIcon className="w-4 h-4" />
             {t(`${translationKey}.action`)}
+          </button>
+        )}
+
+        {/* View/Edit Decks button (when completed) */}
+        {isCompleted && task.additionalType === "define_decks" && onViewDecks && (
+          <button
+            onClick={onViewDecks}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-all shadow-md hover:shadow-lg"
+          >
+            <ArrowRightIcon className="w-4 h-4" />
+            {t("viewDecks")}
           </button>
         )}
 
