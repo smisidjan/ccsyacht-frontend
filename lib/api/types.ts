@@ -431,6 +431,19 @@ export interface ProjectAuthor {
   email?: string; // Optional - only present for Person type
 }
 
+// General Arrangement document with optional image data for Leaflet viewer
+export interface GeneralArrangement {
+  "@type"?: string;
+  identifier: string;
+  name: string;
+  contentUrl: string; // URL to download the original PDF
+  imageUrl?: string; // URL to the rendered PNG image (for Leaflet viewer)
+  imageWidth?: number; // Image width in pixels
+  imageHeight?: number; // Image height in pixels
+  dateCreated?: string;
+  dateModified?: string;
+}
+
 export interface Project {
   "@context"?: string;
   "@type"?: string;
@@ -441,7 +454,8 @@ export interface Project {
   status: ProjectStatus;
   startDate?: string;
   endDate?: string;
-  generalArrangement?: string;
+  // Can be a string URL (legacy) or GeneralArrangement object (new)
+  generalArrangement?: string | GeneralArrangement;
   dateCreated?: string;
   dateModified?: string;
   producer?: ProjectProducer;
