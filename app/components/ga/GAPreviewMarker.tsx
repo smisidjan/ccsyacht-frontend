@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useRef } from "react";
-import { MapContainer, ImageOverlay, Marker, useMap } from "react-leaflet";
+import { MapContainer, ImageOverlay, Marker, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import "./ga-smooth-zoom.css";
+import type { Deck } from "@/lib/api/types";
 
 interface GAPreviewMarkerProps {
   imageUrl: string;
@@ -13,6 +15,8 @@ interface GAPreviewMarkerProps {
   y: number;
   color: string;
   onPositionChange: (x: number, y: number) => void;
+  // Optional: deck to zoom to initially (for zoom-to-deck feature)
+  initialDeck?: Deck | null;
 }
 
 // Create a custom colored marker icon
@@ -35,27 +39,59 @@ function createColoredIcon(color: string): L.DivIcon {
   });
 }
 
-// Component to fit bounds and center on the marker position
+// Component to fit bounds on initial mount only (not on marker position changes)
 function FitToMarker({
   bounds,
-  markerPosition,
+  initialMarkerPosition,
+  deckBounds,
 }: {
   bounds: L.LatLngBoundsExpression;
-  markerPosition: [number, number];
+  initialMarkerPosition: [number, number];
+  deckBounds?: L.LatLngBoundsExpression | null;
 }) {
   const map = useMap();
+  const hasInitialized = useRef(false);
 
   useEffect(() => {
+    // Only run once on mount
+    if (hasInitialized.current) return;
+    hasInitialized.current = true;
+
     // Fit the full image first
     map.fitBounds(bounds, { padding: [10, 10], animate: false });
 
-    // Then zoom in and center on the marker position
     setTimeout(() => {
       map.invalidateSize();
-      // Set a reasonable zoom level that shows context around the marker
-      map.setView(markerPosition, 1, { animate: false });
+
+      if (deckBounds) {
+        // Zoom to fit the deck bounds with some padding
+        map.fitBounds(deckBounds, { padding: [20, 20], animate: false });
+      } else {
+        // Set a reasonable zoom level that shows context around the marker
+        map.setView(initialMarkerPosition, 1, { animate: false });
+      }
     }, 100);
-  }, [map, bounds, markerPosition]);
+  }, [map, bounds, initialMarkerPosition, deckBounds]);
+
+  return null;
+}
+
+// Component to keep the pin visible after zooming
+function KeepPinInView({ markerPosition }: { markerPosition: [number, number] }) {
+  const map = useMap();
+
+  useMapEvents({
+    zoomend: () => {
+      // Check if marker is in the visible bounds
+      const bounds = map.getBounds();
+      const markerLatLng = L.latLng(markerPosition[0], markerPosition[1]);
+
+      if (!bounds.contains(markerLatLng)) {
+        // Pan smoothly to center on the marker while keeping current zoom
+        map.panTo(markerLatLng, { animate: true, duration: 0.3, easeLinearity: 0.25 });
+      }
+    },
+  });
 
   return null;
 }
@@ -68,6 +104,7 @@ export default function GAPreviewMarker({
   y,
   color,
   onPositionChange,
+  initialDeck,
 }: GAPreviewMarkerProps) {
   const mapRef = useRef<L.Map | null>(null);
 
@@ -86,6 +123,21 @@ export default function GAPreviewMarker({
     const leafletX = (x / 100) * imageWidth;
     return [leafletY, leafletX];
   }, [x, y, imageWidth, imageHeight]);
+
+  // Convert deck bounding box to Leaflet bounds (if provided)
+  const deckBounds = useMemo<L.LatLngBoundsExpression | null>(() => {
+    if (!initialDeck?.boundingBox) return null;
+    const { x: bx, y: by, width, height } = initialDeck.boundingBox;
+    // Convert percentage to pixel coordinates
+    const x1 = (bx / 100) * imageWidth;
+    const y1 = (by / 100) * imageHeight;
+    const x2 = ((bx + width) / 100) * imageWidth;
+    const y2 = ((by + height) / 100) * imageHeight;
+    return [
+      [y1, x1], // Southwest [lat, lng]
+      [y2, x2], // Northeast [lat, lng]
+    ];
+  }, [initialDeck, imageWidth, imageHeight]);
 
   // Create icon with current color
   const icon = useMemo(() => createColoredIcon(color), [color]);
@@ -116,19 +168,30 @@ export default function GAPreviewMarker({
         maxBoundsViscosity={1.0}
         minZoom={-5}
         maxZoom={4}
-        zoomSnap={0.25}
+        // zoomSnap={0}
+        zoomDelta={0.5}
+        wheelPxPerZoomLevel={30}
         scrollWheelZoom={true}
         doubleClickZoom={false}
         touchZoom={true}
         dragging={true}
+        inertia={true}
+        inertiaDeceleration={3000}
         attributionControl={false}
+        className="smooth-zoom-map"
         style={{
           height: "100%",
           width: "100%",
           background: "#f3f4f6",
         }}
       >
-        <FitToMarker bounds={bounds} markerPosition={markerPosition} />
+        <FitToMarker
+          bounds={bounds}
+          initialMarkerPosition={markerPosition}
+          deckBounds={deckBounds}
+        />
+
+        <KeepPinInView markerPosition={markerPosition} />
 
         <ImageOverlay url={imageUrl} bounds={bounds} />
 
