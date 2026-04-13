@@ -533,20 +533,23 @@ export default function GAViewerWithDrawContent({
       </MapContainer>
 
       {/* Instructions overlay */}
-      <div className="absolute bottom-3 left-3 bg-white/90 dark:bg-gray-800/90 px-3 py-2 rounded-lg shadow-lg text-xs text-gray-600 dark:text-gray-400 pointer-events-none">
+      <div className="absolute bottom-3 left-3 z-[1000] bg-white/90 dark:bg-gray-800/90 px-3 py-2 rounded-lg shadow-lg text-xs text-gray-600 dark:text-gray-400 pointer-events-none">
         {bounds ? "Drag rectangle to move, corners to resize" : "Click and drag to mark deck area"}
       </div>
 
       {/* Clear button */}
-      {bounds && (
-        <button
-          type="button"
-          onClick={handleClear}
-          className="absolute top-3 right-3 bg-white dark:bg-gray-800 px-3 py-1.5 rounded-lg shadow-lg text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-        >
-          Clear
-        </button>
-      )}
+      <button
+        type="button"
+        onClick={handleClear}
+        disabled={!bounds}
+        className={`absolute top-3 right-3 z-[1000] bg-white dark:bg-gray-800 px-3 py-1.5 rounded-lg shadow-lg text-xs font-medium transition-colors ${
+          bounds
+            ? "text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
+            : "text-gray-400 dark:text-gray-500 cursor-not-allowed"
+        }`}
+      >
+        Clear
+      </button>
     </div>
   );
 }
