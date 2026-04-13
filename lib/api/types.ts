@@ -559,6 +559,13 @@ export interface DeckPlace {
   stageCount?: number;
 }
 
+export interface DeckBoundingBox {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 export interface Deck {
   "@context"?: string;
   "@type"?: string;
@@ -568,6 +575,7 @@ export interface Deck {
   position: number;
   areaCount: number;
   stageCount: number;
+  boundingBox?: DeckBoundingBox;
   containsPlace?: DeckPlace[];
   dateCreated: string;
   dateModified: string;
@@ -576,11 +584,19 @@ export interface Deck {
 export interface CreateDeckRequest {
   name: string;
   description?: string;
+  bbox_x?: number;
+  bbox_y?: number;
+  bbox_width?: number;
+  bbox_height?: number;
 }
 
 export interface UpdateDeckRequest {
   name?: string;
   description?: string;
+  bbox_x?: number;
+  bbox_y?: number;
+  bbox_width?: number;
+  bbox_height?: number;
 }
 
 // ============ Areas ============
