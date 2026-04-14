@@ -218,7 +218,7 @@ export default function DocumentsTab({ projectId, projectStatus }: DocumentsTabP
   return (
     <div className="flex gap-6">
       {/* Left Sidebar - Document Types */}
-      <div className="w-80 flex-shrink-0">
+      <div className="w-96 flex-shrink-0">
         <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-lg flex flex-col max-h-[calc(100vh-240px)]">
           <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
             <div className="flex items-center justify-between">
@@ -251,12 +251,12 @@ export default function DocumentsTab({ projectId, projectStatus }: DocumentsTabP
                 >
                   <button
                     onClick={() => setSelectedTypeId(type.identifier)}
-                    className="flex-1 flex items-center justify-between p-4 text-left"
+                    className="flex-1 flex items-start justify-between p-4 text-left gap-2"
                   >
-                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                      <FolderIcon className="w-5 h-5 flex-shrink-0" />
-                      <div className="flex flex-col min-w-0">
-                        <span className="font-medium truncate">{type.name}</span>
+                    <div className="flex items-start gap-3 flex-1 min-w-0">
+                      <FolderIcon className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                      <div className="flex flex-col min-w-0 flex-1">
+                        <span className="font-medium">{type.name}</span>
                       </div>
                     </div>
                     {type.isRequired && type.documentCount === 0 ? (
