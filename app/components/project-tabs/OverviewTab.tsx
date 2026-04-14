@@ -14,6 +14,7 @@ import KickoffMeetingModal from "@/app/components/modals/KickoffMeetingModal";
 import CreateDeckModal from "@/app/components/modals/CreateDeckModal";
 import { useAreas, setupTasksApi, useCurrentUser } from "@/lib/api";
 import { useDecks } from "@/lib/api/decks";
+import { useDocumentTypes } from "@/lib/api/document-types";
 import type { SetupTask } from "@/lib/api/types";
 import { usePermission } from "@/lib/hooks/usePermission";
 import { useMinimumLoadingTime } from "@/lib/hooks/useMinimumLoadingTime";
@@ -58,6 +59,9 @@ export default function OverviewTab({
 
   // Fetch decks for edit mode
   const { data: decks, refetch: refetchDecks } = useDecks(projectId);
+
+  // Fetch document types for setup task description
+  const { data: documentTypes } = useDocumentTypes(projectId);
 
   // GA Image for deck modal
   const gaImageUrl = generalArrangement?.imageUrl
@@ -156,6 +160,7 @@ export default function OverviewTab({
   }, [setupTasks, currentUser, canEditProject]);
 
   const pendingTasksCount = visibleSetupTasks.filter((task) => !(task.isComplete || task.actionStatus === "completed")).length;
+  const completedTasksCount = visibleSetupTasks.filter((task) => task.isComplete || task.actionStatus === "completed").length;
   const allSetupTasksComplete = pendingTasksCount === 0 && visibleSetupTasks.length > 0;
 
   // Automatically update project status to "active" when all setup tasks are complete
@@ -270,17 +275,25 @@ export default function OverviewTab({
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
               {t("setupTasks.title")}
             </h2>
-            {pendingTasksCount > 0 && (
-              <span className="text-sm text-amber-600 dark:text-amber-400">
-                {t("setupTasks.pendingCount", { count: pendingTasksCount })}
-              </span>
-            )}
+            <div className="flex items-center gap-3 text-sm">
+              {completedTasksCount > 0 && (
+                <span className="text-green-600 dark:text-green-400">
+                  {t("setupTasks.completedCount", { count: completedTasksCount })}
+                </span>
+              )}
+              {pendingTasksCount > 0 && (
+                <span className="text-amber-600 dark:text-amber-400">
+                  {t("setupTasks.pendingCount", { count: pendingTasksCount })}
+                </span>
+              )}
+            </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
             {visibleSetupTasks.map((task) => (
               <SetupTaskCard
                 key={task.identifier}
                 task={task}
+                documentTypes={documentTypes || undefined}
                 onViewDetails={handleViewTaskDetails}
                 onDefineDecks={() => {
                   setIsDeckEditMode(false);

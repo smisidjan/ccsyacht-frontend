@@ -2,11 +2,12 @@
 
 import { useTranslations } from "next-intl";
 import { ArrowRightIcon, CheckIcon, ClockIcon, CalendarIcon } from "@heroicons/react/24/outline";
-import type { SetupTask, SetupTaskType } from "@/lib/api/types";
+import type { SetupTask, SetupTaskType, DocumentType } from "@/lib/api/types";
 import { useCurrentUser } from "@/lib/api";
 
 interface SetupTaskCardProps {
   task: SetupTask;
+  documentTypes?: DocumentType[];
   onMarkComplete?: (taskId: string) => void;
   onViewDetails?: (taskId: string) => void;
   onDefineDecks?: () => void;
@@ -44,7 +45,7 @@ function getActionHref(taskType: SetupTaskType): string | undefined {
   }
 }
 
-export default function SetupTaskCard({ task, onMarkComplete, onViewDetails, onDefineDecks, onViewDecks }: SetupTaskCardProps) {
+export default function SetupTaskCard({ task, documentTypes, onMarkComplete, onViewDetails, onDefineDecks, onViewDecks }: SetupTaskCardProps) {
   const t = useTranslations("projectDetail.setupTasks");
   const { data: currentUser } = useCurrentUser();
 
@@ -52,6 +53,40 @@ export default function SetupTaskCard({ task, onMarkComplete, onViewDetails, onD
   const isScheduled = task.actionStatus === "scheduled";
   const actionHref = getActionHref(task.additionalType);
   const translationKey = taskTypeToCamelCase(task.additionalType);
+
+  // Helper to render description with strikethrough for uploaded documents
+  const renderDescription = () => {
+    if (task.additionalType !== "upload_documents" || !documentTypes) {
+      return task.description;
+    }
+
+    // Get required document types
+    const requiredDocs = documentTypes.filter(dt => dt.isRequired);
+
+    if (requiredDocs.length === 0) {
+      return task.description;
+    }
+
+    return (
+      <>
+        <span>{t("uploadDocuments.descriptionIntro")}</span>
+        <ul className="mt-2 space-y-1">
+          {requiredDocs.map(doc => (
+            <li key={doc.identifier} className="flex items-center gap-2">
+              {doc.documentCount > 0 ? (
+                <CheckIcon className="w-4 h-4 text-green-500 flex-shrink-0" />
+              ) : (
+                <span className="w-4 h-4 flex items-center justify-center flex-shrink-0">•</span>
+              )}
+              <span className={doc.documentCount > 0 ? "line-through" : ""}>
+                {doc.name}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </>
+    );
+  };
 
   // Check if current user is an assignee
   const isUserAssignee = currentUser && task.assignees?.some(
@@ -84,22 +119,23 @@ export default function SetupTaskCard({ task, onMarkComplete, onViewDetails, onD
   const badgeStyles = getBadgeStyles();
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg dark:shadow-gray-900/30 border border-gray-100 dark:border-gray-700 p-6">
-      <div className="flex items-start justify-between mb-3">
+    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg dark:shadow-gray-900/30 border border-gray-100 dark:border-gray-700 p-6 flex flex-col h-full">
+      <div className="flex items-start justify-between mb-3 min-h-[4rem]">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
           {task.name}
         </h3>
-        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium ${badgeStyles.bg}`}>
+        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium shrink-0 ${badgeStyles.bg}`}>
           {badgeStyles.icon}
           {badgeStyles.text}
         </span>
       </div>
 
-      <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-        {task.description}
+      <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 flex-grow">
+        {renderDescription()}
       </p>
 
-      <div className="flex items-center gap-3">
+      <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mt-auto">
+      <div className="flex items-center justify-end gap-3">
         {/* Action button for non-kickoff tasks */}
         {!isCompleted && actionHref && task.additionalType !== "kickoff_meeting" && (
           <a
@@ -161,6 +197,7 @@ export default function SetupTaskCard({ task, onMarkComplete, onViewDetails, onD
             {t("markComplete")}
           </button>
         )}
+      </div>
       </div>
     </div>
   );

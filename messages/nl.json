@@ -246,6 +246,7 @@
     "setupTasks": {
       "title": "Setup Taken",
       "pendingCount": "{count} taken in behandeling",
+      "completedCount": "{count} taken voltooid",
       "pending": "In behandeling",
       "scheduled": "Gepland",
       "completed": "Voltooid",
@@ -253,6 +254,7 @@
       "uploadDocuments": {
         "title": "Upload Verplichte Documenten",
         "description": "Upload alle verplichte projectdocumentatie inclusief contracten, specificaties en tekeningen",
+        "descriptionIntro": "Upload de volgende verplichte documenten:",
         "action": "Upload Documenten"
       },
       "addMembers": {

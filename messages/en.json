@@ -246,6 +246,7 @@
     "setupTasks": {
       "title": "Setup Tasks",
       "pendingCount": "{count} tasks pending",
+      "completedCount": "{count} tasks completed",
       "pending": "Pending",
       "scheduled": "Scheduled",
       "completed": "Completed",
@@ -253,6 +254,7 @@
       "uploadDocuments": {
         "title": "Upload Required Documents",
         "description": "Upload all required project documentation including contracts, specifications, and drawings",
+        "descriptionIntro": "Upload the following required documents:",
         "action": "Upload Documents"
       },
       "addMembers": {
