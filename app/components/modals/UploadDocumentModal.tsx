@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import BaseModal from "./BaseModal";
-import FormInput from "@/app/components/ui/FormInput";
 import FormTextarea from "@/app/components/ui/FormTextarea";
 import type { UploadDocumentRequest } from "@/lib/api/types";
 
@@ -22,7 +21,6 @@ export default function UploadDocumentModal({
 }: UploadDocumentModalProps) {
   const t = useTranslations("systemSettings.tenantDetail.projects.detail.documents.uploadModal");
 
-  const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [file, setFile] = useState<File | null>(null);
 
@@ -32,13 +30,12 @@ export default function UploadDocumentModal({
     }
 
     await onSubmit({
-      title: title || file.name,
+      title: file.name,
       description: description || undefined,
       file,
     });
 
     // Reset form
-    setTitle("");
     setDescription("");
     setFile(null);
   };
@@ -46,10 +43,6 @@ export default function UploadDocumentModal({
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0] || null;
     setFile(selectedFile);
-    // Auto-fill title with filename if empty
-    if (selectedFile && !title) {
-      setTitle(selectedFile.name);
-    }
   };
 
   return (
@@ -82,17 +75,6 @@ export default function UploadDocumentModal({
             </p>
           )}
         </div>
-
-        {/* Title Input */}
-        <FormInput
-          id="document-title"
-          label={t("titleOptional")}
-          type="text"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder={t("titlePlaceholder")}
-          hint={t("titleHint")}
-        />
 
         {/* Description Input */}
         <FormTextarea
