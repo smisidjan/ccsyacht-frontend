@@ -275,7 +275,7 @@ export default function CreateGAPinModal({
           {/* Deck Selection */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              {decks && decks.length === 1 ? t("deck") : t("selectDeck")}
+              {(decks && decks.length === 1) || initialDeck ? t("deck") : t("selectDeck")}
             </label>
             {isEditing ? (
               // Edit mode: show text with optional edit icon
@@ -311,10 +311,10 @@ export default function CreateGAPinModal({
                 </div>
               )
             ) : (
-              // Create mode: show text for 1 option, dropdown for multiple
-              decks && decks.length === 1 ? (
+              // Create mode: show text for 1 option or when deck is pre-selected, dropdown for multiple
+              (decks && decks.length === 1) || initialDeck ? (
                 <p className="text-gray-900 dark:text-gray-100 py-2">
-                  {decks[0].name}
+                  {initialDeck?.name || decks?.[0]?.name || "-"}
                 </p>
               ) : (
                 <select
