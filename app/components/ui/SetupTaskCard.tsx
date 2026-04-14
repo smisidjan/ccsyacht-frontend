@@ -130,9 +130,9 @@ export default function SetupTaskCard({ task, documentTypes, onMarkComplete, onV
         </span>
       </div>
 
-      <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 flex-grow">
+      <div className="text-sm text-gray-600 dark:text-gray-400 mb-4 flex-grow">
         {renderDescription()}
-      </p>
+      </div>
 
       <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mt-auto">
       <div className="flex items-center justify-end gap-3">

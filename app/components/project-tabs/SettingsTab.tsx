@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useTranslations } from "next-intl";
-import { UserPlusIcon, TrashIcon, PencilIcon, UserCircleIcon, StarIcon, DocumentTextIcon, TagIcon, BuildingOffice2Icon, CalendarIcon, UserIcon, CheckIcon, UserGroupIcon } from "@heroicons/react/24/outline";
+import { UserPlusIcon, TrashIcon, PencilIcon, UserCircleIcon, StarIcon, DocumentTextIcon, TagIcon, BuildingOffice2Icon, CalendarIcon, UserIcon, CheckIcon, UserGroupIcon, EnvelopeIcon } from "@heroicons/react/24/outline";
 import { StarIcon as StarIconSolid } from "@heroicons/react/24/solid";
-import { useProjectMembers, useProjectSigners, useUsers, useProject, projectsApi, setupTasksApi } from "@/lib/api";
+import { useProjectMembers, useProjectSigners, useUsers, useProject, useRoles, projectsApi, setupTasksApi, invitationsApi } from "@/lib/api";
 import { usePermission } from "@/lib/hooks/usePermission";
 import { useMinimumLoadingTime } from "@/lib/hooks/useMinimumLoadingTime";
 import { useRealtimeMembers, useRealtimeSigners } from "@/lib/hooks/useRealtimeProject";
@@ -67,6 +67,15 @@ export default function SettingsTab({ projectId, onProjectUpdate }: SettingsTabP
   const [isEditProjectModalOpen, setIsEditProjectModalOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState("");
 
+  // Add member modal state - for searchable input
+  const [searchInput, setSearchInput] = useState("");
+  const [selectedRole, setSelectedRole] = useState("");
+  const [employmentType, setEmploymentType] = useState<"employee" | "guest">("employee");
+  const [homeOrganization, setHomeOrganization] = useState("");
+
+  // Fetch roles for invitation (filtered by employment type)
+  const { data: roles } = useRoles(employmentType);
+
   // Project types for modal
   const projectTypes = [
     { id: "new_build", name: t("projectTypes.new_build") },
@@ -79,14 +88,77 @@ export default function SettingsTab({ projectId, onProjectUpdate }: SettingsTabP
   const currentUserId = currentUser?.identifier;
   const availableUsersForMembers = allUsers?.filter(u => !memberIds.includes(u.id) && u.id !== currentUserId) || [];
 
+  // Email validation helper
+  const isValidEmail = (email: string) => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  };
+
+  // Filter available users based on search input
+  const filteredUsers = useMemo(() => {
+    if (!searchInput.trim()) return availableUsersForMembers;
+    const query = searchInput.toLowerCase().trim();
+    return availableUsersForMembers.filter(
+      (user) =>
+        user.name.toLowerCase().includes(query) ||
+        user.email.toLowerCase().includes(query)
+    );
+  }, [availableUsersForMembers, searchInput]);
+
+  // Check if search input is an email that doesn't exist in the system
+  const isNewEmailInvite = useMemo(() => {
+    if (!isValidEmail(searchInput)) return false;
+    const emailLower = searchInput.toLowerCase().trim();
+    // Check if this email exists in all users
+    return !allUsers?.some((user) => user.email.toLowerCase() === emailLower);
+  }, [searchInput, allUsers]);
+
   // Helper to check if a member is also a signer
   const isMemberSigner = (memberId: string) => signerIds.includes(memberId);
 
   const handleAddMember = async () => {
     if (!selectedUserId) return;
     await addMember({ user_id: selectedUserId });
+    resetAddMemberModal();
+  };
+
+  const handleSelectUser = (userId: string) => {
+    setSelectedUserId(userId);
+    const user = availableUsersForMembers.find((u) => u.id === userId);
+    if (user) {
+      setSearchInput(user.email);
+    }
+  };
+
+  const handleInviteNewUser = async () => {
+    if (!isValidEmail(searchInput) || !selectedRole) return;
+    if (employmentType === "guest" && !homeOrganization.trim()) return;
+
+    await invitationsApi.create({
+      email: searchInput.trim(),
+      role: selectedRole,
+      employment_type: employmentType,
+      home_organization_name: employmentType === "guest" ? homeOrganization.trim() : undefined,
+    });
+    resetAddMemberModal();
+  };
+
+  const resetAddMemberModal = () => {
     setIsAddMemberModalOpen(false);
     setSelectedUserId("");
+    setSearchInput("");
+    setSelectedRole("");
+    setEmploymentType("employee");
+    setHomeOrganization("");
+  };
+
+  const handleModalSubmit = async () => {
+    if (selectedUserId) {
+      // Adding existing user
+      await handleAddMember();
+    } else if (isNewEmailInvite && selectedRole) {
+      // Inviting new user
+      await handleInviteNewUser();
+    }
   };
 
   const handleMakeSigner = async (userId: string) => {
@@ -429,35 +501,184 @@ export default function SettingsTab({ projectId, onProjectUpdate }: SettingsTabP
       {/* Add Member Modal */}
       <BaseModal
         isOpen={isAddMemberModalOpen}
-        onClose={() => {
-          setIsAddMemberModalOpen(false);
-          setSelectedUserId("");
-        }}
+        onClose={resetAddMemberModal}
         title={t("teamMembers.addMember")}
+        size="md"
         formId="add-member-form"
-        onSubmit={handleAddMember}
-        successMessage={t("teamMembers.addSuccess")}
-        errorFallbackMessage={t("teamMembers.addError")}
-        submitLabel={t("teamMembers.add")}
+        onSubmit={handleModalSubmit}
+        successMessage={isNewEmailInvite ? t("teamMembers.inviteSuccess") : t("teamMembers.addSuccess")}
+        errorFallbackMessage={isNewEmailInvite ? t("teamMembers.inviteError") : t("teamMembers.addError")}
+        submitLabel={isNewEmailInvite ? t("teamMembers.invite") : t("teamMembers.add")}
+        submitDisabled={!selectedUserId && (!isNewEmailInvite || !selectedRole || (employmentType === "guest" && !homeOrganization.trim()))}
       >
-        <div>
-          <label htmlFor="member-user" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            {t("teamMembers.selectUser")}
-          </label>
-          <select
-            id="member-user"
-            value={selectedUserId}
-            onChange={(e) => setSelectedUserId(e.target.value)}
-            className="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            required
-          >
-            <option value="">{t("teamMembers.selectUserPlaceholder")}</option>
-            {availableUsersForMembers.map((user) => (
-              <option key={user.id} value={user.id}>
-                {user.name} ({user.email})
-              </option>
-            ))}
-          </select>
+        <div className="space-y-4">
+          {/* Search input */}
+          <div>
+            <label htmlFor="member-search" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              {t("teamMembers.searchOrInvite")}
+            </label>
+            <input
+              id="member-search"
+              type="text"
+              value={searchInput}
+              onChange={(e) => {
+                setSearchInput(e.target.value);
+                setSelectedUserId("");
+              }}
+              placeholder={t("teamMembers.searchPlaceholder")}
+              className="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              autoComplete="off"
+            />
+            <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+              {t("teamMembers.searchHint")}
+            </p>
+          </div>
+
+          {/* User list - inline, scrollable */}
+          {(filteredUsers.length > 0 || isNewEmailInvite) && (
+            <div className="border border-gray-200 dark:border-gray-600 rounded-lg max-h-48 overflow-y-auto">
+              {/* Existing users */}
+              {filteredUsers.slice(0, 5).map((user) => (
+                <button
+                  key={user.id}
+                  type="button"
+                  onClick={() => handleSelectUser(user.id)}
+                  className={`w-full px-4 py-3 flex items-center gap-3 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors text-left border-b border-gray-100 dark:border-gray-700 last:border-b-0 ${
+                    selectedUserId === user.id ? "bg-blue-50 dark:bg-blue-900/20" : ""
+                  }`}
+                >
+                  <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center flex-shrink-0">
+                    <UserCircleIcon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                      {user.name}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                      {user.email}
+                    </p>
+                  </div>
+                  {selectedUserId === user.id && (
+                    <CheckIcon className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                  )}
+                </button>
+              ))}
+
+              {/* Invite option when valid email not found */}
+              {isNewEmailInvite && (
+                <div className="px-4 py-3 bg-blue-50 dark:bg-blue-900/20 border-t border-gray-200 dark:border-gray-600">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center flex-shrink-0">
+                      <EnvelopeIcon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-blue-700 dark:text-blue-300">
+                        {t("teamMembers.inviteEmail", { email: searchInput })}
+                      </p>
+                      <p className="text-xs text-blue-600 dark:text-blue-400">
+                        {t("teamMembers.inviteDescription")}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* No results message */}
+          {searchInput.trim() && filteredUsers.length === 0 && !isNewEmailInvite && (
+            <div className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 text-center border border-gray-200 dark:border-gray-600 rounded-lg">
+              {t("teamMembers.noResults")}
+            </div>
+          )}
+
+          {/* Invitation fields */}
+          {isNewEmailInvite && (
+            <>
+              {/* Employment Type */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  {t("teamMembers.employmentType")}
+                </label>
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="employment-type"
+                      value="employee"
+                      checked={employmentType === "employee"}
+                      onChange={() => {
+                        setEmploymentType("employee");
+                        setSelectedRole("");
+                      }}
+                      className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                    />
+                    <span className="text-sm text-gray-700 dark:text-gray-300">
+                      {t("teamMembers.employee")}
+                    </span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="employment-type"
+                      value="guest"
+                      checked={employmentType === "guest"}
+                      onChange={() => {
+                        setEmploymentType("guest");
+                        setSelectedRole("");
+                      }}
+                      className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                    />
+                    <span className="text-sm text-gray-700 dark:text-gray-300">
+                      {t("teamMembers.guest")}
+                    </span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Role selector */}
+              <div>
+                <label htmlFor="invite-role" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  {t("teamMembers.selectRole")} <span className="text-red-500">*</span>
+                </label>
+                <select
+                  id="invite-role"
+                  value={selectedRole}
+                  onChange={(e) => setSelectedRole(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
+                >
+                  <option value="">{t("teamMembers.selectRolePlaceholder")}</option>
+                  {roles?.map((role) => (
+                    <option key={role.id} value={role.name}>
+                      {role.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Home Organization (only for guests) */}
+              {employmentType === "guest" && (
+                <div>
+                  <label htmlFor="home-organization" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    {t("teamMembers.homeOrganization")} <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    id="home-organization"
+                    type="text"
+                    value={homeOrganization}
+                    onChange={(e) => setHomeOrganization(e.target.value)}
+                    placeholder={t("teamMembers.homeOrganizationPlaceholder")}
+                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    required
+                  />
+                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    {t("teamMembers.homeOrganizationHint")}
+                  </p>
+                </div>
+              )}
+            </>
+          )}
         </div>
       </BaseModal>
 
