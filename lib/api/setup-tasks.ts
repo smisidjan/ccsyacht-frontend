@@ -9,6 +9,15 @@ import type {
   UpdateSetupTaskNoteRequest,
   SetupTaskNote,
   SetupTaskDocument,
+  ProposedDate,
+  TimeSlot,
+  SchedulingStatus,
+  AddProposedDateRequest,
+  AddTimeSlotRequest,
+  RespondToTimeSlotRequest,
+  BulkRespondRequest,
+  RequiredDocument,
+  DocumentAcknowledgementStatus,
 } from "./types";
 
 /**
@@ -262,5 +271,174 @@ export const setupTasksApi = {
     return apiFetch(`/projects/${projectId}/setup-task/${setupTaskId}/documents/${docId}`, {
       method: "DELETE",
     });
+  },
+
+  // ============ Kickoff Meeting Scheduling ============
+
+  /**
+   * GET /api/projects/{projectId}/setup-task/{setupTaskId}/scheduling-status
+   * Get scheduling overview for a kickoff meeting
+   */
+  getSchedulingStatus: async (
+    projectId: string,
+    setupTaskId: string
+  ): Promise<SchedulingStatus> => {
+    return apiFetch(`/projects/${projectId}/setup-task/${setupTaskId}/scheduling-status`);
+  },
+
+  /**
+   * POST /api/projects/{projectId}/setup-task/{setupTaskId}/proposed-dates
+   * Add a proposed date with time slots to a kickoff meeting
+   */
+  addProposedDate: async (
+    projectId: string,
+    setupTaskId: string,
+    data: AddProposedDateRequest
+  ): Promise<{ data: ProposedDate }> => {
+    return apiFetch(`/projects/${projectId}/setup-task/${setupTaskId}/proposed-dates`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  },
+
+  /**
+   * DELETE /api/projects/{projectId}/setup-task/{setupTaskId}/proposed-dates/{dateId}
+   * Remove a proposed date and all its time slots
+   */
+  removeProposedDate: async (
+    projectId: string,
+    setupTaskId: string,
+    dateId: string
+  ): Promise<void> => {
+    return apiFetch(`/projects/${projectId}/setup-task/${setupTaskId}/proposed-dates/${dateId}`, {
+      method: "DELETE",
+    });
+  },
+
+  /**
+   * POST /api/projects/{projectId}/setup-task/{setupTaskId}/proposed-dates/{dateId}/time-slots
+   * Add a time slot to an existing proposed date
+   */
+  addTimeSlot: async (
+    projectId: string,
+    setupTaskId: string,
+    dateId: string,
+    data: AddTimeSlotRequest
+  ): Promise<{ data: TimeSlot }> => {
+    return apiFetch(`/projects/${projectId}/setup-task/${setupTaskId}/proposed-dates/${dateId}/time-slots`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  },
+
+  /**
+   * DELETE /api/projects/{projectId}/setup-task/{setupTaskId}/proposed-dates/{dateId}/time-slots/{slotId}
+   * Remove a time slot from a proposed date
+   */
+  removeTimeSlot: async (
+    projectId: string,
+    setupTaskId: string,
+    dateId: string,
+    slotId: string
+  ): Promise<void> => {
+    return apiFetch(`/projects/${projectId}/setup-task/${setupTaskId}/proposed-dates/${dateId}/time-slots/${slotId}`, {
+      method: "DELETE",
+    });
+  },
+
+  /**
+   * POST /api/projects/{projectId}/setup-task/{setupTaskId}/time-slots/{slotId}/respond
+   * Submit availability response for a time slot
+   */
+  respondToTimeSlot: async (
+    projectId: string,
+    setupTaskId: string,
+    slotId: string,
+    data: RespondToTimeSlotRequest
+  ): Promise<void> => {
+    return apiFetch(`/projects/${projectId}/setup-task/${setupTaskId}/time-slots/${slotId}/respond`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  },
+
+  /**
+   * POST /api/projects/{projectId}/setup-task/{setupTaskId}/respond
+   * Bulk submit availability responses for multiple time slots
+   */
+  bulkRespond: async (
+    projectId: string,
+    setupTaskId: string,
+    data: BulkRespondRequest
+  ): Promise<void> => {
+    return apiFetch(`/projects/${projectId}/setup-task/${setupTaskId}/respond`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  },
+
+  /**
+   * POST /api/projects/{projectId}/setup-task/{setupTaskId}/send-invitations
+   * Send invitation emails to all attendees with proposed dates
+   */
+  sendInvitations: async (
+    projectId: string,
+    setupTaskId: string
+  ): Promise<void> => {
+    return apiFetch(`/projects/${projectId}/setup-task/${setupTaskId}/send-invitations`, {
+      method: "POST",
+    });
+  },
+
+  /**
+   * POST /api/projects/{projectId}/setup-task/{setupTaskId}/select-time-slot/{slotId}
+   * Select the final time slot for the kickoff meeting
+   */
+  selectTimeSlot: async (
+    projectId: string,
+    setupTaskId: string,
+    slotId: string
+  ): Promise<{ data: SetupTask }> => {
+    return apiFetch(`/projects/${projectId}/setup-task/${setupTaskId}/select-time-slot/${slotId}`, {
+      method: "POST",
+    });
+  },
+
+  // ============ Required Document Acknowledgements ============
+
+  /**
+   * GET /api/projects/{projectId}/setup-task/{setupTaskId}/required-documents
+   * Get required project documents for acknowledgement
+   */
+  getRequiredDocuments: async (
+    projectId: string,
+    setupTaskId: string
+  ): Promise<RequiredDocument[]> => {
+    return apiFetch(`/projects/${projectId}/setup-task/${setupTaskId}/required-documents`);
+  },
+
+  /**
+   * POST /api/projects/{projectId}/setup-task/{setupTaskId}/required-documents/{docId}/acknowledge
+   * Acknowledge a required document (current user)
+   */
+  acknowledgeDocument: async (
+    projectId: string,
+    setupTaskId: string,
+    docId: string
+  ): Promise<RequiredDocument> => {
+    return apiFetch(`/projects/${projectId}/setup-task/${setupTaskId}/required-documents/${docId}/acknowledge`, {
+      method: "POST",
+    });
+  },
+
+  /**
+   * GET /api/projects/{projectId}/setup-task/{setupTaskId}/document-acknowledgement-status
+   * Get status of all document acknowledgements
+   */
+  getDocumentAcknowledgementStatus: async (
+    projectId: string,
+    setupTaskId: string
+  ): Promise<DocumentAcknowledgementStatus> => {
+    return apiFetch(`/projects/${projectId}/setup-task/${setupTaskId}/document-acknowledgement-status`);
   },
 };

@@ -1166,7 +1166,7 @@ export interface GetAreaTemplatesParams {
 // ============ Setup Tasks ============
 
 export type SetupTaskType = "upload_documents" | "add_members" | "add_signers" | "kickoff_meeting" | "define_decks" | "custom";
-export type SetupTaskStatus = "pending" | "scheduled" | "completed";
+export type SetupTaskStatus = "pending" | "awaiting_responses" | "scheduled" | "completed";
 
 export interface SetupTaskAssignee {
   "@type": "Person";
@@ -1239,6 +1239,7 @@ export interface SetupTask {
   scheduledDate: string | null;
   completedAt: string | null;
   sortOrder: number;
+  allDocumentsAcknowledged: boolean; // All required documents acknowledged
   allSigned: boolean;
   allItemsCompleted: boolean;
   isComplete: boolean;
@@ -1246,6 +1247,140 @@ export interface SetupTask {
   checklistItems: SetupTaskChecklistItem[];
   notes: SetupTaskNote[];
   documents: SetupTaskDocument[];
+  proposedDates?: ProposedDate[];
+}
+
+// Document Acknowledgement Types
+export interface RequiredDocumentAcknowledgement {
+  "@type"?: "Person";
+  identifier: string;
+  name: string;
+  acknowledgedAt: string | null;
+}
+
+export interface RequiredDocument {
+  "@context"?: string;
+  "@type"?: "DigitalDocument";
+  identifier: string;
+  name: string;
+  fileName?: string;
+  category?: {
+    "@type"?: "DefinedTerm";
+    identifier: string;
+    name: string;
+  };
+  encodingFormat?: string;
+  contentSize?: string;
+  contentSizeBytes?: number;
+  contentUrl?: string;
+  isRequired: boolean;
+  isFinalDocument?: boolean;
+  dateCreated?: string;
+  dateModified?: string;
+  acknowledgements: RequiredDocumentAcknowledgement[];
+  allAcknowledged: boolean;
+  acknowledgementCount: number;
+  totalAssignees: number;
+}
+
+export interface DocumentAcknowledgementStatusItem {
+  id: string;
+  title: string;
+  acknowledgedCount: number;
+  totalAssignees: number;
+  allAcknowledged: boolean;
+}
+
+export interface DocumentAcknowledgementStatus {
+  totalDocuments: number;
+  allAcknowledged: boolean;
+  documents: DocumentAcknowledgementStatusItem[];
+}
+
+// ============ Kickoff Meeting Scheduling ============
+
+export interface TimeSlotResponseUser {
+  userId: string;
+  userName: string;
+  isAvailable: boolean;
+}
+
+export interface TimeSlot {
+  "@type"?: "Event";
+  id: string;
+  startTime: string; // HH:MM format
+  endTime: string; // HH:MM format
+  isSelected: boolean;
+  availableCount: number;
+  unavailableCount?: number;
+  responseCount?: number;
+  totalAttendees: number;
+  allCanAttend: boolean;
+  responses: TimeSlotResponseUser[];
+}
+
+export interface ProposedDate {
+  "@type"?: "Event";
+  id: string;
+  proposedDate: string; // YYYY-MM-DD format
+  hasSelectedTimeSlot?: boolean;
+  timeSlots: TimeSlot[];
+}
+
+export interface SelectedTimeSlot {
+  identifier: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  responses: TimeSlotResponseUser[];
+}
+
+export interface SchedulingStatus {
+  status: SetupTaskStatus;
+  proposedDates: ProposedDate[];
+  allResponded: boolean;
+  respondedCount: number;
+  totalAttendees: number;
+  timeSlotsWhereAllCanAttend: string[]; // Array of time slot IDs
+  selectedTimeSlot?: SelectedTimeSlot;
+}
+
+// Request types for scheduling
+export interface TimeSlotInput {
+  start_time: string; // HH:MM format
+  end_time: string; // HH:MM format
+}
+
+export interface AddProposedDateRequest {
+  date: string; // YYYY-MM-DD format
+  time_slots: TimeSlotInput[];
+}
+
+export interface AddTimeSlotRequest {
+  start_time: string;
+  end_time: string;
+}
+
+export interface RespondToTimeSlotRequest {
+  is_available: boolean;
+}
+
+export interface BulkTimeSlotResponse {
+  time_slot_id: string;
+  is_available: boolean;
+}
+
+export interface BulkRespondRequest {
+  responses: BulkTimeSlotResponse[];
+}
+
+// Legacy - keep for backwards compatibility
+export interface AddProposedDatesRequest {
+  dates: string[]; // ISO date strings (deprecated)
+}
+
+export interface RespondToDateRequest {
+  is_available: boolean;
 }
 
 export interface CreateSetupTaskNoteRequest {
