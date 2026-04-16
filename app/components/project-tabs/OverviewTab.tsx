@@ -11,6 +11,7 @@ import Button from "@/app/components/ui/Button";
 import Alert from "@/app/components/ui/Alert";
 import CreateAreaModal from "@/app/components/modals/CreateAreaModal";
 import KickoffMeetingModal from "@/app/components/modals/KickoffMeetingModal";
+import KickoffSchedulingModal from "@/app/components/modals/KickoffSchedulingModal";
 import CreateDeckModal from "@/app/components/modals/CreateDeckModal";
 import { useAreas, setupTasksApi, useCurrentUser } from "@/lib/api";
 import { useDecks } from "@/lib/api/decks";
@@ -159,9 +160,27 @@ export default function OverviewTab({
     );
   }, [setupTasks, currentUser, canEditProject]);
 
-  const pendingTasksCount = visibleSetupTasks.filter((task) => !(task.isComplete || task.actionStatus === "completed")).length;
+  // Check if all required documents are uploaded (for kickoff meeting blocking)
+  const requiredDocs = documentTypes?.filter(dt => dt.isRequired) || [];
+  const allRequiredDocsUploaded = requiredDocs.length === 0 || requiredDocs.every(doc => doc.documentCount > 0);
+
+  // Check if members have been added
+  const addMembersTask = visibleSetupTasks.find(t => t.additionalType === "add_members");
+  const membersAdded = addMembersTask ? (addMembersTask.isComplete || addMembersTask.actionStatus === "completed") : true;
+
+  // Count blocked tasks (kickoff meetings without required docs OR without members)
+  const blockedTasksCount = visibleSetupTasks.filter((task) => {
+    const isCompleted = task.isComplete || task.actionStatus === "completed";
+    return task.additionalType === "kickoff_meeting" && !isCompleted && (!allRequiredDocsUploaded || !membersAdded);
+  }).length;
+
   const completedTasksCount = visibleSetupTasks.filter((task) => task.isComplete || task.actionStatus === "completed").length;
-  const allSetupTasksComplete = pendingTasksCount === 0 && visibleSetupTasks.length > 0;
+  const pendingTasksCount = visibleSetupTasks.filter((task) => {
+    const isCompleted = task.isComplete || task.actionStatus === "completed";
+    const isBlocked = task.additionalType === "kickoff_meeting" && !isCompleted && (!allRequiredDocsUploaded || !membersAdded);
+    return !isCompleted && !isBlocked;
+  }).length;
+  const allSetupTasksComplete = (pendingTasksCount + blockedTasksCount) === 0 && visibleSetupTasks.length > 0;
 
   // Automatically update project status to "active" when all setup tasks are complete
   useEffect(() => {
@@ -286,6 +305,11 @@ export default function OverviewTab({
                   {t("setupTasks.pendingCount", { count: pendingTasksCount })}
                 </span>
               )}
+              {blockedTasksCount > 0 && (
+                <span className="text-red-600 dark:text-red-400">
+                  {t("setupTasks.blockedCount", { count: blockedTasksCount })}
+                </span>
+              )}
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
@@ -294,6 +318,7 @@ export default function OverviewTab({
                 key={task.identifier}
                 task={task}
                 documentTypes={documentTypes || undefined}
+                allTasks={visibleSetupTasks}
                 onViewDetails={handleViewTaskDetails}
                 onDefineDecks={() => {
                   setIsDeckEditMode(false);
@@ -434,16 +459,29 @@ export default function OverviewTab({
         />
       )}
 
-      {/* Kickoff Meeting Modal */}
-      {isKickoffModalOpen && selectedTaskId && (
-        <KickoffMeetingModal
-          isOpen={isKickoffModalOpen}
-          onClose={handleKickoffModalClose}
-          projectId={projectId}
-          taskId={selectedTaskId}
-          onUpdate={handleTaskUpdate}
-        />
-      )}
+      {/* Kickoff Meeting Modal - Use scheduling modal for pending/awaiting, meeting modal for scheduled/completed */}
+      {isKickoffModalOpen && selectedTaskId && (() => {
+        const selectedTask = visibleSetupTasks.find(t => t.identifier === selectedTaskId);
+        const useSchedulingModal = selectedTask?.actionStatus === "pending" || selectedTask?.actionStatus === "awaiting_responses";
+
+        return useSchedulingModal ? (
+          <KickoffSchedulingModal
+            isOpen={isKickoffModalOpen}
+            onClose={handleKickoffModalClose}
+            projectId={projectId}
+            taskId={selectedTaskId}
+            onUpdate={handleTaskUpdate}
+          />
+        ) : (
+          <KickoffMeetingModal
+            isOpen={isKickoffModalOpen}
+            onClose={handleKickoffModalClose}
+            projectId={projectId}
+            taskId={selectedTaskId}
+            onUpdate={handleTaskUpdate}
+          />
+        );
+      })()}
 
       {/* Create/Edit Deck Modal */}
       {isDeckModalOpen && (

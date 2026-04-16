@@ -1,13 +1,15 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { ArrowRightIcon, CheckIcon, ClockIcon, CalendarIcon } from "@heroicons/react/24/outline";
+import { ArrowRightIcon, CheckIcon, ClockIcon, CalendarIcon, LockClosedIcon } from "@heroicons/react/24/outline";
 import type { SetupTask, SetupTaskType, DocumentType } from "@/lib/api/types";
 import { useCurrentUser } from "@/lib/api";
+import Tooltip from "@/app/components/ui/Tooltip";
 
 interface SetupTaskCardProps {
   task: SetupTask;
   documentTypes?: DocumentType[];
+  allTasks?: SetupTask[];
   onMarkComplete?: (taskId: string) => void;
   onViewDetails?: (taskId: string) => void;
   onDefineDecks?: () => void;
@@ -45,7 +47,7 @@ function getActionHref(taskType: SetupTaskType): string | undefined {
   }
 }
 
-export default function SetupTaskCard({ task, documentTypes, onMarkComplete, onViewDetails, onDefineDecks, onViewDecks }: SetupTaskCardProps) {
+export default function SetupTaskCard({ task, documentTypes, allTasks, onMarkComplete, onViewDetails, onDefineDecks, onViewDecks }: SetupTaskCardProps) {
   const t = useTranslations("projectDetail.setupTasks");
   const { data: currentUser } = useCurrentUser();
 
@@ -93,6 +95,31 @@ export default function SetupTaskCard({ task, documentTypes, onMarkComplete, onV
     (assignee) => assignee.identifier === currentUser.identifier
   );
 
+  // Check if all required documents are uploaded (for kickoff meeting blocking)
+  const requiredDocs = documentTypes?.filter(dt => dt.isRequired) || [];
+  const allRequiredDocsUploaded = requiredDocs.length === 0 || requiredDocs.every(doc => doc.documentCount > 0);
+  const missingDocsCount = requiredDocs.filter(doc => doc.documentCount === 0).length;
+
+  // Check if members have been added (add_members task is complete)
+  const addMembersTask = allTasks?.find(t => t.additionalType === "add_members");
+  const membersAdded = addMembersTask ? (addMembersTask.isComplete || addMembersTask.actionStatus === "completed") : true;
+
+  // Kickoff is blocked if documents are missing OR members haven't been added
+  const isKickoffBlocked = task.additionalType === "kickoff_meeting" && !isCompleted && (!allRequiredDocsUploaded || !membersAdded);
+
+  // Build tooltip message for blocked reasons
+  const getBlockedReasons = (): string[] => {
+    const reasons: string[] = [];
+    if (!membersAdded) {
+      reasons.push(t("kickoffBlocked.membersRequired"));
+    }
+    if (missingDocsCount > 0) {
+      reasons.push(t("kickoffBlocked.documentsRequired", { count: missingDocsCount }));
+    }
+    return reasons;
+  };
+  const blockedReasons = isKickoffBlocked ? getBlockedReasons() : [];
+
   // Determine badge color and text based on status
   const getBadgeStyles = () => {
     if (isCompleted) {
@@ -107,6 +134,13 @@ export default function SetupTaskCard({ task, documentTypes, onMarkComplete, onV
         bg: "bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400",
         icon: <CalendarIcon className="w-4 h-4" />,
         text: t("scheduled"),
+      };
+    }
+    if (isKickoffBlocked) {
+      return {
+        bg: "bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-400",
+        icon: <LockClosedIcon className="w-4 h-4" />,
+        text: t("blocked"),
       };
     }
     return {
@@ -124,10 +158,19 @@ export default function SetupTaskCard({ task, documentTypes, onMarkComplete, onV
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
           {task.name}
         </h3>
-        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium shrink-0 ${badgeStyles.bg}`}>
-          {badgeStyles.icon}
-          {badgeStyles.text}
-        </span>
+        {isKickoffBlocked ? (
+          <Tooltip content={blockedReasons.join("\n")} position="bottom" maxWidth="320px" multiline>
+            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium shrink-0 cursor-help ${badgeStyles.bg}`}>
+              {badgeStyles.icon}
+              {badgeStyles.text}
+            </span>
+          </Tooltip>
+        ) : (
+          <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium shrink-0 ${badgeStyles.bg}`}>
+            {badgeStyles.icon}
+            {badgeStyles.text}
+          </span>
+        )}
       </div>
 
       <div className="text-sm text-gray-600 dark:text-gray-400 mb-4 flex-grow">
@@ -149,20 +192,32 @@ export default function SetupTaskCard({ task, documentTypes, onMarkComplete, onV
 
         {/* View Details button for kickoff meeting */}
         {task.additionalType === "kickoff_meeting" && onViewDetails && (
-          <button
-            onClick={() => onViewDetails(task.identifier)}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-all shadow-md hover:shadow-lg"
-          >
-            <ArrowRightIcon className="w-4 h-4" />
-            {isCompleted
-              ? t("viewDetails")
-              : isScheduled
-                ? isUserAssignee
-                  ? t("sign")
-                  : t("view")
-                : t(`${translationKey}.action`)
-            }
-          </button>
+          <>
+            {isKickoffBlocked ? (
+              <button
+                disabled
+                className="inline-flex items-center gap-2 px-4 py-2 bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 text-sm font-medium rounded-lg cursor-not-allowed"
+              >
+                <LockClosedIcon className="w-4 h-4" />
+                {t(`${translationKey}.action`)}
+              </button>
+            ) : (
+              <button
+                onClick={() => onViewDetails(task.identifier)}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-all shadow-md hover:shadow-lg"
+              >
+                <ArrowRightIcon className="w-4 h-4" />
+                {isCompleted
+                  ? t("viewDetails")
+                  : isScheduled
+                    ? isUserAssignee
+                      ? t("sign")
+                      : t("view")
+                    : t(`${translationKey}.action`)
+                }
+              </button>
+            )}
+          </>
         )}
 
         {/* Define Decks button (when not completed) */}
