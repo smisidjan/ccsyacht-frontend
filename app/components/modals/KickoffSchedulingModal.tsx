@@ -78,6 +78,7 @@ export default function KickoffSchedulingModal({
   const [isAddingDates, setIsAddingDates] = useState(false);
   const [isSendingInvitations, setIsSendingInvitations] = useState(false);
   const [isSelectingDate, setIsSelectingDate] = useState(false);
+  const [confirmationMode, setConfirmationMode] = useState<"select" | "propose">("select");
   const [isRespondingToDate, setIsRespondingToDate] = useState(false);
 
   // Permissions
@@ -1298,8 +1299,8 @@ export default function KickoffSchedulingModal({
           <Alert type="success" message={t("responses.allRespondedWithDates", { count: schedulingStatus.timeSlotsWhereAllCanAttend.length })} />
         )}
 
-        {/* No common date warning */}
-        {schedulingStatus.allResponded && schedulingStatus.timeSlotsWhereAllCanAttend.length === 0 && (
+        {/* No common date warning - only show to admins */}
+        {canManageKickoff && schedulingStatus.allResponded && schedulingStatus.timeSlotsWhereAllCanAttend.length === 0 && (
           <Alert type="warning" message={t("responses.noCommonDate")} />
         )}
       </div>
@@ -1405,6 +1406,9 @@ export default function KickoffSchedulingModal({
       );
     }
 
+    // Check if there are valid new dates to send
+    const hasValidNewDates = localDatesWithTimes.some((d) => d.timeSlots.length > 0);
+
     // Select final time slot
     return (
       <div className="space-y-6">
@@ -1419,63 +1423,257 @@ export default function KickoffSchedulingModal({
           </p>
         </div>
 
-        {/* Time slot selection */}
-        <div className="space-y-2">
-          {slotsToShow.map((slot, idx) => (
-            <label
-              key={slot.slotId || `confirm-slot-${idx}`}
-              className={`flex items-center gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all ${
-                selectedFinalDateId === slot.slotId
-                  ? "border-blue-600 bg-blue-50 dark:bg-blue-900/20"
-                  : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
+        {/* Mode toggle when no common date - only for admins */}
+        {canManageKickoff && availableSlotIds.length === 0 && (
+          <div className="flex rounded-lg border border-gray-200 dark:border-gray-700 p-1 bg-gray-50 dark:bg-gray-800">
+            <button
+              onClick={() => setConfirmationMode("select")}
+              className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-all ${
+                confirmationMode === "select"
+                  ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
+                  : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
               }`}
             >
-              <input
-                type="radio"
-                name="finalTimeSlot"
-                checked={selectedFinalDateId === slot.slotId}
-                onChange={() => setSelectedFinalDateId(slot.slotId)}
-                className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
-              />
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="font-medium text-gray-900 dark:text-white">
-                    {formatDateDisplay(slot.date)}
-                  </span>
-                  <span className="text-gray-500 dark:text-gray-400">
-                    {formatTimeDisplay(slot.startTime)} - {formatTimeDisplay(slot.endTime)}
-                  </span>
-                  {slot.allCanAttend && (
-                    <span className="text-xs px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded">
-                      {t("confirmation.allCanAttend")}
-                    </span>
-                  )}
-                </div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  {slot.availableCount}/{slot.totalAttendees} {t("confirmation.available")}
-                </p>
-              </div>
-            </label>
-          ))}
-        </div>
-
-        {/* Confirm button */}
-        {canManageKickoff && (
-          <Button
-            variant="success"
-            onClick={handleSelectTimeSlot}
-            loading={isSelectingDate}
-            disabled={!selectedFinalDateId || isSelectingDate}
-            className="w-full"
-          >
-            <CheckIcon className="w-4 h-4" />
-            {t("confirmation.confirm")}
-          </Button>
+              {t("confirmation.selectExisting")}
+            </button>
+            <button
+              onClick={() => setConfirmationMode("propose")}
+              className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-all ${
+                confirmationMode === "propose"
+                  ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
+                  : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+              }`}
+            >
+              {t("confirmation.proposeNew")}
+            </button>
+          </div>
         )}
 
-        {/* Warning if selecting time slot where not everyone can attend */}
-        {selectedFinalDateId && availableSlotIds.length === 0 && (
-          <Alert type="warning" message={t("confirmation.someAbsent")} />
+        {/* Select existing date mode */}
+        {(confirmationMode === "select" || availableSlotIds.length > 0) && (
+          <>
+            {/* Time slot selection */}
+            <div className="space-y-2">
+              {slotsToShow.map((slot, idx) => (
+                <label
+                  key={slot.slotId || `confirm-slot-${idx}`}
+                  className={`flex items-center gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                    selectedFinalDateId === slot.slotId
+                      ? "border-blue-600 bg-blue-50 dark:bg-blue-900/20"
+                      : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="finalTimeSlot"
+                    checked={selectedFinalDateId === slot.slotId}
+                    onChange={() => setSelectedFinalDateId(slot.slotId)}
+                    className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                  />
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-gray-900 dark:text-white">
+                        {formatDateDisplay(slot.date)}
+                      </span>
+                      <span className="text-gray-500 dark:text-gray-400">
+                        {formatTimeDisplay(slot.startTime)} - {formatTimeDisplay(slot.endTime)}
+                      </span>
+                      {slot.allCanAttend && (
+                        <span className="text-xs px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded">
+                          {t("confirmation.allCanAttend")}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      {slot.availableCount}/{slot.totalAttendees} {t("confirmation.available")}
+                    </p>
+                  </div>
+                </label>
+              ))}
+            </div>
+
+            {/* Confirm button */}
+            {canManageKickoff && (
+              <Button
+                variant="success"
+                onClick={handleSelectTimeSlot}
+                loading={isSelectingDate}
+                disabled={!selectedFinalDateId || isSelectingDate}
+                className="w-full"
+              >
+                <CheckIcon className="w-4 h-4" />
+                {t("confirmation.confirm")}
+              </Button>
+            )}
+
+            {/* Warning if selecting time slot where not everyone can attend */}
+            {selectedFinalDateId && availableSlotIds.length === 0 && (
+              <Alert type="warning" message={t("confirmation.someAbsent")} />
+            )}
+          </>
+        )}
+
+        {/* Propose new dates mode */}
+        {confirmationMode === "propose" && availableSlotIds.length === 0 && canManageKickoff && (
+          <div className="space-y-4">
+            {/* New date cards with time slots */}
+            {localDatesWithTimes.length > 0 && (
+              <div className="space-y-3">
+                {localDatesWithTimes.map((dateWithTimes) => {
+                  const isExpanded = expandedDates.has(dateWithTimes.date);
+
+                  return (
+                    <div
+                      key={dateWithTimes.date}
+                      className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden bg-white dark:bg-gray-800 shadow-sm"
+                    >
+                      {/* Date Header */}
+                      <div
+                        className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800/50 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors"
+                        onClick={() => toggleDateExpansion(dateWithTimes.date)}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+                            <CalendarDaysIcon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                              {formatDateDisplay(dateWithTimes.date)}
+                            </p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                              {dateWithTimes.timeSlots.length === 0
+                                ? t("dates.noTimesYet")
+                                : t("dates.timeSlotCount", { count: dateWithTimes.timeSlots.length })
+                              }
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {dateWithTimes.timeSlots.length === 0 && (
+                            <span className="text-xs px-2 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-full">
+                              {t("dates.addTimesRequired")}
+                            </span>
+                          )}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRemoveLocalDate(dateWithTimes.date);
+                            }}
+                            className="p-1.5 text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
+                          >
+                            <XMarkIcon className="w-4 h-4" />
+                          </button>
+                          <div className={`transform transition-transform ${isExpanded ? "rotate-180" : ""}`}>
+                            <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Expanded Content - Time Slots */}
+                      {isExpanded && (
+                        <div className="p-4 border-t border-gray-200 dark:border-gray-700 space-y-4">
+                          {/* Time Chips */}
+                          {dateWithTimes.timeSlots.length > 0 && (
+                            <div className="flex flex-wrap gap-2">
+                              {dateWithTimes.timeSlots.map((slot, idx) => (
+                                <div
+                                  key={`${slot.startTime}-${slot.endTime}-${idx}`}
+                                  className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-full group"
+                                >
+                                  <ClockIcon className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                                  <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
+                                    {formatTimeDisplay(slot.startTime)} - {formatTimeDisplay(slot.endTime)}
+                                  </span>
+                                  <button
+                                    onClick={() => handleRemoveTimeFromDate(dateWithTimes.date, slot)}
+                                    className="p-0.5 text-blue-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                                  >
+                                    <XMarkIcon className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Add Time Slot Input */}
+                          <div className="flex flex-col sm:flex-row gap-2">
+                            <div className="flex items-center gap-2 flex-1">
+                              <span className="text-xs text-gray-500 dark:text-gray-400 min-w-[40px]">{t("dates.from")}</span>
+                              <input
+                                type="time"
+                                value={newTimeInputs[dateWithTimes.date]?.start || ""}
+                                onChange={(e) => setNewTimeInputs((prev) => ({
+                                  ...prev,
+                                  [dateWithTimes.date]: { ...prev[dateWithTimes.date], start: e.target.value }
+                                }))}
+                                className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                              />
+                            </div>
+                            <div className="flex items-center gap-2 flex-1">
+                              <span className="text-xs text-gray-500 dark:text-gray-400 min-w-[40px]">{t("dates.to")}</span>
+                              <input
+                                type="time"
+                                value={newTimeInputs[dateWithTimes.date]?.end || ""}
+                                onChange={(e) => setNewTimeInputs((prev) => ({
+                                  ...prev,
+                                  [dateWithTimes.date]: { ...prev[dateWithTimes.date], end: e.target.value }
+                                }))}
+                                className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                              />
+                            </div>
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              onClick={() => handleAddTimeToDate(dateWithTimes.date)}
+                              disabled={!newTimeInputs[dateWithTimes.date]?.start || !newTimeInputs[dateWithTimes.date]?.end}
+                            >
+                              <PlusIcon className="w-4 h-4" />
+                              {t("dates.addTime")}
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Add New Date */}
+            <div className="flex gap-2">
+              <input
+                type="date"
+                value={newDateInput}
+                onChange={(e) => setNewDateInput(e.target.value)}
+                min={new Date().toISOString().split("T")[0]}
+                className="flex-1 px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+              <Button
+                variant="secondary"
+                onClick={handleAddDate}
+                disabled={!newDateInput}
+              >
+                <PlusIcon className="w-4 h-4" />
+                {t("dates.addDate")}
+              </Button>
+            </div>
+
+            {/* Send new invitations button */}
+            {hasValidNewDates && (
+              <Button
+                variant="primary"
+                onClick={handleSendInvitations}
+                loading={isSendingInvitations}
+                disabled={isSendingInvitations}
+                className="w-full"
+              >
+                <PaperAirplaneIcon className="w-4 h-4" />
+                {t("confirmation.sendNewInvitations")}
+              </Button>
+            )}
+          </div>
         )}
       </div>
     );

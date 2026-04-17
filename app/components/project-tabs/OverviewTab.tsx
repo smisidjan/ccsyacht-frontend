@@ -155,9 +155,18 @@ export default function OverviewTab({
     if (canEditProject) return setupTasks;
 
     // Other users only see tasks where they are assignees
-    return setupTasks.filter(task =>
-      task.assignees?.some(assignee => assignee.identifier === currentUser.identifier)
-    );
+    // For kickoff_meeting: only show after invitations are sent (actionStatus !== "pending")
+    return setupTasks.filter(task => {
+      const isAssignee = task.assignees?.some(assignee => assignee.identifier === currentUser.identifier);
+      if (!isAssignee) return false;
+
+      // For kickoff meeting, only show after invitations are sent
+      if (task.additionalType === "kickoff_meeting" && task.actionStatus === "pending") {
+        return false;
+      }
+
+      return true;
+    });
   }, [setupTasks, currentUser, canEditProject]);
 
   // Check if all required documents are uploaded (for kickoff meeting blocking)
