@@ -1481,17 +1481,20 @@ export default function KickoffSchedulingModal({
     );
   };
 
+  // Determine if we should show simplified attendee view
+  const showAttendeeOnlyView = !canManageKickoff && isCurrentUserAttendee;
+
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
       title={task?.name || t("title")}
-      size="lg"
+      size={showAttendeeOnlyView ? "md" : "lg"}
       footer={
         <div className="flex justify-between">
           <div>
-            {/* Back button - only show in dates phase when pending */}
-            {currentPhase === "dates" && task?.actionStatus === "pending" && canManageKickoff && (
+            {/* Back button - only show in dates phase when pending for admins */}
+            {!showAttendeeOnlyView && currentPhase === "dates" && task?.actionStatus === "pending" && canManageKickoff && (
               <Button variant="secondary" onClick={goBack}>
                 {t("dates.back")}
               </Button>
@@ -1505,22 +1508,24 @@ export default function KickoffSchedulingModal({
       error={error}
     >
       <div className="space-y-6">
-        {/* Stepper */}
-        <div className="pb-4 border-b border-gray-200 dark:border-gray-700">
-          <Stepper
-            steps={steps}
-            currentStep={currentPhase}
-            onStepClick={(stepId) => {
-              // Only allow navigation back when in pending status
-              if (task?.actionStatus === "pending" && stepId === "attendees" && currentPhase === "dates") {
-                setManualPhase("attendees");
-              }
-            }}
-          />
-        </div>
+        {/* Stepper - only show for admins */}
+        {!showAttendeeOnlyView && (
+          <div className="pb-4 border-b border-gray-200 dark:border-gray-700">
+            <Stepper
+              steps={steps}
+              currentStep={currentPhase}
+              onStepClick={(stepId) => {
+                // Only allow navigation back when in pending status
+                if (task?.actionStatus === "pending" && stepId === "attendees" && currentPhase === "dates") {
+                  setManualPhase("attendees");
+                }
+              }}
+            />
+          </div>
+        )}
 
-        {/* Phase Content */}
-        {renderPhaseContent()}
+        {/* Phase Content - attendees only see responses phase */}
+        {showAttendeeOnlyView ? renderResponsesPhase() : renderPhaseContent()}
       </div>
     </Modal>
   );
