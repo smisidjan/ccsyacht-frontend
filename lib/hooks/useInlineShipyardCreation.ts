@@ -42,7 +42,7 @@ export function useInlineShipyardCreation({
   };
 
   const handleCreate = async () => {
-    if (!name.trim() || !contactName.trim() || !contactEmail.trim()) return;
+    if (!name.trim()) return;
 
     setIsCreating(true);
     let newShipyard: Shipyard | null = null;

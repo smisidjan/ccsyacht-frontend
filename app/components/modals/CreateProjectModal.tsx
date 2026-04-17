@@ -265,11 +265,7 @@ export default function CreateProjectModal({
               isLoading={shipyardCreation.isCreating}
             />
           }
-        >
-          {formData.shipyardId && (
-            <Alert type="info" message={t("shipyardContactAutoAdd")} className="mt-3" />
-          )}
-        </SelectOrCreateSection>
+        />
 
         <FormSelect
           id="project-type"

@@ -381,21 +381,12 @@ export interface Shipyard {
   name: string;
   address?: string;
   contactPoint?: ShipyardContactPoint;
-  linkedUser?: {
-    identifier: string;
-    name: string;
-    email: string;
-  };
-  invitationStatus?: 'pending' | 'accepted';
   dateCreated?: string;
   dateModified?: string;
 }
 
 export interface CreateShipyardRequest {
   name: string;
-  // Option 1: Link existing user by ID
-  contact_user_id?: string;
-  // Option 2: New contact person (requires both name + email if not using contact_user_id)
   contact_name?: string;
   contact_email?: string;
   contact_phone?: string;
@@ -404,9 +395,6 @@ export interface CreateShipyardRequest {
 
 export interface UpdateShipyardRequest {
   name?: string;
-  // Option 1: Link existing user by ID
-  contact_user_id?: string;
-  // Option 2: Update contact person details
   contact_name?: string;
   contact_email?: string;
   contact_phone?: string;
