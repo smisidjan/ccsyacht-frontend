@@ -431,7 +431,11 @@
           "awaiting": "Wacht op Reactie",
           "noResponses": "Nog geen reacties",
           "pendingLabel": "wachtend",
-          "allResponded": "Iedereen heeft gereageerd"
+          "allResponded": "Iedereen heeft gereageerd",
+          "haveResponded": "hebben gereageerd",
+          "needsYourResponse": "wacht op jouw reactie",
+          "new": "NIEUW",
+          "actionNeeded": "Actie vereist"
         },
         "responseRecorded": "Je beschikbaarheid is geregistreerd",
         "responseError": "Kan reactie niet registreren",

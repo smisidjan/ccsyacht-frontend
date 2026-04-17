@@ -80,6 +80,7 @@ export default function KickoffSchedulingModal({
   const [isSelectingDate, setIsSelectingDate] = useState(false);
   const [confirmationMode, setConfirmationMode] = useState<"select" | "propose">("select");
   const [isRespondingToDate, setIsRespondingToDate] = useState(false);
+  const [responseDateExpansionOverrides, setResponseDateExpansionOverrides] = useState<Map<string, boolean>>(new Map());
 
   // Permissions
   const canManageKickoff = hasPermission(PERMISSIONS.MANAGE_KICKOFF_MEETING);
@@ -1035,271 +1036,262 @@ export default function KickoffSchedulingModal({
     });
   };
 
-  // Phase 3: Responses
+  // Phase 3: Responses - Doodle-style compact grid
   const renderResponsesPhase = () => {
     if (!schedulingStatus) {
       return <Alert type="info" message={t("responses.loading")} />;
     }
 
-    const { responded, pending } = attendeeResponseStatus;
+    // Calculate slots needing current user's response
+    const slotsNeedingResponse = isCurrentUserAttendee
+      ? schedulingStatus.proposedDates.flatMap(pd =>
+          pd.timeSlots.filter(slot => currentUserResponses[slot.id] === null)
+        ).length
+      : 0;
+
+    // Check if there are any new slots (no responses at all)
+    const hasNewSlots = schedulingStatus.proposedDates.some(pd =>
+      pd.timeSlots.some(slot => slot.responses.length === 0)
+    );
+
+    // Check if a date should be expanded by default
+    const isDateExpandedByDefault = (proposedDate: typeof schedulingStatus.proposedDates[0]) => {
+      // Check if all slots have full responses (all attendees responded)
+      const allSlotsFullyResponded = proposedDate.timeSlots.every(
+        slot => slot.responses.length === slot.totalAttendees
+      );
+      // If all responded, collapse by default; otherwise expand
+      return !allSlotsFullyResponded;
+    };
+
+    // Toggle expansion for a date card
+    const toggleResponseDateExpansion = (dateId: string, proposedDate: typeof schedulingStatus.proposedDates[0]) => {
+      setResponseDateExpansionOverrides((prev) => {
+        const next = new Map(prev);
+        const currentState = next.has(dateId) ? next.get(dateId) : isDateExpandedByDefault(proposedDate);
+        next.set(dateId, !currentState);
+        return next;
+      });
+    };
+
+    // Check if a date is expanded (either manually toggled or by default)
+    const isDateExpanded = (dateId: string, proposedDate: typeof schedulingStatus.proposedDates[0]) => {
+      // If user has manually toggled this date, use that state
+      if (responseDateExpansionOverrides.has(dateId)) {
+        return responseDateExpansionOverrides.get(dateId)!;
+      }
+      // Otherwise use default behavior
+      return isDateExpandedByDefault(proposedDate);
+    };
 
     return (
-      <div className="space-y-6">
-        <div>
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-            {t("responses.title")}
-          </h3>
-          <p className="text-sm text-gray-600 dark:text-gray-400">
-            {t("responses.description", {
-              responded: schedulingStatus.respondedCount,
-              total: schedulingStatus.totalAttendees,
-            })}
-          </p>
+      <div className="space-y-4">
+        {/* Compact header with action needed indicator */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+              {t("responses.title")}
+            </h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              {schedulingStatus.respondedCount}/{schedulingStatus.totalAttendees} {t("responses.haveResponded")}
+            </p>
+          </div>
+          {slotsNeedingResponse > 0 && (
+            <span className="px-3 py-1.5 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-sm font-medium rounded-full">
+              {slotsNeedingResponse} {t("responses.needsYourResponse")}
+            </span>
+          )}
         </div>
 
-        {/* Attendee Status Summary Bar */}
-        <div className="flex flex-col sm:flex-row gap-4 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700">
-          {/* Responded */}
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-2">
-              <CheckCircleIcon className="w-4 h-4 text-green-600 dark:text-green-400" />
-              <span className="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">
-                {t("responses.responded")} ({responded.length})
-              </span>
-            </div>
-            <div className="flex items-center gap-1 flex-wrap">
-              {responded.length > 0 ? (
-                responded.map((attendee) => (
-                  <div key={attendee.id} className="group relative">
-                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 ring-2 ring-green-500">
-                      {attendee.name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()}
-                    </div>
-                    <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 px-2 py-1 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-lg">
-                      {attendee.name}
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <span className="text-xs text-gray-400 dark:text-gray-500 italic">
-                  {t("responses.noResponses")}
-                </span>
-              )}
-            </div>
-          </div>
+        {/* Date cards with time slots */}
+        <div className="space-y-3">
+          {schedulingStatus.proposedDates.map((proposedDate, dateIdx) => {
+            // Check if this date has new (unresponded) slots
+            const hasNewSlotsInDate = proposedDate.timeSlots.some(slot => slot.responses.length === 0);
+            const userNeedsToRespondToDate = isCurrentUserAttendee && proposedDate.timeSlots.some(
+              slot => currentUserResponses[slot.id] === null
+            );
+            const dateId = proposedDate.id || `date-${dateIdx}`;
+            const isExpanded = isDateExpanded(dateId, proposedDate);
 
-          {/* Divider */}
-          <div className="hidden sm:block w-px bg-gray-200 dark:bg-gray-700" />
-          <div className="sm:hidden h-px bg-gray-200 dark:bg-gray-700" />
+            // Calculate summary stats for collapsed view
+            const totalSlots = proposedDate.timeSlots.length;
+            const slotsWithAllAvailable = proposedDate.timeSlots.filter(s => s.allCanAttend).length;
 
-          {/* Pending */}
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-2">
-              <ClockIcon className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-              <span className="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">
-                {t("responses.awaiting")} ({pending.length})
-              </span>
-            </div>
-            <div className="flex items-center gap-1 flex-wrap">
-              {pending.length > 0 ? (
-                pending.map((attendee) => (
-                  <div key={attendee.id} className="group relative">
-                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 ring-2 ring-dashed ring-gray-300 dark:ring-gray-600">
-                      {attendee.name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()}
-                    </div>
-                    <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 px-2 py-1 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-lg">
-                      {attendee.name} <span className="text-amber-400">({t("responses.pendingLabel")})</span>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <span className="text-xs text-green-600 dark:text-green-400 font-medium">
-                  {t("responses.allResponded")}
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Response cards per date with time slots */}
-        <div className="space-y-4">
-          {schedulingStatus.proposedDates.map((proposedDate, dateIdx) => (
-            <div
-              key={proposedDate.id || `date-${dateIdx}`}
-              className="border border-gray-200 dark:border-gray-700 rounded-xl"
-            >
-              {/* Date Header */}
-              <div className="flex items-center gap-3 p-4 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700">
-                <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
-                  <CalendarDaysIcon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                    {formatDateDisplay(proposedDate.proposedDate)}
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    {proposedDate.timeSlots.length} {t("responses.timeSlots")}
-                  </p>
-                </div>
-              </div>
-
-              {/* Time Slots Table */}
-              <div className="overflow-visible">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-gray-100 dark:border-gray-800 bg-gray-25 dark:bg-gray-850">
-                      <th className="text-left py-2 px-4 font-medium text-gray-600 dark:text-gray-400 text-xs uppercase tracking-wide">
-                        {t("responses.time")}
-                      </th>
-                      <th className="text-center py-2 px-4 font-medium text-gray-600 dark:text-gray-400 text-xs uppercase tracking-wide">
-                        {t("responses.available")}
-                      </th>
-                      {isCurrentUserAttendee && (
-                        <th className="text-center py-2 px-4 font-medium text-gray-600 dark:text-gray-400 text-xs uppercase tracking-wide">
-                          {t("responses.yourResponse")}
-                        </th>
+            return (
+              <div
+                key={dateId}
+                className={`border rounded-xl overflow-hidden ${
+                  hasNewSlotsInDate
+                    ? "border-blue-300 dark:border-blue-700 bg-blue-50/50 dark:bg-blue-900/10"
+                    : "border-gray-200 dark:border-gray-700"
+                }`}
+              >
+                {/* Date Header - Clickable */}
+                <div
+                  onClick={() => toggleResponseDateExpansion(dateId, proposedDate)}
+                  className={`flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-opacity-80 transition-colors ${
+                  hasNewSlotsInDate
+                    ? "bg-blue-100/50 dark:bg-blue-900/20"
+                    : "bg-gray-50 dark:bg-gray-800/50"
+                }`}>
+                  <div className="flex items-center gap-3">
+                    <CalendarDaysIcon className={`w-5 h-5 ${
+                      hasNewSlotsInDate ? "text-blue-600 dark:text-blue-400" : "text-gray-400"
+                    }`} />
+                    <div>
+                      <span className="font-medium text-gray-900 dark:text-white">
+                        {formatDateDisplay(proposedDate.proposedDate)}
+                      </span>
+                      {/* Collapsed summary */}
+                      {!isExpanded && (
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          {totalSlots} {t("responses.timeSlots")}
+                          {slotsWithAllAvailable > 0 && (
+                            <span className="text-green-600 dark:text-green-400 ml-2">
+                              • {slotsWithAllAvailable} {t("confirmation.allCanAttend").toLowerCase()}
+                            </span>
+                          )}
+                        </p>
                       )}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {proposedDate.timeSlots.map((slot, slotIdx) => {
-                      const userResponse = currentUserResponses[slot.id];
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {hasNewSlotsInDate && (
+                      <span className="px-2 py-0.5 bg-blue-600 text-white text-xs font-medium rounded">
+                        {t("responses.new")}
+                      </span>
+                    )}
+                    {userNeedsToRespondToDate && (
+                      <span className="px-2 py-0.5 bg-amber-500 text-white text-xs font-medium rounded">
+                        {t("responses.actionNeeded")}
+                      </span>
+                    )}
+                    {/* Chevron */}
+                    <div className={`transform transition-transform ${isExpanded ? "rotate-180" : ""}`}>
+                      <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
 
-                      return (
-                        <tr
-                          key={slot.id || `slot-${dateIdx}-${slotIdx}`}
-                          className={`border-b border-gray-100 dark:border-gray-800 last:border-b-0 ${
-                            slot.allCanAttend ? "bg-green-50 dark:bg-green-900/10" : ""
-                          }`}
-                        >
-                          <td className="py-3 px-4">
-                            <div className="flex flex-col gap-2">
-                              <div className="flex items-center gap-2">
-                                <ClockIcon className="w-4 h-4 text-gray-400" />
-                                <span className="text-gray-900 dark:text-white font-medium">
-                                  {formatTimeDisplay(slot.startTime)} - {formatTimeDisplay(slot.endTime)}
-                                </span>
-                                {slot.allCanAttend && (
-                                  <CheckCircleIcon className="w-4 h-4 text-green-600 dark:text-green-400" />
-                                )}
+                {/* Time Slots - Compact rows (collapsible) */}
+                {isExpanded && (
+                <div className="divide-y divide-gray-100 dark:divide-gray-800">
+                  {proposedDate.timeSlots.map((slot, slotIdx) => {
+                    const userResponse = currentUserResponses[slot.id];
+                    const isNewSlot = slot.responses.length === 0;
+                    const pendingAttendees = task?.assignees?.filter(
+                      (assignee) => !slot.responses.some((r) => r.userId === assignee.identifier)
+                    ) || [];
+
+                    return (
+                      <div
+                        key={slot.id || `slot-${dateIdx}-${slotIdx}`}
+                        className={`px-4 py-2.5 flex items-center gap-4 ${
+                          slot.allCanAttend ? "bg-green-50 dark:bg-green-900/10" : ""
+                        }`}
+                      >
+                        {/* Time */}
+                        <div className="flex items-center gap-2 min-w-[120px]">
+                          <ClockIcon className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                          <span className="text-sm font-medium text-gray-900 dark:text-white">
+                            {formatTimeDisplay(slot.startTime)} - {formatTimeDisplay(slot.endTime)}
+                          </span>
+                        </div>
+
+                        {/* Doodle-style avatar grid - compact inline */}
+                        <div className="flex items-center gap-0.5 flex-1">
+                          {/* Responded - available */}
+                          {slot.responses.filter(r => r.isAvailable).map((response) => (
+                            <div key={response.userId} className="group relative">
+                              <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-medium bg-green-500 text-white">
+                                {response.userName.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()}
                               </div>
-                              {/* All attendee avatars - showing responded and pending */}
-                              <div className="flex items-center gap-1 flex-wrap">
-                                {/* Responded attendees */}
-                                {slot.responses.map((response) => (
-                                  <div
-                                    key={response.userId}
-                                    className="group relative"
-                                  >
-                                    <div
-                                      className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium ring-2 ${
-                                        response.isAvailable
-                                          ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 ring-green-500"
-                                          : "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 ring-red-500"
-                                      }`}
-                                    >
-                                      {response.userName.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()}
-                                    </div>
-                                    {/* Tooltip */}
-                                    <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 px-2 py-1 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-lg">
-                                      {response.userName}
-                                      <span className={response.isAvailable ? " text-green-400" : " text-red-400"}>
-                                        {response.isAvailable ? " ✓" : " ✗"}
-                                      </span>
-                                    </div>
-                                  </div>
-                                ))}
-                                {/* Pending attendees (those who haven't responded to this slot) */}
-                                {task?.assignees?.filter(
-                                  (assignee) => !slot.responses.some((r) => r.userId === assignee.identifier)
-                                ).map((attendee) => (
-                                  <div
-                                    key={attendee.identifier}
-                                    className="group relative"
-                                  >
-                                    <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 ring-2 ring-dashed ring-gray-300 dark:ring-gray-600">
-                                      {attendee.name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()}
-                                    </div>
-                                    {/* Tooltip */}
-                                    <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 px-2 py-1 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-lg">
-                                      {attendee.name}
-                                      <span className="text-amber-400"> ?</span>
-                                    </div>
-                                  </div>
-                                ))}
+                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-gray-900 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                                {response.userName} ✓
                               </div>
                             </div>
-                          </td>
-                          <td className="py-3 px-4 text-center">
-                            <span
-                              className={`px-2 py-1 rounded text-xs font-medium ${
-                                slot.allCanAttend
-                                  ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400"
-                                  : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300"
-                              }`}
-                            >
-                              {slot.availableCount}/{slot.totalAttendees}
-                            </span>
-                          </td>
-                          {isCurrentUserAttendee && (
-                            <td className="py-3 px-4 text-center min-w-[140px]">
-                              <div className="flex items-center justify-center h-8">
-                                {userResponse === null ? (
-                                  <div className="flex items-center justify-center gap-2">
-                                    <Button
-                                      variant="success"
-                                      size="sm"
-                                      onClick={() => handleRespondToTimeSlot(slot.id, true)}
-                                      disabled={isRespondingToDate}
-                                    >
-                                      <CheckIcon className="w-3 h-3" />
-                                    </Button>
-                                    <Button
-                                      variant="danger"
-                                      size="sm"
-                                      onClick={() => handleRespondToTimeSlot(slot.id, false)}
-                                      disabled={isRespondingToDate}
-                                    >
-                                      <XMarkIcon className="w-3 h-3" />
-                                    </Button>
-                                  </div>
-                                ) : (
-                                  <span
-                                    className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium ${
-                                      userResponse
-                                        ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400"
-                                        : "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400"
-                                    }`}
-                                  >
-                                    {userResponse ? (
-                                      <>
-                                        <CheckIcon className="w-3 h-3" /> {t("responses.canAttend")}
-                                      </>
-                                    ) : (
-                                      <>
-                                        <XMarkIcon className="w-3 h-3" /> {t("responses.cannotAttend")}
-                                      </>
-                                    )}
-                                  </span>
-                                )}
+                          ))}
+                          {/* Responded - unavailable */}
+                          {slot.responses.filter(r => !r.isAvailable).map((response) => (
+                            <div key={response.userId} className="group relative">
+                              <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-medium bg-red-500 text-white">
+                                {response.userName.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()}
                               </div>
-                            </td>
-                          )}
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-gray-900 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                                {response.userName} ✗
+                              </div>
+                            </div>
+                          ))}
+                          {/* Pending */}
+                          {pendingAttendees.map((attendee) => (
+                            <div key={attendee.identifier} className="group relative">
+                              <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-medium bg-gray-300 dark:bg-gray-600 text-gray-600 dark:text-gray-300">
+                                {attendee.name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()}
+                              </div>
+                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-gray-900 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                                {attendee.name} ?
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Availability count */}
+                        <div className={`text-xs font-medium px-2 py-1 rounded ${
+                          slot.allCanAttend
+                            ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400"
+                            : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"
+                        }`}>
+                          {slot.availableCount}/{slot.totalAttendees}
+                        </div>
+
+                        {/* User response actions */}
+                        {isCurrentUserAttendee && (
+                          <div className="flex items-center gap-1 min-w-[80px] justify-end">
+                            {userResponse === null ? (
+                              <>
+                                <button
+                                  onClick={() => handleRespondToTimeSlot(slot.id, true)}
+                                  disabled={isRespondingToDate}
+                                  className="w-7 h-7 flex items-center justify-center rounded-full bg-green-100 hover:bg-green-200 dark:bg-green-900/30 dark:hover:bg-green-900/50 text-green-600 dark:text-green-400 transition-colors"
+                                >
+                                  <CheckIcon className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => handleRespondToTimeSlot(slot.id, false)}
+                                  disabled={isRespondingToDate}
+                                  className="w-7 h-7 flex items-center justify-center rounded-full bg-red-100 hover:bg-red-200 dark:bg-red-900/30 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 transition-colors"
+                                >
+                                  <XMarkIcon className="w-4 h-4" />
+                                </button>
+                              </>
+                            ) : (
+                              <span className={`w-7 h-7 flex items-center justify-center rounded-full ${
+                                userResponse
+                                  ? "bg-green-500 text-white"
+                                  : "bg-red-500 text-white"
+                              }`}>
+                                {userResponse ? <CheckIcon className="w-4 h-4" /> : <XMarkIcon className="w-4 h-4" />}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
-        {/* All responded message */}
+        {/* Status messages - only when all responded */}
         {schedulingStatus.allResponded && schedulingStatus.timeSlotsWhereAllCanAttend.length > 0 && (
           <Alert type="success" message={t("responses.allRespondedWithDates", { count: schedulingStatus.timeSlotsWhereAllCanAttend.length })} />
         )}
-
-        {/* No common date warning - only show to admins */}
         {canManageKickoff && schedulingStatus.allResponded && schedulingStatus.timeSlotsWhereAllCanAttend.length === 0 && (
           <Alert type="warning" message={t("responses.noCommonDate")} />
         )}

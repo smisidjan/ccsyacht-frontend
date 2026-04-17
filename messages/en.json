@@ -431,7 +431,11 @@
           "awaiting": "Awaiting Response",
           "noResponses": "No responses yet",
           "pendingLabel": "pending",
-          "allResponded": "All have responded"
+          "allResponded": "All have responded",
+          "haveResponded": "have responded",
+          "needsYourResponse": "needs your response",
+          "new": "NEW",
+          "actionNeeded": "Action needed"
         },
         "responseRecorded": "Your availability has been recorded",
         "responseError": "Failed to record your response",
