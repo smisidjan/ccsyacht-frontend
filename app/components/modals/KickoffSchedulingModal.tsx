@@ -81,7 +81,7 @@ export default function KickoffSchedulingModal({
   const [isRespondingToDate, setIsRespondingToDate] = useState(false);
 
   // Permissions
-  const canEditProject = hasPermission(PERMISSIONS.EDIT_PROJECTS);
+  const canManageKickoff = hasPermission(PERMISSIONS.MANAGE_KICKOFF_MEETING);
 
   // Fetch project members and roles
   const { data: projectMembers } = useProjectMembers(projectId);
@@ -634,7 +634,7 @@ export default function KickoffSchedulingModal({
                         )}
                       </div>
                     </div>
-                    {canEditProject && (
+                    {canManageKickoff && (
                       <button
                         onClick={() => handleRemoveAttendee(assignee.identifier)}
                         className="p-1 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
@@ -650,7 +650,7 @@ export default function KickoffSchedulingModal({
         )}
 
         {/* Add attendees */}
-        {canEditProject && availableMembers && availableMembers.length > 0 && (
+        {canManageKickoff && availableMembers && availableMembers.length > 0 && (
           <div className="space-y-3">
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
               {t("attendees.addMore")}
@@ -716,7 +716,7 @@ export default function KickoffSchedulingModal({
         )}
 
         {/* Continue button when attendees are added */}
-        {task?.assignees && task.assignees.length > 0 && canEditProject && (
+        {task?.assignees && task.assignees.length > 0 && canManageKickoff && (
           <Button
             variant="primary"
             onClick={goForward}
@@ -777,7 +777,7 @@ export default function KickoffSchedulingModal({
                       <span className="text-xs px-2 py-1 bg-green-200 dark:bg-green-800/50 text-green-700 dark:text-green-400 rounded-full">
                         {t("dates.saved")}
                       </span>
-                      {canEditProject && (
+                      {canManageKickoff && (
                         <button
                           onClick={() => handleRemoveProposedDate(proposedDate.id)}
                           className="p-1.5 text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
@@ -853,7 +853,7 @@ export default function KickoffSchedulingModal({
                             {t("dates.addTimesRequired")}
                           </span>
                         )}
-                        {canEditProject && (
+                        {canManageKickoff && (
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -887,7 +887,7 @@ export default function KickoffSchedulingModal({
                                 <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
                                   {formatTimeDisplay(slot.startTime)} - {formatTimeDisplay(slot.endTime)}
                                 </span>
-                                {canEditProject && (
+                                {canManageKickoff && (
                                   <button
                                     onClick={() => handleRemoveTimeFromDate(dateWithTimes.date, slot)}
                                     className="p-0.5 text-blue-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
@@ -901,7 +901,7 @@ export default function KickoffSchedulingModal({
                         )}
 
                         {/* Add Time Slot Input - Start and End Time */}
-                        {canEditProject && (
+                        {canManageKickoff && (
                           <div className="flex flex-col sm:flex-row gap-2">
                             <div className="flex items-center gap-2 flex-1">
                               <span className="text-xs text-gray-500 dark:text-gray-400 min-w-[40px]">{t("dates.from")}</span>
@@ -948,7 +948,7 @@ export default function KickoffSchedulingModal({
         )}
 
         {/* Add New Date */}
-        {canEditProject && (
+        {canManageKickoff && (
           <div className="space-y-3">
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
               {t("dates.addNewDate")}
@@ -984,7 +984,7 @@ export default function KickoffSchedulingModal({
         )}
 
         {/* Send Invitations Button */}
-        {canEditProject && (hasValidDateTimes || existingDates.length > 0) && task?.assignees && task.assignees.length > 0 && (
+        {canManageKickoff && (hasValidDateTimes || existingDates.length > 0) && task?.assignees && task.assignees.length > 0 && (
           <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
             <Button
               variant="primary"
@@ -1460,7 +1460,7 @@ export default function KickoffSchedulingModal({
         </div>
 
         {/* Confirm button */}
-        {canEditProject && (
+        {canManageKickoff && (
           <Button
             variant="success"
             onClick={handleSelectTimeSlot}
@@ -1491,7 +1491,7 @@ export default function KickoffSchedulingModal({
         <div className="flex justify-between">
           <div>
             {/* Back button - only show in dates phase when pending */}
-            {currentPhase === "dates" && task?.actionStatus === "pending" && canEditProject && (
+            {currentPhase === "dates" && task?.actionStatus === "pending" && canManageKickoff && (
               <Button variant="secondary" onClick={goBack}>
                 {t("dates.back")}
               </Button>

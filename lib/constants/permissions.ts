@@ -81,6 +81,9 @@ export const PERMISSIONS = {
   CREATE_PUNCHLIST_ITEMS: "create_punchlist_items",
   EDIT_PUNCHLIST_ITEMS: "edit_punchlist_items",
   DELETE_PUNCHLIST_ITEMS: "delete_punchlist_items",
+
+  // Kickoff Meeting
+  MANAGE_KICKOFF_MEETING: "manage_kickoff_meeting",
 } as const;
 
 // Extract all permission values as a union type
