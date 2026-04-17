@@ -471,14 +471,15 @@ export default function KickoffSchedulingModal({
   };
 
   // Select final time slot
-  const handleSelectTimeSlot = async () => {
-    if (!selectedFinalDateId) return; // This now holds the time slot ID
+  const handleSelectTimeSlot = async (slotIdOverride?: string) => {
+    const slotId = slotIdOverride || selectedFinalDateId;
+    if (!slotId) return;
 
     try {
       setIsSelectingDate(true);
       setError(null);
 
-      await setupTasksApi.selectTimeSlot(projectId, taskId, selectedFinalDateId);
+      await setupTasksApi.selectTimeSlot(projectId, taskId, slotId);
 
       showToast("success", t("dateConfirmed"));
       onUpdate?.();
@@ -1341,6 +1342,13 @@ export default function KickoffSchedulingModal({
       ? allTimeSlots.filter((s) => availableSlotIds.includes(s.slotId))
       : allTimeSlots;
 
+    // Auto-select if there's only one slot where everyone can attend
+    const shouldAutoSelect = slotsToShow.length === 1 && availableSlotIds.length === 1;
+    const autoSelectedSlotId = shouldAutoSelect ? slotsToShow[0].slotId : null;
+
+    // Use auto-selected or manually selected
+    const effectiveSelectedId = autoSelectedSlotId || selectedFinalDateId;
+
     // If already scheduled, show confirmation
     if (isScheduled && selectedTimeSlot) {
       return (
@@ -1449,18 +1457,21 @@ export default function KickoffSchedulingModal({
               {slotsToShow.map((slot, idx) => (
                 <label
                   key={slot.slotId || `confirm-slot-${idx}`}
-                  className={`flex items-center gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all ${
-                    selectedFinalDateId === slot.slotId
+                  className={`flex items-center gap-3 p-4 rounded-lg border-2 transition-all ${
+                    shouldAutoSelect
                       ? "border-blue-600 bg-blue-50 dark:bg-blue-900/20"
-                      : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
+                      : effectiveSelectedId === slot.slotId
+                        ? "border-blue-600 bg-blue-50 dark:bg-blue-900/20 cursor-pointer"
+                        : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 cursor-pointer"
                   }`}
                 >
                   <input
                     type="radio"
                     name="finalTimeSlot"
-                    checked={selectedFinalDateId === slot.slotId}
-                    onChange={() => setSelectedFinalDateId(slot.slotId)}
-                    className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                    checked={effectiveSelectedId === slot.slotId}
+                    onChange={() => !shouldAutoSelect && setSelectedFinalDateId(slot.slotId)}
+                    disabled={shouldAutoSelect}
+                    className={`w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500 ${shouldAutoSelect ? "cursor-not-allowed" : ""}`}
                   />
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
@@ -1488,9 +1499,9 @@ export default function KickoffSchedulingModal({
             {canManageKickoff && (
               <Button
                 variant="success"
-                onClick={handleSelectTimeSlot}
+                onClick={() => handleSelectTimeSlot(effectiveSelectedId || undefined)}
                 loading={isSelectingDate}
-                disabled={!selectedFinalDateId || isSelectingDate}
+                disabled={!effectiveSelectedId || isSelectingDate}
                 className="w-full"
               >
                 <CheckIcon className="w-4 h-4" />
@@ -1499,7 +1510,7 @@ export default function KickoffSchedulingModal({
             )}
 
             {/* Warning if selecting time slot where not everyone can attend */}
-            {selectedFinalDateId && availableSlotIds.length === 0 && (
+            {effectiveSelectedId && availableSlotIds.length === 0 && (
               <Alert type="warning" message={t("confirmation.someAbsent")} />
             )}
           </>
