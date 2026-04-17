@@ -45,7 +45,10 @@ function FitBounds({ bounds }: { bounds: L.LatLngBoundsExpression }) {
     });
 
     // Invalidate size after a short delay to handle container resize
-    setTimeout(() => {
+    const timeoutId = setTimeout(() => {
+      // Check if map container still exists (prevents errors after unmount)
+      if (!map.getContainer()) return;
+
       map.invalidateSize();
       map.fitBounds(bounds, {
         padding: [0, 0],
@@ -57,6 +60,9 @@ function FitBounds({ bounds }: { bounds: L.LatLngBoundsExpression }) {
       const fitZoom = map.getBoundsZoom(bounds as L.LatLngBoundsExpression);
       map.setMinZoom(fitZoom);
     }, 100);
+
+    // Cleanup timeout on unmount to prevent errors
+    return () => clearTimeout(timeoutId);
   }, [map, bounds]);
 
   return null;
