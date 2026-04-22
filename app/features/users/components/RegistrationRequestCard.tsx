@@ -4,8 +4,8 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { CheckIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import type { RegistrationRequest } from "@/lib/api/types";
-import ProcessRegistrationRequestModal from "@/app/components/modals/ProcessRegistrationRequestModal";
-import type { ProcessAction, ApproveRequestData } from "@/app/components/modals/ProcessRegistrationRequestModal";
+import ProcessRegistrationRequestModal from "./ProcessRegistrationRequestModal";
+import type { ProcessAction, ApproveRequestData } from "./ProcessRegistrationRequestModal";
 
 interface RegistrationRequestCardProps {
   request: RegistrationRequest;

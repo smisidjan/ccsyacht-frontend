@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { LinkIcon, ClipboardDocumentIcon, CheckIcon } from "@heroicons/react/24/outline";
-import BaseModal from "./BaseModal";
+import BaseModal from "@/app/components/modals/BaseModal";
 import FormInput from "@/app/components/ui/FormInput";
 import FormSelect from "@/app/components/ui/FormSelect";
 import FormRadioGroup from "@/app/components/ui/FormRadioGroup";

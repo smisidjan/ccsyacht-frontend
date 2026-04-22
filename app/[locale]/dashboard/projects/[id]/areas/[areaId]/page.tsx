@@ -16,15 +16,13 @@ import {
 import Button from "@/app/components/ui/Button";
 import Alert from "@/app/components/ui/Alert";
 import FormInput from "@/app/components/ui/FormInput";
-import { CreateStagesModal } from "@/app/features/stages";
+import { CreateStagesModal, SignatureModal, RejectSignoffModal } from "@/app/features/stages";
 import ProgressCircle from "@/app/components/ui/ProgressCircle";
 import { useArea, useStages, useProject, useStageSignoffs, useProjectSigners } from "@/lib/api";
 import { usePermission } from "@/lib/hooks/usePermission";
 import { PERMISSIONS } from "@/lib/constants/permissions";
 import { useCurrentUser } from "@/lib/api/hooks";
 import type { Stage } from "@/lib/api/types";
-import SignatureModal from "@/app/components/modals/SignatureModal";
-import RejectSignoffModal from "@/app/components/modals/RejectSignoffModal";
 import { useToast } from "@/app/context/ToastContext";
 import { PunchlistList } from "@/app/features/punchlist";
 import { RemarksList } from "@/app/features/stages";

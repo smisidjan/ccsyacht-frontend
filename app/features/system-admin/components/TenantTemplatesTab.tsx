@@ -7,10 +7,12 @@ import type { StateTab } from "@/app/components/ui/TabNavState";
 import Table from "@/app/components/ui/Table";
 import Button from "@/app/components/ui/Button";
 import Modal from "@/app/components/ui/Modal";
-import StageTemplateForm from "@/app/components/forms/StageTemplateForm";
-import DocumentTypeTemplateForm from "@/app/components/forms/DocumentTypeTemplateForm";
-import AreaTemplateForm from "@/app/components/forms/AreaTemplateForm";
-import ChecklistTemplateForm from "@/app/components/forms/ChecklistTemplateForm";
+import {
+  StageTemplateForm,
+  DocumentTypeTemplateForm,
+  AreaTemplateForm,
+  ChecklistTemplateForm,
+} from "@/app/features/system-admin";
 import { PlusIcon, ExclamationTriangleIcon } from "@heroicons/react/24/outline";
 import { useModalForm } from "@/lib/hooks/useModalForm";
 import { useToast } from "@/app/context/ToastContext";

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
-import BaseModal from "../BaseModal";
+import BaseModal from "@/app/components/modals/BaseModal";
 import FormInput from "@/app/components/ui/FormInput";
 import FormTextarea from "@/app/components/ui/FormTextarea";
 import { InlineShipyardForm } from "@/app/features/shipyards";
@@ -10,7 +10,7 @@ import { useInlineShipyardCreation } from "@/lib/hooks/useInlineShipyardCreation
 import { useToast } from "@/app/context/ToastContext";
 import type { CreateProjectRequest, Shipyard } from "@/lib/api/types";
 
-interface CreateProjectModalProps {
+interface SystemCreateProjectModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (data: CreateProjectRequest) => Promise<void>;
@@ -19,14 +19,14 @@ interface CreateProjectModalProps {
   onShipyardCreated: (shipyard: Shipyard) => void;
 }
 
-export default function CreateProjectModal({
+export default function SystemCreateProjectModal({
   isOpen,
   onClose,
   onSubmit,
   shipyards,
   tenantId,
   onShipyardCreated,
-}: CreateProjectModalProps) {
+}: SystemCreateProjectModalProps) {
   const t = useTranslations("systemSettings.tenantDetail.projects.createModal");
   const tProjects = useTranslations("systemSettings.tenantDetail.projects");
 

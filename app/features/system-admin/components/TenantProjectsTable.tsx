@@ -12,8 +12,8 @@ import Table from "@/app/components/ui/Table";
 import LoadingSkeleton from "@/app/components/ui/LoadingSkeleton";
 import Alert from "@/app/components/ui/Alert";
 import StatusBadge from "@/app/components/ui/StatusBadge";
-import ProjectDetailView from "@/app/features/system-admin/components/ProjectDetailView";
-import CreateProjectModal from "@/app/components/modals/system/CreateProjectModal";
+import ProjectDetailView from "./ProjectDetailView";
+import SystemCreateProjectModal from "./SystemCreateProjectModal";
 
 interface TenantProjectsTableProps {
   tenantId: string;
@@ -297,7 +297,7 @@ export default function TenantProjectsTable({
       </div>
 
       {/* Create Project Modal */}
-      <CreateProjectModal
+      <SystemCreateProjectModal
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
         onSubmit={handleCreateProject}

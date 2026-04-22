@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
-import BaseModal from "./BaseModal";
+import BaseModal from "@/app/components/modals/BaseModal";
 import FormSelect from "@/app/components/ui/FormSelect";
 import FormInput from "@/app/components/ui/FormInput";
 import FormRadioGroup from "@/app/components/ui/FormRadioGroup";

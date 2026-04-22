@@ -8,7 +8,7 @@ import Button from "@/app/components/ui/Button";
 import Spinner from "@/app/components/ui/Spinner";
 import Alert from "@/app/components/ui/Alert";
 import Modal from "@/app/components/ui/Modal";
-import StageTemplateForm from "@/app/components/forms/StageTemplateForm";
+import { StageTemplateForm } from "@/app/features/system-admin";
 import { PlusIcon } from "@heroicons/react/24/outline";
 import { useModalForm } from "@/lib/hooks/useModalForm";
 

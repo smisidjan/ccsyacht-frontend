@@ -8,7 +8,7 @@ import { getStatusBadgeColor } from "@/lib/utils/badges";
 import { getInvitationStatusKey, canDeleteInvitation, canResendInvitation } from "@/lib/utils/status";
 import DeleteInvitationModal from "@/app/features/users/components/DeleteInvitationModal";
 import RegistrationRequestCard from "./RegistrationRequestCard";
-import type { ApproveRequestData } from "@/app/components/modals/ProcessRegistrationRequestModal";
+import type { ApproveRequestData } from "./ProcessRegistrationRequestModal";
 import Button from "@/app/components/ui/Button";
 import Toast from "@/app/components/ui/Toast";
 import Table from "@/app/components/ui/Table";
