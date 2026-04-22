@@ -85,20 +85,26 @@ export const documentsApi = {
     document_type_id?: string;
     per_page?: number;
     page?: number;
+    include_acknowledgements?: boolean;
   }): Promise<PaginatedResponse<Document>> => {
     const query = new URLSearchParams();
     if (params?.document_type_id) query.append("document_type_id", params.document_type_id);
     if (params?.per_page) query.append("per_page", String(params.per_page));
     if (params?.page) query.append("page", String(params.page));
+    if (params?.include_acknowledgements) query.append("include_acknowledgements", "true");
     const queryString = query.toString();
     return apiFetch(`/projects/${projectId}/documents${queryString ? `?${queryString}` : ""}`);
   },
 
-  getById: (projectId: string, docId: string): Promise<Document> =>
-    apiFetch(`/projects/${projectId}/documents/${docId}`),
+  getById: (projectId: string, docId: string, includeAcknowledgements?: boolean): Promise<Document> => {
+    const query = includeAcknowledgements ? "?include_acknowledgements=true" : "";
+    return apiFetch(`/projects/${projectId}/documents/${docId}${query}`);
+  },
 
-  getByType: (projectId: string, typeId: string): Promise<{ data: Document[] }> =>
-    apiFetch(`/projects/${projectId}/document-types/${typeId}/documents`),
+  getByType: (projectId: string, typeId: string, includeAcknowledgements?: boolean): Promise<{ data: Document[] }> => {
+    const query = includeAcknowledgements ? "?include_acknowledgements=true" : "";
+    return apiFetch(`/projects/${projectId}/document-types/${typeId}/documents${query}`);
+  },
 
   upload: async (projectId: string, typeId: string, data: UploadDocumentRequest): Promise<Document> => {
     const formData = new FormData();
@@ -237,11 +243,13 @@ export function useDocuments(projectId: string, typeId?: string) {
         const response = await documentsApi.getAll(projectId, {
           document_type_id: typeId,
           per_page: 100, // Get up to 100 documents per type
+          include_acknowledgements: true, // Include acknowledgement data
         });
         data = response.data || [];
       } else {
         const response = await documentsApi.getAll(projectId, {
           per_page: 100, // Get up to 100 documents total
+          include_acknowledgements: true, // Include acknowledgement data
         });
         data = response.data || [];
       }
