@@ -24,3 +24,6 @@ export { default as ProjectDetailView } from "./ProjectDetailView";
 export { default as CreateTenantModal } from "./CreateTenantModal";
 export { default as EditTenantPermissionsModal } from "./EditTenantPermissionsModal";
 export { default as TenantSettingsModal } from "./TenantSettingsModal";
+export { default as CreateRoleModal } from "./CreateRoleModal";
+export { default as EditRoleModal } from "./EditRoleModal";
+export { default as DeleteRoleModal } from "./DeleteRoleModal";

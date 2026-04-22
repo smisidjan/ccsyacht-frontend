@@ -3,8 +3,8 @@
  * Enterprise feature module for General Arrangement management
  */
 
-// Shared GA Components
-export * from "./components/shared";
+// Components (viewers, markers, modals)
+export * from "./components";
 
 // Utilities
 export * from "./utils";

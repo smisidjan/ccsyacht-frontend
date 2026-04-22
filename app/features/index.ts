@@ -23,3 +23,21 @@ export * from "./system-admin";
 
 // Users Feature
 export * from "./users";
+
+// Projects Feature
+export * from "./projects";
+
+// Areas Feature
+export * from "./areas";
+
+// Decks Feature
+export * from "./decks";
+
+// Remarks Feature
+export * from "./remarks";
+
+// Shipyards Feature
+export * from "./shipyards";
+
+// Profile Feature
+export * from "./profile";
