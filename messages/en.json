@@ -98,12 +98,14 @@
     "copyright": "© {year} CCS Yacht"
   },
   "dashboard": {
+    "myTasks": "My Tasks",
     "projects": "Projects",
     "users": "Users",
     "shipyards": "Shipyards",
     "profile": "Profile",
     "system": "System Settings",
     "logout": "Logout",
+    "myTasksDescription": "View and manage your assigned tasks.",
     "projectsDescription": "Manage your yacht projects here.",
     "usersDescription": "Manage users and permissions.",
     "shipyardsDescription": "View and manage shipyards.",
@@ -111,6 +113,82 @@
     "systemDescription": "Manage organisations and system settings.",
     "collapseSidebar": "Collapse sidebar",
     "expandSidebar": "Expand sidebar"
+  },
+  "myTasks": {
+    "title": "My Tasks",
+    "subtitle": "All your assignments and action items in one place",
+    "loadError": "Failed to load tasks",
+    "projectCount": "{count, plural, =1 {# project} other {# projects}}",
+    "taskCount": "{count, plural, =1 {# task} other {# tasks}}",
+    "filteredCount": "{count} shown",
+    "projectsLabel": "Projects",
+    "searchPlaceholder": "Search tasks...",
+    "types": {
+      "documentRequest": "Document",
+      "punchlistItem": "Punchlist",
+      "meeting": "Meeting",
+      "documentAcknowledgement": "Review"
+    },
+    "status": {
+      "pending": "Pending",
+      "overdue": "Overdue",
+      "completed": "Completed",
+      "signed": "Signed",
+      "acknowledged": "Acknowledged"
+    },
+    "priority": {
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High"
+    },
+    "stats": {
+      "overdue": "Overdue",
+      "pending": "Pending",
+      "completed": "Done"
+    },
+    "filters": {
+      "all": "All",
+      "documents": "Docs",
+      "punchlist": "Punch",
+      "meetings": "Meet",
+      "acknowledgements": "Review",
+      "allStatus": "All statuses",
+      "pending": "Pending",
+      "overdue": "Overdue",
+      "completed": "Completed"
+    },
+    "dates": {
+      "today": "Today",
+      "tomorrow": "Tomorrow",
+      "yesterday": "Yesterday",
+      "daysAgo": "{days}d ago",
+      "inDays": "In {days}d"
+    },
+    "actions": {
+      "view": "View",
+      "upload": "Upload",
+      "resolve": "Resolve",
+      "attend": "Attend",
+      "acknowledge": "Review",
+      "remind": "Send reminder",
+      "openProject": "Open Project",
+      "openInProject": "Open in project"
+    },
+    "uploadDocument": "Upload {type}",
+    "acknowledgeDocument": "Review: {title}",
+    "forMeeting": "for {meeting}",
+    "dueBy": "Due {date}",
+    "scheduledFor": "Scheduled for {date}",
+    "requestedBy": "by {name}",
+    "empty": {
+      "title": "All caught up!",
+      "description": "You don't have any tasks assigned to you at the moment.",
+      "noProjects": "No projects with tasks",
+      "noTasksFiltered": "No tasks match your filters",
+      "tryDifferentFilter": "Try adjusting your filters to see more tasks",
+      "selectProject": "Select a project",
+      "selectProjectHint": "Choose a project from the list to view its tasks"
+    }
   },
   "projects": {
     "title": "Projects",
@@ -1815,6 +1893,38 @@
       "success": "Document type deleted successfully",
       "error": "Failed to delete document type",
       "lockedError": "This document type is locked and cannot be deleted"
+    },
+    "assignees": {
+      "title": "Document Requests",
+      "assign": "Request Document",
+      "noAssignees": "No document requests",
+      "noAssigneesHint": "Request a document from a team member or external party",
+      "confirmRemove": "Are you sure you want to remove the document request for {name}?",
+      "removeSuccess": "Document request removed",
+      "notifySuccess": "Reminder sent to {name}",
+      "sendReminder": "Send Reminder",
+      "remove": "Remove Request",
+      "dueBy": "Due by {date}",
+      "status": {
+        "pending": "Pending",
+        "completed": "Completed",
+        "overdue": "Overdue"
+      },
+      "assignModal": {
+        "title": "Request Document",
+        "forDocumentType": "Request document for:",
+        "selectUser": "Select Person",
+        "searchPlaceholder": "Search by name or email...",
+        "noResults": "No matching users found",
+        "noUsersAvailable": "No users available to assign",
+        "message": "Message (optional)",
+        "messagePlaceholder": "Add instructions or context for this request...",
+        "dueDate": "Due Date (optional)",
+        "sendNotification": "Send email notification",
+        "submit": "Send Request",
+        "success": "Document request sent successfully",
+        "error": "Failed to send document request"
+      }
     }
   }
 }

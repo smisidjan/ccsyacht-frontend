@@ -3,8 +3,10 @@
 import { useState, useEffect, useCallback } from "react";
 import type {
   DocumentType,
+  DocumentTypeAssignee,
   CreateDocumentTypeRequest,
   UpdateDocumentTypeRequest,
+  AddDocumentTypeAssigneeRequest,
   ApiError,
 } from "./types";
 import { getAuthToken, getTenantUrl } from "./client";
@@ -56,8 +58,8 @@ async function apiFetch<T>(
 
 // ============ Document Types API ============
 export const documentTypesApi = {
-  getAll: (projectId: string): Promise<{ data: DocumentType[] }> =>
-    apiFetch(`/projects/${projectId}/document-types`),
+  getAll: (projectId: string, includeAssignees = false): Promise<{ data: DocumentType[] }> =>
+    apiFetch(`/projects/${projectId}/document-types${includeAssignees ? "?include_assignees=true" : ""}`),
 
   getById: (projectId: string, typeId: string): Promise<DocumentType> =>
     apiFetch(`/projects/${projectId}/document-types/${typeId}`),
@@ -78,6 +80,27 @@ export const documentTypesApi = {
     apiFetch(`/projects/${projectId}/document-types/${typeId}`, {
       method: "DELETE",
     }),
+
+  // Assignee methods
+  addAssignee: (
+    projectId: string,
+    typeId: string,
+    data: AddDocumentTypeAssigneeRequest
+  ): Promise<DocumentTypeAssignee> =>
+    apiFetch(`/projects/${projectId}/document-types/${typeId}/assignees`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  removeAssignee: (projectId: string, typeId: string, userId: string): Promise<void> =>
+    apiFetch(`/projects/${projectId}/document-types/${typeId}/assignees/${userId}`, {
+      method: "DELETE",
+    }),
+
+  notifyAssignee: (projectId: string, typeId: string, userId: string): Promise<void> =>
+    apiFetch(`/projects/${projectId}/document-types/${typeId}/assignees/${userId}/notify`, {
+      method: "POST",
+    }),
 };
 
 // ============ Document Types Hook ============
@@ -87,7 +110,12 @@ interface UseApiState<T> {
   error: ApiError | null;
 }
 
-export function useDocumentTypes(projectId: string) {
+interface UseDocumentTypesOptions {
+  includeAssignees?: boolean;
+}
+
+export function useDocumentTypes(projectId: string, options: UseDocumentTypesOptions = {}) {
+  const { includeAssignees = false } = options;
   const [state, setState] = useState<UseApiState<DocumentType[]>>({
     data: null,
     loading: true,
@@ -97,13 +125,13 @@ export function useDocumentTypes(projectId: string) {
   const fetchDocumentTypes = useCallback(async () => {
     setState((prev) => ({ ...prev, loading: true, error: null }));
     try {
-      const response = await documentTypesApi.getAll(projectId);
+      const response = await documentTypesApi.getAll(projectId, includeAssignees);
       const data = response.data || [];
       setState({ data, loading: false, error: null });
     } catch (err) {
       setState({ data: null, loading: false, error: err as ApiError });
     }
-  }, [projectId]);
+  }, [projectId, includeAssignees]);
 
   useEffect(() => {
     fetchDocumentTypes();
@@ -124,11 +152,29 @@ export function useDocumentTypes(projectId: string) {
     fetchDocumentTypes();
   };
 
+  const addAssignee = async (typeId: string, data: AddDocumentTypeAssigneeRequest) => {
+    await documentTypesApi.addAssignee(projectId, typeId, data);
+    fetchDocumentTypes();
+  };
+
+  const removeAssignee = async (typeId: string, userId: string) => {
+    await documentTypesApi.removeAssignee(projectId, typeId, userId);
+    fetchDocumentTypes();
+  };
+
+  const notifyAssignee = async (typeId: string, userId: string) => {
+    await documentTypesApi.notifyAssignee(projectId, typeId, userId);
+    fetchDocumentTypes();
+  };
+
   return {
     ...state,
     refetch: fetchDocumentTypes,
     createDocumentType,
     updateDocumentType,
     deleteDocumentType,
+    addAssignee,
+    removeAssignee,
+    notifyAssignee,
   };
 }

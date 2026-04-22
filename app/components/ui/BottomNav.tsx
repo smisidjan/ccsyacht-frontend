@@ -11,6 +11,7 @@ import {
   BuildingOffice2Icon,
   UserIcon,
   Cog8ToothIcon,
+  ClipboardDocumentListIcon,
 } from "@heroicons/react/24/outline";
 import {
   FolderIcon as FolderIconSolid,
@@ -18,6 +19,7 @@ import {
   BuildingOffice2Icon as BuildingOffice2IconSolid,
   UserIcon as UserIconSolid,
   Cog8ToothIcon as Cog8ToothIconSolid,
+  ClipboardDocumentListIcon as ClipboardDocumentListIconSolid,
 } from "@heroicons/react/24/solid";
 
 interface BottomNavProps {
@@ -48,6 +50,13 @@ export default function BottomNav({ className = "" }: BottomNavProps) {
           iconActive: FolderIconSolid,
         }]
       : []),
+    // My Tasks is always accessible (shows user's personal tasks)
+    {
+      href: "/dashboard/tasks",
+      key: "myTasks",
+      icon: ClipboardDocumentListIcon,
+      iconActive: ClipboardDocumentListIconSolid,
+    },
     ...(canAccessUsers
       ? [{
           href: "/dashboard/users",

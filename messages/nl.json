@@ -98,12 +98,14 @@
     "copyright": "© {year} CCS Yacht"
   },
   "dashboard": {
+    "myTasks": "Mijn Taken",
     "projects": "Projecten",
     "users": "Gebruikers",
     "shipyards": "Scheepswerven",
     "profile": "Profiel",
     "system": "Systeem Instellingen",
     "logout": "Uitloggen",
+    "myTasksDescription": "Bekijk en beheer je toegewezen taken.",
     "projectsDescription": "Beheer hier je jachtprojecten.",
     "usersDescription": "Beheer gebruikers en rechten.",
     "shipyardsDescription": "Bekijk en beheer scheepswerven.",
@@ -111,6 +113,82 @@
     "systemDescription": "Beheer organisaties en systeeminstellingen.",
     "collapseSidebar": "Zijbalk inklappen",
     "expandSidebar": "Zijbalk uitklappen"
+  },
+  "myTasks": {
+    "title": "Mijn Taken",
+    "subtitle": "Al je opdrachten en actiepunten op één plek",
+    "loadError": "Kan taken niet laden",
+    "projectCount": "{count, plural, =1 {# project} other {# projecten}}",
+    "taskCount": "{count, plural, =1 {# taak} other {# taken}}",
+    "filteredCount": "{count} getoond",
+    "projectsLabel": "Projecten",
+    "searchPlaceholder": "Zoek taken...",
+    "types": {
+      "documentRequest": "Document",
+      "punchlistItem": "Punchlist",
+      "meeting": "Meeting",
+      "documentAcknowledgement": "Review"
+    },
+    "status": {
+      "pending": "In afwachting",
+      "overdue": "Te laat",
+      "completed": "Voltooid",
+      "signed": "Getekend",
+      "acknowledged": "Bevestigd"
+    },
+    "priority": {
+      "low": "Laag",
+      "medium": "Gemiddeld",
+      "high": "Hoog"
+    },
+    "stats": {
+      "overdue": "Te laat",
+      "pending": "Open",
+      "completed": "Klaar"
+    },
+    "filters": {
+      "all": "Alles",
+      "documents": "Docs",
+      "punchlist": "Punch",
+      "meetings": "Meet",
+      "acknowledgements": "Review",
+      "allStatus": "Alle statussen",
+      "pending": "Open",
+      "overdue": "Te laat",
+      "completed": "Voltooid"
+    },
+    "dates": {
+      "today": "Vandaag",
+      "tomorrow": "Morgen",
+      "yesterday": "Gisteren",
+      "daysAgo": "{days}d geleden",
+      "inDays": "Over {days}d"
+    },
+    "actions": {
+      "view": "Bekijk",
+      "upload": "Upload",
+      "resolve": "Oplossen",
+      "attend": "Bijwonen",
+      "acknowledge": "Bekijk",
+      "remind": "Stuur herinnering",
+      "openProject": "Open Project",
+      "openInProject": "Bekijk in project"
+    },
+    "uploadDocument": "Upload {type}",
+    "acknowledgeDocument": "Review: {title}",
+    "forMeeting": "voor {meeting}",
+    "dueBy": "Deadline {date}",
+    "scheduledFor": "Gepland op {date}",
+    "requestedBy": "door {name}",
+    "empty": {
+      "title": "Helemaal bij!",
+      "description": "Je hebt momenteel geen taken toegewezen.",
+      "noProjects": "Geen projecten met taken",
+      "noTasksFiltered": "Geen taken gevonden met deze filters",
+      "tryDifferentFilter": "Pas je filters aan om meer taken te zien",
+      "selectProject": "Selecteer een project",
+      "selectProjectHint": "Kies een project uit de lijst om de taken te bekijken"
+    }
   },
   "projects": {
     "title": "Projecten",
@@ -1845,6 +1923,38 @@
       "success": "Document type succesvol verwijderd",
       "error": "Kan document type niet verwijderen",
       "lockedError": "Dit document type is vergrendeld en kan niet worden verwijderd"
+    },
+    "assignees": {
+      "title": "Documentverzoeken",
+      "assign": "Document Opvragen",
+      "noAssignees": "Geen documentverzoeken",
+      "noAssigneesHint": "Vraag een document op bij een teamlid of externe partij",
+      "confirmRemove": "Weet je zeker dat je het documentverzoek voor {name} wilt verwijderen?",
+      "removeSuccess": "Documentverzoek verwijderd",
+      "notifySuccess": "Herinnering verzonden naar {name}",
+      "sendReminder": "Herinnering Sturen",
+      "remove": "Verzoek Verwijderen",
+      "dueBy": "Deadline: {date}",
+      "status": {
+        "pending": "In afwachting",
+        "completed": "Voltooid",
+        "overdue": "Te laat"
+      },
+      "assignModal": {
+        "title": "Document Opvragen",
+        "forDocumentType": "Vraag document op voor:",
+        "selectUser": "Selecteer Persoon",
+        "searchPlaceholder": "Zoek op naam of email...",
+        "noResults": "Geen overeenkomende gebruikers gevonden",
+        "noUsersAvailable": "Geen gebruikers beschikbaar om toe te wijzen",
+        "message": "Bericht (optioneel)",
+        "messagePlaceholder": "Voeg instructies of context toe voor dit verzoek...",
+        "dueDate": "Deadline (optioneel)",
+        "sendNotification": "E-mail notificatie versturen",
+        "submit": "Verzoek Versturen",
+        "success": "Documentverzoek succesvol verzonden",
+        "error": "Kan documentverzoek niet verzenden"
+      }
     }
   }
 }

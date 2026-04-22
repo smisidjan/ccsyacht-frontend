@@ -63,6 +63,9 @@ export { gaPinsApi, useGAPins } from "./ga-pins";
 // Setup Tasks
 export { setupTasksApi } from "./setup-tasks";
 
+// My Tasks
+export { myTasksApi, useMyTasks } from "./my-tasks";
+
 // Hooks
 export {
   useCurrentUser,

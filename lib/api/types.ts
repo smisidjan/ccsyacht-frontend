@@ -479,6 +479,25 @@ export interface UpdateActionResponse {
 }
 
 // ============ Document Types ============
+export interface DocumentTypeAssignee {
+  "@type"?: string;
+  identifier: string;
+  name: string;
+  email: string;
+  hasSigned: boolean;
+  signedAt: string | null;
+  assignedBy: {
+    identifier: string;
+    name: string;
+  };
+  message: string | null;
+  dueDate: string | null;
+  isOverdue: boolean;
+  isCompleted: boolean;
+  notifiedAt: string | null;
+  completedAt: string | null;
+}
+
 export interface DocumentType {
   "@context"?: string;
   "@type"?: string;
@@ -489,6 +508,7 @@ export interface DocumentType {
   documentCount: number;
   dateCreated: string;
   dateModified: string;
+  assignees?: DocumentTypeAssignee[];
 }
 
 export interface CreateDocumentTypeRequest {
@@ -501,6 +521,13 @@ export interface UpdateDocumentTypeRequest {
   name?: string;
   is_required?: boolean;
   sort_order?: number;
+}
+
+export interface AddDocumentTypeAssigneeRequest {
+  user_id: string;
+  message?: string;
+  due_date?: string;
+  send_notification?: boolean;
 }
 
 // ============ Documents ============
@@ -1467,4 +1494,104 @@ export interface ReorderChecklistTemplatesRequest {
 export interface GetChecklistTemplatesParams {
   type?: SetupTaskType;
   active_only?: boolean;
+}
+
+// ============ My Tasks ============
+export type MyTaskType = "document_request" | "punchlist_item" | "setup_task";
+export type MyTaskStatus = "pending" | "in_progress" | "overdue" | "completed";
+
+export interface MyTaskProject {
+  identifier: string;
+  name: string;
+}
+
+export interface MyTaskDocumentRequest {
+  type: "document_request";
+  identifier: string;
+  documentType: {
+    identifier: string;
+    name: string;
+  };
+  project: MyTaskProject;
+  message: string | null;
+  dueDate: string | null;
+  isOverdue: boolean;
+  isCompleted: boolean;
+  assignedBy: {
+    identifier: string;
+    name: string;
+  };
+  assignedAt: string;
+  completedAt: string | null;
+}
+
+export interface MyTaskPunchlistItem {
+  type: "punchlist_item";
+  identifier: string;
+  name: string;
+  description: string | null;
+  project: MyTaskProject;
+  area: {
+    identifier: string;
+    name: string;
+  };
+  stage: {
+    identifier: string;
+    name: string;
+  };
+  priority: PunchlistItemPriority;
+  status: PunchlistItemStatus;
+  dueDate: string | null;
+  isOverdue: boolean;
+  assignedAt: string;
+}
+
+export interface MyTaskSetupTask {
+  type: "setup_task";
+  identifier: string;
+  name: string;
+  description: string | null;
+  taskType: SetupTaskType;
+  project: MyTaskProject;
+  scheduledDate: string | null;
+  hasSigned: boolean;
+  signedAt: string | null;
+  assignedAt: string;
+}
+
+export interface MyTaskDocumentAcknowledgement {
+  type: "document_acknowledgement";
+  identifier: string;
+  document: {
+    identifier: string;
+    title: string;
+    fileName: string;
+  };
+  documentType: {
+    identifier: string;
+    name: string;
+  };
+  project: MyTaskProject;
+  setupTask: {
+    identifier: string;
+    name: string;
+    type: SetupTaskType;
+  };
+  isAcknowledged: boolean;
+  acknowledgedAt: string | null;
+}
+
+export type MyTask = MyTaskDocumentRequest | MyTaskPunchlistItem | MyTaskSetupTask | MyTaskDocumentAcknowledgement;
+
+export interface MyTasksResponse {
+  documentRequests: MyTaskDocumentRequest[];
+  punchlistItems: MyTaskPunchlistItem[];
+  setupTasks: MyTaskSetupTask[];
+  documentAcknowledgements: MyTaskDocumentAcknowledgement[];
+  counts: {
+    total: number;
+    pending: number;
+    overdue: number;
+    completed: number;
+  };
 }

@@ -17,6 +17,7 @@ import {
   ArrowLeftStartOnRectangleIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  ClipboardDocumentListIcon,
 } from "@heroicons/react/24/outline";
 
 export default function Sidebar() {
@@ -48,6 +49,8 @@ export default function Sidebar() {
     ...(canAccessProjects
       ? [{ href: "/dashboard/projects", key: "projects", icon: FolderIcon }]
       : []),
+    // My Tasks is always accessible (shows user's personal tasks)
+    { href: "/dashboard/tasks", key: "myTasks", icon: ClipboardDocumentListIcon },
     ...(canAccessUsers
       ? [{ href: "/dashboard/users", key: "users", icon: UsersIcon }]
       : []),
