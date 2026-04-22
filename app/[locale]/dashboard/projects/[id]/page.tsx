@@ -39,13 +39,15 @@ function isGAConverting(ga: string | GeneralArrangement | undefined): boolean {
 }
 
 // Tab content components
-import OverviewTab from "@/app/components/project-tabs/OverviewTab";
-import DocumentsTab from "@/app/components/project-tabs/DocumentsTab";
-import GeneralArrangementTab from "@/app/components/project-tabs/GeneralArrangementTab";
-import PunchlistTab from "@/app/components/project-tabs/PunchlistTab";
-import LogbookTab from "@/app/components/project-tabs/LogbookTab";
-import ReportingTab from "@/app/components/project-tabs/ReportingTab";
-import SettingsTab from "@/app/components/project-tabs/SettingsTab";
+import {
+  OverviewTab,
+  GeneralArrangementTab,
+  LogbookTab,
+  ReportingTab,
+  SettingsTab,
+} from "@/app/features/projects";
+import { DocumentsTab } from "@/app/features/documents";
+import { PunchlistTab } from "@/app/features/punchlist";
 
 type TabKey = "overview" | "documents" | "generalArrangement" | "punchlist" | "logbook" | "reporting" | "settings";
 

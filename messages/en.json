@@ -471,6 +471,185 @@
         "requestedPendingShort": "requested",
         "resubmitted": "Resubmitted"
       },
+      "kickoffForm": {
+        "tabs": {
+          "form": "Meeting Form",
+          "signoff": "Sign-off",
+          "internal": "Internal Setup"
+        },
+        "status": {
+          "draft": "Draft",
+          "inProgress": "In Progress",
+          "completed": "Completed",
+          "signed": "Signed"
+        },
+        "sections": {
+          "documentControl": "Document Control",
+          "vesselInfo": "Vessel Information",
+          "constructionMaterials": "Construction Materials",
+          "paintSpecifications": "Paint Specifications",
+          "surfacePreparation": "Surface Preparation",
+          "acceptanceStandards": "Acceptance Standards",
+          "technicalDrawings": "Technical Drawings",
+          "shipyardRules": "Shipyard Rules",
+          "qaQc": "QA/QC Confirmations"
+        },
+        "vesselInfo": {
+          "vesselName": "Vessel Name",
+          "builder": "Builder",
+          "yearBuilt": "Year Built",
+          "vesselType": "Vessel Type",
+          "grossTonnage": "Gross Tonnage",
+          "loa": "LOA",
+          "loaHint": "Length Overall in meters",
+          "beam": "Beam",
+          "draft": "Draft"
+        },
+        "constructionMaterials": {
+          "hull": "Hull",
+          "hullPlaceholder": "e.g., Steel, Aluminium",
+          "superstructure": "Superstructure",
+          "superstructurePlaceholder": "e.g., Aluminium, Composite",
+          "decks": "Decks",
+          "tenders": "Tenders",
+          "pools": "Pools",
+          "tanks": "Tanks",
+          "notes": "Additional Notes",
+          "notesPlaceholder": "Any additional notes about construction materials..."
+        },
+        "paintSpecifications": {
+          "system": "System",
+          "manufacturer": "Manufacturer",
+          "color": "Color",
+          "underwater": "Underwater",
+          "hull": "Hull",
+          "superstructure": "Superstructure",
+          "deck": "Deck",
+          "domes": "Domes",
+          "offBoatItems": "Off-boat Items",
+          "notes": "Additional Notes"
+        },
+        "surfacePreparation": {
+          "steel": "Steel",
+          "aluminium": "Aluminium",
+          "stainlessSteel": "Stainless Steel",
+          "wood": "Wood",
+          "composites": "Composites",
+          "blastStandards": "Blast Standards",
+          "notes": "Additional Notes"
+        },
+        "acceptanceStandards": {
+          "isoStandards": "ISO Standards",
+          "saltTesting": "Salt Testing",
+          "method": "Method",
+          "acceptableLevels": "Acceptable Levels",
+          "dftRequirements": "DFT Requirements",
+          "minimum": "Minimum",
+          "maximum": "Maximum",
+          "target": "Target",
+          "adhesionTesting": "Adhesion Testing",
+          "fairingTolerances": "Fairing Tolerances",
+          "finalFinish": "Final Finish",
+          "notes": "Additional Notes"
+        },
+        "technicalDrawings": {
+          "gaReference": "GA Reference",
+          "colourPlan": "Colour Plan",
+          "cutLinePlan": "Cut Line Plan",
+          "radiiPlan": "Radii Plan",
+          "renderings": "Renderings",
+          "notes": "Additional Notes"
+        },
+        "shipyardRules": {
+          "workingHours": "Working Hours",
+          "weekdays": "Weekdays",
+          "weekends": "Weekends",
+          "holidays": "Holidays",
+          "accessRequirements": "Access Requirements",
+          "noticePeriods": "Notice Periods",
+          "contacts": "Contacts",
+          "name": "Name",
+          "role": "Role",
+          "phone": "Phone",
+          "email": "Email",
+          "addContact": "Add Contact",
+          "environmentalControls": "Environmental Controls",
+          "safetyRequirements": "Safety Requirements",
+          "notes": "Additional Notes"
+        },
+        "qaQc": {
+          "scope": "Scope",
+          "recordsAvailability": "Records Availability",
+          "escalationProcess": "Escalation Process",
+          "documentationProtocol": "Documentation Protocol",
+          "holdPoints": "Hold Points",
+          "witnessPoints": "Witness Points",
+          "addPoint": "Add Point",
+          "notes": "Additional Notes"
+        },
+        "actions": {
+          "save": "Save",
+          "saving": "Saving...",
+          "saved": "Saved",
+          "complete": "Mark as Complete",
+          "completing": "Completing...",
+          "export": "Export",
+          "exportPdf": "Export as PDF",
+          "exportWord": "Export as Word"
+        },
+        "signoff": {
+          "title": "Sign-off",
+          "description": "All attendees must sign to confirm agreement with the meeting outcomes",
+          "readyForSignoff": "Mark Ready for Sign-off",
+          "awaitingSignatures": "Awaiting Signatures",
+          "allSigned": "All Attendees Signed",
+          "sign": "Sign",
+          "signed": "Signed",
+          "pending": "Pending"
+        },
+        "internal": {
+          "title": "CCS Internal Project Setup",
+          "description": "Internal project configuration (CCS employees only)",
+          "scope": {
+            "title": "Scope of Work",
+            "coatingInspections": "Coating Inspections",
+            "fairingInspections": "Fairing Inspections",
+            "tankInspections": "Tank Inspections",
+            "advisoryOnly": "Advisory Only",
+            "notes": "Scope Notes"
+          },
+          "timeAllocation": {
+            "title": "Time Allocation",
+            "siteDaysPerWeek": "Site Days per Week",
+            "totalInspectionDays": "Total Inspection Days",
+            "travelAllocation": "Travel Allocation",
+            "reportingFrequency": "Reporting Frequency",
+            "weekly": "Weekly",
+            "monthly": "Monthly",
+            "asNeeded": "As Needed"
+          },
+          "deliverables": {
+            "title": "Deliverables",
+            "reportTypes": "Report Types",
+            "turnaroundTime": "Turnaround Time",
+            "photoDocLevel": "Photo Documentation Level",
+            "minimal": "Minimal",
+            "standard": "Standard",
+            "comprehensive": "Comprehensive"
+          },
+          "limitsAssumptions": {
+            "title": "Limits & Assumptions",
+            "noAuthorityToStopWorks": "No Authority to Stop Works",
+            "noAcceptanceOfWorks": "No Acceptance of Works",
+            "attendanceSubjectToNotice": "Attendance Subject to Notice",
+            "customLimits": "Custom Limits"
+          },
+          "riskFlags": {
+            "title": "Risk Flags",
+            "addFlag": "Add Risk Flag"
+          }
+        }
+      },
       "kickoffScheduling": {
         "title": "Schedule Kickoff Meeting",
         "loadError": "Failed to load scheduling data",

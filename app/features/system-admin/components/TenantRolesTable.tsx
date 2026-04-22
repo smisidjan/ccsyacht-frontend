@@ -17,9 +17,7 @@ import Button from "@/app/components/ui/Button";
 import Table from "@/app/components/ui/Table";
 import LoadingSkeleton from "@/app/components/ui/LoadingSkeleton";
 import Alert from "@/app/components/ui/Alert";
-import CreateRoleModal from "@/app/components/modals/CreateRoleModal";
-import EditRoleModal from "@/app/components/modals/EditRoleModal";
-import DeleteRoleModal from "@/app/components/modals/DeleteRoleModal";
+import { CreateRoleModal, EditRoleModal, DeleteRoleModal } from "@/app/features/system-admin";
 
 interface TenantRolesTableProps {
   tenantId: string;

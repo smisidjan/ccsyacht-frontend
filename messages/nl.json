@@ -471,6 +471,185 @@
         "requestedPendingShort": "aangevraagd",
         "resubmitted": "Opnieuw ingediend"
       },
+      "kickoffForm": {
+        "tabs": {
+          "form": "Meeting Formulier",
+          "signoff": "Aftekenen",
+          "internal": "Interne Setup"
+        },
+        "status": {
+          "draft": "Concept",
+          "inProgress": "In Behandeling",
+          "completed": "Voltooid",
+          "signed": "Ondertekend"
+        },
+        "sections": {
+          "documentControl": "Documentbeheer",
+          "vesselInfo": "Scheepsinformatie",
+          "constructionMaterials": "Constructiematerialen",
+          "paintSpecifications": "Verfspecificaties",
+          "surfacePreparation": "Oppervlaktevoorbereiding",
+          "acceptanceStandards": "Acceptatienormen",
+          "technicalDrawings": "Technische Tekeningen",
+          "shipyardRules": "Werfregels",
+          "qaQc": "QA/QC Bevestigingen"
+        },
+        "vesselInfo": {
+          "vesselName": "Scheepsnaam",
+          "builder": "Bouwer",
+          "yearBuilt": "Bouwjaar",
+          "vesselType": "Scheepstype",
+          "grossTonnage": "Bruto Tonnage",
+          "loa": "LOA",
+          "loaHint": "Lengte Over Alles in meters",
+          "beam": "Breedte",
+          "draft": "Diepgang"
+        },
+        "constructionMaterials": {
+          "hull": "Romp",
+          "hullPlaceholder": "bijv. Staal, Aluminium",
+          "superstructure": "Bovenbouw",
+          "superstructurePlaceholder": "bijv. Aluminium, Composiet",
+          "decks": "Dekken",
+          "tenders": "Tenders",
+          "pools": "Zwembaden",
+          "tanks": "Tanks",
+          "notes": "Extra Opmerkingen",
+          "notesPlaceholder": "Eventuele opmerkingen over constructiematerialen..."
+        },
+        "paintSpecifications": {
+          "system": "Systeem",
+          "manufacturer": "Fabrikant",
+          "color": "Kleur",
+          "underwater": "Onderwaterschip",
+          "hull": "Romp",
+          "superstructure": "Bovenbouw",
+          "deck": "Dek",
+          "domes": "Domes",
+          "offBoatItems": "Off-boat Items",
+          "notes": "Extra Opmerkingen"
+        },
+        "surfacePreparation": {
+          "steel": "Staal",
+          "aluminium": "Aluminium",
+          "stainlessSteel": "RVS",
+          "wood": "Hout",
+          "composites": "Composieten",
+          "blastStandards": "Straalstandaarden",
+          "notes": "Extra Opmerkingen"
+        },
+        "acceptanceStandards": {
+          "isoStandards": "ISO Normen",
+          "saltTesting": "Zouttest",
+          "method": "Methode",
+          "acceptableLevels": "Acceptabele Niveaus",
+          "dftRequirements": "DFT Eisen",
+          "minimum": "Minimum",
+          "maximum": "Maximum",
+          "target": "Doel",
+          "adhesionTesting": "Hechtingstest",
+          "fairingTolerances": "Fairingtoleranties",
+          "finalFinish": "Eindafwerking",
+          "notes": "Extra Opmerkingen"
+        },
+        "technicalDrawings": {
+          "gaReference": "GA Referentie",
+          "colourPlan": "Kleurplan",
+          "cutLinePlan": "Snijlijnplan",
+          "radiiPlan": "Radiiplan",
+          "renderings": "Renderings",
+          "notes": "Extra Opmerkingen"
+        },
+        "shipyardRules": {
+          "workingHours": "Werktijden",
+          "weekdays": "Weekdagen",
+          "weekends": "Weekenden",
+          "holidays": "Feestdagen",
+          "accessRequirements": "Toegangseisen",
+          "noticePeriods": "Opzegtermijnen",
+          "contacts": "Contactpersonen",
+          "name": "Naam",
+          "role": "Functie",
+          "phone": "Telefoon",
+          "email": "E-mail",
+          "addContact": "Contact Toevoegen",
+          "environmentalControls": "Milieucontroles",
+          "safetyRequirements": "Veiligheidseisen",
+          "notes": "Extra Opmerkingen"
+        },
+        "qaQc": {
+          "scope": "Reikwijdte",
+          "recordsAvailability": "Beschikbaarheid Documenten",
+          "escalationProcess": "Escalatieproces",
+          "documentationProtocol": "Documentatieprotocol",
+          "holdPoints": "Hold Points",
+          "witnessPoints": "Witness Points",
+          "addPoint": "Punt Toevoegen",
+          "notes": "Extra Opmerkingen"
+        },
+        "actions": {
+          "save": "Opslaan",
+          "saving": "Opslaan...",
+          "saved": "Opgeslagen",
+          "complete": "Markeer als Voltooid",
+          "completing": "Voltooien...",
+          "export": "Exporteren",
+          "exportPdf": "Exporteren als PDF",
+          "exportWord": "Exporteren als Word"
+        },
+        "signoff": {
+          "title": "Aftekenen",
+          "description": "Alle deelnemers moeten aftekenen om akkoord te gaan met de meeting uitkomsten",
+          "readyForSignoff": "Markeer Klaar voor Aftekenen",
+          "awaitingSignatures": "Wacht op Handtekeningen",
+          "allSigned": "Alle Deelnemers Getekend",
+          "sign": "Tekenen",
+          "signed": "Getekend",
+          "pending": "In Afwachting"
+        },
+        "internal": {
+          "title": "CCS Interne Project Setup",
+          "description": "Interne projectconfiguratie (alleen CCS medewerkers)",
+          "scope": {
+            "title": "Werkingsgebied",
+            "coatingInspections": "Coating Inspecties",
+            "fairingInspections": "Fairing Inspecties",
+            "tankInspections": "Tank Inspecties",
+            "advisoryOnly": "Alleen Adviserend",
+            "notes": "Scope Opmerkingen"
+          },
+          "timeAllocation": {
+            "title": "Tijdsindeling",
+            "siteDaysPerWeek": "Site Dagen per Week",
+            "totalInspectionDays": "Totaal Inspectiedagen",
+            "travelAllocation": "Reistijd Allocatie",
+            "reportingFrequency": "Rapportagefrequentie",
+            "weekly": "Wekelijks",
+            "monthly": "Maandelijks",
+            "asNeeded": "Indien Nodig"
+          },
+          "deliverables": {
+            "title": "Deliverables",
+            "reportTypes": "Rapport Types",
+            "turnaroundTime": "Doorlooptijd",
+            "photoDocLevel": "Foto Documentatie Niveau",
+            "minimal": "Minimaal",
+            "standard": "Standaard",
+            "comprehensive": "Uitgebreid"
+          },
+          "limitsAssumptions": {
+            "title": "Beperkingen & Aannames",
+            "noAuthorityToStopWorks": "Geen Bevoegdheid Werk te Stoppen",
+            "noAcceptanceOfWorks": "Geen Acceptatie van Werk",
+            "attendanceSubjectToNotice": "Aanwezigheid Onder Voorbehoud",
+            "customLimits": "Aangepaste Beperkingen"
+          },
+          "riskFlags": {
+            "title": "Risico Vlaggen",
+            "addFlag": "Risico Vlag Toevoegen"
+          }
+        }
+      },
       "kickoffScheduling": {
         "title": "Plan Kickoff Meeting",
         "loadError": "Kan planning data niet laden",

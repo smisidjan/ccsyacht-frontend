@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import BaseModal from "@/app/components/modals/BaseModal";
-import PunchlistItemForm from "@/app/components/forms/PunchlistItemForm";
+import { PunchlistItemForm } from "@/app/features/punchlist";
 import { punchlistItemsApi } from "@/lib/api/punchlist-items";
 import { useProjectMembers } from "@/lib/api";
 import { useToast } from "@/app/context/ToastContext";

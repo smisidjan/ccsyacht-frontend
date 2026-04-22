@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import BaseModal from "../BaseModal";
 import FormInput from "@/app/components/ui/FormInput";
 import FormTextarea from "@/app/components/ui/FormTextarea";
-import InlineShipyardForm from "@/app/components/ui/InlineShipyardForm";
+import { InlineShipyardForm } from "@/app/features/shipyards";
 import { useInlineShipyardCreation } from "@/lib/hooks/useInlineShipyardCreation";
 import { useToast } from "@/app/context/ToastContext";
 import type { CreateProjectRequest, Shipyard } from "@/lib/api/types";

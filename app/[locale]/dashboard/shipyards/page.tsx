@@ -19,8 +19,7 @@ import { useMinimumLoadingTime } from "@/lib/hooks/useMinimumLoadingTime";
 import ProtectedRoute from "@/app/components/guards/ProtectedRoute";
 import Button from "@/app/components/ui/Button";
 import LoadingSkeleton from "@/app/components/ui/LoadingSkeleton";
-import ShipyardFormModal from "@/app/components/modals/ShipyardFormModal";
-import DeleteShipyardModal from "@/app/components/modals/DeleteShipyardModal";
+import { ShipyardFormModal, DeleteShipyardModal } from "@/app/features/shipyards";
 import type { Shipyard, CreateShipyardRequest, UpdateShipyardRequest } from "@/lib/api/types";
 
 export default function ShipyardsPage() {

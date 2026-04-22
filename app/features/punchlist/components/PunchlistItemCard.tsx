@@ -16,14 +16,14 @@ import {
 } from "@heroicons/react/24/outline";
 import Tooltip from "@/app/components/ui/Tooltip";
 import ConfirmModal from "@/app/components/modals/ConfirmModal";
-import CancelPunchlistItemModal from "@/app/components/modals/CancelPunchlistItemModal";
+import { CancelPunchlistItemModal } from "@/app/features/punchlist";
 import AuthenticatedImage from "@/app/components/ui/AuthenticatedImage";
 import { punchlistItemsApi, usePunchlistItemAttachments } from "@/lib/api/punchlist-items";
 import { usePermission } from "@/lib/hooks/usePermission";
 import { PERMISSIONS } from "@/lib/constants/permissions";
 import { useToast } from "@/app/context/ToastContext";
 import ImageViewerModal from "@/app/components/modals/ImageViewerModal";
-import DocumentViewerModal from "@/app/components/modals/DocumentViewerModal";
+import { DocumentViewerModal } from "@/app/features/documents";
 import { isDocumentAttachment, isImageAttachment } from "@/lib/utils/attachmentUtils";
 import type { PunchlistItem, PunchlistItemStatus, StageStatus, PunchlistItemAttachment } from "@/lib/api/types";
 

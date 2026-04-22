@@ -20,13 +20,14 @@ import StatusBadge from "@/app/components/ui/StatusBadge";
 import LoadingSkeleton from "@/app/components/ui/LoadingSkeleton";
 import Alert from "@/app/components/ui/Alert";
 import Button from "@/app/components/ui/Button";
-import ReplaceGeneralArrangementModal from "@/app/components/modals/ReplaceGeneralArrangementModal";
-import DeleteGeneralArrangementModal from "@/app/components/modals/DeleteGeneralArrangementModal";
-import CreateDocumentTypeModal from "@/app/components/modals/CreateDocumentTypeModal";
-import EditDocumentTypeModal from "@/app/components/modals/EditDocumentTypeModal";
-import DeleteDocumentTypeModal from "@/app/components/modals/DeleteDocumentTypeModal";
-import UploadDocumentModal from "@/app/components/modals/UploadDocumentModal";
-import DeleteDocumentModal from "@/app/components/modals/DeleteDocumentModal";
+import { ReplaceGeneralArrangementModal, DeleteGeneralArrangementModal } from "@/app/features/ga";
+import {
+  CreateDocumentTypeModal,
+  EditDocumentTypeModal,
+  DeleteDocumentTypeModal,
+  UploadDocumentModal,
+  DeleteDocumentModal,
+} from "@/app/features/documents";
 
 interface ProjectDetailViewProps {
   tenantId: string;

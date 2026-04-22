@@ -6,8 +6,7 @@ import { useCurrentUser } from "@/lib/api/hooks";
 import { usersApi } from "@/lib/api/client";
 import { useMinimumLoadingTime } from "@/lib/hooks/useMinimumLoadingTime";
 import ProfileInfoItem from "@/app/components/ui/ProfileInfoItem";
-import ChangeNameModal from "@/app/components/modals/ChangeNameModal";
-import ChangePasswordModal from "@/app/components/modals/ChangePasswordModal";
+import { ChangeNameModal, ChangePasswordModal } from "@/app/features/profile";
 import {
   UserIcon,
   EnvelopeIcon,

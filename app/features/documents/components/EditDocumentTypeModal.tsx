@@ -1,46 +1,50 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
-import BaseModal from "./BaseModal";
+import BaseModal from "@/app/components/modals/BaseModal";
 import FormInput from "@/app/components/ui/FormInput";
+import type { DocumentType } from "@/lib/api/types";
 
-interface CreateDocumentTypeModalProps {
+interface EditDocumentTypeModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (data: { name: string; is_required: boolean }) => Promise<void>;
+  documentType: DocumentType | null;
 }
 
-export default function CreateDocumentTypeModal({
+export default function EditDocumentTypeModal({
   isOpen,
   onClose,
   onSubmit,
-}: CreateDocumentTypeModalProps) {
-  const t = useTranslations("systemSettings.tenantDetail.projects.detail.documentTypes.createModal");
+  documentType,
+}: EditDocumentTypeModalProps) {
+  const t = useTranslations("systemSettings.tenantDetail.projects.detail.documentTypes.editModal");
 
   const [name, setName] = useState("");
   const [isRequired, setIsRequired] = useState(false);
 
+  useEffect(() => {
+    if (documentType) {
+      setName(documentType.name);
+      setIsRequired(documentType.isRequired);
+    }
+  }, [documentType]);
+
   const handleSubmit = async () => {
     await onSubmit({ name, is_required: isRequired });
-    setName("");
-    setIsRequired(false);
   };
 
   return (
     <BaseModal
       isOpen={isOpen}
-      onClose={() => {
-        onClose();
-        setName("");
-        setIsRequired(false);
-      }}
+      onClose={onClose}
       title={t("title")}
-      formId="create-document-type-form"
+      formId="edit-document-type-form"
       onSubmit={handleSubmit}
       successMessage={t("success")}
       errorFallbackMessage={t("error")}
-      submitLabel={t("create")}
+      submitLabel={t("save")}
     >
       <div className="space-y-4">
         <FormInput

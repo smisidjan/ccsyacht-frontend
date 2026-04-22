@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import BaseModal from "./BaseModal";
+import BaseModal from "@/app/components/modals/BaseModal";
 
 interface DeleteDocumentTypeModalProps {
   isOpen: boolean;

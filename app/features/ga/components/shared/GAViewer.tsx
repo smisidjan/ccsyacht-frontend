@@ -9,7 +9,7 @@ import { PERMISSIONS } from "@/lib/constants/permissions";
 import Button from "@/app/components/ui/Button";
 import Alert from "@/app/components/ui/Alert";
 import LoadingSkeleton from "@/app/components/ui/LoadingSkeleton";
-import CreateGAPinModal from "@/app/components/modals/CreateGAPinModal";
+import { CreateGAPinModal } from "@/app/features/ga";
 import type { GAPin } from "@/lib/api/types";
 
 interface GAViewerProps {

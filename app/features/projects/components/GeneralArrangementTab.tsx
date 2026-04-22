@@ -24,11 +24,10 @@ import { useToast } from "@/app/context/ToastContext";
 import LoadingSkeleton from "@/app/components/ui/LoadingSkeleton";
 import Alert from "@/app/components/ui/Alert";
 import Tooltip from "@/app/components/ui/Tooltip";
-import CreateGAPinModal from "@/app/components/modals/CreateGAPinModal";
+import { CreateGAPinModal, GALeafletViewer } from "@/app/features/ga";
 import ConfirmModal from "@/app/components/modals/ConfirmModal";
-import CreateRemarkModal from "@/app/components/modals/CreateRemarkModal";
+import { CreateRemarkModal } from "@/app/features/remarks";
 import type { GAPin, StageStatus, GeneralArrangement, Deck } from "@/lib/api/types";
-import GALeafletViewer from "@/app/components/ga/GALeafletViewer";
 
 interface GeneralArrangementTabProps {
   projectId: string;

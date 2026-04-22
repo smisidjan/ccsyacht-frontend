@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { PlusIcon, ChatBubbleLeftRightIcon } from "@heroicons/react/24/outline";
 import Button from "@/app/components/ui/Button";
 import Alert from "@/app/components/ui/Alert";
-import CreateRemarkModal from "@/app/components/modals/CreateRemarkModal";
+import { CreateRemarkModal } from "@/app/features/remarks";
 import RemarkCard from "./RemarkCard";
 import { useStageRemarks } from "@/lib/api/stage-remarks";
 import type { StageStatus } from "@/lib/api/types";

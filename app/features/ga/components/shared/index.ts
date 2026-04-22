@@ -4,7 +4,7 @@
  */
 
 export { default as GAViewer } from "./GAViewer";
-export { default as GAViewerWithDraw } from "./GAViewerWithDraw";
+export { default as GAViewerWithDraw, type DeckBounds, type ExistingDeck } from "./GAViewerWithDraw";
 export { default as GAViewerWithDrawContent } from "./GAViewerWithDrawContent";
 export { default as GALeafletViewer } from "./GALeafletViewer";
 export { default as GALeafletContent } from "./GALeafletContent";

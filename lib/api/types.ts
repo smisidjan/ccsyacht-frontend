@@ -1297,6 +1297,210 @@ export interface SetupTask {
   notes: SetupTaskNote[];
   documents: SetupTaskDocument[];
   proposedDates?: ProposedDate[];
+  kickoffForm?: KickoffFormData;
+}
+
+// Kickoff Meeting Form Types
+export type KickoffFormStatus = "draft" | "in_progress" | "completed" | "signed";
+
+export interface KickoffFormDocumentControl {
+  projectNumber: string;
+  contractReference: string;
+  revisionHistory: Array<{
+    revision: string;
+    date: string;
+    author: string;
+    description: string;
+  }>;
+}
+
+export interface KickoffFormVesselInfo {
+  vesselName: string;
+  builder: string;
+  yearBuilt: string;
+  loa: string; // Length Overall
+  beam: string;
+  draft: string;
+  grossTonnage: string;
+  vesselType: string;
+}
+
+export interface KickoffFormConstructionMaterials {
+  hull: string;
+  superstructure: string;
+  decks: string;
+  tenders: string;
+  pools: string;
+  tanks: string;
+  notes: string;
+}
+
+export interface KickoffFormPaintSpecifications {
+  underwater: {
+    system: string;
+    manufacturer: string;
+    color: string;
+  };
+  hull: {
+    system: string;
+    manufacturer: string;
+    color: string;
+  };
+  superstructure: {
+    system: string;
+    manufacturer: string;
+    color: string;
+  };
+  deck: {
+    system: string;
+    manufacturer: string;
+    color: string;
+  };
+  domes: {
+    system: string;
+    manufacturer: string;
+    color: string;
+  };
+  offBoatItems: string;
+  notes: string;
+}
+
+export interface KickoffFormSurfacePreparation {
+  steel: string;
+  aluminium: string;
+  stainlessSteel: string;
+  wood: string;
+  composites: string;
+  blastStandards: string;
+  notes: string;
+}
+
+export interface KickoffFormAcceptanceStandards {
+  isoStandards: string[];
+  saltTesting: {
+    method: string;
+    acceptableLevels: string;
+  };
+  dftRequirements: {
+    minimum: string;
+    maximum: string;
+    target: string;
+  };
+  adhesionTesting: {
+    method: string;
+    acceptableLevels: string;
+  };
+  fairingTolerances: string;
+  finalFinish: string;
+  notes: string;
+}
+
+export interface KickoffFormTechnicalDrawings {
+  gaReference: string;
+  colourPlan: string;
+  cutLinePlan: string;
+  radiiPlan: string;
+  renderings: string;
+  notes: string;
+}
+
+export interface KickoffFormShipyardRules {
+  workingHours: {
+    weekdays: string;
+    weekends: string;
+    holidays: string;
+  };
+  accessRequirements: string;
+  noticePeriods: string;
+  contacts: Array<{
+    name: string;
+    role: string;
+    phone: string;
+    email: string;
+  }>;
+  environmentalControls: string;
+  safetyRequirements: string;
+  notes: string;
+}
+
+export interface KickoffFormQAQC {
+  scope: string;
+  recordsAvailability: string;
+  escalationProcess: string;
+  documentationProtocol: string;
+  holdPoints: string[];
+  witnessPoints: string[];
+  notes: string;
+}
+
+export interface KickoffFormData {
+  "@type"?: "KickoffForm";
+  identifier?: string;
+  documentControl: KickoffFormDocumentControl;
+  vesselInfo: KickoffFormVesselInfo;
+  constructionMaterials: KickoffFormConstructionMaterials;
+  paintSpecifications: KickoffFormPaintSpecifications;
+  surfacePreparation: KickoffFormSurfacePreparation;
+  acceptanceStandards: KickoffFormAcceptanceStandards;
+  technicalDrawings: KickoffFormTechnicalDrawings;
+  shipyardRules: KickoffFormShipyardRules;
+  qaQc: KickoffFormQAQC;
+  formStatus: KickoffFormStatus;
+  lastModified: string;
+  lastModifiedBy: {
+    identifier: string;
+    name: string;
+  };
+  completedAt?: string;
+  completedBy?: {
+    identifier: string;
+    name: string;
+  };
+}
+
+// CCS Internal Project Setup Types (employees only)
+export interface InternalProjectSetupScope {
+  coatingInspections: boolean;
+  fairingInspections: boolean;
+  tankInspections: boolean;
+  advisoryOnly: boolean;
+  notes: string;
+}
+
+export interface InternalProjectSetupTimeAllocation {
+  siteDaysPerWeek: string;
+  totalInspectionDays: string;
+  travelAllocation: string;
+  reportingFrequency: "weekly" | "monthly" | "as-needed";
+}
+
+export interface InternalProjectSetupDeliverables {
+  reportTypes: string[];
+  turnaroundTime: string;
+  photoDocLevel: "minimal" | "standard" | "comprehensive";
+}
+
+export interface InternalProjectSetupLimits {
+  noAuthorityToStopWorks: boolean;
+  noAcceptanceOfWorks: boolean;
+  attendanceSubjectToNotice: boolean;
+  customLimits: string;
+}
+
+export interface InternalProjectSetup {
+  "@type"?: "InternalProjectSetup";
+  identifier?: string;
+  scope: InternalProjectSetupScope;
+  timeAllocation: InternalProjectSetupTimeAllocation;
+  deliverables: InternalProjectSetupDeliverables;
+  limitsAssumptions: InternalProjectSetupLimits;
+  riskFlags: string[];
+  notes: string;
+  lastModified: string;
+  lastModifiedBy: {
+    identifier: string;
+    name: string;
+  };
 }
 
 // Document Acknowledgement Types

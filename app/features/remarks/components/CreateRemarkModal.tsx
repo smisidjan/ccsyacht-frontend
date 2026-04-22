@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import BaseModal from "@/app/components/modals/BaseModal";
-import RemarkForm from "@/app/components/forms/RemarkForm";
+import { RemarkForm } from "@/app/features/remarks";
 import { stageRemarksApi } from "@/lib/api/stage-remarks";
 import { useToast } from "@/app/context/ToastContext";
 import { MAX_FILE_SIZE } from "@/lib/constants/fileUpload";

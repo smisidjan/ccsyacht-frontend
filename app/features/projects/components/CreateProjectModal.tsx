@@ -12,7 +12,7 @@ import Button from "@/app/components/ui/Button";
 import Alert from "@/app/components/ui/Alert";
 import Table from "@/app/components/ui/Table";
 import SelectOrCreateSection from "@/app/components/ui/SelectOrCreateSection";
-import InlineShipyardForm from "@/app/components/ui/InlineShipyardForm";
+import { InlineShipyardForm } from "@/app/features/shipyards";
 import { useToast } from "@/app/context/ToastContext";
 import { getErrorMessage } from "@/lib/utils/errors";
 import { useDocumentTypeTemplates } from "@/lib/api/document-type-templates";

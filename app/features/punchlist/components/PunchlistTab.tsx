@@ -13,7 +13,7 @@ import {
   XMarkIcon,
 } from "@heroicons/react/24/outline";
 import Alert from "@/app/components/ui/Alert";
-import PunchlistItemCard from "@/app/components/punchlist/PunchlistItemCard";
+import { PunchlistItemCard } from "@/app/features/punchlist";
 import { useProjectPunchlistItems, type PunchlistItemsQueryParams } from "@/lib/api";
 import type { PunchlistItem, PunchlistItemStatus } from "@/lib/api/types";
 

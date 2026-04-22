@@ -10,7 +10,7 @@ import {
   getSystemToken,
   clearSystemToken,
 } from "@/lib/api/system";
-import TenantsTab from "@/app/components/system-tabs/TenantsTab";
+import { TenantsTab } from "@/app/features/system-admin";
 import { useMinimumLoadingTime } from "@/lib/hooks/useMinimumLoadingTime";
 import Spinner from "@/app/components/ui/Spinner";
 import FormInput from "@/app/components/ui/FormInput";

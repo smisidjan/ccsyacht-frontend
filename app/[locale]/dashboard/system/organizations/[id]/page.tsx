@@ -18,12 +18,14 @@ import Spinner from "@/app/components/ui/Spinner";
 import Alert from "@/app/components/ui/Alert";
 import TabNavState from "@/app/components/ui/TabNavState";
 import type { StateTab } from "@/app/components/ui/TabNavState";
-import TenantUsersTable from "@/app/components/system-tabs/TenantUsersTable";
-import TenantInvitationsTable from "@/app/components/system-tabs/TenantInvitationsTable";
-import TenantRolesTable from "@/app/components/system-tabs/TenantRolesTable";
-import TenantProjectsTable from "@/app/components/system-tabs/TenantProjectsTable";
-import TenantTemplatesTab from "@/app/components/system-tabs/TenantTemplatesTab";
-import TenantSettingsModal from "@/app/components/modals/TenantSettingsModal";
+import {
+  TenantUsersTable,
+  TenantInvitationsTable,
+  TenantRolesTable,
+  TenantProjectsTable,
+  TenantTemplatesTab,
+  TenantSettingsModal,
+} from "@/app/features/system-admin";
 
 type TabType = "users" | "invitations" | "roles" | "projects" | "templates";
 

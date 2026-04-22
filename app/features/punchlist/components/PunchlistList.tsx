@@ -6,7 +6,7 @@ import { PlusIcon, CheckCircleIcon, ClockIcon, ExclamationTriangleIcon, XCircleI
 import Alert from "@/app/components/ui/Alert";
 import Tooltip from "@/app/components/ui/Tooltip";
 import LoadingSkeleton from "@/app/components/ui/LoadingSkeleton";
-import CreatePunchlistItemModal from "@/app/components/modals/CreatePunchlistItemModal";
+import { CreatePunchlistItemModal } from "@/app/features/punchlist";
 import PunchlistItemCard from "./PunchlistItemCard";
 import { usePunchlistItems } from "@/lib/api/punchlist-items";
 import { usePermission } from "@/lib/hooks/usePermission";

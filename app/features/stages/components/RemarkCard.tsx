@@ -19,7 +19,7 @@ import ConfirmModal from "@/app/components/modals/ConfirmModal";
 import { stageRemarksApi, useStageRemarkAttachments } from "@/lib/api/stage-remarks";
 import AuthenticatedImage from "@/app/components/ui/AuthenticatedImage";
 import ImageViewerModal from "@/app/components/modals/ImageViewerModal";
-import DocumentViewerModal from "@/app/components/modals/DocumentViewerModal";
+import { DocumentViewerModal } from "@/app/features/documents";
 import { useToast } from "@/app/context/ToastContext";
 import { useCurrentUser } from "@/lib/api/hooks";
 import { isDocumentAttachment, isImageAttachment } from "@/lib/utils/attachmentUtils";

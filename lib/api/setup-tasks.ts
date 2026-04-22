@@ -423,6 +423,93 @@ export const setupTasksApi = {
     });
   },
 
+  // ============ Kickoff Form ============
+
+  /**
+   * GET /api/projects/{projectId}/setup-task/{setupTaskId}/kickoff-form
+   * Get the kickoff meeting form data
+   */
+  getKickoffForm: async (
+    projectId: string,
+    setupTaskId: string
+  ): Promise<import("./types").KickoffFormData | null> => {
+    return apiFetch<import("./types").KickoffFormData>(`/projects/${projectId}/setup-task/${setupTaskId}/kickoff-form`, {
+      method: "GET",
+    }).catch(() => null);
+  },
+
+  /**
+   * PUT /api/projects/{projectId}/setup-task/{setupTaskId}/kickoff-form
+   * Update the entire kickoff meeting form
+   */
+  updateKickoffForm: async (
+    projectId: string,
+    setupTaskId: string,
+    data: Partial<import("./types").KickoffFormData>
+  ): Promise<import("./types").KickoffFormData> => {
+    return apiFetch(`/projects/${projectId}/setup-task/${setupTaskId}/kickoff-form`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+  },
+
+  /**
+   * PATCH /api/projects/{projectId}/setup-task/{setupTaskId}/kickoff-form/{section}
+   * Update a specific section of the kickoff form (for auto-save)
+   */
+  updateKickoffFormSection: async (
+    projectId: string,
+    setupTaskId: string,
+    section: string,
+    data: Record<string, unknown>
+  ): Promise<void> => {
+    return apiFetch(`/projects/${projectId}/setup-task/${setupTaskId}/kickoff-form/${section}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    });
+  },
+
+  /**
+   * POST /api/projects/{projectId}/setup-task/{setupTaskId}/kickoff-form/complete
+   * Mark the kickoff form as completed (ready for sign-off)
+   */
+  completeKickoffForm: async (
+    projectId: string,
+    setupTaskId: string
+  ): Promise<void> => {
+    return apiFetch(`/projects/${projectId}/setup-task/${setupTaskId}/kickoff-form/complete`, {
+      method: "POST",
+    });
+  },
+
+  /**
+   * GET /api/projects/{projectId}/setup-task/{setupTaskId}/internal-setup
+   * Get the CCS internal project setup data (employees only)
+   */
+  getInternalSetup: async (
+    projectId: string,
+    setupTaskId: string
+  ): Promise<import("./types").InternalProjectSetup | null> => {
+    return apiFetch<import("./types").InternalProjectSetup>(`/projects/${projectId}/setup-task/${setupTaskId}/internal-setup`, {
+      method: "GET",
+    }).catch(() => null);
+  },
+
+  /**
+   * PUT /api/projects/{projectId}/setup-task/{setupTaskId}/internal-setup
+   * Update the CCS internal project setup
+   */
+  updateInternalSetup: async (
+    projectId: string,
+    setupTaskId: string,
+    data: Partial<import("./types").InternalProjectSetup>
+  ): Promise<import("./types").InternalProjectSetup> => {
+    return apiFetch(`/projects/${projectId}/setup-task/${setupTaskId}/internal-setup`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+  },
+
   // ============ Required Document Acknowledgements ============
 
   /**

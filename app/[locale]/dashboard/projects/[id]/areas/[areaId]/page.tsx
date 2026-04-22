@@ -16,7 +16,7 @@ import {
 import Button from "@/app/components/ui/Button";
 import Alert from "@/app/components/ui/Alert";
 import FormInput from "@/app/components/ui/FormInput";
-import CreateStagesModal from "@/app/components/modals/CreateStagesModal";
+import { CreateStagesModal } from "@/app/features/stages";
 import ProgressCircle from "@/app/components/ui/ProgressCircle";
 import { useArea, useStages, useProject, useStageSignoffs, useProjectSigners } from "@/lib/api";
 import { usePermission } from "@/lib/hooks/usePermission";
@@ -26,8 +26,8 @@ import type { Stage } from "@/lib/api/types";
 import SignatureModal from "@/app/components/modals/SignatureModal";
 import RejectSignoffModal from "@/app/components/modals/RejectSignoffModal";
 import { useToast } from "@/app/context/ToastContext";
-import PunchlistList from "@/app/components/punchlist/PunchlistList";
-import RemarksList from "@/app/components/stage-remarks/RemarksList";
+import { PunchlistList } from "@/app/features/punchlist";
+import { RemarksList } from "@/app/features/stages";
 import { useStageRemarks } from "@/lib/api/stage-remarks";
 import { usePunchlistItems } from "@/lib/api/punchlist-items";
 

@@ -11,5 +11,5 @@ export { default as ReportingTab } from "./ReportingTab";
 export { default as LogbookTab } from "./LogbookTab";
 
 // Modals
-export { default as CreateProjectModal } from "./CreateProjectModal";
+export { default as CreateProjectModal, type ProjectFormData } from "./CreateProjectModal";
 export { default as EditProjectModal } from "./EditProjectModal";
