@@ -97,6 +97,17 @@ export default function DocumentsTab({ projectId, projectStatus }: DocumentsTabP
 
   const selectedType = documentTypes?.find((type) => type.identifier === selectedTypeId);
 
+  // Sort document types: required first, then alphabetically
+  const sortedDocumentTypes = documentTypes
+    ? [...documentTypes].sort((a, b) => {
+        // Required types first
+        if (a.isRequired && !b.isRequired) return -1;
+        if (!a.isRequired && b.isRequired) return 1;
+        // Then alphabetically
+        return a.name.localeCompare(b.name);
+      })
+    : [];
+
   const handleUploadDocument = async (data: UploadDocumentRequest) => {
     if (!selectedTypeId) return;
     await uploadDocument(selectedTypeId, data);
@@ -238,7 +249,7 @@ export default function DocumentsTab({ projectId, projectStatus }: DocumentsTabP
             </div>
           </div>
           <div className="overflow-y-auto overflow-x-visible">
-            {documentTypes.map((type) => {
+            {sortedDocumentTypes.map((type) => {
               const menuItems = getDropdownMenuItems(type);
               return (
                 <div

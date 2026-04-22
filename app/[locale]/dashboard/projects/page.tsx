@@ -166,12 +166,17 @@ export default function ProjectsPage() {
       }
       await projectsApi.uploadGeneralArrangement(projectId, data.generalArrangement);
 
-      // 3. Create document types (only non-locked ones, backend handles locked templates)
-      for (const docType of data.documentTypes.filter(dt => !dt.isLocked)) {
-        await documentTypesApi.create(projectId, {
-          name: docType.name,
-          is_required: docType.required,
-        });
+      // 3. Create document types in parallel (only non-locked ones, backend handles locked templates)
+      const nonLockedDocTypes = data.documentTypes.filter(dt => !dt.isLocked);
+      if (nonLockedDocTypes.length > 0) {
+        await Promise.all(
+          nonLockedDocTypes.map(docType =>
+            documentTypesApi.create(projectId!, {
+              name: docType.name,
+              is_required: docType.required,
+            })
+          )
+        );
       }
 
       // Refresh the projects list

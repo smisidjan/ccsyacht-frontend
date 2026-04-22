@@ -35,7 +35,12 @@ interface GeneralArrangementTabProps {
   generalArrangement?: GeneralArrangement;
 }
 
-// Helper to check if we have valid GA image data
+// Helper to check if GA exists (uploaded but maybe not yet converted)
+function hasGA(ga: GeneralArrangement | undefined): boolean {
+  return !!ga && !!ga.contentUrl;
+}
+
+// Helper to check if we have valid GA image data (conversion complete)
 function hasGAImageData(ga: GeneralArrangement | undefined): boolean {
   return (
     !!ga &&
@@ -43,6 +48,11 @@ function hasGAImageData(ga: GeneralArrangement | undefined): boolean {
     typeof ga.imageWidth === "number" &&
     typeof ga.imageHeight === "number"
   );
+}
+
+// Helper to check if GA is still being converted
+function isGAConverting(ga: GeneralArrangement | undefined): boolean {
+  return hasGA(ga) && !hasGAImageData(ga);
 }
 
 // Helper to fix image URL to use the correct API base
@@ -99,6 +109,7 @@ export default function GeneralArrangementTab({
 
   // Check if we have valid GA image data
   const hasValidGA = hasGAImageData(generalArrangement);
+  const isConverting = isGAConverting(generalArrangement);
 
   // Fetch GA image with authentication
   const gaImageUrl = hasValidGA && generalArrangement
@@ -214,6 +225,21 @@ export default function GeneralArrangementTab({
   // Loading state
   if (loading) {
     return <LoadingSkeleton type="list" rows={5} />;
+  }
+
+  // GA is being converted - show processing state
+  if (isConverting) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 bg-white dark:bg-gray-800 rounded-2xl border-2 border-dashed border-blue-300 dark:border-blue-700">
+        <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-600 border-t-transparent mb-4" />
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+          {t("converting") || "Converting document..."}
+        </h3>
+        <p className="text-gray-600 dark:text-gray-400 text-center max-w-sm">
+          {t("convertingDescription") || "The General Arrangement is being processed. This page will automatically update when ready."}
+        </p>
+      </div>
+    );
   }
 
   // No document state

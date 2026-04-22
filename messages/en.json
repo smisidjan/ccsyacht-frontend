@@ -515,6 +515,8 @@
       "download": "Download PDF",
       "noDocument": "No General Arrangement",
       "noDocumentDescription": "No general arrangement has been uploaded for this project yet",
+      "converting": "Converting document...",
+      "convertingDescription": "The General Arrangement is being processed. This page will automatically update when ready.",
       "zoomIn": "Zoom In",
       "zoomOut": "Zoom Out",
       "resetZoom": "Reset Zoom",

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { useParams } from "next/navigation";
 import { Link } from "@/i18n/navigation";
@@ -32,6 +32,12 @@ function getGAObject(ga: string | GeneralArrangement | undefined): GeneralArrang
   return ga;
 }
 
+// Helper to check if GA is being converted (has contentUrl but no imageUrl yet)
+function isGAConverting(ga: string | GeneralArrangement | undefined): boolean {
+  if (!ga || typeof ga === "string") return false;
+  return !!ga.contentUrl && !ga.imageUrl;
+}
+
 // Tab content components
 import OverviewTab from "@/app/components/project-tabs/OverviewTab";
 import DocumentsTab from "@/app/components/project-tabs/DocumentsTab";
@@ -54,7 +60,8 @@ function ProjectDetailPageContent({ projectId }: { projectId: string }) {
   const { data: project, loading: rawLoading, error, refetch } = useProject(projectId);
 
   // Enforce minimum loading time to prevent flickering
-  const loading = useMinimumLoadingTime(rawLoading);
+  // Only show loading on initial load, not during background polling (when we already have data)
+  const loading = useMinimumLoadingTime(rawLoading && !project);
 
   const canEditProject = hasPermission(PERMISSIONS.EDIT_PROJECTS);
 
@@ -89,6 +96,22 @@ function ProjectDetailPageContent({ projectId }: { projectId: string }) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gaContentUrl, projectId]);
+
+  // Poll for GA conversion completion
+  // When GA is uploading/converting (has contentUrl but no imageUrl), poll every 3 seconds
+  const gaIsConverting = isGAConverting(project?.generalArrangement);
+  const refetchRef = useRef(refetch);
+  refetchRef.current = refetch;
+
+  useEffect(() => {
+    if (!gaIsConverting) return;
+
+    const pollInterval = setInterval(() => {
+      refetchRef.current();
+    }, 3000);
+
+    return () => clearInterval(pollInterval);
+  }, [gaIsConverting]);
 
   // Update hash when tab changes
   const handleTabChange = (key: string) => {

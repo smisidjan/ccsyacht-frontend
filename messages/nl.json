@@ -515,6 +515,8 @@
       "download": "Download PDF",
       "noDocument": "Geen General Arrangement",
       "noDocumentDescription": "Er is nog geen general arrangement geüpload voor dit project",
+      "converting": "Document wordt geconverteerd...",
+      "convertingDescription": "De General Arrangement wordt verwerkt. Deze pagina wordt automatisch bijgewerkt wanneer gereed.",
       "zoomIn": "Inzoomen",
       "zoomOut": "Uitzoomen",
       "resetZoom": "Reset Zoom",
