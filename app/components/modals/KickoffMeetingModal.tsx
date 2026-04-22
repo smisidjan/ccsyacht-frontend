@@ -427,11 +427,37 @@ export default function KickoffMeetingModal({
             )}
 
             {/* Document & Signature Status - Enterprise Style */}
-            {(documentStats || progress) && (task.actionStatus === "scheduled" || requiredDocuments.length > 0) && (
+            {(documentStats || progress || pendingDocuments.length > 0) && (task.actionStatus === "scheduled" || requiredDocuments.length > 0 || pendingDocuments.length > 0) && (
               <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4 space-y-3">
-                {/* Document Status Breakdown */}
-                {documentStats && documentStats.total > 0 && (
+                {/* Pending Uploads - Documents that still need to be uploaded */}
+                {pendingDocuments.length > 0 && (
                   <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{t("pendingUploads")}</span>
+                      <span className="text-xs text-gray-500">{pendingDocuments.length} {t("documentsTotal")}</span>
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {/* Required (blocking) */}
+                      {requiredPendingDocs.length > 0 && (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800">
+                          <ExclamationTriangleIcon className="w-3.5 h-3.5" />
+                          {requiredPendingDocs.length} {t("requiredMissing")}
+                        </span>
+                      )}
+                      {/* Requested (assigned) */}
+                      {requestedPendingDocs.length > 0 && (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
+                          <ClockIcon className="w-3.5 h-3.5" />
+                          {requestedPendingDocs.length} {t("requestedPendingShort")}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Document Acknowledgement Status Breakdown */}
+                {documentStats && documentStats.total > 0 && (
+                  <div className={`space-y-2 ${pendingDocuments.length > 0 ? "pt-2 border-t border-gray-200 dark:border-gray-700" : ""}`}>
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{t("documentStatus")}</span>
                       <span className="text-xs text-gray-500">{documentStats.total} {t("documentsTotal")}</span>

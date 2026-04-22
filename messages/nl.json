@@ -459,13 +459,16 @@
         "assignedTo": "Toegewezen aan {name}",
         "requested": "Aangevraagd",
         "dueBy": "Deadline: {date}",
-        "documentStatus": "Document Status",
+        "documentStatus": "Document Bevestigingen",
         "documentsTotal": "documenten",
         "needsYourAction": "actie vereist",
         "disputed": "betwist",
         "pendingOthers": "wacht op anderen",
         "completed": "afgerond",
-        "allDocumentsAcknowledged": "Alle documenten bevestigd"
+        "allDocumentsAcknowledged": "Alle documenten bevestigd",
+        "pendingUploads": "Nog te uploaden",
+        "requiredMissing": "verplicht",
+        "requestedPendingShort": "aangevraagd"
       },
       "kickoffScheduling": {
         "title": "Plan Kickoff Meeting",
