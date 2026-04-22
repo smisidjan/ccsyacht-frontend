@@ -49,17 +49,13 @@ export function GAProvider({ children }: { children: ReactNode }) {
   const loadGA = useCallback(async (projectId: string, gaUrl?: string) => {
     // Don't reload if already loaded for this project AND same GA URL
     if (loadedProjectId === projectId && loadedGAUrl === gaUrl) {
-      console.log("GA already loaded for project", projectId, "with URL", gaUrl);
       return;
     }
 
     // If GA URL changed, revoke old blob URL before loading new one
     if (loadedProjectId === projectId && loadedGAUrl !== gaUrl) {
-      console.log("GA URL changed, reloading...");
       resetGA();
     }
-
-    console.log("Starting GA load for project", projectId, "with URL", gaUrl);
 
     // Declare progressInterval in outer scope for cleanup
     let progressInterval: NodeJS.Timeout | undefined;
@@ -169,19 +165,14 @@ export function GAProvider({ children }: { children: ReactNode }) {
         offset += chunk.length;
       }
 
-      console.log("Combined chunks, total size:", combinedChunks.length);
-
       // Set pdfData FIRST before loading with PDF.js
-      console.log("About to set pdfData with combinedChunks, size:", combinedChunks.length);
       setPdfData(combinedChunks);
       setLoadedProjectId(projectId);
       setLoadedGAUrl(gaUrl || null);
-      console.log("setPdfData called");
 
       // Create blob URL for rendering (works for both PDF and images)
       const blob = new Blob([combinedChunks], { type: contentType });
       const url = URL.createObjectURL(blob);
-      console.log("Created blob URL:", url, "blob size:", blob.size);
       setBlobUrl(url);
 
       // Stop simulated progress
@@ -197,8 +188,6 @@ export function GAProvider({ children }: { children: ReactNode }) {
       setTimeout(() => {
         setIsDownloading(false);
       }, remainingTime);
-
-      console.log("GA loaded successfully for project", projectId, "pdfData size:", combinedChunks.length);
     } catch (err) {
       // Stop simulated progress on error
       if (typeof progressInterval !== 'undefined') {

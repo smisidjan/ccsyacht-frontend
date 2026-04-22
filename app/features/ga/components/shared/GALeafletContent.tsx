@@ -191,8 +191,7 @@ export default function GALeafletContent({
           url={imageUrl}
           bounds={bounds}
           eventHandlers={{
-            error: (e) => console.error("❌ ImageOverlay failed to load:", imageUrl, e),
-            load: () => console.log("✅ ImageOverlay loaded successfully:", imageUrl),
+            error: (e) => console.error("ImageOverlay failed to load:", imageUrl, e),
           }}
         />
 

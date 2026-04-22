@@ -9,7 +9,7 @@ import FormSelect from "@/app/components/ui/FormSelect";
 import FormRadioGroup from "@/app/components/ui/FormRadioGroup";
 import Alert from "@/app/components/ui/Alert";
 import type { CreateInvitationRequest } from "@/lib/api/types";
-import { invitationsApi, useRoles } from "@/lib/api";
+import { useRoles } from "@/lib/api";
 import { formatRoleName } from "@/lib/utils/roleFormatter";
 
 export interface InviteUserFormData {
@@ -45,22 +45,13 @@ export default function InviteUserModal({ isOpen, onClose, onSubmit, tenantName 
   const [linkCopied, setLinkCopied] = useState(false);
 
   // Fetch roles dynamically from API
-  const { data: employeeRoles, loading: employeeRolesLoading } = useRoles("employee");
-  const { data: guestRoles, loading: guestRolesLoading } = useRoles("guest");
+  const { data: employeeRoles } = useRoles("employee");
+  const { data: guestRoles } = useRoles("guest");
 
   // Generate registration link
   const tenantSlug = tenantName ? generateSlug(tenantName) : "";
   const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
   const registrationLink = tenantSlug ? `${baseUrl}/${locale}/register/${tenantSlug}` : "";
-
-  // Debug logging
-  console.log("InviteUserModal Debug:", {
-    tenantName,
-    tenantSlug,
-    baseUrl,
-    locale,
-    registrationLink,
-  });
 
   // Set default role when roles are loaded
   useEffect(() => {
@@ -93,11 +84,8 @@ export default function InviteUserModal({ isOpen, onClose, onSubmit, tenantName 
   };
 
   const handleSubmit = async () => {
-    console.log("InviteUserModal - Form Data:", formData);
-
     // Validate home organization for guests
     if (formData.employmentType === "guest" && !formData.homeOrganization?.trim()) {
-      console.log("Validation failed: Guest requires home organization");
       return;
     }
 
@@ -112,7 +100,6 @@ export default function InviteUserModal({ isOpen, onClose, onSubmit, tenantName 
       data.home_organization_name = formData.homeOrganization;
     }
 
-    console.log("InviteUserModal - Sending data to API:", data);
     await onSubmit(data);
     setFormData({
       email: "",

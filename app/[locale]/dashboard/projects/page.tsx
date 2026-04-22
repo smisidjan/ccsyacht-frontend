@@ -188,7 +188,6 @@ export default function ProjectsPage() {
       if (projectId) {
         try {
           await projectsApi.delete(projectId);
-          console.log("Successfully cleaned up partially created project:", projectId);
         } catch (deleteError) {
           console.error("Failed to cleanup project after error:", deleteError);
         }
