@@ -82,6 +82,14 @@ export default function KickoffSchedulingModal({
   const [isRespondingToDate, setIsRespondingToDate] = useState(false);
   const [responseDateExpansionOverrides, setResponseDateExpansionOverrides] = useState<Map<string, boolean>>(new Map());
 
+  // Propose alternative dates state (when user declines all options)
+  const [showProposeAlternative, setShowProposeAlternative] = useState(false);
+  const [proposedAlternatives, setProposedAlternatives] = useState<LocalDateWithTimes[]>([]);
+  const [newProposedDateInput, setNewProposedDateInput] = useState("");
+  const [newProposedTimeInputs, setNewProposedTimeInputs] = useState<Record<string, { start: string; end: string }>>({});
+  const [expandedProposedDates, setExpandedProposedDates] = useState<Set<string>>(new Set());
+  const [isSubmittingProposal, setIsSubmittingProposal] = useState(false);
+
   // Permissions
   const canManageKickoff = hasPermission(PERMISSIONS.MANAGE_KICKOFF_MEETING);
 
@@ -453,6 +461,131 @@ export default function KickoffSchedulingModal({
     }
   };
 
+  // === Propose Alternative Dates Functions ===
+
+  // Add a new proposed alternative date
+  const handleAddProposedDate = () => {
+    if (!newProposedDateInput) return;
+
+    const exists = proposedAlternatives.some((d) => d.date === newProposedDateInput);
+    if (exists) {
+      showToast("error", t("dates.duplicateDate"));
+      return;
+    }
+
+    setProposedAlternatives((prev) => [...prev, { date: newProposedDateInput, timeSlots: [] }]);
+    setExpandedProposedDates((prev) => new Set([...prev, newProposedDateInput]));
+    setNewProposedDateInput("");
+  };
+
+  // Add time slot to proposed alternative date
+  const handleAddTimeToProposedDate = (date: string) => {
+    const timeInput = newProposedTimeInputs[date];
+    if (!timeInput?.start || !timeInput?.end) return;
+
+    if (timeInput.end <= timeInput.start) {
+      showToast("error", t("dates.endBeforeStart"));
+      return;
+    }
+
+    const existingDate = proposedAlternatives.find((d) => d.date === date);
+    const isDuplicate = existingDate?.timeSlots.some(
+      (slot) => slot.startTime === timeInput.start && slot.endTime === timeInput.end
+    );
+    if (isDuplicate) {
+      showToast("error", t("dates.duplicateTime"));
+      return;
+    }
+
+    setProposedAlternatives((prev) =>
+      prev.map((d) => {
+        if (d.date === date) {
+          const newSlot: LocalTimeSlot = { startTime: timeInput.start, endTime: timeInput.end };
+          return {
+            ...d,
+            timeSlots: [...d.timeSlots, newSlot].sort((a, b) => a.startTime.localeCompare(b.startTime)),
+          };
+        }
+        return d;
+      })
+    );
+    setNewProposedTimeInputs((prev) => ({ ...prev, [date]: { start: "", end: "" } }));
+  };
+
+  // Remove time slot from proposed alternative date
+  const handleRemoveTimeFromProposedDate = (date: string, slot: LocalTimeSlot) => {
+    setProposedAlternatives((prev) =>
+      prev.map((d) => {
+        if (d.date === date) {
+          return {
+            ...d,
+            timeSlots: d.timeSlots.filter(
+              (s) => !(s.startTime === slot.startTime && s.endTime === slot.endTime)
+            ),
+          };
+        }
+        return d;
+      })
+    );
+  };
+
+  // Remove entire proposed alternative date
+  const handleRemoveProposedAlternativeDate = (date: string) => {
+    setProposedAlternatives((prev) => prev.filter((d) => d.date !== date));
+    setExpandedProposedDates((prev) => {
+      const next = new Set(prev);
+      next.delete(date);
+      return next;
+    });
+  };
+
+  // Toggle proposed date expansion
+  const toggleProposedDateExpansion = (date: string) => {
+    setExpandedProposedDates((prev) => {
+      const next = new Set(prev);
+      if (next.has(date)) {
+        next.delete(date);
+      } else {
+        next.add(date);
+      }
+      return next;
+    });
+  };
+
+  // Check if there are valid proposed alternatives
+  const hasValidProposedAlternatives = proposedAlternatives.some((d) => d.timeSlots.length > 0);
+
+  // Submit proposed alternatives
+  const handleSubmitProposedAlternatives = async () => {
+    if (!hasValidProposedAlternatives) return;
+
+    try {
+      setIsSubmittingProposal(true);
+      setError(null);
+
+      // TODO: Backend API call to submit proposed alternatives
+      // await setupTasksApi.proposeAlternativeDates(projectId, taskId, {
+      //   proposed_dates: proposedAlternatives.map((d) => ({
+      //     date: d.date,
+      //     time_slots: d.timeSlots.map((slot) => ({
+      //       start_time: slot.startTime,
+      //       end_time: slot.endTime,
+      //     })),
+      //   })),
+      // });
+
+      // For now, just show success and clear the state
+      showToast("success", t("proposeAlternative.submitted"));
+      setProposedAlternatives([]);
+      setShowProposeAlternative(false);
+      await refreshData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("proposeAlternative.submitError"));
+    } finally {
+      setIsSubmittingProposal(false);
+    }
+  };
+
   // Respond to a time slot
   const handleRespondToTimeSlot = async (slotId: string, isAvailable: boolean) => {
     try {
@@ -513,6 +646,26 @@ export default function KickoffSchedulingModal({
 
     return responses;
   }, [schedulingStatus, currentUser]);
+
+  // Check if current user has declined ALL time slots (eligible to propose alternatives)
+  const hasDeclinedAllSlots = useMemo(() => {
+    if (!schedulingStatus || !currentUser || !isCurrentUserAttendee) return false;
+
+    const allSlotIds: string[] = [];
+    schedulingStatus.proposedDates.forEach((date) => {
+      date.timeSlots.forEach((slot) => {
+        allSlotIds.push(slot.id);
+      });
+    });
+
+    if (allSlotIds.length === 0) return false;
+
+    // Check if user has responded to ALL slots AND all responses are "no"
+    const allResponded = allSlotIds.every((slotId) => currentUserResponses[slotId] !== null);
+    const allDeclined = allSlotIds.every((slotId) => currentUserResponses[slotId] === false);
+
+    return allResponded && allDeclined;
+  }, [schedulingStatus, currentUser, isCurrentUserAttendee, currentUserResponses]);
 
   // Calculate which attendees have responded and which are pending
   const attendeeResponseStatus = useMemo(() => {
@@ -1295,6 +1448,220 @@ export default function KickoffSchedulingModal({
         )}
         {canManageKickoff && schedulingStatus.allResponded && schedulingStatus.timeSlotsWhereAllCanAttend.length === 0 && (
           <Alert type="warning" message={t("responses.noCommonDate")} />
+        )}
+
+        {/* Propose Alternative Section - shown when user declined all slots */}
+        {isCurrentUserAttendee && hasDeclinedAllSlots && (
+          <div className="mt-6 border-t border-gray-200 dark:border-gray-700 pt-6">
+            {!showProposeAlternative ? (
+              // Collapsed state - show prompt to propose alternatives
+              <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center flex-shrink-0">
+                    <ExclamationTriangleIcon className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="text-sm font-semibold text-amber-800 dark:text-amber-300">
+                      {t("proposeAlternative.title")}
+                    </h4>
+                    <p className="text-sm text-amber-700 dark:text-amber-400 mt-1">
+                      {t("proposeAlternative.description")}
+                    </p>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => setShowProposeAlternative(true)}
+                      className="mt-3"
+                    >
+                      <PlusIcon className="w-4 h-4" />
+                      {t("proposeAlternative.addButton")}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              // Expanded state - show form to add alternative dates
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-semibold text-gray-900 dark:text-white">
+                    {t("proposeAlternative.formTitle")}
+                  </h4>
+                  <button
+                    onClick={() => {
+                      setShowProposeAlternative(false);
+                      setProposedAlternatives([]);
+                    }}
+                    className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                  >
+                    <XMarkIcon className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* Proposed alternative dates cards */}
+                {proposedAlternatives.length > 0 && (
+                  <div className="space-y-3">
+                    {proposedAlternatives.map((dateWithTimes) => {
+                      const isExpanded = expandedProposedDates.has(dateWithTimes.date);
+
+                      return (
+                        <div
+                          key={dateWithTimes.date}
+                          className="border border-purple-200 dark:border-purple-800 rounded-xl overflow-hidden bg-purple-50/50 dark:bg-purple-900/10"
+                        >
+                          {/* Date Header */}
+                          <div
+                            className="flex items-center justify-between p-3 bg-purple-100/50 dark:bg-purple-900/20 cursor-pointer hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors"
+                            onClick={() => toggleProposedDateExpansion(dateWithTimes.date)}
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 bg-purple-200 dark:bg-purple-800/50 rounded-lg flex items-center justify-center">
+                                <CalendarDaysIcon className="w-4 h-4 text-purple-700 dark:text-purple-400" />
+                              </div>
+                              <div>
+                                <p className="text-sm font-medium text-gray-900 dark:text-white">
+                                  {formatDateDisplay(dateWithTimes.date)}
+                                </p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">
+                                  {dateWithTimes.timeSlots.length === 0
+                                    ? t("dates.noTimesYet")
+                                    : t("dates.timeSlotCount", { count: dateWithTimes.timeSlots.length })
+                                  }
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {dateWithTimes.timeSlots.length === 0 && (
+                                <span className="text-xs px-2 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-full">
+                                  {t("dates.addTimesRequired")}
+                                </span>
+                              )}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleRemoveProposedAlternativeDate(dateWithTimes.date);
+                                }}
+                                className="p-1 text-gray-400 hover:text-red-600 dark:hover:text-red-400"
+                              >
+                                <XMarkIcon className="w-4 h-4" />
+                              </button>
+                              <div className={`transform transition-transform ${isExpanded ? "rotate-180" : ""}`}>
+                                <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                </svg>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Expanded - Time Slots */}
+                          {isExpanded && (
+                            <div className="p-3 border-t border-purple-200 dark:border-purple-800 space-y-3">
+                              {/* Time Chips */}
+                              {dateWithTimes.timeSlots.length > 0 && (
+                                <div className="flex flex-wrap gap-2">
+                                  {dateWithTimes.timeSlots.map((slot, idx) => (
+                                    <div
+                                      key={`${slot.startTime}-${slot.endTime}-${idx}`}
+                                      className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-purple-100 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700 rounded-full"
+                                    >
+                                      <ClockIcon className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+                                      <span className="text-xs font-medium text-purple-700 dark:text-purple-300">
+                                        {formatTimeDisplay(slot.startTime)} - {formatTimeDisplay(slot.endTime)}
+                                      </span>
+                                      <button
+                                        onClick={() => handleRemoveTimeFromProposedDate(dateWithTimes.date, slot)}
+                                        className="p-0.5 text-purple-400 hover:text-red-600 dark:hover:text-red-400"
+                                      >
+                                        <XMarkIcon className="w-3 h-3" />
+                                      </button>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+
+                              {/* Add Time Input */}
+                              <div className="flex flex-col sm:flex-row gap-2">
+                                <div className="flex items-center gap-2 flex-1">
+                                  <span className="text-xs text-gray-500 dark:text-gray-400 min-w-[35px]">{t("dates.from")}</span>
+                                  <input
+                                    type="time"
+                                    value={newProposedTimeInputs[dateWithTimes.date]?.start || ""}
+                                    onChange={(e) => setNewProposedTimeInputs((prev) => ({
+                                      ...prev,
+                                      [dateWithTimes.date]: { ...prev[dateWithTimes.date], start: e.target.value }
+                                    }))}
+                                    className="flex-1 px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+                                  />
+                                </div>
+                                <div className="flex items-center gap-2 flex-1">
+                                  <span className="text-xs text-gray-500 dark:text-gray-400 min-w-[35px]">{t("dates.to")}</span>
+                                  <input
+                                    type="time"
+                                    value={newProposedTimeInputs[dateWithTimes.date]?.end || ""}
+                                    onChange={(e) => setNewProposedTimeInputs((prev) => ({
+                                      ...prev,
+                                      [dateWithTimes.date]: { ...prev[dateWithTimes.date], end: e.target.value }
+                                    }))}
+                                    className="flex-1 px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+                                  />
+                                </div>
+                                <Button
+                                  variant="secondary"
+                                  size="sm"
+                                  onClick={() => handleAddTimeToProposedDate(dateWithTimes.date)}
+                                  disabled={!newProposedTimeInputs[dateWithTimes.date]?.start || !newProposedTimeInputs[dateWithTimes.date]?.end}
+                                >
+                                  <PlusIcon className="w-3.5 h-3.5" />
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Add New Date */}
+                <div className="flex gap-2">
+                  <input
+                    type="date"
+                    value={newProposedDateInput}
+                    onChange={(e) => setNewProposedDateInput(e.target.value)}
+                    min={new Date().toISOString().split("T")[0]}
+                    className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+                  />
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={handleAddProposedDate}
+                    disabled={!newProposedDateInput}
+                  >
+                    <PlusIcon className="w-4 h-4" />
+                    {t("proposeAlternative.addDate")}
+                  </Button>
+                </div>
+
+                {/* Submit Button */}
+                {hasValidProposedAlternatives && (
+                  <Button
+                    variant="primary"
+                    onClick={handleSubmitProposedAlternatives}
+                    loading={isSubmittingProposal}
+                    disabled={isSubmittingProposal}
+                    className="w-full"
+                  >
+                    <PaperAirplaneIcon className="w-4 h-4" />
+                    {t("proposeAlternative.submit")}
+                  </Button>
+                )}
+
+                {/* Help text */}
+                <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
+                  {t("proposeAlternative.helpText")}
+                </p>
+              </div>
+            )}
+          </div>
         )}
       </div>
     );

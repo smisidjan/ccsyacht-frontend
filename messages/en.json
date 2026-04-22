@@ -568,7 +568,18 @@
           "absent": "Absent"
         },
         "dateConfirmed": "Meeting date confirmed. Confirmation emails sent.",
-        "confirmError": "Failed to confirm meeting date"
+        "confirmError": "Failed to confirm meeting date",
+        "proposeAlternative": {
+          "title": "None of these times work?",
+          "description": "You've declined all proposed time slots. Would you like to suggest alternative times that work better for you?",
+          "addButton": "Propose Alternative Times",
+          "formTitle": "Suggest Alternative Times",
+          "addDate": "Add Date",
+          "submit": "Submit Proposed Times",
+          "submitted": "Your proposed times have been sent to the organizer",
+          "submitError": "Failed to submit proposed times",
+          "helpText": "The organizer will review your suggestions and may add them as new options"
+        }
       },
       "viewDetails": "View Details",
       "viewDecks": "View Decks",

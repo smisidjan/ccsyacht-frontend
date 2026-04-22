@@ -568,7 +568,18 @@
           "absent": "Afwezig"
         },
         "dateConfirmed": "Meeting datum bevestigd. Bevestigingsmails verstuurd.",
-        "confirmError": "Kan meeting datum niet bevestigen"
+        "confirmError": "Kan meeting datum niet bevestigen",
+        "proposeAlternative": {
+          "title": "Past geen van deze tijden?",
+          "description": "Je hebt alle voorgestelde tijdslots afgewezen. Wil je alternatieve tijden voorstellen die beter uitkomen?",
+          "addButton": "Alternatieve tijden voorstellen",
+          "formTitle": "Stel alternatieve tijden voor",
+          "addDate": "Datum toevoegen",
+          "submit": "Voorgestelde tijden versturen",
+          "submitted": "Je voorgestelde tijden zijn naar de organisator gestuurd",
+          "submitError": "Kan voorgestelde tijden niet versturen",
+          "helpText": "De organisator bekijkt je suggesties en kan ze als nieuwe opties toevoegen"
+        }
       },
       "viewDetails": "Bekijk Details",
       "viewDecks": "Bekijk Dekken",
