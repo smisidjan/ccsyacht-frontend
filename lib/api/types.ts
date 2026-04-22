@@ -544,6 +544,27 @@ export interface DocumentCategory {
   name: string;
 }
 
+// Document acknowledgement for regular documents
+export interface DocumentAcknowledgement {
+  "@type"?: "Person" | "AgreeAction";
+  identifier: string;
+  name: string;
+  email?: string;
+  // API may return agent as nested object
+  agent?: {
+    identifier: string;
+    name: string;
+  };
+  hasRead: boolean;
+  readAt: string | null;
+  hasAgreed: boolean | null;
+  agreedAt: string | null;
+  disagreementReason: string | null;
+}
+
+// Document status based on acknowledgements
+export type DocumentStatus = "draft" | "pending_review" | "active" | "disputed";
+
 export interface Document {
   "@context"?: string;
   "@type"?: string;
@@ -560,6 +581,16 @@ export interface Document {
   category: DocumentCategory;
   uploadedBy?: string;
   uploadedByName?: string;
+  // Acknowledgement tracking
+  acknowledgements?: DocumentAcknowledgement[];
+  requiredAcknowledgers?: string[]; // User IDs who need to acknowledge
+  status?: DocumentStatus;
+  allAcknowledged?: boolean;
+  acknowledgementCount?: number;
+  agreedCount?: number;
+  disagreedCount?: number;
+  totalRequiredAcknowledgers?: number;
+  totalAssignees?: number; // API returns this field
 }
 
 export interface UploadDocumentRequest {
