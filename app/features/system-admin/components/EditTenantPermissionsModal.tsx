@@ -6,6 +6,7 @@ import BaseModal from "@/app/components/modals/BaseModal";
 import FormCheckbox from "@/app/components/ui/FormCheckbox";
 import { formatRoleName } from "@/lib/utils/roleFormatter";
 import { systemApi, systemTenantsApi } from "@/lib/api/system";
+import { handleError } from "@/lib/utils/errors";
 import type { Tenant } from "@/lib/api/types";
 
 interface EditTenantPermissionsModalProps {
@@ -46,7 +47,7 @@ export default function EditTenantPermissionsModal({
         setRestrictedPermissions(tenantDetails.restrictedPermissions || []);
         setSelectablePermissions(permissionsResponse.itemListElement);
       } catch (err) {
-        console.error("Failed to fetch data:", err);
+        handleError(err, { severity: "console", context: "Failed to fetch data" });
         setRestrictedPermissions([]);
         setSelectablePermissions([]);
       } finally {

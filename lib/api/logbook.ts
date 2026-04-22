@@ -2,9 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import type { LogbookEntry, LogbookFilters, ApiError } from "./types";
-import { getAuthToken, getTenantUrl } from "./client";
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
+import { apiFetch, buildQueryString } from "./fetch";
 
 // Paginated response type
 interface PaginatedResponse<T> {
@@ -26,73 +24,28 @@ interface PaginatedResponse<T> {
   };
 }
 
-// Base fetch function
-async function apiFetch<T>(
-  endpoint: string,
-  options: RequestInit = {}
-): Promise<T> {
-  const token = getAuthToken();
-  const tenantUrl = getTenantUrl();
-
-  const headers: HeadersInit = {
-    "Content-Type": "application/json",
-    ...options.headers,
-  };
-
-  if (token) {
-    (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
-  }
-  if (tenantUrl) {
-    (headers as Record<string, string>)["X-Tenant-ID"] = tenantUrl;
-  }
-
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    ...options,
-    headers,
-  });
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    const error: ApiError = {
-      message: errorData.message || errorData.error || `HTTP error ${response.status}`,
-      code: errorData.code,
-      status: response.status,
-    };
-    throw error;
-  }
-
-  // Handle 204 No Content
-  if (response.status === 204) {
-    return undefined as T;
-  }
-
-  return response.json();
-}
-
 // ============ Logbook API ============
 export const logbookApi = {
-  getEntries: (projectId: string, filters?: LogbookFilters): Promise<PaginatedResponse<LogbookEntry>> => {
-    const query = new URLSearchParams();
-    if (filters?.action_type) query.append("action_type", filters.action_type);
-    if (filters?.user_id) query.append("user_id", filters.user_id);
-    if (filters?.from_date) query.append("from_date", filters.from_date);
-    if (filters?.to_date) query.append("to_date", filters.to_date);
-    if (filters?.per_page) query.append("per_page", String(filters.per_page));
-    if (filters?.page) query.append("page", String(filters.page));
-    const queryString = query.toString();
-    return apiFetch(`/projects/${projectId}/logbook${queryString ? `?${queryString}` : ""}`);
-  },
+  getEntries: (projectId: string, filters?: LogbookFilters): Promise<PaginatedResponse<LogbookEntry>> =>
+    apiFetch(`/projects/${projectId}/logbook${buildQueryString({
+      action_type: filters?.action_type,
+      user_id: filters?.user_id,
+      from_date: filters?.from_date,
+      to_date: filters?.to_date,
+      per_page: filters?.per_page,
+      page: filters?.page,
+    })}`),
 };
 
 // ============ Logbook Hook ============
-interface UseApiState<T> {
-  data: T | null;
+interface UseLogbookState {
+  data: LogbookEntry[] | null;
   loading: boolean;
   error: ApiError | null;
 }
 
 export function useLogbook(projectId: string, filters?: LogbookFilters) {
-  const [state, setState] = useState<UseApiState<LogbookEntry[]>>({
+  const [state, setState] = useState<UseLogbookState>({
     data: null,
     loading: true,
     error: null,
@@ -105,12 +58,15 @@ export function useLogbook(projectId: string, filters?: LogbookFilters) {
     setState((prev) => ({ ...prev, loading: true, error: null }));
     try {
       const parsedFilters = JSON.parse(filtersKey) as LogbookFilters;
-      const response = await logbookApi.getEntries(projectId, Object.keys(parsedFilters).length > 0 ? parsedFilters : undefined);
+      const response = await logbookApi.getEntries(
+        projectId,
+        Object.keys(parsedFilters).length > 0 ? parsedFilters : undefined
+      );
       setState({ data: response.data || [], loading: false, error: null });
     } catch (err) {
       setState({ data: null, loading: false, error: err as ApiError });
     }
-  }, [projectId, filtersKey]); // Use serialized filters to prevent infinite loop
+  }, [projectId, filtersKey]);
 
   useEffect(() => {
     fetchLogbook();

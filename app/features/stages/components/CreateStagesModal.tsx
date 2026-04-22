@@ -22,6 +22,7 @@ import { CSS } from "@dnd-kit/utilities";
 import BaseModal from "@/app/components/modals/BaseModal";
 import { stageTemplatesApi } from "@/lib/api/stageTemplates";
 import { stagesApi } from "@/lib/api/stages";
+import { handleError } from "@/lib/utils/errors";
 import { Bars3Icon, TrashIcon } from "@heroicons/react/24/outline";
 
 interface CreateStagesModalProps {
@@ -139,7 +140,7 @@ export default function CreateStagesModal({
 
       setStages(stageRows);
     } catch (error) {
-      console.error("Failed to load stage templates:", error);
+      handleError(error, { severity: "console", context: "Failed to load stage templates" });
       setStages([]);
     } finally {
       setIsLoadingTemplates(false);

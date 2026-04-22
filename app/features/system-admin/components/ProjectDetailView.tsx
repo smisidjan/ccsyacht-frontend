@@ -13,6 +13,7 @@ import {
   PlusIcon,
 } from "@heroicons/react/24/outline";
 import { systemProjectsApi } from "@/lib/api/system";
+import { handleError } from "@/lib/utils/errors";
 import type { Project, DocumentType, Document } from "@/lib/api/types";
 import TabNavState from "@/app/components/ui/TabNavState";
 import type { StateTab } from "@/app/components/ui/TabNavState";
@@ -112,9 +113,11 @@ export default function ProjectDetailView({
       }
       setDocuments(docsMap);
     } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : "Failed to load project data";
-      console.error("Failed to fetch project data:", errorMessage);
+      const errorMessage = handleError(err, {
+        severity: "console",
+        context: "Failed to fetch project data",
+        fallbackMessage: "Failed to load project data",
+      });
       setError(errorMessage);
     } finally {
       setLoading(false);
@@ -140,7 +143,7 @@ export default function ProjectDetailView({
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
     } catch (err) {
-      console.error("Failed to download document:", err);
+      handleError(err, { severity: "console", context: "Failed to download document" });
       alert(t("errors.downloadFailed"));
     } finally {
       setDownloading((prev) => ({ ...prev, [docId]: false }));
@@ -166,7 +169,7 @@ export default function ProjectDetailView({
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
     } catch (err) {
-      console.error("Failed to download GA:", err);
+      handleError(err, { severity: "console", context: "Failed to download GA" });
       alert(t("errors.downloadFailed"));
     } finally {
       setDownloading((prev) => ({ ...prev, ga: false }));
@@ -196,7 +199,7 @@ export default function ProjectDetailView({
       // Refresh project data
       await fetchProjectData();
     } catch (err) {
-      console.error("Failed to upload GA:", err);
+      handleError(err, { severity: "console", context: "Failed to upload GA" });
       throw err;
     } finally {
       setUploading(false);
@@ -222,7 +225,7 @@ export default function ProjectDetailView({
       // Refresh project data
       await fetchProjectData();
     } catch (err) {
-      console.error("Failed to delete GA:", err);
+      handleError(err, { severity: "console", context: "Failed to delete GA" });
       throw err;
     } finally {
       setDeleting(false);

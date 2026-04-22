@@ -10,6 +10,7 @@ import { decksApi } from "@/lib/api/decks";
 import { useToast } from "@/app/context/ToastContext";
 import { PencilIcon, TrashIcon } from "@heroicons/react/24/outline";
 import type { Deck } from "@/lib/api/types";
+import { handleError } from "@/lib/utils/errors";
 
 interface PendingDeck {
   id: string;
@@ -110,7 +111,7 @@ export default function CreateDeckModal({
             }
           }
         } catch (e) {
-          console.error("Failed to load deck data from localStorage:", e);
+          handleError(e, { severity: "console", context: "Loading deck data from localStorage" });
         }
       }
     }
@@ -122,7 +123,7 @@ export default function CreateDeckModal({
       try {
         localStorage.setItem(storageKey, JSON.stringify({ pendingDecks }));
       } catch (e) {
-        console.error("Failed to save deck data to localStorage:", e);
+        handleError(e, { severity: "console", context: "Saving deck data to localStorage" });
       }
     }
   }, [pendingDecks, isOpen, storageKey, editMode]);

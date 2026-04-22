@@ -6,6 +6,7 @@ import BaseModal from "@/app/components/modals/BaseModal";
 import FormInput from "@/app/components/ui/FormInput";
 import FormCheckbox from "@/app/components/ui/FormCheckbox";
 import { systemApi } from "@/lib/api/system";
+import { handleError } from "@/lib/utils/errors";
 import type { TenantRole, UpdateTenantRoleRequest } from "@/lib/api/types";
 import { formatRoleName } from "@/lib/utils/roleFormatter";
 
@@ -53,7 +54,7 @@ export default function EditRoleModal({
 
         setAvailablePermissions(permissions);
       } catch (err) {
-        console.error("Failed to fetch permissions:", err);
+        handleError(err, { severity: "console", context: "Failed to fetch permissions" });
         setAvailablePermissions([]);
       } finally {
         setLoadingPermissions(false);

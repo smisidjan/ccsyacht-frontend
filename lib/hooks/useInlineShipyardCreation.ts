@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { shipyardsApi } from "@/lib/api/client";
 import { systemProjectsApi } from "@/lib/api/system";
+import { handleError } from "@/lib/utils/errors";
 import type { CreateShipyardRequest, Shipyard } from "@/lib/api/types";
 
 interface UseInlineShipyardCreationProps {
@@ -65,7 +66,11 @@ export function useInlineShipyardCreation({
         newShipyard = await shipyardsApi.create(data);
       }
     } catch (err) {
-      onError(err instanceof Error ? err.message : "Failed to create shipyard");
+      const errorMessage = handleError(err, {
+        severity: "silent",
+        fallbackMessage: "Failed to create shipyard",
+      });
+      onError(errorMessage);
       setIsCreating(false);
       return;
     }
@@ -76,7 +81,7 @@ export function useInlineShipyardCreation({
         onSuccess({ id: newShipyard.identifier, name: newShipyard.name });
         resetForm();
       } catch (err) {
-        console.error("Error in onSuccess callback:", err);
+        handleError(err, { severity: "console", context: "Error in onSuccess callback" });
       }
     }
 

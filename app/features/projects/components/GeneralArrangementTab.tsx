@@ -21,6 +21,7 @@ import { useMinimumLoadingTime } from "@/lib/hooks/useMinimumLoadingTime";
 import { useGAImage } from "@/lib/hooks/useGAImage";
 import { PERMISSIONS } from "@/lib/constants/permissions";
 import { useToast } from "@/app/context/ToastContext";
+import { handleError } from "@/lib/utils/errors";
 import LoadingSkeleton from "@/app/components/ui/LoadingSkeleton";
 import Alert from "@/app/components/ui/Alert";
 import Tooltip from "@/app/components/ui/Tooltip";
@@ -200,8 +201,7 @@ export default function GeneralArrangementTab({
       await deletePin(pinToDelete);
       showToast("success", tPins("deleteSuccess"));
     } catch (err) {
-      console.error("Failed to delete pin:", err);
-      showToast("error", tPins("deleteError"));
+      handleError(err, { showToast, fallbackMessage: tPins("deleteError") });
     } finally {
       setPinToDelete(null);
       setIsDeleteModalOpen(false);

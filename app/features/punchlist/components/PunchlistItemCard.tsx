@@ -26,6 +26,7 @@ import ImageViewerModal from "@/app/components/modals/ImageViewerModal";
 import { DocumentViewerModal } from "@/app/features/documents";
 import { isDocumentAttachment, isImageAttachment } from "@/lib/utils/attachmentUtils";
 import type { PunchlistItem, PunchlistItemStatus, StageStatus, PunchlistItemAttachment } from "@/lib/api/types";
+import { handleError } from "@/lib/utils/errors";
 
 interface PunchlistItemCardProps {
   item: PunchlistItem;
@@ -80,8 +81,8 @@ export default function PunchlistItemCard({
       await punchlistItemsApi.updateStatus(projectId, item.identifier, { status });
       showToast("success", t("updateSuccess"));
       onUpdate?.();
-    } catch (error: any) {
-      showToast("error", error.message || t("updateError"));
+    } catch (error) {
+      handleError(error, { showToast, fallbackMessage: t("updateError") });
     } finally {
       setIsUpdating(false);
     }
@@ -96,8 +97,8 @@ export default function PunchlistItemCard({
       });
       showToast("success", t("cancelSuccess"));
       onUpdate?.();
-    } catch (error: any) {
-      showToast("error", error.message || t("updateError"));
+    } catch (error) {
+      handleError(error, { showToast, fallbackMessage: t("updateError") });
       throw error; // Re-throw to let modal handle it
     } finally {
       setIsUpdating(false);

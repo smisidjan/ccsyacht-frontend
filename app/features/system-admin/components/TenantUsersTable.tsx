@@ -8,7 +8,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { systemApi } from "@/lib/api/system";
 import { useToast } from "@/app/context/ToastContext";
-import type { ApiError } from "@/lib/api/types";
+import { handleError } from "@/lib/utils/errors";
 import SearchInput from "@/app/components/ui/SearchInput";
 import Button from "@/app/components/ui/Button";
 import Table from "@/app/components/ui/Table";
@@ -66,10 +66,11 @@ export default function TenantUsersTable({ tenantId }: TenantUsersTableProps) {
       const response = await systemApi.getTenantUsers(tenantId, params);
       setUsers((response.itemListElement as unknown as SystemTenantUser[]) || []);
     } catch (err) {
-      const apiError = err as ApiError;
-      const errorMessage =
-        apiError?.message || "Failed to fetch users";
-      console.error("Failed to fetch users:", errorMessage);
+      const errorMessage = handleError(err, {
+        severity: "console",
+        context: "Failed to fetch users",
+        fallbackMessage: "Failed to fetch users",
+      });
       setError(errorMessage);
       setUsers([]);
     } finally {
@@ -116,10 +117,10 @@ export default function TenantUsersTable({ tenantId }: TenantUsersTableProps) {
 
       showToast("success", t("impersonationSuccess", { name: user.name }));
     } catch (err) {
-      const apiError = err as ApiError;
-      const errorMessage =
-        apiError?.message || "Failed to impersonate user";
-      showToast("error", errorMessage);
+      handleError(err, {
+        showToast,
+        fallbackMessage: "Failed to impersonate user",
+      });
     } finally {
       setImpersonating(null);
     }

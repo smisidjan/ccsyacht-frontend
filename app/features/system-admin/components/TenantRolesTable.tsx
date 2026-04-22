@@ -10,6 +10,7 @@ import {
 import { useTenantRoles } from "@/lib/api";
 import { systemApi } from "@/lib/api/system";
 import { useToast } from "@/app/context/ToastContext";
+import { handleError } from "@/lib/utils/errors";
 import type { TenantRole, CreateTenantRoleRequest, UpdateTenantRoleRequest } from "@/lib/api/types";
 import { formatRoleName } from "@/lib/utils/roleFormatter";
 import SearchInput from "@/app/components/ui/SearchInput";
@@ -47,7 +48,7 @@ export default function TenantRolesTable({ tenantId, isCcsYacht = false }: Tenan
         const response = await systemApi.getTenantRoleTypes(tenantId);
         setRoleTypes(response.itemListElement || []);
       } catch (err) {
-        console.error("Failed to fetch role types:", err);
+        handleError(err, { severity: "console", context: "Failed to fetch role types" });
         setRoleTypes([]);
       }
     };

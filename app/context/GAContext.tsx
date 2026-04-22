@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from "react";
 import { getAuthToken, getTenantUrl } from "@/lib/api/client";
+import { handleError } from "@/lib/utils/errors";
 
 // Split context to prevent unnecessary re-renders
 interface GADataContextValue {
@@ -195,7 +196,7 @@ export function GAProvider({ children }: { children: ReactNode }) {
       }
       setError(err instanceof Error ? err.message : "Failed to load GA");
       setIsDownloading(false);
-      console.error("GA load error:", err);
+      handleError(err, { severity: "console", context: "Loading GA" });
     }
   }, [loadedProjectId, loadedGAUrl, resetGA]);
 

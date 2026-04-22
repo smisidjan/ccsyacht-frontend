@@ -3,7 +3,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { systemApi } from "@/lib/api/system";
-import type { Invitation, ApiError } from "@/lib/api/types";
+import { handleError } from "@/lib/utils/errors";
+import type { Invitation } from "@/lib/api/types";
 import Table from "@/app/components/ui/Table";
 import LoadingSkeleton from "@/app/components/ui/LoadingSkeleton";
 import Alert from "@/app/components/ui/Alert";
@@ -29,10 +30,11 @@ export default function TenantInvitationsTable({
       const response = await systemApi.getTenantInvitations(tenantId);
       setInvitations(response.itemListElement || []);
     } catch (err) {
-      const apiError = err as ApiError;
-      const errorMessage =
-        apiError?.message || "Failed to fetch invitations";
-      console.error("Failed to fetch invitations:", errorMessage);
+      const errorMessage = handleError(err, {
+        severity: "console",
+        context: "Failed to fetch invitations",
+        fallbackMessage: "Failed to fetch invitations",
+      });
       setError(errorMessage);
       setInvitations([]);
     } finally {

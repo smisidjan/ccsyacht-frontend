@@ -9,8 +9,16 @@ import { getAuthToken, getTenantUrl } from "./client";
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
 
 export interface FetchOptions extends Omit<RequestInit, "body"> {
-  body?: Record<string, unknown> | FormData | string;
+  body?: object | FormData | string;
   skipContentType?: boolean;
+}
+
+/**
+ * Get WebSocket socket ID to prevent broadcasting back to sender
+ */
+function getSocketId(): string | null {
+  if (typeof window === "undefined") return null;
+  return (window as unknown as { Echo?: { socketId: () => string } }).Echo?.socketId() ?? null;
 }
 
 /**
@@ -23,6 +31,7 @@ export async function apiFetch<T>(
 ): Promise<T> {
   const token = getAuthToken();
   const tenantUrl = getTenantUrl();
+  const socketId = getSocketId();
   const { body, skipContentType, ...restOptions } = options;
 
   const headers: HeadersInit = {
@@ -35,6 +44,9 @@ export async function apiFetch<T>(
   }
   if (tenantUrl) {
     (headers as Record<string, string>)["X-Tenant-ID"] = tenantUrl;
+  }
+  if (socketId) {
+    (headers as Record<string, string>)["X-Socket-ID"] = socketId;
   }
 
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {

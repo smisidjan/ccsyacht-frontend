@@ -1,6 +1,7 @@
 /**
  * WebSocket helper utilities for Laravel Echo + Reverb
  */
+import { handleError } from "@/lib/utils/errors";
 
 /**
  * WORKAROUND: Bind to Pusher events directly
@@ -35,7 +36,7 @@ export function bindPusherEvent<T = any>(
       pusherChannel.unbind(eventName, callback);
     };
   } catch (err) {
-    console.error(`❌ Could not bind to Pusher channel for event ${eventName}:`, err);
+    handleError(err, { severity: "console", context: `Could not bind to Pusher channel for event ${eventName}` });
     return null;
   }
 }

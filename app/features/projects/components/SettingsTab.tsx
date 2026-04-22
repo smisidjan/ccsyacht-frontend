@@ -16,6 +16,7 @@ import BaseModal from "@/app/components/modals/BaseModal";
 import ProfileInfoItem from "@/app/components/ui/ProfileInfoItem";
 import { EditProjectModal } from "@/app/features/projects";
 import type { User, ProjectType, SetupTask, SelectedTimeSlot } from "@/lib/api/types";
+import { handleError } from "@/lib/utils/errors";
 
 interface SettingsTabProps {
   projectId: string;
@@ -221,11 +222,11 @@ export default function SettingsTab({ projectId, onProjectUpdate }: SettingsTabP
             }
             setKickoffTimeSlot(timeSlot);
           } catch (err) {
-            console.error("Failed to fetch scheduling status:", err);
+            handleError(err, { severity: "console", context: "Fetching scheduling status" });
           }
         }
       } catch (error) {
-        console.error("Failed to load kickoff meeting:", error);
+        handleError(error, { severity: "console", context: "Loading kickoff meeting" });
       } finally {
         setKickoffLoading(false);
       }

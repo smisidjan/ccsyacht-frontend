@@ -8,52 +8,10 @@ import type {
   UpdateStageRemarkRequest,
   ApiError,
 } from "./types";
+import { apiFetch, buildQueryString } from "./fetch";
 import { getAuthToken, getTenantUrl } from "./client";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
-
-// Base fetch function
-async function apiFetch<T>(
-  endpoint: string,
-  options: RequestInit = {}
-): Promise<T> {
-  const token = getAuthToken();
-  const tenantUrl = getTenantUrl();
-
-  const headers: HeadersInit = {
-    "Content-Type": "application/json",
-    ...options.headers,
-  };
-
-  if (token) {
-    (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
-  }
-  if (tenantUrl) {
-    (headers as Record<string, string>)["X-Tenant-ID"] = tenantUrl;
-  }
-
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    ...options,
-    headers,
-  });
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    const error: ApiError = {
-      message: errorData.message || errorData.error || `HTTP error ${response.status}`,
-      code: errorData.code,
-      status: response.status,
-    };
-    throw error;
-  }
-
-  // Handle 204 No Content
-  if (response.status === 204) {
-    return undefined as T;
-  }
-
-  return response.json();
-}
 
 // Query parameters for stage remarks
 export interface StageRemarksQueryParams {
@@ -65,68 +23,39 @@ export interface StageRemarksQueryParams {
 
 // ============ Stage Remarks API ============
 export const stageRemarksApi = {
-  // Get all remarks for a stage
-  getAll: (
-    projectId: string,
-    stageId: string,
-    params?: StageRemarksQueryParams
-  ): Promise<{ data: StageRemark[] }> => {
-    const queryParams = new URLSearchParams();
-    if (params?.parent_id) queryParams.append("parent_id", params.parent_id);
-    if (params?.include_replies !== undefined) queryParams.append("include_replies", String(params.include_replies));
-    if (params?.per_page) queryParams.append("per_page", String(params.per_page));
-    if (params?.page) queryParams.append("page", String(params.page));
+  getAll: (projectId: string, stageId: string, params?: StageRemarksQueryParams): Promise<{ data: StageRemark[] }> =>
+    apiFetch(`/projects/${projectId}/stages/${stageId}/remarks${buildQueryString({
+      parent_id: params?.parent_id,
+      include_replies: params?.include_replies,
+      per_page: params?.per_page,
+      page: params?.page,
+    })}`),
 
-    const queryString = queryParams.toString();
-    const url = `/projects/${projectId}/stages/${stageId}/remarks${queryString ? `?${queryString}` : ""}`;
-    return apiFetch(url);
-  },
-
-  // Get single remark by ID
   getById: (projectId: string, remarkId: string): Promise<StageRemark> =>
     apiFetch(`/projects/${projectId}/remarks/${remarkId}`),
 
-  // Create a new remark
-  create: (
-    projectId: string,
-    stageId: string,
-    data: CreateStageRemarkRequest
-  ): Promise<StageRemark> =>
+  create: (projectId: string, stageId: string, data: CreateStageRemarkRequest): Promise<StageRemark> =>
     apiFetch(`/projects/${projectId}/stages/${stageId}/remarks`, {
       method: "POST",
-      body: JSON.stringify(data),
+      body: data,
     }),
 
-  // Update a remark (author only)
-  update: (
-    projectId: string,
-    remarkId: string,
-    data: UpdateStageRemarkRequest
-  ): Promise<StageRemark> =>
+  update: (projectId: string, remarkId: string, data: UpdateStageRemarkRequest): Promise<StageRemark> =>
     apiFetch(`/projects/${projectId}/remarks/${remarkId}`, {
       method: "PUT",
-      body: JSON.stringify(data),
+      body: data,
     }),
 
-  // Delete a remark
   delete: (projectId: string, remarkId: string): Promise<void> =>
     apiFetch(`/projects/${projectId}/remarks/${remarkId}`, {
       method: "DELETE",
     }),
 
-  // Get attachments for a remark
-  getAttachments: (
-    projectId: string,
-    remarkId: string
-  ): Promise<{ data: StageRemarkAttachment[] }> =>
+  getAttachments: (projectId: string, remarkId: string): Promise<{ data: StageRemarkAttachment[] }> =>
     apiFetch(`/projects/${projectId}/remarks/${remarkId}/attachments`),
 
-  // Upload attachment
-  uploadAttachment: async (
-    projectId: string,
-    remarkId: string,
-    file: File
-  ): Promise<StageRemarkAttachment> => {
+  // Upload attachment - uses FormData so needs custom handling
+  uploadAttachment: async (projectId: string, remarkId: string, file: File): Promise<StageRemarkAttachment> => {
     const token = getAuthToken();
     const tenantUrl = getTenantUrl();
 
@@ -134,20 +63,12 @@ export const stageRemarksApi = {
     formData.append("file", file);
 
     const headers: HeadersInit = {};
-    if (token) {
-      (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
-    }
-    if (tenantUrl) {
-      (headers as Record<string, string>)["X-Tenant-ID"] = tenantUrl;
-    }
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+    if (tenantUrl) headers["X-Tenant-ID"] = tenantUrl;
 
     const response = await fetch(
       `${API_BASE_URL}/projects/${projectId}/remarks/${remarkId}/attachments`,
-      {
-        method: "POST",
-        headers,
-        body: formData,
-      }
+      { method: "POST", headers, body: formData }
     );
 
     if (!response.ok) {
@@ -163,38 +84,24 @@ export const stageRemarksApi = {
     return response.json();
   },
 
-  // Delete attachment
-  deleteAttachment: (
-    projectId: string,
-    remarkId: string,
-    attachmentId: string
-  ): Promise<void> =>
-    apiFetch(
-      `/projects/${projectId}/remarks/${remarkId}/attachments/${attachmentId}`,
-      {
-        method: "DELETE",
-      }
-    ),
+  deleteAttachment: (projectId: string, remarkId: string, attachmentId: string): Promise<void> =>
+    apiFetch(`/projects/${projectId}/remarks/${remarkId}/attachments/${attachmentId}`, {
+      method: "DELETE",
+    }),
 
-  // Get download URL for attachment
-  getDownloadUrl: (projectId: string, remarkId: string, attachmentId: string): string => {
-    return `${API_BASE_URL}/projects/${projectId}/remarks/${remarkId}/attachments/${attachmentId}/download`;
-  },
+  getDownloadUrl: (projectId: string, remarkId: string, attachmentId: string): string =>
+    `${API_BASE_URL}/projects/${projectId}/remarks/${remarkId}/attachments/${attachmentId}/download`,
 };
 
 // ============ Hooks ============
-interface UseApiState<T> {
-  data: T | null;
+interface UseStageRemarksState {
+  data: StageRemark[] | null;
   loading: boolean;
   error: ApiError | null;
 }
 
-export function useStageRemarks(
-  projectId: string,
-  stageId: string,
-  params?: StageRemarksQueryParams
-) {
-  const [state, setState] = useState<UseApiState<StageRemark[]>>({
+export function useStageRemarks(projectId: string, stageId: string, params?: StageRemarksQueryParams) {
+  const [state, setState] = useState<UseStageRemarksState>({
     data: null,
     loading: true,
     error: null,
@@ -241,13 +148,14 @@ export function useStageRemarks(
   };
 }
 
-// Hook for remark attachments
-export function useStageRemarkAttachments(
-  projectId: string,
-  remarkId: string,
-  enabled: boolean = true
-) {
-  const [state, setState] = useState<UseApiState<StageRemarkAttachment[]>>({
+interface UseStageRemarkAttachmentsState {
+  data: StageRemarkAttachment[] | null;
+  loading: boolean;
+  error: ApiError | null;
+}
+
+export function useStageRemarkAttachments(projectId: string, remarkId: string, enabled: boolean = true) {
+  const [state, setState] = useState<UseStageRemarkAttachmentsState>({
     data: null,
     loading: enabled,
     error: null,

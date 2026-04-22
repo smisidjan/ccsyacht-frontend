@@ -8,6 +8,7 @@ import FormTextarea from "@/app/components/ui/FormTextarea";
 import { InlineShipyardForm } from "@/app/features/shipyards";
 import { useInlineShipyardCreation } from "@/lib/hooks/useInlineShipyardCreation";
 import { useToast } from "@/app/context/ToastContext";
+import { handleError } from "@/lib/utils/errors";
 import type { CreateProjectRequest, Shipyard } from "@/lib/api/types";
 
 interface SystemCreateProjectModalProps {
@@ -48,7 +49,7 @@ export default function SystemCreateProjectModal({
         setShipyardId(shipyard.id);
         showToast("success", t("shipyardCreated"));
       } catch (err) {
-        console.error("Error in onShipyardCreated callback:", err);
+        handleError(err, { severity: "console", context: "Error in onShipyardCreated callback" });
       }
     },
     onError: (error) => {

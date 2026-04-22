@@ -12,6 +12,7 @@ import {
   ChevronRightIcon,
 } from "@heroicons/react/24/outline";
 import { useProjects, useShipyards, projectsApi, documentTypesApi, projectMembersApi } from "@/lib/api";
+import { handleError } from "@/lib/utils/errors";
 import { PERMISSIONS } from "@/lib/constants/permissions";
 import { usePermission } from "@/lib/hooks/usePermission";
 import { useMinimumLoadingTime } from "@/lib/hooks/useMinimumLoadingTime";
@@ -99,9 +100,10 @@ export default function ProjectsPage() {
             );
             memberships[project.identifier] = isMember;
             memberCounts[project.identifier] = members.length;
-          } catch (error: any) {
+          } catch (error) {
             // If 403, user doesn't have permission (shouldn't happen if canViewProjectMembers is true)
             // For other errors, assume not a member
+            handleError(error, { severity: "silent" });
             memberships[project.identifier] = false;
             memberCounts[project.identifier] = 0;
           }
@@ -182,14 +184,14 @@ export default function ProjectsPage() {
       refetch();
       // Modal will close itself after successful submit
     } catch (error) {
-      console.error("Error creating project:", error);
+      handleError(error, { severity: "console", context: "Error creating project" });
 
       // Cleanup: if project was created but later steps failed, delete it
       if (projectId) {
         try {
           await projectsApi.delete(projectId);
         } catch (deleteError) {
-          console.error("Failed to cleanup project after error:", deleteError);
+          handleError(deleteError, { severity: "console", context: "Failed to cleanup project after error" });
         }
       }
 

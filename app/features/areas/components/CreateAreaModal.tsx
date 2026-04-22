@@ -9,6 +9,7 @@ import SelectOrCreateSection from "@/app/components/ui/SelectOrCreateSection";
 import { areasApi, decksApi, useDecks } from "@/lib/api";
 import { areaTemplatesApi } from "@/lib/api/area-templates";
 import type { CreateAreaRequest, CreateDeckRequest, AreaTemplate } from "@/lib/api/types";
+import { handleError } from "@/lib/utils/errors";
 
 interface CreateAreaModalProps {
   isOpen: boolean;
@@ -48,7 +49,7 @@ export default function CreateAreaModal({
       const response = await areaTemplatesApi.getAll({ active_only: true });
       setAreaTemplates(response.data || []);
     } catch (error) {
-      console.error("Failed to load area templates:", error);
+      handleError(error, { severity: "console", context: "Loading area templates" });
       setAreaTemplates([]);
     }
   };

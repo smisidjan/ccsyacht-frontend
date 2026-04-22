@@ -4,7 +4,8 @@ import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { EyeIcon, FolderIcon, PlusIcon } from "@heroicons/react/24/outline";
 import { systemProjectsApi } from "@/lib/api/system/projects";
-import type { Project, ApiError, Shipyard, CreateProjectRequest } from "@/lib/api/types";
+import { handleError } from "@/lib/utils/errors";
+import type { Project, Shipyard, CreateProjectRequest } from "@/lib/api/types";
 import SearchInput from "@/app/components/ui/SearchInput";
 import FilterTabs from "@/app/components/ui/FilterTabs";
 import Button from "@/app/components/ui/Button";
@@ -55,9 +56,11 @@ export default function TenantProjectsTable({
       const response = await systemProjectsApi.getProjects(tenantId, params);
       setProjects(response.data || []);
     } catch (err) {
-      const apiError = err as ApiError;
-      const errorMessage = apiError?.message || "Failed to fetch projects";
-      console.error("Failed to fetch projects:", errorMessage);
+      const errorMessage = handleError(err, {
+        severity: "console",
+        context: "Failed to fetch projects",
+        fallbackMessage: "Failed to fetch projects",
+      });
       setError(errorMessage);
       setProjects([]);
     } finally {
@@ -75,7 +78,7 @@ export default function TenantProjectsTable({
       const response = await systemProjectsApi.getShipyards(tenantId);
       setShipyards(response.itemListElement || []);
     } catch (err) {
-      console.error("Failed to fetch shipyards:", err);
+      handleError(err, { severity: "console", context: "Failed to fetch shipyards" });
     }
   };
 

@@ -8,6 +8,7 @@ import FormCheckbox from "@/app/components/ui/FormCheckbox";
 import { PERMISSIONS } from "@/lib/constants/permissions";
 import { formatRoleName } from "@/lib/utils/roleFormatter";
 import { systemTenantsApi } from "@/lib/api/system";
+import { handleError } from "@/lib/utils/errors";
 
 // Default restricted permissions for new tenants (backend auto-adds manage_guest_roles & manage_settings)
 const DEFAULT_RESTRICTED_PERMISSIONS = [
@@ -51,7 +52,7 @@ export default function CreateTenantModal({
           const response = await systemTenantsApi.getSelectablePermissions();
           setSelectablePermissions(response.itemListElement);
         } catch (error) {
-          console.error("Failed to fetch selectable permissions:", error);
+          handleError(error, { severity: "console", context: "Failed to fetch selectable permissions" });
           // Fallback to empty array on error
           setSelectablePermissions([]);
         } finally {

@@ -9,52 +9,7 @@ import type {
   BulkCreateStagesRequest,
   ApiError,
 } from "./types";
-import { getAuthToken, getTenantUrl } from "./client";
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
-
-// Base fetch function for stages
-async function apiFetch<T>(
-  endpoint: string,
-  options: RequestInit = {}
-): Promise<T> {
-  const token = getAuthToken();
-  const tenantUrl = getTenantUrl();
-
-  const headers: HeadersInit = {
-    "Content-Type": "application/json",
-    ...options.headers,
-  };
-
-  if (token) {
-    (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
-  }
-  if (tenantUrl) {
-    (headers as Record<string, string>)["X-Tenant-ID"] = tenantUrl;
-  }
-
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    ...options,
-    headers,
-  });
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    const error: ApiError = {
-      message: errorData.message || errorData.error || `HTTP error ${response.status}`,
-      code: errorData.code,
-      status: response.status,
-    };
-    throw error;
-  }
-
-  // Handle 204 No Content
-  if (response.status === 204) {
-    return undefined as T;
-  }
-
-  return response.json();
-}
+import { apiFetch } from "./fetch";
 
 // ============ Stages API ============
 export const stagesApi = {
@@ -70,19 +25,19 @@ export const stagesApi = {
   create: (projectId: string, areaId: string, data: CreateStageRequest): Promise<Stage> =>
     apiFetch(`/projects/${projectId}/areas/${areaId}/stages`, {
       method: "POST",
-      body: JSON.stringify(data),
+      body: data,
     }),
 
   update: (projectId: string, stageId: string, data: UpdateStageRequest): Promise<Stage> =>
     apiFetch(`/projects/${projectId}/stages/${stageId}`, {
       method: "PUT",
-      body: JSON.stringify(data),
+      body: data,
     }),
 
   updateStatus: (projectId: string, stageId: string, data: UpdateStageStatusRequest): Promise<Stage> =>
     apiFetch(`/projects/${projectId}/stages/${stageId}/status`, {
       method: "PUT",
-      body: JSON.stringify(data),
+      body: data,
     }),
 
   delete: (projectId: string, stageId: string): Promise<void> =>
@@ -90,26 +45,22 @@ export const stagesApi = {
       method: "DELETE",
     }),
 
-  bulkCreate: (
-    projectId: string,
-    areaId: string,
-    data: BulkCreateStagesRequest
-  ): Promise<{ data: Stage[] }> =>
+  bulkCreate: (projectId: string, areaId: string, data: BulkCreateStagesRequest): Promise<{ data: Stage[] }> =>
     apiFetch(`/projects/${projectId}/areas/${areaId}/stages/bulk`, {
       method: "POST",
-      body: JSON.stringify(data),
+      body: data,
     }),
 };
 
 // ============ Stages Hook ============
-interface UseApiState<T> {
-  data: T | null;
+interface UseStagesState {
+  data: Stage[] | null;
   loading: boolean;
   error: ApiError | null;
 }
 
 export function useStages(projectId: string, areaId: string) {
-  const [state, setState] = useState<UseApiState<Stage[]>>({
+  const [state, setState] = useState<UseStagesState>({
     data: null,
     loading: true,
     error: null,
@@ -119,8 +70,7 @@ export function useStages(projectId: string, areaId: string) {
     setState((prev) => ({ ...prev, loading: true, error: null }));
     try {
       const response = await stagesApi.getAll(projectId, areaId);
-      const data = response.data || [];
-      setState({ data, loading: false, error: null });
+      setState({ data: response.data || [], loading: false, error: null });
     } catch (err) {
       setState({ data: null, loading: false, error: err as ApiError });
     }
@@ -162,7 +112,7 @@ export function useStages(projectId: string, areaId: string) {
 
 // ============ Project Stages Hook (all stages in a project) ============
 export function useProjectStages(projectId: string) {
-  const [state, setState] = useState<UseApiState<Stage[]>>({
+  const [state, setState] = useState<UseStagesState>({
     data: null,
     loading: true,
     error: null,
@@ -172,8 +122,7 @@ export function useProjectStages(projectId: string) {
     setState((prev) => ({ ...prev, loading: true, error: null }));
     try {
       const response = await stagesApi.getAllForProject(projectId);
-      const data = response.data || [];
-      setState({ data, loading: false, error: null });
+      setState({ data: response.data || [], loading: false, error: null });
     } catch (err) {
       setState({ data: null, loading: false, error: err as ApiError });
     }

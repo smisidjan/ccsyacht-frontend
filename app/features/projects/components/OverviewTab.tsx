@@ -22,6 +22,7 @@ import { PERMISSIONS } from "@/lib/constants/permissions";
 import { projectsApi } from "@/lib/api/client";
 import { useToast } from "@/app/context/ToastContext";
 import type { Area, GeneralArrangement } from "@/lib/api/types";
+import { handleError } from "@/lib/utils/errors";
 
 interface OverviewTabProps {
   projectId: string;
@@ -129,7 +130,7 @@ export default function OverviewTab({
         const response = await setupTasksApi.getAll(projectId);
         setSetupTasks(response.data || []);
       } catch (error) {
-        console.error("Failed to load setup tasks:", error);
+        handleError(error, { severity: "console", context: "Loading setup tasks" });
         setSetupTasks([]);
       } finally {
         setSetupTasksLoading(false);
@@ -214,10 +215,9 @@ export default function OverviewTab({
           if (onProjectUpdate) {
             onProjectUpdate();
           }
-        } catch (error: any) {
-          console.error("Failed to update project status:", error);
+        } catch (error) {
           hasUpdatedStatusRef.current = false;
-          showToast("error", error.message || t("setupTasks.statusUpdateFailed"));
+          handleError(error, { showToast, fallbackMessage: t("setupTasks.statusUpdateFailed") });
         }
       }
     }
@@ -288,7 +288,7 @@ export default function OverviewTab({
         const response = await setupTasksApi.getAll(projectId);
         setSetupTasks(response.data || []);
       } catch (error) {
-        console.error("Failed to reload setup tasks:", error);
+        handleError(error, { severity: "console", context: "Reloading setup tasks" });
       }
     }
   };

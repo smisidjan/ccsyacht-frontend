@@ -39,6 +39,7 @@ import BaseModal from "@/app/components/modals/BaseModal";
 import { DocumentStatusBadge, calculateDocumentStatus } from "@/app/components/ui/DocumentAcknowledgementStatus";
 import { normalizeAcknowledgements } from "@/lib/utils/typeNormalization";
 import type { UploadDocumentRequest, Document, DocumentType, DocumentTypeAssignee, CreateDocumentTypeRequest, AddDocumentTypeAssigneeRequest, DocumentStatus, DocumentAcknowledgement } from "@/lib/api/types";
+import { handleError } from "@/lib/utils/errors";
 
 interface DocumentsTabProps {
   projectId: string;
@@ -146,7 +147,7 @@ export default function DocumentsTab({ projectId, projectStatus }: DocumentsTabP
     try {
       await downloadDocument(docId, fileName);
     } catch (error) {
-      console.error("Failed to download document:", error);
+      handleError(error, { severity: "console", context: "Downloading document" });
     }
   };
 

@@ -8,6 +8,7 @@ import { setupTasksApi, useCurrentUser, useDocumentTypes } from "@/lib/api";
 import { useToast } from "@/app/context/ToastContext";
 import { usePermission } from "@/lib/hooks/usePermission";
 import { PERMISSIONS } from "@/lib/constants/permissions";
+import { handleError } from "@/lib/utils/errors";
 import type { SetupTask, SchedulingStatus, RequiredDocument } from "@/lib/api/types";
 
 // Section Components
@@ -254,8 +255,12 @@ export default function KickoffMeetingModal({
       }));
       setRequiredDocuments(normalizedDocs);
     } catch (err) {
-      console.error("Error fetching task details:", err);
-      setError(err instanceof Error ? err.message : t("loadError"));
+      const errorMessage = handleError(err, {
+        severity: "console",
+        context: "Error fetching task details",
+        fallbackMessage: t("loadError"),
+      });
+      setError(errorMessage);
     } finally {
       if (!silent) setLoading(false);
     }

@@ -6,9 +6,16 @@ import type {
   UploadDocumentRequest,
   ApiError,
 } from "./types";
+import { apiFetch, buildQueryString } from "./fetch";
 import { getAuthToken, getTenantUrl } from "./client";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
+
+// Get WebSocket socket ID to prevent broadcasting back to sender (for custom fetch calls)
+function getSocketId(): string | null {
+  if (typeof window === "undefined") return null;
+  return (window as unknown as { Echo?: { socketId: () => string } }).Echo?.socketId() ?? null;
+}
 
 // Paginated response type
 interface PaginatedResponse<T> {
@@ -30,55 +37,6 @@ interface PaginatedResponse<T> {
   };
 }
 
-// Base fetch function for documents
-async function apiFetch<T>(
-  endpoint: string,
-  options: RequestInit = {}
-): Promise<T> {
-  const token = getAuthToken();
-  const tenantUrl = getTenantUrl();
-
-  // Get socket ID to prevent broadcasting back to the sender (only for mutations)
-  const socketId = typeof window !== 'undefined' ? (window as any).Echo?.socketId() : null;
-
-  const headers: HeadersInit = {
-    "Content-Type": "application/json",
-    ...options.headers,
-  };
-
-  if (token) {
-    (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
-  }
-  if (tenantUrl) {
-    (headers as Record<string, string>)["X-Tenant-ID"] = tenantUrl;
-  }
-  if (socketId) {
-    (headers as Record<string, string>)["X-Socket-ID"] = socketId;
-  }
-
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    ...options,
-    headers,
-  });
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    const error: ApiError = {
-      message: errorData.message || errorData.error || `HTTP error ${response.status}`,
-      code: errorData.code,
-      status: response.status,
-    };
-    throw error;
-  }
-
-  // Handle 204 No Content
-  if (response.status === 204) {
-    return undefined as T;
-  }
-
-  return response.json();
-}
-
 // ============ Documents API ============
 export const documentsApi = {
   getAll: (projectId: string, params?: {
@@ -86,66 +44,35 @@ export const documentsApi = {
     per_page?: number;
     page?: number;
     include_acknowledgements?: boolean;
-  }): Promise<PaginatedResponse<Document>> => {
-    const query = new URLSearchParams();
-    if (params?.document_type_id) query.append("document_type_id", params.document_type_id);
-    if (params?.per_page) query.append("per_page", String(params.per_page));
-    if (params?.page) query.append("page", String(params.page));
-    if (params?.include_acknowledgements) query.append("include_acknowledgements", "true");
-    const queryString = query.toString();
-    return apiFetch(`/projects/${projectId}/documents${queryString ? `?${queryString}` : ""}`);
-  },
+  }): Promise<PaginatedResponse<Document>> =>
+    apiFetch(`/projects/${projectId}/documents${buildQueryString({
+      document_type_id: params?.document_type_id,
+      per_page: params?.per_page,
+      page: params?.page,
+      include_acknowledgements: params?.include_acknowledgements,
+    })}`),
 
-  getById: (projectId: string, docId: string, includeAcknowledgements?: boolean): Promise<Document> => {
-    const query = includeAcknowledgements ? "?include_acknowledgements=true" : "";
-    return apiFetch(`/projects/${projectId}/documents/${docId}${query}`);
-  },
+  getById: (projectId: string, docId: string, includeAcknowledgements?: boolean): Promise<Document> =>
+    apiFetch(`/projects/${projectId}/documents/${docId}${buildQueryString({
+      include_acknowledgements: includeAcknowledgements,
+    })}`),
 
-  getByType: (projectId: string, typeId: string, includeAcknowledgements?: boolean): Promise<{ data: Document[] }> => {
-    const query = includeAcknowledgements ? "?include_acknowledgements=true" : "";
-    return apiFetch(`/projects/${projectId}/document-types/${typeId}/documents${query}`);
-  },
+  getByType: (projectId: string, typeId: string, includeAcknowledgements?: boolean): Promise<{ data: Document[] }> =>
+    apiFetch(`/projects/${projectId}/document-types/${typeId}/documents${buildQueryString({
+      include_acknowledgements: includeAcknowledgements,
+    })}`),
 
-  upload: async (projectId: string, typeId: string, data: UploadDocumentRequest): Promise<Document> => {
+  upload: (projectId: string, typeId: string, data: UploadDocumentRequest): Promise<Document> => {
     const formData = new FormData();
     formData.append("title", data.title);
     if (data.description) formData.append("description", data.description);
     formData.append("file", data.file);
 
-    const token = getAuthToken();
-    const tenantUrl = getTenantUrl();
-
-    // Get socket ID to prevent broadcasting back to the sender
-    const socketId = typeof window !== 'undefined' ? (window as any).Echo?.socketId() : null;
-
-    const headers: HeadersInit = {};
-    if (token) {
-      (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
-    }
-    if (tenantUrl) {
-      (headers as Record<string, string>)["X-Tenant-ID"] = tenantUrl;
-    }
-    if (socketId) {
-      (headers as Record<string, string>)["X-Socket-ID"] = socketId;
-    }
-
-    const response = await fetch(`${API_BASE_URL}/projects/${projectId}/document-types/${typeId}/documents`, {
+    return apiFetch(`/projects/${projectId}/document-types/${typeId}/documents`, {
       method: "POST",
-      headers,
       body: formData,
+      skipContentType: true,
     });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      const error: ApiError = {
-        message: errorData.message || errorData.error || `HTTP error ${response.status}`,
-        code: errorData.code,
-        status: response.status,
-      };
-      throw error;
-    }
-
-    return response.json();
   },
 
   download: async (projectId: string, docId: string): Promise<Blob> => {
@@ -255,7 +182,6 @@ export function useDocuments(projectId: string, typeId?: string) {
       }
       setState({ data, loading: false, error: null });
     } catch (err) {
-      console.error('❌ Error fetching documents:', err);
       setState({ data: null, loading: false, error: err as ApiError });
     }
   }, [projectId, typeId]);

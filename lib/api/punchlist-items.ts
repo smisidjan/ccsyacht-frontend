@@ -10,56 +10,9 @@ import type {
   PunchlistItemAttachment,
   ApiError,
 } from "./types";
-import { getAuthToken, getTenantUrl } from "./client";
+import { apiFetch, buildQueryString } from "./fetch";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
-
-// Base fetch function
-async function apiFetch<T>(
-  endpoint: string,
-  options: RequestInit = {}
-): Promise<T> {
-  const token = getAuthToken();
-  const tenantUrl = getTenantUrl();
-
-  const headers: HeadersInit = {
-    ...options.headers,
-  };
-
-  // Only add Content-Type if not multipart/form-data
-  if (!(options.body instanceof FormData)) {
-    (headers as Record<string, string>)["Content-Type"] = "application/json";
-  }
-
-  if (token) {
-    (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
-  }
-  if (tenantUrl) {
-    (headers as Record<string, string>)["X-Tenant-ID"] = tenantUrl;
-  }
-
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    ...options,
-    headers,
-  });
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    const error: ApiError = {
-      message: errorData.message || errorData.error || `HTTP error ${response.status}`,
-      code: errorData.code,
-      status: response.status,
-    };
-    throw error;
-  }
-
-  // Handle 204 No Content
-  if (response.status === 204) {
-    return undefined as T;
-  }
-
-  return response.json();
-}
 
 // Query parameters for project-level punchlist items
 export interface PunchlistItemsQueryParams {
@@ -113,35 +66,27 @@ export const punchlistItemsApi = {
   getAllForProject: (
     projectId: string,
     params?: PunchlistItemsQueryParams
-  ): Promise<PaginatedResponse<PunchlistItem>> => {
-    const queryParams = new URLSearchParams();
-    if (params) {
-      if (params.status) queryParams.append("status", params.status);
-      if (params.priority) queryParams.append("priority", params.priority);
-      if (params.incomplete !== undefined) queryParams.append("incomplete", String(params.incomplete));
-      if (params.overdue !== undefined) queryParams.append("overdue", String(params.overdue));
-      if (params.assignee_id) queryParams.append("assignee_id", params.assignee_id);
-      if (params.page) queryParams.append("page", String(params.page));
-      if (params.per_page) queryParams.append("per_page", String(params.per_page));
-    }
-    const queryString = queryParams.toString();
-    const url = `/projects/${projectId}/punchlist-items${queryString ? `?${queryString}` : ""}`;
-    return apiFetch(url);
-  },
+  ): Promise<PaginatedResponse<PunchlistItem>> =>
+    apiFetch(`/projects/${projectId}/punchlist-items${buildQueryString({
+      status: params?.status,
+      priority: params?.priority,
+      incomplete: params?.incomplete,
+      overdue: params?.overdue,
+      assignee_id: params?.assignee_id,
+      page: params?.page,
+      per_page: params?.per_page,
+    })}`),
 
   getAll: (
     projectId: string,
     stageId: string,
     params?: { page?: number; per_page?: number; status?: "open" | "in_progress" | "done" | "cancelled" }
-  ): Promise<PaginatedResponse<PunchlistItem>> => {
-    const queryParams = new URLSearchParams();
-    if (params?.page) queryParams.append("page", String(params.page));
-    if (params?.per_page) queryParams.append("per_page", String(params.per_page));
-    if (params?.status) queryParams.append("status", params.status);
-    const queryString = queryParams.toString();
-    const url = `/projects/${projectId}/stages/${stageId}/punchlist-items${queryString ? `?${queryString}` : ""}`;
-    return apiFetch(url);
-  },
+  ): Promise<PaginatedResponse<PunchlistItem>> =>
+    apiFetch(`/projects/${projectId}/stages/${stageId}/punchlist-items${buildQueryString({
+      page: params?.page,
+      per_page: params?.per_page,
+      status: params?.status,
+    })}`),
 
   getById: (projectId: string, itemId: string): Promise<PunchlistItem> =>
     apiFetch(`/projects/${projectId}/punchlist-items/${itemId}`),
@@ -153,7 +98,7 @@ export const punchlistItemsApi = {
   ): Promise<PunchlistItem> =>
     apiFetch(`/projects/${projectId}/stages/${stageId}/punchlist-items`, {
       method: "POST",
-      body: JSON.stringify(data),
+      body: data,
     }),
 
   update: (
@@ -163,7 +108,7 @@ export const punchlistItemsApi = {
   ): Promise<PunchlistItem> =>
     apiFetch(`/projects/${projectId}/punchlist-items/${itemId}`, {
       method: "PUT",
-      body: JSON.stringify(data),
+      body: data,
     }),
 
   updateStatus: (
@@ -173,7 +118,7 @@ export const punchlistItemsApi = {
   ): Promise<PunchlistItem> =>
     apiFetch(`/projects/${projectId}/punchlist-items/${itemId}/status`, {
       method: "PUT",
-      body: JSON.stringify(data),
+      body: data,
     }),
 
   delete: (projectId: string, itemId: string): Promise<void> =>
@@ -188,7 +133,7 @@ export const punchlistItemsApi = {
   ): Promise<PunchlistItem> =>
     apiFetch(`/projects/${projectId}/punchlist-items/${itemId}/assignees`, {
       method: "POST",
-      body: JSON.stringify(data),
+      body: data,
     }),
 
   removeAssignee: (projectId: string, itemId: string, userId: string): Promise<void> =>
@@ -214,6 +159,7 @@ export const punchlistItemsApi = {
     return apiFetch(`/projects/${projectId}/punchlist-items/${itemId}/attachments`, {
       method: "POST",
       body: formData,
+      skipContentType: true,
     });
   },
 

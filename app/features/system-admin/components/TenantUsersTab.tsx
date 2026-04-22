@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { UserPlusIcon } from "@heroicons/react/24/outline";
 import { systemApi } from "@/lib/api/system";
+import { handleError } from "@/lib/utils/errors";
 import type { Tenant, UserRole } from "@/lib/api/types";
 import FormInput from "@/app/components/ui/FormInput";
 import FormSelect from "@/app/components/ui/FormSelect";
@@ -43,7 +44,7 @@ export default function TenantUsersTab() {
       const response = await systemApi.getTenants();
       setTenants(response.data || []);
     } catch (error) {
-      console.error("Failed to fetch tenants:", error);
+      handleError(error, { severity: "console", context: "Failed to fetch tenants" });
       setTenants([]);
     } finally {
       setLoading(false);

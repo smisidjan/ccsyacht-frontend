@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { getAuthToken, getTenantUrl } from "@/lib/api/client";
+import { handleError } from "@/lib/utils/errors";
 
 interface AuthenticatedImageProps {
   src: string;
@@ -53,7 +54,7 @@ export default function AuthenticatedImage({
         setLoading(false);
         if (onLoad) onLoad();
       } catch (err) {
-        console.error("Failed to load authenticated image:", err);
+        handleError(err, { severity: "console", context: "Failed to load authenticated image" });
         setError(true);
         setLoading(false);
         if (onError) onError();

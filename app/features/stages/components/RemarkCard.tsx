@@ -24,6 +24,7 @@ import { useToast } from "@/app/context/ToastContext";
 import { useCurrentUser } from "@/lib/api/hooks";
 import { isDocumentAttachment, isImageAttachment } from "@/lib/utils/attachmentUtils";
 import type { StageRemark, StageRemarkAttachment } from "@/lib/api/types";
+import { handleError } from "@/lib/utils/errors";
 
 interface RemarkCardProps {
   remark: StageRemark;
@@ -96,8 +97,8 @@ export default function RemarkCard({
       setReplyContent("");
       setShowReplyForm(false);
       onUpdate?.();
-    } catch (error: any) {
-      showToast("error", error.message || t("replyError"));
+    } catch (error) {
+      handleError(error, { showToast, fallbackMessage: t("replyError") });
     } finally {
       setIsSubmitting(false);
     }
@@ -114,8 +115,8 @@ export default function RemarkCard({
       showToast("success", t("editSuccess"));
       setShowEditForm(false);
       onUpdate?.();
-    } catch (error: any) {
-      showToast("error", error.message || t("editError"));
+    } catch (error) {
+      handleError(error, { showToast, fallbackMessage: t("editError") });
     } finally {
       setIsSubmitting(false);
     }
@@ -126,8 +127,8 @@ export default function RemarkCard({
       await stageRemarksApi.delete(projectId, remark.identifier);
       showToast("success", t("deleteSuccess"));
       onUpdate?.();
-    } catch (error: any) {
-      showToast("error", error.message || t("deleteError"));
+    } catch (error) {
+      handleError(error, { showToast, fallbackMessage: t("deleteError") });
     }
   };
 

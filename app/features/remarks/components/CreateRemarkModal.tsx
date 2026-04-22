@@ -7,6 +7,7 @@ import { RemarkForm } from "@/app/features/remarks";
 import { stageRemarksApi } from "@/lib/api/stage-remarks";
 import { useToast } from "@/app/context/ToastContext";
 import { MAX_FILE_SIZE } from "@/lib/constants/fileUpload";
+import { handleError } from "@/lib/utils/errors";
 
 interface CreateRemarkModalProps {
   isOpen: boolean;
@@ -59,9 +60,8 @@ export default function CreateRemarkModal({
       for (const file of selectedFiles) {
         try {
           await stageRemarksApi.uploadAttachment(projectId, newRemark.identifier, file);
-        } catch (uploadError: any) {
-          console.error(`Failed to upload ${file.name}:`, uploadError);
-          showToast("error", `Failed to upload ${file.name}`);
+        } catch (uploadError) {
+          handleError(uploadError, { showToast, fallbackMessage: `Failed to upload ${file.name}` });
         }
       }
     }

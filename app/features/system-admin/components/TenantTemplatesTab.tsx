@@ -16,6 +16,7 @@ import {
 import { PlusIcon, ExclamationTriangleIcon } from "@heroicons/react/24/outline";
 import { useModalForm } from "@/lib/hooks/useModalForm";
 import { useToast } from "@/app/context/ToastContext";
+import { handleError } from "@/lib/utils/errors";
 import {
   systemStageTemplatesApi,
   systemDocumentTypeTemplatesApi,
@@ -185,7 +186,7 @@ export default function TenantTemplatesTab({ tenantId }: TenantTemplatesTabProps
       }
       closeDeleteModal();
     } catch (err) {
-      showToast("error", err instanceof Error ? err.message : t("deleteFailed"));
+      handleError(err, { showToast, fallbackMessage: t("deleteFailed") });
     } finally {
       setIsDeleting(false);
     }

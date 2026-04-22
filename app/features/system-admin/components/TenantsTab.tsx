@@ -10,7 +10,8 @@ import {
   PencilIcon,
 } from "@heroicons/react/24/outline";
 import { systemApi, getSystemToken } from "@/lib/api/system";
-import type { Tenant, ApiError } from "@/lib/api/types";
+import { handleError } from "@/lib/utils/errors";
+import type { Tenant } from "@/lib/api/types";
 import CreateTenantModal from "@/app/features/system-admin/components/CreateTenantModal";
 import EditTenantPermissionsModal from "@/app/features/system-admin/components/EditTenantPermissionsModal";
 import Button from "@/app/components/ui/Button";
@@ -43,10 +44,11 @@ export default function TenantsTab() {
       const response = await systemApi.getTenants();
       setTenants(response.data || []);
     } catch (err) {
-      const apiError = err as ApiError;
-      const errorMessage =
-        apiError?.message || "Failed to fetch organisations";
-      console.error("Failed to fetch organisations:", errorMessage);
+      const errorMessage = handleError(err, {
+        severity: "console",
+        context: "Failed to fetch organisations",
+        fallbackMessage: "Failed to fetch organisations",
+      });
       setError(errorMessage);
       setTenants([]);
     } finally {
@@ -78,9 +80,12 @@ export default function TenantsTab() {
       setIsCreateModalOpen(false);
       fetchTenants();
     } catch (err) {
-      const apiError = err as ApiError;
-      console.error("Failed to create organisation:", apiError?.message);
-      throw new Error(apiError?.message || "Failed to create organisation");
+      const errorMessage = handleError(err, {
+        severity: "console",
+        context: "Failed to create organisation",
+        fallbackMessage: "Failed to create organisation",
+      });
+      throw new Error(errorMessage);
     }
   };
 
@@ -98,9 +103,12 @@ export default function TenantsTab() {
       setSelectedTenant(null);
       fetchTenants();
     } catch (err) {
-      const apiError = err as ApiError;
-      console.error("Failed to update organisation permissions:", apiError?.message);
-      throw new Error(apiError?.message || "Failed to update organisation permissions");
+      const errorMessage = handleError(err, {
+        severity: "console",
+        context: "Failed to update organisation permissions",
+        fallbackMessage: "Failed to update organisation permissions",
+      });
+      throw new Error(errorMessage);
     }
   };
 

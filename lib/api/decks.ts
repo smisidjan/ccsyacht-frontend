@@ -1,58 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import type {
-  Deck,
-  CreateDeckRequest,
-  UpdateDeckRequest,
-  ApiError,
-} from "./types";
-import { getAuthToken, getTenantUrl } from "./client";
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
-
-// Base fetch function for decks
-async function apiFetch<T>(
-  endpoint: string,
-  options: RequestInit = {}
-): Promise<T> {
-  const token = getAuthToken();
-  const tenantUrl = getTenantUrl();
-
-  const headers: HeadersInit = {
-    "Content-Type": "application/json",
-    ...options.headers,
-  };
-
-  if (token) {
-    (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
-  }
-  if (tenantUrl) {
-    (headers as Record<string, string>)["X-Tenant-ID"] = tenantUrl;
-  }
-
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    ...options,
-    headers,
-  });
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    const error: ApiError = {
-      message: errorData.message || errorData.error || `HTTP error ${response.status}`,
-      code: errorData.code,
-      status: response.status,
-    };
-    throw error;
-  }
-
-  // Handle 204 No Content
-  if (response.status === 204) {
-    return undefined as T;
-  }
-
-  return response.json();
-}
+import type { Deck, CreateDeckRequest, UpdateDeckRequest, ApiError } from "./types";
+import { apiFetch } from "./fetch";
 
 // ============ Decks API ============
 export const decksApi = {
@@ -65,13 +15,13 @@ export const decksApi = {
   create: (projectId: string, data: CreateDeckRequest): Promise<Deck> =>
     apiFetch(`/projects/${projectId}/decks`, {
       method: "POST",
-      body: JSON.stringify(data),
+      body: data,
     }),
 
   update: (projectId: string, deckId: string, data: UpdateDeckRequest): Promise<Deck> =>
     apiFetch(`/projects/${projectId}/decks/${deckId}`, {
       method: "PUT",
-      body: JSON.stringify(data),
+      body: data,
     }),
 
   delete: (projectId: string, deckId: string): Promise<void> =>
@@ -81,14 +31,14 @@ export const decksApi = {
 };
 
 // ============ Decks Hook ============
-interface UseApiState<T> {
-  data: T | null;
+interface UseDecksState {
+  data: Deck[] | null;
   loading: boolean;
   error: ApiError | null;
 }
 
 export function useDecks(projectId: string) {
-  const [state, setState] = useState<UseApiState<Deck[]>>({
+  const [state, setState] = useState<UseDecksState>({
     data: null,
     loading: true,
     error: null,
@@ -98,8 +48,7 @@ export function useDecks(projectId: string) {
     setState((prev) => ({ ...prev, loading: true, error: null }));
     try {
       const response = await decksApi.getAll(projectId);
-      const data = response.data || [];
-      setState({ data, loading: false, error: null });
+      setState({ data: response.data || [], loading: false, error: null });
     } catch (err) {
       setState({ data: null, loading: false, error: err as ApiError });
     }

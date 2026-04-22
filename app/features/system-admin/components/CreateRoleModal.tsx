@@ -7,6 +7,7 @@ import FormInput from "@/app/components/ui/FormInput";
 import FormSelect from "@/app/components/ui/FormSelect";
 import FormCheckbox from "@/app/components/ui/FormCheckbox";
 import { systemApi } from "@/lib/api/system";
+import { handleError } from "@/lib/utils/errors";
 import type { CreateTenantRoleRequest } from "@/lib/api/types";
 import { formatRoleName } from "@/lib/utils/roleFormatter";
 
@@ -59,7 +60,7 @@ export default function CreateRoleModal({
 
         setAvailablePermissions(permissions);
       } catch (err) {
-        console.error("Failed to fetch role data:", err);
+        handleError(err, { severity: "console", context: "Failed to fetch role data" });
         setRoleTypes([]);
         setAvailablePermissions([]);
       } finally {

@@ -5,6 +5,7 @@ import { XMarkIcon, ArrowDownTrayIcon } from "@heroicons/react/24/outline";
 import type { PunchlistItemAttachment, SetupTaskDocument } from "@/lib/api/types";
 import { useTranslations } from "next-intl";
 import { getAuthToken, getTenantUrl } from "@/lib/api/client";
+import { handleError } from "@/lib/utils/errors";
 
 interface DocumentViewerModalProps {
   isOpen: boolean;
@@ -77,7 +78,7 @@ export default function DocumentViewerModal({
         setBlobUrl(objectUrl);
         setLoading(false);
       } catch (err) {
-        console.error("Failed to load document:", err);
+        handleError(err, { severity: "console", context: "Loading document" });
         setError(true);
         setLoading(false);
       }

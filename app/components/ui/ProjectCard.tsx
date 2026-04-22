@@ -8,8 +8,6 @@ import {
   BuildingOffice2Icon,
   ArrowRightIcon,
   CalendarIcon,
-  DocumentTextIcon,
-  ExclamationTriangleIcon,
   UserPlusIcon,
   LockClosedIcon,
   UsersIcon,
@@ -19,6 +17,7 @@ import type { Project, UserRole } from "@/lib/api/types";
 import { projectMembersApi } from "@/lib/api";
 import { useToast } from "@/app/context/ToastContext";
 import { usePermission } from "@/lib/hooks/usePermission";
+import { handleError } from "@/lib/utils/errors";
 
 interface ProjectCardProps {
   project: Project;
@@ -124,7 +123,7 @@ export default function ProjectCard({ project, isMember, userRole, memberCount, 
                   if (onJoin) onJoin();
                   router.push(`/dashboard/projects/${project.identifier}`);
                 } catch (error) {
-                  showToast("error", t("joinError"));
+                  handleError(error, { showToast, fallbackMessage: t("joinError") });
                 } finally {
                   setIsJoining(false);
                 }

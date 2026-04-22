@@ -9,57 +9,12 @@ import type {
   AddDocumentTypeAssigneeRequest,
   ApiError,
 } from "./types";
-import { getAuthToken, getTenantUrl } from "./client";
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
-
-// Base fetch function for document types
-async function apiFetch<T>(
-  endpoint: string,
-  options: RequestInit = {}
-): Promise<T> {
-  const token = getAuthToken();
-  const tenantUrl = getTenantUrl();
-
-  const headers: HeadersInit = {
-    "Content-Type": "application/json",
-    ...options.headers,
-  };
-
-  if (token) {
-    (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
-  }
-  if (tenantUrl) {
-    (headers as Record<string, string>)["X-Tenant-ID"] = tenantUrl;
-  }
-
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    ...options,
-    headers,
-  });
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    const error: ApiError = {
-      message: errorData.message || errorData.error || `HTTP error ${response.status}`,
-      code: errorData.code,
-      status: response.status,
-    };
-    throw error;
-  }
-
-  // Handle 204 No Content
-  if (response.status === 204) {
-    return undefined as T;
-  }
-
-  return response.json();
-}
+import { apiFetch, buildQueryString } from "./fetch";
 
 // ============ Document Types API ============
 export const documentTypesApi = {
   getAll: (projectId: string, includeAssignees = false): Promise<{ data: DocumentType[] }> =>
-    apiFetch(`/projects/${projectId}/document-types${includeAssignees ? "?include_assignees=true" : ""}`),
+    apiFetch(`/projects/${projectId}/document-types${buildQueryString({ include_assignees: includeAssignees || undefined })}`),
 
   getById: (projectId: string, typeId: string): Promise<DocumentType> =>
     apiFetch(`/projects/${projectId}/document-types/${typeId}`),
@@ -67,13 +22,13 @@ export const documentTypesApi = {
   create: (projectId: string, data: CreateDocumentTypeRequest): Promise<DocumentType> =>
     apiFetch(`/projects/${projectId}/document-types`, {
       method: "POST",
-      body: JSON.stringify(data),
+      body: data,
     }),
 
   update: (projectId: string, typeId: string, data: UpdateDocumentTypeRequest): Promise<DocumentType> =>
     apiFetch(`/projects/${projectId}/document-types/${typeId}`, {
       method: "PUT",
-      body: JSON.stringify(data),
+      body: data,
     }),
 
   delete: (projectId: string, typeId: string): Promise<void> =>
@@ -82,14 +37,10 @@ export const documentTypesApi = {
     }),
 
   // Assignee methods
-  addAssignee: (
-    projectId: string,
-    typeId: string,
-    data: AddDocumentTypeAssigneeRequest
-  ): Promise<DocumentTypeAssignee> =>
+  addAssignee: (projectId: string, typeId: string, data: AddDocumentTypeAssigneeRequest): Promise<DocumentTypeAssignee> =>
     apiFetch(`/projects/${projectId}/document-types/${typeId}/assignees`, {
       method: "POST",
-      body: JSON.stringify(data),
+      body: data,
     }),
 
   removeAssignee: (projectId: string, typeId: string, userId: string): Promise<void> =>
@@ -104,8 +55,8 @@ export const documentTypesApi = {
 };
 
 // ============ Document Types Hook ============
-interface UseApiState<T> {
-  data: T | null;
+interface UseDocumentTypesState {
+  data: DocumentType[] | null;
   loading: boolean;
   error: ApiError | null;
 }
@@ -116,7 +67,7 @@ interface UseDocumentTypesOptions {
 
 export function useDocumentTypes(projectId: string, options: UseDocumentTypesOptions = {}) {
   const { includeAssignees = false } = options;
-  const [state, setState] = useState<UseApiState<DocumentType[]>>({
+  const [state, setState] = useState<UseDocumentTypesState>({
     data: null,
     loading: true,
     error: null,
@@ -126,8 +77,7 @@ export function useDocumentTypes(projectId: string, options: UseDocumentTypesOpt
     setState((prev) => ({ ...prev, loading: true, error: null }));
     try {
       const response = await documentTypesApi.getAll(projectId, includeAssignees);
-      const data = response.data || [];
-      setState({ data, loading: false, error: null });
+      setState({ data: response.data || [], loading: false, error: null });
     } catch (err) {
       setState({ data: null, loading: false, error: err as ApiError });
     }

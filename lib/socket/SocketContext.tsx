@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from "react";
 import { useTenant } from "@/app/context/TenantContext";
 import { useAuth } from "@/app/context/AuthContext";
+import { handleError } from "@/lib/utils/errors";
 
 // Type definitions
 interface EchoInstance {
@@ -109,7 +110,7 @@ export function SocketProvider({ children }: SocketProviderProps) {
 
       setEcho(echoInstance);
     } catch (error) {
-      console.error("Failed to initialize Laravel Echo:", error);
+      handleError(error, { severity: "console", context: "Failed to initialize Laravel Echo" });
     }
   }, [tenantLoaded, authLoading, tenantId, token]);
 

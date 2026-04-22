@@ -11,6 +11,7 @@ import ProtectedRoute from "@/app/components/guards/ProtectedRoute";
 import { PERMISSIONS } from "@/lib/constants/permissions";
 import { usePermission } from "@/lib/hooks/usePermission";
 import { useMinimumLoadingTime } from "@/lib/hooks/useMinimumLoadingTime";
+import { handleError } from "@/lib/utils/errors";
 import type { User, UpdateUserRequest, UserRole, CreateInvitationRequest } from "@/lib/api/types";
 import {
   useUsers,
@@ -83,7 +84,7 @@ export default function UsersPage() {
       setIsEditModalOpen(false);
       setEditingUser(null);
     } catch (error) {
-      console.error("Failed to update user:", error);
+      handleError(error, { severity: "console", context: "Failed to update user" });
       throw error; // Re-throw so the modal can show an error state
     }
   };
@@ -93,7 +94,7 @@ export default function UsersPage() {
       await createInvitation(data);
       setIsInviteModalOpen(false);
     } catch (error) {
-      console.error("Failed to invite user:", error);
+      handleError(error, { severity: "console", context: "Failed to invite user" });
       throw error; // Re-throw so the modal can show an error state
     }
   };
@@ -102,8 +103,7 @@ export default function UsersPage() {
     try {
       await resendInvitation(invitationId);
     } catch (error) {
-      const apiError = error as { message?: string; status?: number };
-      console.error("Failed to resend invitation:", apiError.message || error, "Status:", apiError.status);
+      handleError(error, { severity: "console", context: "Failed to resend invitation" });
       throw error; // Re-throw so the tab can show an error state
     }
   };
@@ -132,8 +132,7 @@ export default function UsersPage() {
       await refetchRequests();
       await refetchUsers();
     } catch (error) {
-      const apiError = error as { message?: string; status?: number };
-      console.error("Failed to approve request:", apiError.message || error, "Status:", apiError.status);
+      handleError(error, { severity: "console", context: "Failed to approve request" });
       throw error; // Re-throw so the modal can show an error state
     }
   };
@@ -142,8 +141,7 @@ export default function UsersPage() {
     try {
       await rejectRequest(requestId);
     } catch (error) {
-      const apiError = error as { message?: string; status?: number };
-      console.error("Failed to reject request:", apiError.message || error, "Status:", apiError.status);
+      handleError(error, { severity: "console", context: "Failed to reject request" });
       throw error; // Re-throw so the modal can show an error state
     }
   };

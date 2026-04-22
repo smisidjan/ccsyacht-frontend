@@ -11,6 +11,7 @@ import Alert from "@/app/components/ui/Alert";
 import LoadingSkeleton from "@/app/components/ui/LoadingSkeleton";
 import { CreateGAPinModal } from "@/app/features/ga";
 import type { GAPin } from "@/lib/api/types";
+import { handleError } from "@/lib/utils/errors";
 
 interface GAViewerProps {
   projectId: string;
@@ -66,7 +67,7 @@ export default function GAViewer({
       try {
         await deletePin(pinId);
       } catch (err) {
-        console.error("Failed to delete pin:", err);
+        handleError(err, { severity: "console", context: "Deleting pin" });
       }
     },
     [deletePin, t]

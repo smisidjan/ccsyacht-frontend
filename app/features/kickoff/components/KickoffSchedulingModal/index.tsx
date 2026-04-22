@@ -16,6 +16,7 @@ import { setupTasksApi, useProjectMembers, useCurrentUser, useRoles } from "@/li
 import { useToast } from "@/app/context/ToastContext";
 import { usePermission } from "@/lib/hooks/usePermission";
 import { PERMISSIONS } from "@/lib/constants/permissions";
+import { handleError } from "@/lib/utils/errors";
 import { createISODateTime } from "../../utils";
 
 // Phase Components
@@ -232,8 +233,12 @@ export default function KickoffSchedulingModal({
       setTask(taskResponse.data || taskResponse);
       if (statusResponse) setSchedulingStatus(statusResponse);
     } catch (err) {
-      console.error("Error fetching data:", err);
-      setError(err instanceof Error ? err.message : t("loadError"));
+      const errorMessage = handleError(err, {
+        severity: "console",
+        context: "Error fetching data",
+        fallbackMessage: t("loadError"),
+      });
+      setError(errorMessage);
     } finally {
       if (showLoading) setLoading(false);
     }

@@ -9,6 +9,7 @@ import { useProjectMembers } from "@/lib/api";
 import { useToast } from "@/app/context/ToastContext";
 import { MAX_FILE_SIZE } from "@/lib/constants/fileUpload";
 import type { PunchlistItemPriority } from "@/lib/api/types";
+import { handleError } from "@/lib/utils/errors";
 
 interface CreatePunchlistItemModalProps {
   isOpen: boolean;
@@ -70,9 +71,8 @@ export default function CreatePunchlistItemModal({
       for (const file of selectedFiles) {
         try {
           await punchlistItemsApi.uploadAttachment(projectId, newItem.identifier, file);
-        } catch (uploadError: any) {
-          console.error(`Failed to upload ${file.name}:`, uploadError);
-          showToast("error", `Failed to upload ${file.name}`);
+        } catch (uploadError) {
+          handleError(uploadError, { showToast, fallbackMessage: `Failed to upload ${file.name}` });
         }
       }
     }
