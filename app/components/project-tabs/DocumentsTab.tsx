@@ -460,7 +460,7 @@ export default function DocumentsTab({ projectId, projectStatus }: DocumentsTabP
                             <BellIcon className="w-3 h-3" />
                           </button>
                         )}
-                        {!isReadOnly && (
+                        {!assignee.isCompleted && !isReadOnly && (
                           <button
                             onClick={() => handleRemoveAssignee(assignee)}
                             className="p-0.5 hover:bg-white/50 dark:hover:bg-black/20 rounded transition-colors"
