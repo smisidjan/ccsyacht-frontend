@@ -11,16 +11,17 @@ import {
   PencilIcon,
   TrashIcon,
   UserPlusIcon,
-  UserCircleIcon,
   ClockIcon,
   CheckCircleIcon,
   ExclamationCircleIcon,
   BellIcon,
   XMarkIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
 } from "@heroicons/react/24/outline";
 import { useDocumentTypes } from "@/lib/api/document-types";
 import { useDocuments } from "@/lib/api/documents";
-import { useUsers } from "@/lib/api";
+import { useUsers, useCurrentUser } from "@/lib/api";
 import { usePermission } from "@/lib/hooks/usePermission";
 import { useMinimumLoadingTime } from "@/lib/hooks/useMinimumLoadingTime";
 import { useRealtimeDocuments } from "@/lib/hooks/useRealtimeProject";
@@ -32,7 +33,6 @@ import LoadingSkeleton from "@/app/components/ui/LoadingSkeleton";
 import Alert from "@/app/components/ui/Alert";
 import DropdownMenu from "@/app/components/ui/DropdownMenu";
 import type { DropdownMenuItem } from "@/app/components/ui/DropdownMenu";
-import Tooltip from "@/app/components/ui/Tooltip";
 import UploadDocumentModal from "@/app/components/modals/UploadDocumentModal";
 import DocumentTypeModal from "@/app/components/modals/DocumentTypeModal";
 import AssignDocumentModal from "@/app/components/modals/AssignDocumentModal";
@@ -66,9 +66,11 @@ export default function DocumentsTab({ projectId, projectStatus }: DocumentsTabP
 
   // Fetch all users for assignee selection
   const { data: allUsers } = useUsers();
+  const { data: currentUser } = useCurrentUser();
 
   // State for selected document type
   const [selectedTypeId, setSelectedTypeId] = useState<string | null>(null);
+  const [showMobileDetail, setShowMobileDetail] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isCreateTypeModalOpen, setIsCreateTypeModalOpen] = useState(false);
   const [isEditTypeModalOpen, setIsEditTypeModalOpen] = useState(false);
@@ -113,6 +115,13 @@ export default function DocumentsTab({ projectId, projectStatus }: DocumentsTabP
   const isReadOnly = projectStatus === "archived" || projectStatus === "completed";
 
   const selectedType = documentTypes?.find((type) => type.identifier === selectedTypeId);
+
+  // Check if current user is an assignee for the selected document type AND their task is not completed
+  // If task is completed, they don't need the upload button anymore (unless they have UPLOAD_DOCUMENTS permission)
+  const currentUserAssignment = selectedType?.assignees?.find(
+    (assignee) => assignee.identifier === currentUser?.identifier
+  );
+  const isCurrentUserAssigneeWithPendingTask = currentUserAssignment && !currentUserAssignment.isCompleted;
 
   // Sort document types: required first, then alphabetically
   const sortedDocumentTypes = documentTypes
@@ -264,16 +273,27 @@ export default function DocumentsTab({ projectId, projectStatus }: DocumentsTabP
     );
   }
 
+  // Handle selecting a document type (show detail on mobile)
+  const handleSelectType = (typeId: string) => {
+    setSelectedTypeId(typeId);
+    setShowMobileDetail(true);
+  };
+
+  // Handle back button on mobile
+  const handleBackToList = () => {
+    setShowMobileDetail(false);
+  };
+
   return (
-    <div className="flex gap-6">
+    <div className="flex flex-col lg:flex-row gap-4 lg:gap-6">
       {/* Left Sidebar - Document Types */}
-      <div className="w-96 flex-shrink-0">
-        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-lg flex flex-col max-h-[calc(100vh-240px)]">
-          <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+      <div className={`${showMobileDetail ? "hidden" : "block"} lg:block w-full lg:w-80 xl:w-96 flex-shrink-0`}>
+        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-lg flex flex-col max-h-[60vh] lg:max-h-[calc(100vh-240px)]">
+          <div className="p-3 lg:p-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-gray-900 dark:text-white">
                 <FolderIcon className="w-5 h-5" />
-                <h3 className="font-semibold">{t("documentTypes")}</h3>
+                <h3 className="font-semibold text-sm lg:text-base">{t("documentTypes")}</h3>
               </div>
               {canCreateDocumentTypes && !isReadOnly && (
                 <button
@@ -299,40 +319,62 @@ export default function DocumentsTab({ projectId, projectStatus }: DocumentsTabP
                   }`}
                 >
                   <button
-                    onClick={() => setSelectedTypeId(type.identifier)}
-                    className="flex-1 flex items-start justify-between p-4 text-left gap-2"
+                    onClick={() => handleSelectType(type.identifier)}
+                    className="flex-1 flex items-center justify-between p-3 lg:p-4 text-left gap-2"
                   >
-                    <div className="flex items-start gap-3 flex-1 min-w-0">
-                      <FolderIcon className="w-5 h-5 flex-shrink-0 mt-0.5" />
-                      <div className="flex flex-col min-w-0 flex-1">
-                        <span className="font-medium">{type.name}</span>
-                      </div>
+                    <div className="flex items-center gap-2 lg:gap-3 flex-1 min-w-0">
+                      <FolderIcon className="w-4 h-4 lg:w-5 lg:h-5 flex-shrink-0" />
+                      <span className="font-medium text-sm lg:text-base truncate">{type.name}</span>
                     </div>
-                    {type.isRequired && type.documentCount === 0 ? (
-                      <span
-                        className={`flex-shrink-0 px-2 py-1 text-xs rounded-full ${
-                          selectedTypeId === type.identifier
-                            ? "bg-white/20 text-red-600"
-                            : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-red-600 dark:text-red-400"
-                        }`}
-                      >
-                        {t("required")}
-                      </span>
-                    ) : (
-                      <span
-                        className={`flex-shrink-0 px-2 py-1 text-xs rounded-full ${
-                          selectedTypeId === type.identifier
-                            ? "bg-white/20 text-white"
-                            : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
-                        }`}
-                      >
-                        {type.documentCount}
-                      </span>
-                    )}
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {type.documentCount > 0 ? (
+                        <span
+                          className={`px-2 py-0.5 lg:py-1 text-[10px] lg:text-xs rounded-full ${
+                            selectedTypeId === type.identifier
+                              ? "bg-white/20 text-white"
+                              : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
+                          }`}
+                        >
+                          {type.documentCount}
+                        </span>
+                      ) : type.assignees && type.assignees.length > 0 ? (
+                        <span
+                          className={`px-2 py-0.5 lg:py-1 text-[10px] lg:text-xs rounded-full ${
+                            selectedTypeId === type.identifier
+                              ? "bg-white/20 text-amber-200"
+                              : "bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400"
+                          }`}
+                        >
+                          {t("requested")}
+                        </span>
+                      ) : type.isRequired ? (
+                        <span
+                          className={`px-2 py-0.5 lg:py-1 text-[10px] lg:text-xs rounded-full ${
+                            selectedTypeId === type.identifier
+                              ? "bg-white/20 text-red-200"
+                              : "bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400"
+                          }`}
+                        >
+                          {t("required")}
+                        </span>
+                      ) : (
+                        <span
+                          className={`px-2 py-0.5 lg:py-1 text-[10px] lg:text-xs rounded-full ${
+                            selectedTypeId === type.identifier
+                              ? "bg-white/20 text-white"
+                              : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
+                          }`}
+                        >
+                          0
+                        </span>
+                      )}
+                      {/* Show chevron on mobile */}
+                      <ChevronRightIcon className="w-4 h-4 lg:hidden text-gray-400" />
+                    </div>
                   </button>
                   {menuItems.length > 0 && (
                     <div
-                      className="pr-2"
+                      className="pr-2 hidden lg:block"
                       onClick={(e) => e.stopPropagation()}
                     >
                       <DropdownMenu items={menuItems} />
@@ -346,243 +388,223 @@ export default function DocumentsTab({ projectId, projectStatus }: DocumentsTabP
       </div>
 
       {/* Right Content - Documents Table & Assignees */}
-      <div className="flex-1 flex flex-col min-w-0 gap-6">
+      <div className={`${showMobileDetail ? "block" : "hidden"} lg:block flex-1 flex flex-col min-w-0 gap-4 lg:gap-6`}>
         {/* Documents Table */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-lg flex flex-col flex-1 min-h-0">
-          <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-            <h3 className="font-semibold text-gray-900 dark:text-white">
-              {selectedType?.name} ({documents?.length || 0})
-            </h3>
-            {canUploadDocuments && !isReadOnly && (
-              <Button onClick={() => setIsUploadModalOpen(true)}>
-                <ArrowUpTrayIcon className="w-4 h-4" />
-                {t("upload")}
-              </Button>
+          <div className="p-4 lg:p-6 border-b border-gray-200 dark:border-gray-700">
+            {/* Header row */}
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <div className="flex items-center gap-2 lg:gap-3 min-w-0">
+                {/* Back button on mobile */}
+                <button
+                  onClick={handleBackToList}
+                  className="lg:hidden p-1.5 -ml-1.5 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                >
+                  <ChevronLeftIcon className="w-5 h-5" />
+                </button>
+                <h3 className="font-semibold text-gray-900 dark:text-white text-sm lg:text-base truncate">
+                  {selectedType?.name} ({documents?.length || 0})
+                </h3>
+              </div>
+              <div className="flex items-center gap-2">
+                {canEditDocumentTypes && !isReadOnly && (
+                  <Button variant="secondary" size="sm" onClick={() => setIsAssignModalOpen(true)}>
+                    <UserPlusIcon className="w-4 h-4" />
+                    <span className="hidden sm:inline">{tDocTypes("assignees.assign")}</span>
+                  </Button>
+                )}
+                {(canUploadDocuments || isCurrentUserAssigneeWithPendingTask) && !isReadOnly && (
+                  <Button size="sm" onClick={() => setIsUploadModalOpen(true)}>
+                    <ArrowUpTrayIcon className="w-4 h-4" />
+                    <span className="hidden sm:inline">{t("upload")}</span>
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            {/* Assignees row - inline */}
+            {selectedType && canEditDocumentTypes && (
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs text-gray-500 dark:text-gray-400">{tDocTypes("assignees.title")}:</span>
+                {!selectedType.assignees || selectedType.assignees.length === 0 ? (
+                  <span className="text-xs text-gray-400 dark:text-gray-500 italic">
+                    {tDocTypes("assignees.noAssignees")}
+                  </span>
+                ) : (
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {selectedType.assignees.map((assignee) => (
+                      <div
+                        key={assignee.identifier}
+                        className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium ${
+                          assignee.isCompleted
+                            ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400"
+                            : assignee.isOverdue
+                            ? "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400"
+                            : "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400"
+                        }`}
+                      >
+                        {assignee.isCompleted ? (
+                          <CheckCircleIcon className="w-3.5 h-3.5" />
+                        ) : assignee.isOverdue ? (
+                          <ExclamationCircleIcon className="w-3.5 h-3.5" />
+                        ) : (
+                          <ClockIcon className="w-3.5 h-3.5" />
+                        )}
+                        <span className="truncate max-w-[100px]">{assignee.name}</span>
+                        {!assignee.isCompleted && !isReadOnly && (
+                          <button
+                            onClick={() => handleNotifyAssignee(assignee)}
+                            className="p-0.5 hover:bg-white/50 dark:hover:bg-black/20 rounded transition-colors"
+                            title={tDocTypes("assignees.sendReminder")}
+                          >
+                            <BellIcon className="w-3 h-3" />
+                          </button>
+                        )}
+                        {!isReadOnly && (
+                          <button
+                            onClick={() => handleRemoveAssignee(assignee)}
+                            className="p-0.5 hover:bg-white/50 dark:hover:bg-black/20 rounded transition-colors"
+                            title={tDocTypes("assignees.remove")}
+                          >
+                            <XMarkIcon className="w-3 h-3" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             )}
           </div>
 
           <div className="flex-1 overflow-auto">
             {documentsLoading ? (
-              <div className="p-6">
+              <div className="p-4 lg:p-6">
                 <LoadingSkeleton type="list" rows={5} />
               </div>
             ) : documentsError ? (
-              <div className="p-6">
+              <div className="p-4 lg:p-6">
                 <Alert type="error" message={documentsError.message || t("loadError")} />
               </div>
             ) : !documents || documents.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full p-8 text-center">
-                <DocumentTextIcon className="w-16 h-16 text-gray-300 dark:text-gray-600 mb-4" />
-                <p className="text-gray-600 dark:text-gray-400">{t("noDocumentsInType")}</p>
+              <div className="flex flex-col items-center justify-center h-full p-6 lg:p-8 text-center">
+                <DocumentTextIcon className="w-12 h-12 lg:w-16 lg:h-16 text-gray-300 dark:text-gray-600 mb-3 lg:mb-4" />
+                <p className="text-sm lg:text-base text-gray-600 dark:text-gray-400">{t("noDocumentsInType")}</p>
               </div>
             ) : (
-              <Table
-                columns={[
-                  {
-                    key: "name",
-                    header: t("documentName"),
-                    cell: (doc: Document) => (
-                      <div className="flex items-center gap-3">
-                        <DocumentTextIcon className="w-5 h-5 text-gray-400 flex-shrink-0" />
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                            {doc.name}
-                          </p>
-                          {doc.description && (
-                            <p className="text-xs text-gray-600 dark:text-gray-400 truncate">
-                              {doc.description}
-                            </p>
-                          )}
+              <>
+                {/* Mobile: Card layout */}
+                <div className="lg:hidden divide-y divide-gray-100 dark:divide-gray-700">
+                  {documents.map((doc) => (
+                    <div key={doc.identifier} className="p-4 flex items-center gap-3">
+                      <DocumentTextIcon className="w-8 h-8 text-gray-400 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                          {doc.name}
+                        </p>
+                        <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                          <span>{doc.contentSize}</span>
+                          <span>•</span>
+                          <span>{doc.author.name}</span>
                         </div>
-                      </div>
-                    ),
-                  },
-                  {
-                    key: "size",
-                    header: t("size"),
-                    cell: (doc: Document) => (
-                      <span className="text-sm text-gray-600 dark:text-gray-400">
-                        {doc.contentSize}
-                      </span>
-                    ),
-                  },
-                  {
-                    key: "uploadedBy",
-                    header: t("uploadedBy"),
-                    cell: (doc: Document) => (
-                      <span className="text-sm text-gray-600 dark:text-gray-400">
-                        {doc.author.name}
-                      </span>
-                    ),
-                  },
-                  {
-                    key: "uploadedAt",
-                    header: t("uploadedAt"),
-                    cell: (doc: Document) => (
-                      <span className="text-sm text-gray-600 dark:text-gray-400">
-                        {new Date(doc.dateCreated).toLocaleDateString()}
-                      </span>
-                    ),
-                  },
-                  {
-                    key: "actions",
-                    header: t("actions"),
-                    headerClassName: "text-right",
-                    className: "text-right",
-                    cell: (doc: Document) => (
-                      <div className="flex items-center justify-end gap-2">
-                        {canDownloadDocuments && (
-                          <button
-                            onClick={() => handleDownload(doc.identifier, doc.fileName)}
-                            className="p-2 text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
-                            title={t("download")}
-                          >
-                            <ArrowDownTrayIcon className="w-4 h-4" />
-                          </button>
+                        {doc.description && (
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-1">
+                            {doc.description}
+                          </p>
                         )}
                       </div>
-                    ),
-                  },
-                ]}
-                data={documents}
-                keyExtractor={(doc) => doc.identifier}
-                emptyMessage={t("noDocuments")}
-              />
-            )}
-          </div>
-        </div>
-
-        {/* Assignees Section */}
-        {selectedType && canEditDocumentTypes && !isReadOnly && (
-          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-lg">
-            <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <UserPlusIcon className="w-5 h-5 text-gray-500 dark:text-gray-400" />
-                <h4 className="font-semibold text-gray-900 dark:text-white">
-                  {tDocTypes("assignees.title")}
-                </h4>
-                {selectedType.assignees && selectedType.assignees.length > 0 && (
-                  <span className="px-2 py-0.5 text-xs rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400">
-                    {selectedType.assignees.length}
-                  </span>
-                )}
-              </div>
-              <Button variant="secondary" size="sm" onClick={() => setIsAssignModalOpen(true)}>
-                <UserPlusIcon className="w-4 h-4" />
-                {tDocTypes("assignees.assign")}
-              </Button>
-            </div>
-
-            <div className="p-4">
-              {!selectedType.assignees || selectedType.assignees.length === 0 ? (
-                <div className="text-center py-6 text-gray-500 dark:text-gray-400">
-                  <UserCircleIcon className="w-10 h-10 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">{tDocTypes("assignees.noAssignees")}</p>
-                  <p className="text-xs mt-1">{tDocTypes("assignees.noAssigneesHint")}</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {selectedType.assignees.map((assignee) => (
-                    <div
-                      key={assignee.identifier}
-                      className={`flex items-center justify-between p-3 rounded-lg border ${
-                        assignee.isCompleted
-                          ? "bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-800"
-                          : assignee.isOverdue
-                          ? "bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800"
-                          : "bg-gray-50 dark:bg-gray-700/50 border-gray-200 dark:border-gray-600"
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div
-                          className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                            assignee.isCompleted
-                              ? "bg-green-100 dark:bg-green-900/30"
-                              : assignee.isOverdue
-                              ? "bg-red-100 dark:bg-red-900/30"
-                              : "bg-blue-100 dark:bg-blue-900/30"
-                          }`}
+                      {canDownloadDocuments && (
+                        <button
+                          onClick={() => handleDownload(doc.identifier, doc.fileName)}
+                          className="p-2 text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors flex-shrink-0"
+                          title={t("download")}
                         >
-                          {assignee.isCompleted ? (
-                            <CheckCircleIcon className="w-5 h-5 text-green-600 dark:text-green-400" />
-                          ) : assignee.isOverdue ? (
-                            <ExclamationCircleIcon className="w-5 h-5 text-red-600 dark:text-red-400" />
-                          ) : (
-                            <UserCircleIcon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                          )}
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-gray-900 dark:text-white">
-                            {assignee.name}
-                          </p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">
-                            {assignee.email}
-                          </p>
-                          {assignee.message && (
-                            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 italic">
-                              &quot;{assignee.message}&quot;
-                            </p>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-3">
-                        {/* Status indicator */}
-                        <div className="text-right">
-                          {assignee.isCompleted ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">
-                              <CheckCircleIcon className="w-3 h-3" />
-                              {tDocTypes("assignees.status.completed")}
-                            </span>
-                          ) : assignee.isOverdue ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400">
-                              <ExclamationCircleIcon className="w-3 h-3" />
-                              {tDocTypes("assignees.status.overdue")}
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400">
-                              <ClockIcon className="w-3 h-3" />
-                              {tDocTypes("assignees.status.pending")}
-                            </span>
-                          )}
-                          {assignee.dueDate && !assignee.isCompleted && (
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                              {tDocTypes("assignees.dueBy", {
-                                date: new Date(assignee.dueDate).toLocaleDateString(),
-                              })}
-                            </p>
-                          )}
-                        </div>
-
-                        {/* Actions */}
-                        <div className="flex items-center gap-1">
-                          {!assignee.isCompleted && (
-                            <Tooltip content={tDocTypes("assignees.sendReminder")} position="top">
-                              <button
-                                onClick={() => handleNotifyAssignee(assignee)}
-                                className="p-2 text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
-                              >
-                                <BellIcon className="w-4 h-4" />
-                              </button>
-                            </Tooltip>
-                          )}
-                          <Tooltip content={tDocTypes("assignees.remove")} position="top">
-                            <button
-                              onClick={() => handleRemoveAssignee(assignee)}
-                              className="p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                            >
-                              <XMarkIcon className="w-4 h-4" />
-                            </button>
-                          </Tooltip>
-                        </div>
-                      </div>
+                          <ArrowDownTrayIcon className="w-5 h-5" />
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>
-              )}
-            </div>
+
+                {/* Desktop: Table layout */}
+                <div className="hidden lg:block">
+                  <Table
+                    columns={[
+                      {
+                        key: "name",
+                        header: t("documentName"),
+                        cell: (doc: Document) => (
+                          <div className="flex items-center gap-3">
+                            <DocumentTextIcon className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                                {doc.name}
+                              </p>
+                              {doc.description && (
+                                <p className="text-xs text-gray-600 dark:text-gray-400 truncate">
+                                  {doc.description}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        ),
+                      },
+                      {
+                        key: "size",
+                        header: t("size"),
+                        cell: (doc: Document) => (
+                          <span className="text-sm text-gray-600 dark:text-gray-400">
+                            {doc.contentSize}
+                          </span>
+                        ),
+                      },
+                      {
+                        key: "uploadedBy",
+                        header: t("uploadedBy"),
+                        cell: (doc: Document) => (
+                          <span className="text-sm text-gray-600 dark:text-gray-400">
+                            {doc.author.name}
+                          </span>
+                        ),
+                      },
+                      {
+                        key: "uploadedAt",
+                        header: t("uploadedAt"),
+                        cell: (doc: Document) => (
+                          <span className="text-sm text-gray-600 dark:text-gray-400">
+                            {new Date(doc.dateCreated).toLocaleDateString()}
+                          </span>
+                        ),
+                      },
+                      {
+                        key: "actions",
+                        header: t("actions"),
+                        headerClassName: "text-right",
+                        className: "text-right",
+                        cell: (doc: Document) => (
+                          <div className="flex items-center justify-end gap-2">
+                            {canDownloadDocuments && (
+                              <button
+                                onClick={() => handleDownload(doc.identifier, doc.fileName)}
+                                className="p-2 text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+                                title={t("download")}
+                              >
+                                <ArrowDownTrayIcon className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
+                        ),
+                      },
+                    ]}
+                    data={documents}
+                    keyExtractor={(doc) => doc.identifier}
+                    emptyMessage={t("noDocuments")}
+                  />
+                </div>
+              </>
+            )}
           </div>
-        )}
+        </div>
       </div>
 
       {/* Upload Modal */}
