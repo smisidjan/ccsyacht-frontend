@@ -150,6 +150,7 @@
   "createProject": {
     "title": "Nieuw Project Aanmaken",
     "projectName": "Projectnaam",
+    "externalId": "Projectnummer",
     "description": "Beschrijving",
     "yardOwner": "Werf/Eigenaar",
     "selectShipyard": "Selecteer een scheepswerf",

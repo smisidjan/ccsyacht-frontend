@@ -155,6 +155,7 @@ export default function ProjectsPage() {
         description: data.description,
         project_type: data.projectTypeId as "new_build" | "refit",
         shipyard_id: data.shipyardId,
+        external_id: data.externalId || undefined,
       });
 
       projectId = newProject.identifier;

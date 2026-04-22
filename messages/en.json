@@ -150,6 +150,7 @@
   "createProject": {
     "title": "Create New Project",
     "projectName": "Project Name",
+    "externalId": "Project Number",
     "description": "Description",
     "yardOwner": "Yard/Owner",
     "selectShipyard": "Select a shipyard",

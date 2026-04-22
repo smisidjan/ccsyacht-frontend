@@ -39,6 +39,7 @@ export interface ProjectFormData {
   description: string;
   shipyardId: string;
   projectTypeId: string;
+  externalId: string;
   generalArrangement: File | null;
   documentTypes: DocumentType[];
 }
@@ -62,6 +63,7 @@ export default function CreateProjectModal({
     description: "",
     shipyardId: "",
     projectTypeId: "",
+    externalId: "",
     generalArrangement: null,
     documentTypes: [],
   });
@@ -126,6 +128,7 @@ export default function CreateProjectModal({
         description: "",
         shipyardId: "",
         projectTypeId: "",
+        externalId: "",
         generalArrangement: null,
         documentTypes: [],
       });
@@ -219,6 +222,14 @@ export default function CreateProjectModal({
           value={formData.name}
           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
           required
+        />
+
+        <FormInput
+          id="external-id"
+          type="text"
+          label={t("externalId")}
+          value={formData.externalId}
+          onChange={(e) => setFormData({ ...formData, externalId: e.target.value })}
         />
 
         <FormTextarea
