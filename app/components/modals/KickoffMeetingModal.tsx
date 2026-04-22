@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useTranslations } from "next-intl";
-import { CalendarIcon, CheckIcon, DocumentIcon, EyeIcon, TrashIcon, ClockIcon, ChevronDownIcon, ChevronRightIcon, ArrowUpTrayIcon, ExclamationTriangleIcon } from "@heroicons/react/24/outline";
+import { CalendarIcon, CheckIcon, DocumentIcon, EyeIcon, TrashIcon, ClockIcon, ChevronDownIcon, ChevronRightIcon, ArrowUpTrayIcon, ExclamationTriangleIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import Modal from "@/app/components/ui/Modal";
 import Button from "@/app/components/ui/Button";
 import Alert from "@/app/components/ui/Alert";
@@ -46,6 +46,11 @@ export default function KickoffMeetingModal({
   const [requiredDocuments, setRequiredDocuments] = useState<RequiredDocument[]>([]);
   const [acknowledgingDocId, setAcknowledgingDocId] = useState<string | null>(null);
   const [expandedDocId, setExpandedDocId] = useState<string | null>(null);
+
+  // Disagree modal state
+  const [disagreeDocId, setDisagreeDocId] = useState<string | null>(null);
+  const [disagreementReason, setDisagreementReason] = useState("");
+  const [isSubmittingDisagree, setIsSubmittingDisagree] = useState(false);
 
   // Delete confirmation state
   const [documentToDelete, setDocumentToDelete] = useState<string | null>(null);
@@ -161,7 +166,16 @@ export default function KickoffMeetingModal({
       // Normalize required documents to ensure acknowledgements is always an array
       // API returns acknowledgements as object with numeric keys, need to convert to array
       const normalizedDocs = (Array.isArray(requiredDocsResponse) ? requiredDocsResponse : []).map(doc => {
-        let acknowledgements: Array<{ identifier: string; name: string; acknowledgedAt: string | null }> = [];
+        let acknowledgements: Array<{
+          identifier: string;
+          name: string;
+          acknowledgedAt: string | null;
+          hasRead: boolean;
+          readAt: string | null;
+          hasAgreed: boolean | null;
+          agreedAt: string | null;
+          disagreementReason: string | null;
+        }> = [];
 
         if (Array.isArray(doc.acknowledgements)) {
           acknowledgements = doc.acknowledgements;
@@ -170,11 +184,21 @@ export default function KickoffMeetingModal({
           const ackValues = Object.values(doc.acknowledgements) as Array<{
             agent?: { identifier: string; name: string };
             dateCreated?: string;
+            hasRead?: boolean;
+            readAt?: string;
+            hasAgreed?: boolean | null;
+            agreedAt?: string;
+            disagreementReason?: string;
           }>;
           acknowledgements = ackValues.map(ack => ({
             identifier: ack.agent?.identifier || '',
             name: ack.agent?.name || '',
             acknowledgedAt: ack.dateCreated || null,
+            hasRead: ack.hasRead ?? false,
+            readAt: ack.readAt || null,
+            hasAgreed: ack.hasAgreed ?? null,
+            agreedAt: ack.agreedAt || null,
+            disagreementReason: ack.disagreementReason || null,
           }));
         }
 
@@ -233,11 +257,11 @@ export default function KickoffMeetingModal({
     }
   };
 
-  const handleAcknowledgeDocument = async (docId: string) => {
+  const handleAcknowledgeDocument = async (docId: string, agreed: boolean, reason?: string) => {
     try {
       setAcknowledgingDocId(docId);
-      await setupTasksApi.acknowledgeDocument(projectId, taskId, docId);
-      showToast("success", t("acknowledgeSuccess"));
+      await setupTasksApi.acknowledgeDocument(projectId, taskId, docId, agreed, reason);
+      showToast("success", agreed ? t("agreeSuccess") : t("disagreeSuccess"));
       await refreshTaskDetails();
       onUpdate?.();
     } catch (err) {
@@ -247,9 +271,42 @@ export default function KickoffMeetingModal({
     }
   };
 
+  const handleDisagreeClick = (docId: string) => {
+    setDisagreeDocId(docId);
+    setDisagreementReason("");
+  };
+
+  const handleDisagreeSubmit = async () => {
+    if (!disagreeDocId || !disagreementReason.trim()) return;
+
+    try {
+      setIsSubmittingDisagree(true);
+      await setupTasksApi.acknowledgeDocument(projectId, taskId, disagreeDocId, false, disagreementReason.trim());
+      showToast("success", t("disagreeSuccess"));
+      setDisagreeDocId(null);
+      setDisagreementReason("");
+      await refreshTaskDetails();
+      onUpdate?.();
+    } catch (err) {
+      showToast("error", t("acknowledgeError"));
+    } finally {
+      setIsSubmittingDisagree(false);
+    }
+  };
+
+  const handleDisagreeCancel = () => {
+    setDisagreeDocId(null);
+    setDisagreementReason("");
+  };
+
+  const getUserAcknowledgement = (doc: RequiredDocument) => {
+    if (!currentUser || !Array.isArray(doc.acknowledgements)) return null;
+    return doc.acknowledgements.find(ack => ack.identifier === currentUser.identifier) || null;
+  };
+
   const hasUserAcknowledgedDocument = (doc: RequiredDocument): boolean => {
-    if (!currentUser || !Array.isArray(doc.acknowledgements)) return false;
-    return doc.acknowledgements.some(ack => ack.identifier === currentUser.identifier);
+    const ack = getUserAcknowledgement(doc);
+    return ack?.hasRead === true;
   };
 
   const actions = useMemo(() => {
@@ -588,33 +645,63 @@ export default function KickoffMeetingModal({
                               {t("viewDocument")}
                             </a>
 
-                            {/* Compact acknowledgement status */}
-                            <div className="flex flex-wrap gap-2">
-                              {doc.acknowledgements.map((user) => (
-                                <div key={user.identifier} className="flex items-center gap-1.5 text-xs">
-                                  <CheckIcon className="w-3 h-3 text-green-600" />
-                                  <span className="text-gray-700 dark:text-gray-300">{user.name}</span>
+                            {/* Acknowledgement status with agree/disagree */}
+                            <div className="space-y-2">
+                              {doc.acknowledgements.filter(ack => ack.hasRead).map((ack) => (
+                                <div key={ack.identifier} className="flex items-start gap-2 text-xs">
+                                  {ack.hasAgreed === true ? (
+                                    <CheckIcon className="w-3.5 h-3.5 text-green-600 flex-shrink-0 mt-0.5" />
+                                  ) : ack.hasAgreed === false ? (
+                                    <XMarkIcon className="w-3.5 h-3.5 text-red-600 flex-shrink-0 mt-0.5" />
+                                  ) : (
+                                    <ClockIcon className="w-3.5 h-3.5 text-gray-400 flex-shrink-0 mt-0.5" />
+                                  )}
+                                  <div className="flex-1 min-w-0">
+                                    <span className={`font-medium ${
+                                      ack.hasAgreed === true ? "text-green-700 dark:text-green-400" :
+                                      ack.hasAgreed === false ? "text-red-700 dark:text-red-400" :
+                                      "text-gray-700 dark:text-gray-300"
+                                    }`}>
+                                      {ack.name}
+                                    </span>
+                                    {ack.hasAgreed === false && ack.disagreementReason && (
+                                      <p className="text-red-600 dark:text-red-400 mt-0.5 break-words">
+                                        {t("disagreementReason")}: {ack.disagreementReason}
+                                      </p>
+                                    )}
+                                  </div>
                                 </div>
                               ))}
-                              {task?.assignees?.filter(a => !doc.acknowledgements.some(ack => ack.identifier === a.identifier)).map((user) => (
-                                <div key={user.identifier} className="flex items-center gap-1.5 text-xs">
-                                  <ClockIcon className="w-3 h-3 text-gray-400" />
+                              {task?.assignees?.filter(a => !doc.acknowledgements.some(ack => ack.identifier === a.identifier && ack.hasRead)).map((user) => (
+                                <div key={user.identifier} className="flex items-center gap-2 text-xs">
+                                  <ClockIcon className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
                                   <span className="text-gray-400">{user.name}</span>
                                 </div>
                               ))}
                             </div>
 
-                            {isAttendee && !userHasAcknowledged && !doc.allAcknowledged && (
-                              <Button
-                                variant="primary"
-                                size="sm"
-                                onClick={() => handleAcknowledgeDocument(doc.identifier)}
-                                loading={acknowledgingDocId === doc.identifier}
-                                disabled={acknowledgingDocId === doc.identifier}
-                              >
-                                <CheckIcon className="w-4 h-4" />
-                                {t("acknowledgeDocument")}
-                              </Button>
+                            {isAttendee && !userHasAcknowledged && (
+                              <div className="flex items-center gap-2 pt-2">
+                                <Button
+                                  variant="primary"
+                                  size="sm"
+                                  onClick={() => handleAcknowledgeDocument(doc.identifier, true)}
+                                  loading={acknowledgingDocId === doc.identifier}
+                                  disabled={acknowledgingDocId === doc.identifier}
+                                >
+                                  <CheckIcon className="w-4 h-4" />
+                                  {t("agreeDocument")}
+                                </Button>
+                                <Button
+                                  variant="danger"
+                                  size="sm"
+                                  onClick={() => handleDisagreeClick(doc.identifier)}
+                                  disabled={acknowledgingDocId === doc.identifier}
+                                >
+                                  <XMarkIcon className="w-4 h-4" />
+                                  {t("disagreeDocument")}
+                                </Button>
+                              </div>
                             )}
                           </div>
                         )}
@@ -652,6 +739,42 @@ export default function KickoffMeetingModal({
         <p className="text-gray-600 dark:text-gray-400">
           {t("confirmDeleteDocument")}
         </p>
+      </Modal>
+
+      {/* Disagree Reason Modal */}
+      <Modal
+        isOpen={!!disagreeDocId}
+        onClose={handleDisagreeCancel}
+        title={t("disagreeTitle")}
+        size="sm"
+        actions={[
+          {
+            label: tCommon("cancel"),
+            onClick: handleDisagreeCancel,
+            variant: "secondary",
+          },
+          {
+            label: t("submitDisagree"),
+            onClick: handleDisagreeSubmit,
+            variant: "danger",
+            loading: isSubmittingDisagree,
+            disabled: isSubmittingDisagree || !disagreementReason.trim(),
+          },
+        ]}
+      >
+        <div className="space-y-4">
+          <p className="text-gray-600 dark:text-gray-400">
+            {t("disagreeDescription")}
+          </p>
+          <textarea
+            value={disagreementReason}
+            onChange={(e) => setDisagreementReason(e.target.value)}
+            placeholder={t("disagreePlaceholder")}
+            rows={4}
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+            autoFocus
+          />
+        </div>
       </Modal>
     </>
   );

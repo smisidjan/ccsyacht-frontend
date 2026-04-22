@@ -1274,6 +1274,11 @@ export interface RequiredDocumentAcknowledgement {
   identifier: string;
   name: string;
   acknowledgedAt: string | null;
+  hasRead: boolean;
+  readAt: string | null;
+  hasAgreed: boolean | null;
+  agreedAt: string | null;
+  disagreementReason: string | null;
 }
 
 export interface RequiredDocument {
@@ -1298,6 +1303,8 @@ export interface RequiredDocument {
   acknowledgements: RequiredDocumentAcknowledgement[];
   allAcknowledged: boolean;
   acknowledgementCount: number;
+  agreedCount: number;
+  disagreedCount: number;
   totalAssignees: number;
 }
 

@@ -420,14 +420,22 @@ export const setupTasksApi = {
   /**
    * POST /api/projects/{projectId}/setup-task/{setupTaskId}/required-documents/{docId}/acknowledge
    * Acknowledge a required document (current user)
+   * @param agreed - Whether the user agrees with the document
+   * @param disagreementReason - Required when agreed is false
    */
   acknowledgeDocument: async (
     projectId: string,
     setupTaskId: string,
-    docId: string
+    docId: string,
+    agreed: boolean,
+    disagreementReason?: string
   ): Promise<RequiredDocument> => {
     return apiFetch(`/projects/${projectId}/setup-task/${setupTaskId}/required-documents/${docId}/acknowledge`, {
       method: "POST",
+      body: JSON.stringify({
+        agreed,
+        ...(disagreementReason && { disagreement_reason: disagreementReason }),
+      }),
     });
   },
 
