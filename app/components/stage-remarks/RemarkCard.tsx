@@ -22,6 +22,7 @@ import ImageViewerModal from "@/app/components/modals/ImageViewerModal";
 import DocumentViewerModal from "@/app/components/modals/DocumentViewerModal";
 import { useToast } from "@/app/context/ToastContext";
 import { useCurrentUser } from "@/lib/api/hooks";
+import { isDocumentAttachment, isImageAttachment } from "@/lib/utils/attachmentUtils";
 import type { StageRemark, StageRemarkAttachment } from "@/lib/api/types";
 
 interface RemarkCardProps {
@@ -62,44 +63,6 @@ export default function RemarkCard({
 
   const maxDepth = 3; // Maximum nesting level for replies
 
-  // Helper function to check if attachment is a document
-  const isDocumentFile = (attachment: StageRemarkAttachment) => {
-    const mimeType = attachment.encodingFormat?.toLowerCase() || '';
-    const fileName = attachment.name?.toLowerCase() || '';
-
-    // Check MIME type first
-    const documentTypes = ['application/', 'text/', 'video/', 'audio/'];
-    const isDocumentByMime = documentTypes.some(type => mimeType.startsWith(type));
-
-    // Also check file extension as fallback
-    const documentExtensions = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.txt', '.csv', '.zip', '.rar'];
-    const isDocumentByExtension = documentExtensions.some(ext => fileName.endsWith(ext));
-
-    return isDocumentByMime || isDocumentByExtension;
-  };
-
-  // Helper function to check if attachment is an image
-  const isImageFile = (attachment: StageRemarkAttachment) => {
-    const mimeType = attachment.encodingFormat?.toLowerCase() || '';
-    const fileName = attachment.name?.toLowerCase() || '';
-
-    // First check: is it a document? If yes, it's DEFINITELY NOT an image
-    if (isDocumentFile(attachment)) return false;
-
-    // STRICT CHECK: Only return true if we're CERTAIN it's an image
-    const imageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml', 'image/bmp'];
-    const hasValidImageMime = imageTypes.includes(mimeType);
-
-    // Check file extension as secondary confirmation
-    const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.bmp'];
-    const hasImageExtension = imageExtensions.some(ext => fileName.endsWith(ext));
-
-    // BOTH must be true, OR if no MIME type, at least extension must be valid
-    if (hasValidImageMime && hasImageExtension) return true;
-    if (!mimeType && hasImageExtension) return true;
-
-    return false;
-  };
 
   const handleAttachmentClick = (attachment: StageRemarkAttachment) => {
     // First close any open modals to prevent conflicts
@@ -108,7 +71,7 @@ export default function RemarkCard({
 
     // Then open the correct modal after a small delay to ensure state reset
     setTimeout(() => {
-      if (isImageFile(attachment)) {
+      if (isImageAttachment(attachment)) {
         setSelectedImage(attachment);
       } else {
         setSelectedDocument(attachment);
@@ -117,8 +80,8 @@ export default function RemarkCard({
   };
 
   // Filter documents and images
-  const documents = attachments?.filter(a => isDocumentFile(a)) || [];
-  const images = attachments?.filter(a => isImageFile(a)) || [];
+  const documents = attachments?.filter(a => isDocumentAttachment(a)) || [];
+  const images = attachments?.filter(a => isImageAttachment(a)) || [];
 
   const handleReply = async () => {
     if (!replyContent.trim()) return;

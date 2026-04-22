@@ -2,6 +2,7 @@
 
 import { PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import FormInput from "@/app/components/ui/FormInput";
+import { MAX_FILE_SIZE } from "@/lib/constants/fileUpload";
 import type { PunchlistItemPriority, ProjectMember } from "@/lib/api/types";
 
 interface PunchlistItemFormProps {
@@ -36,8 +37,6 @@ interface PunchlistItemFormProps {
     assignees: string;
   };
 }
-
-const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
 
 export default function PunchlistItemForm({
   title,

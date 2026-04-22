@@ -6,6 +6,7 @@ import BaseModal from "./BaseModal";
 import RemarkForm from "@/app/components/forms/RemarkForm";
 import { stageRemarksApi } from "@/lib/api/stage-remarks";
 import { useToast } from "@/app/context/ToastContext";
+import { MAX_FILE_SIZE } from "@/lib/constants/fileUpload";
 
 interface CreateRemarkModalProps {
   isOpen: boolean;
@@ -14,8 +15,6 @@ interface CreateRemarkModalProps {
   stageId: string;
   onSuccess?: () => void;
 }
-
-const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
 
 export default function CreateRemarkModal({
   isOpen,

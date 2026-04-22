@@ -12,6 +12,7 @@ import { useDecks } from "@/lib/api/decks";
 import { useAreas } from "@/lib/api/areas";
 import { useStages } from "@/lib/api/stages";
 import { useProjectMembers } from "@/lib/api";
+import { MAX_GA_FILE_SIZE, FILE_SIZE_LABELS } from "@/lib/constants/fileUpload";
 import type { GAPin, CreateGAPinRequest, UpdateGAPinRequest, PunchlistItemPriority, Deck } from "@/lib/api/types";
 
 interface CreateGAPinModalProps {
@@ -165,11 +166,10 @@ export default function CreateGAPinModal({
   const handlePunchlistFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     const validFiles: File[] = [];
-    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB per file
 
     for (const file of files) {
-      if (file.size > MAX_FILE_SIZE) {
-        alert(`${file.name}: Max 10MB`);
+      if (file.size > MAX_GA_FILE_SIZE) {
+        alert(`${file.name}: Max ${FILE_SIZE_LABELS.ga}`);
         continue;
       }
       validFiles.push(file);
@@ -540,7 +540,7 @@ export default function CreateGAPinModal({
                 punchlistDueDate: t("punchlistDueDate"),
                 attachments: t("attachments"),
                 uploadAttachment: t("uploadAttachment"),
-                maxFileSize: "Max 10MB",
+                maxFileSize: `Max ${FILE_SIZE_LABELS.ga}`,
                 assignees: t("assignees"),
               }}
             />

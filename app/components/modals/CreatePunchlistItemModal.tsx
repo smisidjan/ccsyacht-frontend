@@ -7,6 +7,7 @@ import PunchlistItemForm from "@/app/components/forms/PunchlistItemForm";
 import { punchlistItemsApi } from "@/lib/api/punchlist-items";
 import { useProjectMembers } from "@/lib/api";
 import { useToast } from "@/app/context/ToastContext";
+import { MAX_FILE_SIZE } from "@/lib/constants/fileUpload";
 import type { PunchlistItemPriority } from "@/lib/api/types";
 
 interface CreatePunchlistItemModalProps {
@@ -16,8 +17,6 @@ interface CreatePunchlistItemModalProps {
   stageId: string;
   onSuccess?: () => void;
 }
-
-const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
 
 export default function CreatePunchlistItemModal({
   isOpen,

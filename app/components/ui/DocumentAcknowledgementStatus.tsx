@@ -15,17 +15,8 @@ import {
   XCircleIcon as XCircleSolid,
 } from "@heroicons/react/24/solid";
 import Tooltip from "@/app/components/ui/Tooltip";
+import { normalizeAcknowledgements } from "@/lib/utils/typeNormalization";
 import type { DocumentAcknowledgement, DocumentStatus } from "@/lib/api/types";
-
-// Helper to normalize acknowledgements from object to array (API returns object with numeric keys)
-function normalizeAcknowledgements(acknowledgements: unknown): DocumentAcknowledgement[] {
-  if (!acknowledgements) return [];
-  if (Array.isArray(acknowledgements)) return acknowledgements;
-  if (typeof acknowledgements === 'object') {
-    return Object.values(acknowledgements as Record<string, DocumentAcknowledgement>);
-  }
-  return [];
-}
 
 interface DocumentAcknowledgementStatusProps {
   acknowledgements?: DocumentAcknowledgement[];

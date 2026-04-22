@@ -24,6 +24,7 @@ import { PERMISSIONS } from "@/lib/constants/permissions";
 import { useToast } from "@/app/context/ToastContext";
 import ImageViewerModal from "@/app/components/modals/ImageViewerModal";
 import DocumentViewerModal from "@/app/components/modals/DocumentViewerModal";
+import { isDocumentAttachment, isImageAttachment } from "@/lib/utils/attachmentUtils";
 import type { PunchlistItem, PunchlistItemStatus, StageStatus, PunchlistItemAttachment } from "@/lib/api/types";
 
 interface PunchlistItemCardProps {
@@ -131,46 +132,6 @@ export default function PunchlistItemCard({
     return date.toLocaleDateString() + " " + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
-  // Helper function to check if attachment is a document
-  const isDocumentFile = (attachment: PunchlistItemAttachment) => {
-    const mimeType = attachment.encodingFormat?.toLowerCase() || '';
-    const fileName = attachment.name?.toLowerCase() || '';
-
-    // Check MIME type first
-    const documentTypes = ['application/', 'text/', 'video/', 'audio/'];
-    const isDocumentByMime = documentTypes.some(type => mimeType.startsWith(type));
-
-    // Also check file extension as fallback
-    const documentExtensions = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.txt', '.csv', '.zip', '.rar'];
-    const isDocumentByExtension = documentExtensions.some(ext => fileName.endsWith(ext));
-
-    return isDocumentByMime || isDocumentByExtension;
-  };
-
-  // Helper function to check if attachment is an image
-  const isImageFile = (attachment: PunchlistItemAttachment) => {
-    const mimeType = attachment.encodingFormat?.toLowerCase() || '';
-    const fileName = attachment.name?.toLowerCase() || '';
-
-    // First check: is it a document? If yes, it's DEFINITELY NOT an image
-    if (isDocumentFile(attachment)) return false;
-
-    // STRICT CHECK: Only return true if we're CERTAIN it's an image
-    // Check MIME type for EXACT image types (no wildcards)
-    const imageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml', 'image/bmp'];
-    const hasValidImageMime = imageTypes.includes(mimeType);
-
-    // Check file extension as secondary confirmation
-    const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.bmp'];
-    const hasImageExtension = imageExtensions.some(ext => fileName.endsWith(ext));
-
-    // BOTH must be true, OR if no MIME type, at least extension must be valid
-    if (hasValidImageMime && hasImageExtension) return true;
-    if (!mimeType && hasImageExtension) return true;
-
-    // If MIME type exists but doesn't match, or no extension, it's NOT an image
-    return false;
-  };
 
   const handleAttachmentClick = (attachment: PunchlistItemAttachment) => {
     // First close any open modals to prevent conflicts
@@ -179,7 +140,7 @@ export default function PunchlistItemCard({
 
     // Then open the correct modal after a small delay to ensure state reset
     setTimeout(() => {
-      if (isImageFile(attachment)) {
+      if (isImageAttachment(attachment)) {
         setSelectedImage(attachment);
       } else {
         // Open document viewer modal for everything else
@@ -189,10 +150,10 @@ export default function PunchlistItemCard({
   };
 
   // First filter documents
-  const documents = attachments?.filter(a => isDocumentFile(a)) || [];
+  const documents = attachments?.filter(a => isDocumentAttachment(a)) || [];
 
   // Only show as image if it passes the image check
-  const images = attachments?.filter(a => isImageFile(a)) || [];
+  const images = attachments?.filter(a => isImageAttachment(a)) || [];
 
   return (
     <>

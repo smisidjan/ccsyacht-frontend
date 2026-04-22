@@ -38,18 +38,8 @@ import DocumentTypeModal from "@/app/components/modals/DocumentTypeModal";
 import AssignDocumentModal from "@/app/components/modals/AssignDocumentModal";
 import BaseModal from "@/app/components/modals/BaseModal";
 import { DocumentStatusBadge, calculateDocumentStatus } from "@/app/components/ui/DocumentAcknowledgementStatus";
+import { normalizeAcknowledgements } from "@/lib/utils/typeNormalization";
 import type { UploadDocumentRequest, Document, DocumentType, DocumentTypeAssignee, CreateDocumentTypeRequest, AddDocumentTypeAssigneeRequest, DocumentStatus, DocumentAcknowledgement } from "@/lib/api/types";
-
-// Helper to normalize acknowledgements from object to array
-function normalizeAcknowledgements(acknowledgements: unknown): DocumentAcknowledgement[] {
-  if (!acknowledgements) return [];
-  if (Array.isArray(acknowledgements)) return acknowledgements;
-  if (typeof acknowledgements === 'object') {
-    // Convert object with numeric keys to array
-    return Object.values(acknowledgements as Record<string, DocumentAcknowledgement>);
-  }
-  return [];
-}
 
 interface DocumentsTabProps {
   projectId: string;
