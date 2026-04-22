@@ -4,6 +4,7 @@ import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/app/context/AuthContext";
 import { TenantProvider } from "@/app/context/TenantContext";
 import { ToastProvider } from "@/app/context/ToastContext";
+import { CurrentUserProvider } from "@/app/context/CurrentUserContext";
 import { SocketProvider } from "@/lib/socket/SocketContext";
 
 export function Providers({ children }: { children: React.ReactNode }) {
@@ -12,7 +13,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <ToastProvider>
         <TenantProvider>
           <AuthProvider>
-            <SocketProvider>{children}</SocketProvider>
+            <CurrentUserProvider>
+              <SocketProvider>{children}</SocketProvider>
+            </CurrentUserProvider>
           </AuthProvider>
         </TenantProvider>
       </ToastProvider>

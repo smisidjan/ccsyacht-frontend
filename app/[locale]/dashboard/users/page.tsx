@@ -17,9 +17,9 @@ import {
   useUsers,
   useInvitations,
   useRegistrationRequests,
-  useCurrentUser,
   registrationRequestsApi,
 } from "@/lib/api";
+import { useCurrentUserContext } from "@/app/context/CurrentUserContext";
 
 type TabKey = "users" | "invitations";
 
@@ -31,7 +31,7 @@ export default function UsersPage() {
   const [editingUser, setEditingUser] = useState<User | null>(null);
 
   // API hooks
-  const { data: currentUser } = useCurrentUser();
+  const { currentUser } = useCurrentUserContext();
   const { tenantName } = useTenant();
   const { data: users, loading: rawUsersLoading, updateUser, refetch: refetchUsers } = useUsers();
   const {

@@ -11,7 +11,7 @@ import { gaPinsApi } from "@/lib/api/ga-pins";
 import { useDecks } from "@/lib/api/decks";
 import { useAreas } from "@/lib/api/areas";
 import { useStages } from "@/lib/api/stages";
-import { useProjectMembers } from "@/lib/api";
+import { useProjectMembersFromContext } from "@/app/context/ProjectContext";
 import { MAX_GA_FILE_SIZE, FILE_SIZE_LABELS } from "@/lib/constants/fileUpload";
 import type { GAPin, CreateGAPinRequest, UpdateGAPinRequest, PunchlistItemPriority, Deck } from "@/lib/api/types";
 
@@ -80,7 +80,7 @@ export default function CreateGAPinModal({
   const { data: decks } = useDecks(projectId);
   const { data: areas } = useAreas(projectId, selectedDeckId || undefined);
   const { data: stages } = useStages(projectId, selectedAreaId);
-  const { data: projectMembers } = useProjectMembers(projectId);
+  const { data: projectMembers } = useProjectMembersFromContext();
 
   // Initialize form with data
   useEffect(() => {

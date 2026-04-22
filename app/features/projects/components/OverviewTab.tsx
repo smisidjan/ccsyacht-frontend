@@ -10,7 +10,8 @@ import Button from "@/app/components/ui/Button";
 import Alert from "@/app/components/ui/Alert";
 import { KickoffMeetingModal, KickoffSchedulingModal } from "@/app/features/kickoff";
 import { CreateDeckModal } from "@/app/features/decks";
-import { useAreas, setupTasksApi, useCurrentUser } from "@/lib/api";
+import { useAreas, setupTasksApi } from "@/lib/api";
+import { useCurrentUserContext } from "@/app/context/CurrentUserContext";
 import { useDecks } from "@/lib/api/decks";
 import { useDocumentTypes } from "@/lib/api/document-types";
 import type { SetupTask } from "@/lib/api/types";
@@ -41,7 +42,7 @@ export default function OverviewTab({
   const { data: areas, loading: rawLoading, error, refetch } = useAreas(projectId);
   const { hasPermission } = usePermission();
   const { showToast } = useToast();
-  const { data: currentUser } = useCurrentUser();
+  const { currentUser } = useCurrentUserContext();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isKickoffModalOpen, setIsKickoffModalOpen] = useState(false);
   const [isDeckModalOpen, setIsDeckModalOpen] = useState(false);

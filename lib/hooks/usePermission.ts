@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { useCurrentUser } from "@/lib/api/hooks";
+import { useCurrentUserContext } from "@/app/context/CurrentUserContext";
 import type { Permission } from "@/lib/constants/permissions";
 import {
   hasPermission as checkPermission,
@@ -26,7 +26,7 @@ import {
  * ```
  */
 export function usePermission() {
-  const { data: currentUser, loading, error, refetch } = useCurrentUser();
+  const { currentUser, loading, error, refetch } = useCurrentUserContext();
 
   // Memoize permission check functions to prevent unnecessary re-renders
   const permissionChecks = useMemo(

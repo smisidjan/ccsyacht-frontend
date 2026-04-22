@@ -12,7 +12,9 @@ import Modal from "@/app/components/ui/Modal";
 import Button from "@/app/components/ui/Button";
 import Stepper, { Step } from "@/app/components/ui/Stepper";
 import Alert from "@/app/components/ui/Alert";
-import { setupTasksApi, useProjectMembers, useCurrentUser, useRoles } from "@/lib/api";
+import { setupTasksApi, useRoles } from "@/lib/api";
+import { useCurrentUserContext } from "@/app/context/CurrentUserContext";
+import { useProjectMembersFromContext } from "@/app/context/ProjectContext";
 import { useToast } from "@/app/context/ToastContext";
 import { usePermission } from "@/lib/hooks/usePermission";
 import { PERMISSIONS } from "@/lib/constants/permissions";
@@ -46,7 +48,8 @@ export default function KickoffSchedulingModal({
   const tCommon = useTranslations("common");
   const { showToast } = useToast();
   const { hasPermission } = usePermission();
-  const { data: currentUser } = useCurrentUser();
+  const { currentUser } = useCurrentUserContext();
+  const { data: projectMembers } = useProjectMembersFromContext();
 
   // Data state
   const [task, setTask] = useState<SetupTask | null>(null);
@@ -81,8 +84,7 @@ export default function KickoffSchedulingModal({
   // Permissions
   const canManageKickoff = hasPermission(PERMISSIONS.MANAGE_KICKOFF_MEETING);
 
-  // Fetch project members and roles
-  const { data: projectMembers } = useProjectMembers(projectId);
+  // Fetch roles (project members come from context)
   const { data: employeeRoles } = useRoles("employee");
   const { data: guestRoles } = useRoles("guest");
 

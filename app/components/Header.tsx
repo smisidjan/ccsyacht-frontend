@@ -5,7 +5,7 @@ import { useTheme } from "next-themes";
 import { useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
 import { useAuth } from "@/app/context/AuthContext";
-import { useCurrentUser } from "@/lib/api";
+import { useCurrentUserContext } from "@/app/context/CurrentUserContext";
 
 export default function Header() {
   const [mounted, setMounted] = useState(false);
@@ -14,7 +14,7 @@ export default function Header() {
   const pathname = usePathname();
   const { resolvedTheme, setTheme } = useTheme();
   const { token, logout } = useAuth();
-  const { data: currentUser } = useCurrentUser();
+  const { currentUser } = useCurrentUserContext();
   const t = useTranslations("common");
   const tTheme = useTranslations("theme");
 

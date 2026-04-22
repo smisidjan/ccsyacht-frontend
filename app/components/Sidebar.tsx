@@ -4,7 +4,7 @@ import { useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
 import { useAuth } from "@/app/context/AuthContext";
 import { useTenant } from "@/app/context/TenantContext";
-import { useCurrentUser } from "@/lib/api";
+import { useCurrentUserContext } from "@/app/context/CurrentUserContext";
 import { useSidebarResize } from "@/lib/hooks/useSidebarResize";
 import { usePermission } from "@/lib/hooks/usePermission";
 import { PERMISSIONS } from "@/lib/constants/permissions";
@@ -24,7 +24,7 @@ export default function Sidebar() {
   const t = useTranslations("dashboard");
   const pathname = usePathname();
   const { logout } = useAuth();
-  const { data: currentUser } = useCurrentUser();
+  const { currentUser } = useCurrentUserContext();
   const { hasPermission, hasAnyPermission, loading } = usePermission();
 
   const {

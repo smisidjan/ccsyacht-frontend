@@ -21,7 +21,7 @@ import ProgressCircle from "@/app/components/ui/ProgressCircle";
 import { useArea, useStages, useProject, useStageSignoffs, useProjectSigners } from "@/lib/api";
 import { usePermission } from "@/lib/hooks/usePermission";
 import { PERMISSIONS } from "@/lib/constants/permissions";
-import { useCurrentUser } from "@/lib/api/hooks";
+import { useCurrentUserContext } from "@/app/context/CurrentUserContext";
 import type { Stage } from "@/lib/api/types";
 import { useToast } from "@/app/context/ToastContext";
 import { PunchlistList } from "@/app/features/punchlist";
@@ -341,7 +341,7 @@ function StageDetailPanel({
   const t = useTranslations("areaDetail");
   const tSignoffs = useTranslations("signoffs");
   const { showToast } = useToast();
-  const { data: currentUser } = useCurrentUser();
+  const { currentUser } = useCurrentUserContext();
   const { data: signoffs, loading: signoffsLoading, sign, reject, submitForSignoff } = useStageSignoffs(projectId, stage.identifier);
   const { data: projectSigners, loading: signersLoading } = useProjectSigners(projectId);
 

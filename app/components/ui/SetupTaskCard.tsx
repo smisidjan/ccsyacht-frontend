@@ -3,7 +3,7 @@
 import { useTranslations } from "next-intl";
 import { ArrowRightIcon, CheckIcon, ClockIcon, CalendarIcon, LockClosedIcon } from "@heroicons/react/24/outline";
 import type { SetupTask, SetupTaskType, DocumentType } from "@/lib/api/types";
-import { useCurrentUser } from "@/lib/api";
+import { useCurrentUserContext } from "@/app/context/CurrentUserContext";
 import Tooltip from "@/app/components/ui/Tooltip";
 
 interface SetupTaskCardProps {
@@ -49,7 +49,7 @@ function getActionHref(taskType: SetupTaskType): string | undefined {
 
 export default function SetupTaskCard({ task, documentTypes, allTasks, onMarkComplete, onViewDetails, onDefineDecks, onViewDecks }: SetupTaskCardProps) {
   const t = useTranslations("projectDetail.setupTasks");
-  const { data: currentUser } = useCurrentUser();
+  const { currentUser } = useCurrentUserContext();
 
   const isCompleted = task.isComplete || task.actionStatus === "completed";
   const isScheduled = task.actionStatus === "scheduled";

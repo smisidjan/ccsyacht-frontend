@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import BaseModal from "@/app/components/modals/BaseModal";
 import { PunchlistItemForm } from "@/app/features/punchlist";
 import { punchlistItemsApi } from "@/lib/api/punchlist-items";
-import { useProjectMembers } from "@/lib/api";
+import { useProjectMembersFromContext } from "@/app/context/ProjectContext";
 import { useToast } from "@/app/context/ToastContext";
 import { MAX_FILE_SIZE } from "@/lib/constants/fileUpload";
 import type { PunchlistItemPriority } from "@/lib/api/types";
@@ -28,7 +28,7 @@ export default function CreatePunchlistItemModal({
 }: CreatePunchlistItemModalProps) {
   const t = useTranslations("punchlist");
   const { showToast } = useToast();
-  const { data: projectMembers } = useProjectMembers(projectId);
+  const { data: projectMembers } = useProjectMembersFromContext();
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");

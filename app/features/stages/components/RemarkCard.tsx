@@ -21,7 +21,7 @@ import AuthenticatedImage from "@/app/components/ui/AuthenticatedImage";
 import ImageViewerModal from "@/app/components/modals/ImageViewerModal";
 import { DocumentViewerModal } from "@/app/features/documents";
 import { useToast } from "@/app/context/ToastContext";
-import { useCurrentUser } from "@/lib/api/hooks";
+import { useCurrentUserContext } from "@/app/context/CurrentUserContext";
 import { isDocumentAttachment, isImageAttachment } from "@/lib/utils/attachmentUtils";
 import type { StageRemark, StageRemarkAttachment } from "@/lib/api/types";
 import { handleError } from "@/lib/utils/errors";
@@ -41,7 +41,7 @@ export default function RemarkCard({
 }: RemarkCardProps) {
   const t = useTranslations("stageRemarks");
   const { showToast } = useToast();
-  const { data: user } = useCurrentUser();
+  const { currentUser: user } = useCurrentUserContext();
   const [showReplyForm, setShowReplyForm] = useState(false);
   const [showEditForm, setShowEditForm] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);

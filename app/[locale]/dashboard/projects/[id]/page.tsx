@@ -15,7 +15,7 @@ import { useProject, projectsApi } from "@/lib/api";
 import { useMinimumLoadingTime } from "@/lib/hooks/useMinimumLoadingTime";
 import { usePermission } from "@/lib/hooks/usePermission";
 import { useToast } from "@/app/context/ToastContext";
-import { GAProvider, useGA } from "@/app/context/GAContext";
+import { useGA } from "@/app/context/GAContext";
 import { PERMISSIONS } from "@/lib/constants/permissions";
 import type { GeneralArrangement } from "@/lib/api/types";
 
@@ -378,9 +378,6 @@ export default function ProjectDetailPage() {
   const params = useParams();
   const projectId = params.id as string;
 
-  return (
-    <GAProvider>
-      <ProjectDetailPageContent projectId={projectId} />
-    </GAProvider>
-  );
+  // ProjectProvider and GAProvider are now in the layout
+  return <ProjectDetailPageContent projectId={projectId} />;
 }

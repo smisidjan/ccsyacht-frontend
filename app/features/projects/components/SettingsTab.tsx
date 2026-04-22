@@ -4,7 +4,8 @@ import { useState, useEffect, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { UserPlusIcon, TrashIcon, PencilIcon, UserCircleIcon, StarIcon, DocumentTextIcon, TagIcon, BuildingOffice2Icon, CalendarIcon, UserIcon, CheckIcon, UserGroupIcon, EnvelopeIcon } from "@heroicons/react/24/outline";
 import { StarIcon as StarIconSolid } from "@heroicons/react/24/solid";
-import { useProjectMembers, useProjectSigners, useUsers, useProject, useRoles, projectsApi, setupTasksApi, invitationsApi } from "@/lib/api";
+import { useProjectSigners, useUsers, useProject, useRoles, projectsApi, setupTasksApi, invitationsApi } from "@/lib/api";
+import { useProjectMembersFromContext } from "@/app/context/ProjectContext";
 import { usePermission } from "@/lib/hooks/usePermission";
 import { useMinimumLoadingTime } from "@/lib/hooks/useMinimumLoadingTime";
 import { useRealtimeMembers, useRealtimeSigners } from "@/lib/hooks/useRealtimeProject";
@@ -45,7 +46,7 @@ export default function SettingsTab({ projectId, onProjectUpdate }: SettingsTabP
 
   // Fetch data
   const { data: project, refetch: refetchProject } = useProject(projectId);
-  const { data: members, loading: rawMembersLoading, error: membersError, removeMember, addMember, refetch: refetchMembers } = useProjectMembers(projectId);
+  const { data: members, loading: rawMembersLoading, error: membersError, removeMember, addMember, refetch: refetchMembers } = useProjectMembersFromContext();
   const { data: signers, loading: rawSignersLoading, error: signersError, removeSigner, addSigner, refetch: refetchSigners } = useProjectSigners(projectId);
   const { data: allUsers } = useUsers();
 

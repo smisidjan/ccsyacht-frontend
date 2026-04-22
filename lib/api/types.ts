@@ -449,6 +449,9 @@ export interface Project {
   dateModified?: string;
   producer?: ProjectProducer;
   author?: ProjectAuthor;
+  // Backend-provided membership info (avoids N+1 API calls)
+  isMember?: boolean;
+  memberCount?: number;
 }
 
 export interface CreateProjectRequest {

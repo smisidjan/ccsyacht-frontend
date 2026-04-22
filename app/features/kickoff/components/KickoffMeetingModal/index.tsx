@@ -4,7 +4,8 @@ import { useState, useEffect, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import Modal from "@/app/components/ui/Modal";
 import Alert from "@/app/components/ui/Alert";
-import { setupTasksApi, useCurrentUser, useDocumentTypes } from "@/lib/api";
+import { setupTasksApi, useDocumentTypes } from "@/lib/api";
+import { useCurrentUserContext } from "@/app/context/CurrentUserContext";
 import { useToast } from "@/app/context/ToastContext";
 import { usePermission } from "@/lib/hooks/usePermission";
 import { PERMISSIONS } from "@/lib/constants/permissions";
@@ -40,7 +41,7 @@ export default function KickoffMeetingModal({
   const tCommon = useTranslations("common");
   const { showToast } = useToast();
   const { hasPermission } = usePermission();
-  const { data: currentUser } = useCurrentUser();
+  const { currentUser } = useCurrentUserContext();
 
   const [task, setTask] = useState<SetupTask | null>(null);
   const [schedulingStatus, setSchedulingStatus] = useState<SchedulingStatus | null>(null);

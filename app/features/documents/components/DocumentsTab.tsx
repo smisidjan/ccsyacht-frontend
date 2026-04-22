@@ -21,7 +21,8 @@ import {
 } from "@heroicons/react/24/outline";
 import { useDocumentTypes } from "@/lib/api/document-types";
 import { useDocuments } from "@/lib/api/documents";
-import { useUsers, useCurrentUser } from "@/lib/api";
+import { useUsers } from "@/lib/api";
+import { useCurrentUserContext } from "@/app/context/CurrentUserContext";
 import { usePermission } from "@/lib/hooks/usePermission";
 import { useMinimumLoadingTime } from "@/lib/hooks/useMinimumLoadingTime";
 import { useRealtimeDocuments } from "@/lib/hooks/useRealtimeProject";
@@ -68,7 +69,7 @@ export default function DocumentsTab({ projectId, projectStatus }: DocumentsTabP
 
   // Fetch all users for assignee selection
   const { data: allUsers } = useUsers();
-  const { data: currentUser } = useCurrentUser();
+  const { currentUser } = useCurrentUserContext();
 
   // State for selected document type
   const [selectedTypeId, setSelectedTypeId] = useState<string | null>(null);

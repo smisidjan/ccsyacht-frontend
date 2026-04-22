@@ -11,7 +11,7 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
 } from "@heroicons/react/24/outline";
-import { useProjects, useShipyards, projectsApi, documentTypesApi, projectMembersApi } from "@/lib/api";
+import { useProjects, useShipyards, projectsApi, documentTypesApi } from "@/lib/api";
 import { handleError } from "@/lib/utils/errors";
 import { PERMISSIONS } from "@/lib/constants/permissions";
 import { usePermission } from "@/lib/hooks/usePermission";
@@ -32,9 +32,6 @@ export default function ProjectsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<FilterOption>("all");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [projectMemberships, setProjectMemberships] = useState<Record<string, boolean>>({});
-  const [projectMemberCounts, setProjectMemberCounts] = useState<Record<string, number>>({});
-  const [membershipsLoading, setMembershipsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
 
   // API hooks
@@ -44,7 +41,6 @@ export default function ProjectsPage() {
 
   // Permissions
   const canCreateProject = hasPermission(PERMISSIONS.CREATE_PROJECTS);
-  const canViewProjectMembers = hasPermission(PERMISSIONS.VIEW_PROJECT_MEMBERS);
 
   // Prepare data
   const projectsArray = Array.isArray(projects) ? projects : [];
@@ -62,62 +58,6 @@ export default function ProjectsPage() {
     { id: "refit", name: t("types.refit") },
   ];
 
-  // Fetch project memberships
-  useEffect(() => {
-    const fetchMemberships = async () => {
-      // If no projects, no need to load
-      if (!projectsArray.length) {
-        setMembershipsLoading(false);
-        return;
-      }
-
-      // Keep loading while waiting for currentUser to load
-      if (!currentUser) {
-        setMembershipsLoading(true);
-        return;
-      }
-
-      setMembershipsLoading(true);
-      const memberships: Record<string, boolean> = {};
-      const memberCounts: Record<string, number> = {};
-
-      // If user doesn't have permission to view project members, we can't determine membership
-      // Backend should give all authenticated users this permission
-      if (!canViewProjectMembers) {
-        console.warn("User does not have VIEW_PROJECT_MEMBERS permission. Cannot determine project membership.");
-        setMembershipsLoading(false);
-        return;
-      }
-
-      // Fetch members for each project and check if current user is a member
-      await Promise.all(
-        projectsArray.map(async (project) => {
-          try {
-            const response = await projectMembersApi.getAll(project.identifier);
-            const members = response.data || [];
-            const isMember = members.some(
-              (member) => member.member.identifier === currentUser.identifier
-            );
-            memberships[project.identifier] = isMember;
-            memberCounts[project.identifier] = members.length;
-          } catch (error) {
-            // If 403, user doesn't have permission (shouldn't happen if canViewProjectMembers is true)
-            // For other errors, assume not a member
-            handleError(error, { severity: "silent" });
-            memberships[project.identifier] = false;
-            memberCounts[project.identifier] = 0;
-          }
-        })
-      );
-
-      setProjectMemberships(memberships);
-      setProjectMemberCounts(memberCounts);
-      setMembershipsLoading(false);
-    };
-
-    fetchMemberships();
-  }, [projectsArray, currentUser, canViewProjectMembers]);
-
   // Real-time updates for member/signer changes across all projects
   // Only subscribe to projects where the user is a member (to avoid 403 errors)
   // When a member/signer is added or removed, refetch the entire projects list
@@ -126,12 +66,12 @@ export default function ProjectsPage() {
   // - Removed members see the project disappear from their list
   // - All users see updated member counts
   const memberProjectIds = projectsArray
-    .filter((p) => projectMemberships[p.identifier])
+    .filter((p) => p.isMember)
     .map((p) => p.identifier);
 
   // Memoize callback to prevent multiple subscriptions
   const handleMemberOrSignerUpdate = useCallback(() => {
-    refetch(); // Refetch projects list, which will trigger memberships reload via useEffect
+    refetch(); // Refetch projects list with updated isMember and memberCount from backend
   }, [refetch]);
 
   useRealtimeProjectsList(memberProjectIds, handleMemberOrSignerUpdate);
@@ -220,21 +160,15 @@ export default function ProjectsPage() {
       // For guest roles, only show projects where user is a member
       const userRole = currentUser?.roles?.[0] as UserRole | undefined;
       const isGuestRole = userRole && !["admin", "main user", "surveyor", "user", "painter"].includes(userRole);
-      const isMember = projectMemberships[project.identifier] || false;
-      const matchesMembership = !isGuestRole || isMember;
+      const matchesMembership = !isGuestRole || project.isMember;
 
       return matchesSearch && matchesFilter && matchesMembership;
     });
-  }, [projectsArray, searchQuery, activeFilter, projectMemberships, currentUser]);
+  }, [projectsArray, searchQuery, activeFilter, currentUser]);
 
   // Enforce minimum loading time to prevent flickering
-  const rawLoading = projectsLoading || shipyardsLoading || membershipsLoading;
+  const rawLoading = projectsLoading || shipyardsLoading;
   const loading = useMinimumLoadingTime(rawLoading);
-
-  const handleRefetch = () => {
-    refetch();
-    // Refetch will trigger the useEffect to reload memberships
-  };
 
   return (
     <ProtectedRoute permissions={PERMISSIONS.VIEW_PROJECTS}>
@@ -337,10 +271,10 @@ export default function ProjectsPage() {
               <ProjectCard
                 key={project.identifier}
                 project={project}
-                isMember={projectMemberships[project.identifier] || false}
+                isMember={project.isMember || false}
                 userRole={(currentUser?.roles?.[0] as UserRole) || "user"}
-                memberCount={projectMemberCounts[project.identifier]}
-                onJoin={handleRefetch}
+                memberCount={project.memberCount}
+                onJoin={refetch}
               />
             ))}
           </div>
