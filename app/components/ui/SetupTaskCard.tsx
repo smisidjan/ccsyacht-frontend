@@ -62,30 +62,67 @@ export default function SetupTaskCard({ task, documentTypes, allTasks, onMarkCom
       return task.description;
     }
 
-    // Get required document types
+    // Separate required docs into:
+    // 1. Required (not assigned) - these block the kickoff
+    // 2. Requested (assigned to someone) - these don't block
     const requiredDocs = documentTypes.filter(dt => dt.isRequired);
+    const requiredNotAssigned = requiredDocs.filter(doc => !doc.assignees || doc.assignees.length === 0);
+    const requestedDocs = requiredDocs.filter(doc => doc.assignees && doc.assignees.length > 0);
 
-    if (requiredDocs.length === 0) {
+    if (requiredNotAssigned.length === 0 && requestedDocs.length === 0) {
       return task.description;
     }
 
     return (
       <>
-        <span>{t("uploadDocuments.descriptionIntro")}</span>
-        <ul className="mt-2 space-y-1">
-          {requiredDocs.map(doc => (
-            <li key={doc.identifier} className="flex items-center gap-2">
-              {doc.documentCount > 0 ? (
-                <CheckIcon className="w-4 h-4 text-green-500 flex-shrink-0" />
-              ) : (
-                <span className="w-4 h-4 flex items-center justify-center flex-shrink-0">•</span>
-              )}
-              <span className={doc.documentCount > 0 ? "line-through" : ""}>
-                {doc.name}
-              </span>
-            </li>
-          ))}
-        </ul>
+        {/* Required documents (blocking) */}
+        {requiredNotAssigned.length > 0 && (
+          <>
+            <span>{t("uploadDocuments.descriptionIntro")}</span>
+            <ul className="mt-2 space-y-1">
+              {requiredNotAssigned.map(doc => (
+                <li key={doc.identifier} className="flex items-center gap-2">
+                  {doc.documentCount > 0 ? (
+                    <CheckIcon className="w-4 h-4 text-green-500 flex-shrink-0" />
+                  ) : (
+                    <span className="w-4 h-4 flex items-center justify-center flex-shrink-0">•</span>
+                  )}
+                  <span className={doc.documentCount > 0 ? "line-through text-gray-400" : ""}>
+                    {doc.name}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+
+        {/* Requested documents (not blocking) */}
+        {requestedDocs.length > 0 && (
+          <>
+            <span className={requiredNotAssigned.length > 0 ? "mt-3 block" : ""}>
+              {t("uploadDocuments.requestedIntro")}
+            </span>
+            <ul className="mt-2 space-y-1">
+              {requestedDocs.map(doc => (
+                <li key={doc.identifier} className="flex items-center gap-2">
+                  {doc.documentCount > 0 ? (
+                    <CheckIcon className="w-4 h-4 text-green-500 flex-shrink-0" />
+                  ) : (
+                    <ClockIcon className="w-4 h-4 text-amber-500 flex-shrink-0" />
+                  )}
+                  <span className={doc.documentCount > 0 ? "line-through text-gray-400" : "text-amber-600 dark:text-amber-400"}>
+                    {doc.name}
+                  </span>
+                  {doc.documentCount === 0 && (
+                    <span className="text-xs text-gray-400">
+                      ({t("uploadDocuments.assignedTo", { name: doc.assignees?.[0]?.name || "" })})
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
       </>
     );
   };
@@ -96,9 +133,11 @@ export default function SetupTaskCard({ task, documentTypes, allTasks, onMarkCom
   );
 
   // Check if all required documents are uploaded (for kickoff meeting blocking)
+  // Only documents that are required AND not assigned to anyone block the kickoff
   const requiredDocs = documentTypes?.filter(dt => dt.isRequired) || [];
-  const allRequiredDocsUploaded = requiredDocs.length === 0 || requiredDocs.every(doc => doc.documentCount > 0);
-  const missingDocsCount = requiredDocs.filter(doc => doc.documentCount === 0).length;
+  const requiredNotAssignedDocs = requiredDocs.filter(doc => !doc.assignees || doc.assignees.length === 0);
+  const allRequiredDocsUploaded = requiredNotAssignedDocs.length === 0 || requiredNotAssignedDocs.every(doc => doc.documentCount > 0);
+  const missingDocsCount = requiredNotAssignedDocs.filter(doc => doc.documentCount === 0).length;
 
   // Check if members have been added (add_members task is complete)
   const addMembersTask = allTasks?.find(t => t.additionalType === "add_members");
