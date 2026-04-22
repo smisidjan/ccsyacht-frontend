@@ -438,6 +438,7 @@ export interface Project {
   identifier: string;
   name: string;
   description?: string;
+  externalId?: string;
   additionalType: ProjectType;
   status: ProjectStatus;
   startDate?: string;
@@ -468,6 +469,7 @@ export interface UpdateProjectRequest {
   shipyard_id?: string;
   start_date?: string;
   end_date?: string;
+  external_id?: string;
 }
 
 export interface UpdateActionResponse {

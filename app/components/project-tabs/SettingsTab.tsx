@@ -15,7 +15,7 @@ import Alert from "@/app/components/ui/Alert";
 import BaseModal from "@/app/components/modals/BaseModal";
 import ProfileInfoItem from "@/app/components/ui/ProfileInfoItem";
 import EditProjectModal from "@/app/components/modals/EditProjectModal";
-import type { User, ProjectType, SetupTask } from "@/lib/api/types";
+import type { User, ProjectType, SetupTask, SelectedTimeSlot } from "@/lib/api/types";
 
 interface SettingsTabProps {
   projectId: string;
@@ -30,6 +30,7 @@ export default function SettingsTab({ projectId, onProjectUpdate }: SettingsTabP
 
   // Kickoff meeting state
   const [kickoffMeeting, setKickoffMeeting] = useState<SetupTask | null>(null);
+  const [kickoffTimeSlot, setKickoffTimeSlot] = useState<SelectedTimeSlot | null>(null);
   const [kickoffLoading, setKickoffLoading] = useState(false);
 
   const formatDate = (dateString: string | undefined) => {
@@ -177,17 +178,18 @@ export default function SettingsTab({ projectId, onProjectUpdate }: SettingsTabP
     }
   };
 
-  const handleEditProject = async (data: { name: string; description: string; project_type: ProjectType }) => {
+  const handleEditProject = async (data: { name: string; description: string; project_type: ProjectType; external_id: string }) => {
     await projectsApi.update(projectId, {
       name: data.name,
       description: data.description,
       project_type: data.project_type,
+      external_id: data.external_id || undefined,
     });
     await refetchProject();
     onProjectUpdate?.();
   };
 
-  // Fetch kickoff meeting task
+  // Fetch kickoff meeting task and scheduling status
   useEffect(() => {
     async function fetchKickoffMeeting() {
       try {
@@ -195,6 +197,33 @@ export default function SettingsTab({ projectId, onProjectUpdate }: SettingsTabP
         const response = await setupTasksApi.getAll(projectId);
         const kickoff = response.data.find(task => task.additionalType === "kickoff_meeting");
         setKickoffMeeting(kickoff || null);
+
+        // If kickoff is scheduled, fetch the scheduling status to get the time
+        if (kickoff && (kickoff.actionStatus === "scheduled" || kickoff.actionStatus === "completed")) {
+          try {
+            const schedulingStatus = await setupTasksApi.getSchedulingStatus(projectId, kickoff.identifier);
+            // Try selectedTimeSlot first, then look for isSelected in proposedDates
+            let timeSlot = schedulingStatus.selectedTimeSlot || null;
+            if (!timeSlot && schedulingStatus.proposedDates) {
+              for (const pd of schedulingStatus.proposedDates) {
+                const selected = pd.timeSlots?.find((ts) => ts.isSelected);
+                if (selected) {
+                  timeSlot = {
+                    identifier: selected.id,
+                    date: pd.proposedDate,
+                    startTime: selected.startTime,
+                    endTime: selected.endTime,
+                    responses: selected.responses || [],
+                  };
+                  break;
+                }
+              }
+            }
+            setKickoffTimeSlot(timeSlot);
+          } catch (err) {
+            console.error("Failed to fetch scheduling status:", err);
+          }
+        }
       } catch (error) {
         console.error("Failed to load kickoff meeting:", error);
       } finally {
@@ -229,30 +258,44 @@ export default function SettingsTab({ projectId, onProjectUpdate }: SettingsTabP
                   </button>
                 </div>
               )}
-              <div className="grid grid-rows-[repeat(3,auto)] grid-flow-col gap-x-8 gap-y-4 auto-cols-fr">
-                <ProfileInfoItem
-                  icon={DocumentTextIcon}
-                  iconBgColor="bg-blue-100 dark:bg-blue-900/30"
-                  iconColor="text-blue-600 dark:text-blue-400"
-                  label={t("generalInfo.name")}
-                  value={project.name}
-                />
+              <div className="space-y-4">
+                {/* Project Name and Number on same row */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <ProfileInfoItem
+                    icon={DocumentTextIcon}
+                    iconBgColor="bg-blue-100 dark:bg-blue-900/30"
+                    iconColor="text-blue-600 dark:text-blue-400"
+                    label={t("generalInfo.name")}
+                    value={project.name}
+                  />
 
-                <ProfileInfoItem
-                  icon={TagIcon}
-                  iconBgColor="bg-purple-100 dark:bg-purple-900/30"
-                  iconColor="text-purple-600 dark:text-purple-400"
-                  label={t("generalInfo.description")}
-                  value={project.description || t("generalInfo.noDescription")}
-                />
+                  <ProfileInfoItem
+                    icon={TagIcon}
+                    iconBgColor="bg-amber-100 dark:bg-amber-900/30"
+                    iconColor="text-amber-600 dark:text-amber-400"
+                    label={t("generalInfo.projectNumber")}
+                    value={project.externalId || "-"}
+                  />
+                </div>
 
-                <ProfileInfoItem
-                  icon={BuildingOffice2Icon}
-                  iconBgColor="bg-green-100 dark:bg-green-900/30"
-                  iconColor="text-green-600 dark:text-green-400"
-                  label={t("generalInfo.type")}
-                  value={t(`projectTypes.${project.additionalType}`)}
-                />
+                {/* Description and Type */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <ProfileInfoItem
+                    icon={TagIcon}
+                    iconBgColor="bg-purple-100 dark:bg-purple-900/30"
+                    iconColor="text-purple-600 dark:text-purple-400"
+                    label={t("generalInfo.description")}
+                    value={project.description || t("generalInfo.noDescription")}
+                  />
+
+                  <ProfileInfoItem
+                    icon={BuildingOffice2Icon}
+                    iconBgColor="bg-green-100 dark:bg-green-900/30"
+                    iconColor="text-green-600 dark:text-green-400"
+                    label={t("generalInfo.type")}
+                    value={t(`projectTypes.${project.additionalType}`)}
+                  />
+                </div>
               </div>
             </div>
 
@@ -265,42 +308,48 @@ export default function SettingsTab({ projectId, onProjectUpdate }: SettingsTabP
               <div className="mb-4" style={{ height: canEditProject ? 'auto' : '0' }}>
                 {canEditProject && <div style={{ height: '32px' }} />}
               </div>
-              <div className="grid grid-rows-[repeat(3,auto)] grid-flow-col gap-x-8 gap-y-4 auto-cols-fr">
-                <ProfileInfoItem
-                  icon={CalendarIcon}
-                  iconBgColor="bg-gray-100 dark:bg-gray-700/30"
-                  iconColor="text-gray-600 dark:text-gray-400"
-                  label={t("projectDetails.created")}
-                  value={formatDate(project.dateCreated)}
-                />
+              <div className="space-y-4">
+                {/* Row 1: Shipyard and Created */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {project.producer && (
+                    <ProfileInfoItem
+                      icon={BuildingOffice2Icon}
+                      iconBgColor="bg-gray-100 dark:bg-gray-700/30"
+                      iconColor="text-gray-600 dark:text-gray-400"
+                      label={t("projectDetails.shipyard")}
+                      value={project.producer.name}
+                    />
+                  )}
 
-                <ProfileInfoItem
-                  icon={CalendarIcon}
-                  iconBgColor="bg-gray-100 dark:bg-gray-700/30"
-                  iconColor="text-gray-600 dark:text-gray-400"
-                  label={t("projectDetails.modified")}
-                  value={formatDate(project.dateModified)}
-                />
-
-                {project.producer && (
                   <ProfileInfoItem
-                    icon={BuildingOffice2Icon}
+                    icon={CalendarIcon}
                     iconBgColor="bg-gray-100 dark:bg-gray-700/30"
                     iconColor="text-gray-600 dark:text-gray-400"
-                    label={t("projectDetails.shipyard")}
-                    value={project.producer.name}
+                    label={t("projectDetails.created")}
+                    value={formatDate(project.dateCreated)}
                   />
-                )}
+                </div>
 
-                {project.author && (
+                {/* Row 2: Created By and Last Modified */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {project.author && (
+                    <ProfileInfoItem
+                      icon={UserIcon}
+                      iconBgColor="bg-gray-100 dark:bg-gray-700/30"
+                      iconColor="text-gray-600 dark:text-gray-400"
+                      label={t("projectDetails.createdBy")}
+                      value={project.author.name}
+                    />
+                  )}
+
                   <ProfileInfoItem
-                    icon={UserIcon}
+                    icon={CalendarIcon}
                     iconBgColor="bg-gray-100 dark:bg-gray-700/30"
                     iconColor="text-gray-600 dark:text-gray-400"
-                    label={t("projectDetails.createdBy")}
-                    value={project.author.name}
+                    label={t("projectDetails.modified")}
+                    value={formatDate(project.dateModified)}
                   />
-                )}
+                </div>
               </div>
             </div>
             </div>
@@ -334,11 +383,19 @@ export default function SettingsTab({ projectId, onProjectUpdate }: SettingsTabP
                           iconBgColor="bg-purple-100 dark:bg-purple-900/30"
                           iconColor="text-purple-600 dark:text-purple-400"
                           label={tTasks("kickoffMeeting.scheduledDate")}
-                          value={new Date(kickoffMeeting.scheduledDate).toLocaleDateString(locale, {
-                            year: "numeric",
-                            month: "short",
-                            day: "numeric",
-                          })}
+                          value={
+                            kickoffTimeSlot
+                              ? `${new Date(kickoffMeeting.scheduledDate).toLocaleDateString(locale, {
+                                  year: "numeric",
+                                  month: "short",
+                                  day: "numeric",
+                                })}, ${kickoffTimeSlot.startTime} - ${kickoffTimeSlot.endTime}`
+                              : new Date(kickoffMeeting.scheduledDate).toLocaleDateString(locale, {
+                                  year: "numeric",
+                                  month: "short",
+                                  day: "numeric",
+                                })
+                          }
                         />
                       )}
 
@@ -690,6 +747,7 @@ export default function SettingsTab({ projectId, onProjectUpdate }: SettingsTabP
           onSubmit={handleEditProject}
           currentName={project.name}
           currentDescription={project.description || ""}
+          currentExternalId={project.externalId || ""}
           currentProjectType={project.additionalType}
           projectTypes={projectTypes}
         />

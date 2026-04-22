@@ -11,9 +11,10 @@ import type { ProjectType } from "@/lib/api/types";
 interface EditProjectModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: { name: string; description: string; project_type: ProjectType }) => Promise<void>;
+  onSubmit: (data: { name: string; description: string; project_type: ProjectType; external_id: string }) => Promise<void>;
   currentName: string;
   currentDescription: string;
+  currentExternalId: string;
   currentProjectType: ProjectType;
   projectTypes: { id: string; name: string }[];
 }
@@ -24,6 +25,7 @@ export default function EditProjectModal({
   onSubmit,
   currentName,
   currentDescription,
+  currentExternalId,
   currentProjectType,
   projectTypes,
 }: EditProjectModalProps) {
@@ -31,6 +33,7 @@ export default function EditProjectModal({
   const [formData, setFormData] = useState({
     name: currentName,
     description: currentDescription,
+    external_id: currentExternalId,
     project_type: currentProjectType,
   });
 
@@ -40,10 +43,11 @@ export default function EditProjectModal({
       setFormData({
         name: currentName,
         description: currentDescription,
+        external_id: currentExternalId,
         project_type: currentProjectType,
       });
     }
-  }, [isOpen, currentName, currentDescription, currentProjectType]);
+  }, [isOpen, currentName, currentDescription, currentExternalId, currentProjectType]);
 
   const handleSubmit = async () => {
     await onSubmit(formData);
@@ -73,6 +77,14 @@ export default function EditProjectModal({
           value={formData.name}
           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
           required
+        />
+
+        <FormInput
+          id="external-id"
+          type="text"
+          label={t("externalId")}
+          value={formData.external_id}
+          onChange={(e) => setFormData({ ...formData, external_id: e.target.value })}
         />
 
         <FormTextarea

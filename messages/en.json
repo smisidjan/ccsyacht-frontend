@@ -192,6 +192,7 @@
   "editProject": {
     "title": "Edit Project Information",
     "projectName": "Project Name",
+    "externalId": "Project Number",
     "description": "Description",
     "projectType": "Project Type",
     "save": "Save Changes",
@@ -580,6 +581,7 @@
         "title": "General Information",
         "edit": "Edit",
         "name": "Project Name",
+        "projectNumber": "Project Number",
         "description": "Description",
         "noDescription": "No description",
         "type": "Project Type"

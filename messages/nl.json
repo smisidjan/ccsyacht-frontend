@@ -192,6 +192,7 @@
   "editProject": {
     "title": "Project Informatie Bewerken",
     "projectName": "Projectnaam",
+    "externalId": "Projectnummer",
     "description": "Beschrijving",
     "projectType": "Project Type",
     "save": "Wijzigingen Opslaan",
@@ -580,6 +581,7 @@
         "title": "Algemene Informatie",
         "edit": "Bewerken",
         "name": "Projectnaam",
+        "projectNumber": "Projectnummer",
         "description": "Beschrijving",
         "noDescription": "Geen beschrijving",
         "type": "Project Type"
