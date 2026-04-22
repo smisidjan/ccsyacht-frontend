@@ -178,11 +178,23 @@ export default function KickoffMeetingModal({
         }> = [];
 
         if (Array.isArray(doc.acknowledgements)) {
-          acknowledgements = doc.acknowledgements;
+          // Array case - extract name from agent.name (API structure)
+          acknowledgements = doc.acknowledgements.map(ack => ({
+            identifier: ack.agent?.identifier || ack.identifier || '',
+            name: ack.agent?.name || ack.name || 'Unknown',
+            acknowledgedAt: ack.dateCreated || null,
+            hasRead: ack.hasRead ?? false,
+            readAt: ack.readAt || null,
+            hasAgreed: ack.hasAgreed ?? null,
+            agreedAt: ack.agreedAt || null,
+            disagreementReason: ack.disagreementReason || null,
+          }));
         } else if (doc.acknowledgements && typeof doc.acknowledgements === 'object') {
           // Convert object with numeric keys to array, extracting agent data
           const ackValues = Object.values(doc.acknowledgements) as Array<{
             agent?: { identifier: string; name: string };
+            identifier?: string;
+            name?: string;
             dateCreated?: string;
             hasRead?: boolean;
             readAt?: string;
@@ -191,8 +203,8 @@ export default function KickoffMeetingModal({
             disagreementReason?: string;
           }>;
           acknowledgements = ackValues.map(ack => ({
-            identifier: ack.agent?.identifier || '',
-            name: ack.agent?.name || '',
+            identifier: ack.agent?.identifier || ack.identifier || '',
+            name: ack.agent?.name || ack.name || 'Unknown',
             acknowledgedAt: ack.dateCreated || null,
             hasRead: ack.hasRead ?? false,
             readAt: ack.readAt || null,
@@ -304,9 +316,14 @@ export default function KickoffMeetingModal({
     return doc.acknowledgements.find(ack => ack.identifier === currentUser.identifier) || null;
   };
 
-  const hasUserAcknowledgedDocument = (doc: RequiredDocument): boolean => {
+  const hasUserRespondedToDocument = (doc: RequiredDocument): boolean => {
     const ack = getUserAcknowledgement(doc);
-    return ack?.hasRead === true;
+    // User has responded if they agreed or disagreed (hasAgreed is not null)
+    return ack?.hasAgreed !== null && ack?.hasAgreed !== undefined;
+  };
+
+  const hasDocumentDisagreement = (doc: RequiredDocument): boolean => {
+    return doc.acknowledgements.some(ack => ack.hasAgreed === false);
   };
 
   const actions = useMemo(() => {
@@ -602,7 +619,8 @@ export default function KickoffMeetingModal({
 
                 <div className="divide-y divide-gray-200 dark:divide-gray-700 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
                   {requiredDocuments.map((doc) => {
-                    const userHasAcknowledged = hasUserAcknowledgedDocument(doc);
+                    const userHasResponded = hasUserRespondedToDocument(doc);
+                    const hasDisagreement = hasDocumentDisagreement(doc);
                     const isExpanded = expandedDocId === doc.identifier;
 
                     return (
@@ -611,20 +629,36 @@ export default function KickoffMeetingModal({
                           type="button"
                           onClick={() => setExpandedDocId(isExpanded ? null : doc.identifier)}
                           className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors ${
-                            doc.allAcknowledged ? "bg-green-50/50 dark:bg-green-900/10" : ""
+                            hasDisagreement
+                              ? "bg-red-50/50 dark:bg-red-900/10"
+                              : doc.allAcknowledged
+                              ? "bg-green-50/50 dark:bg-green-900/10"
+                              : ""
                           }`}
                         >
                           {isExpanded ? <ChevronDownIcon className="w-4 h-4 text-gray-400" /> : <ChevronRightIcon className="w-4 h-4 text-gray-400" />}
-                          <DocumentIcon className={`w-4 h-4 ${doc.allAcknowledged ? "text-green-600" : "text-gray-400"}`} />
+                          {hasDisagreement ? (
+                            <XMarkIcon className="w-4 h-4 text-red-600" />
+                          ) : doc.allAcknowledged ? (
+                            <CheckIcon className="w-4 h-4 text-green-600" />
+                          ) : (
+                            <DocumentIcon className="w-4 h-4 text-gray-400" />
+                          )}
                           <span className="flex-1 text-sm font-medium text-gray-900 dark:text-white truncate">
                             {doc.category?.name ? `${doc.category.name} - ${doc.name}` : doc.name}
                           </span>
                           <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${
-                            doc.allAcknowledged
+                            hasDisagreement
+                              ? "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400"
+                              : doc.allAcknowledged
                               ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400"
                               : "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400"
                           }`}>
-                            {doc.allAcknowledged && <CheckIcon className="w-3 h-3 inline mr-1" />}
+                            {hasDisagreement ? (
+                              <XMarkIcon className="w-3 h-3 inline mr-1" />
+                            ) : doc.allAcknowledged ? (
+                              <CheckIcon className="w-3 h-3 inline mr-1" />
+                            ) : null}
                             {doc.acknowledgementCount}/{doc.totalAssignees}
                           </span>
                         </button>
@@ -645,34 +679,42 @@ export default function KickoffMeetingModal({
                               {t("viewDocument")}
                             </a>
 
-                            {/* Acknowledgement status with agree/disagree */}
+                            {/* Acknowledgement status - show who has responded */}
                             <div className="space-y-2">
-                              {doc.acknowledgements.filter(ack => ack.hasRead).map((ack) => (
-                                <div key={ack.identifier} className="flex items-start gap-2 text-xs">
-                                  {ack.hasAgreed === true ? (
-                                    <CheckIcon className="w-3.5 h-3.5 text-green-600 flex-shrink-0 mt-0.5" />
-                                  ) : ack.hasAgreed === false ? (
-                                    <XMarkIcon className="w-3.5 h-3.5 text-red-600 flex-shrink-0 mt-0.5" />
-                                  ) : (
-                                    <ClockIcon className="w-3.5 h-3.5 text-gray-400 flex-shrink-0 mt-0.5" />
-                                  )}
+                              {/* People who have agreed */}
+                              {doc.acknowledgements.filter(ack => ack.hasAgreed === true).map((ack, idx) => (
+                                <div key={ack.identifier || idx} className="flex items-center gap-2 text-xs">
+                                  <CheckIcon className="w-3.5 h-3.5 text-green-600 flex-shrink-0" />
+                                  <span className="font-medium text-green-700 dark:text-green-400">
+                                    {ack.name || 'Unknown'}
+                                  </span>
+                                </div>
+                              ))}
+                              {/* People who have disagreed - show reason inline */}
+                              {doc.acknowledgements.filter(ack => ack.hasAgreed === false).map((ack, idx) => (
+                                <div key={ack.identifier || idx} className="flex items-start gap-2 text-xs">
+                                  <XMarkIcon className="w-3.5 h-3.5 text-red-600 flex-shrink-0 mt-0.5" />
                                   <div className="flex-1 min-w-0">
-                                    <span className={`font-medium ${
-                                      ack.hasAgreed === true ? "text-green-700 dark:text-green-400" :
-                                      ack.hasAgreed === false ? "text-red-700 dark:text-red-400" :
-                                      "text-gray-700 dark:text-gray-300"
-                                    }`}>
-                                      {ack.name}
+                                    <span className="font-medium text-red-700 dark:text-red-400">
+                                      {ack.name || 'Unknown'}
                                     </span>
-                                    {ack.hasAgreed === false && ack.disagreementReason && (
-                                      <p className="text-red-600 dark:text-red-400 mt-0.5 break-words">
+                                    {ack.disagreementReason && (
+                                      <p className="text-red-600 dark:text-red-400">
                                         {t("disagreementReason")}: {ack.disagreementReason}
                                       </p>
                                     )}
                                   </div>
                                 </div>
                               ))}
-                              {task?.assignees?.filter(a => !doc.acknowledgements.some(ack => ack.identifier === a.identifier && ack.hasRead)).map((user) => (
+                              {/* Pending users - task assignees who haven't responded yet */}
+                              {task?.assignees?.filter(assignee => {
+                                // Check if this assignee has responded (exists in acknowledgements with hasAgreed set)
+                                const hasResponded = doc.acknowledgements.some(ack =>
+                                  (ack.hasAgreed === true || ack.hasAgreed === false) &&
+                                  (ack.identifier === assignee.identifier || ack.name === assignee.name)
+                                );
+                                return !hasResponded;
+                              }).map((user) => (
                                 <div key={user.identifier} className="flex items-center gap-2 text-xs">
                                   <ClockIcon className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
                                   <span className="text-gray-400">{user.name}</span>
@@ -680,7 +722,7 @@ export default function KickoffMeetingModal({
                               ))}
                             </div>
 
-                            {isAttendee && !userHasAcknowledged && (
+                            {isAttendee && !userHasResponded && (
                               <div className="flex items-center gap-2 pt-2">
                                 <Button
                                   variant="primary"
