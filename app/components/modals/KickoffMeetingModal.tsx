@@ -2,13 +2,13 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useTranslations } from "next-intl";
-import { CalendarIcon, CheckIcon, DocumentIcon, EyeIcon, TrashIcon, ClockIcon, ChevronDownIcon, ChevronRightIcon, ArrowUpTrayIcon } from "@heroicons/react/24/outline";
+import { CalendarIcon, CheckIcon, DocumentIcon, EyeIcon, TrashIcon, ClockIcon, ChevronDownIcon, ChevronRightIcon, ArrowUpTrayIcon, ExclamationTriangleIcon } from "@heroicons/react/24/outline";
 import Modal from "@/app/components/ui/Modal";
 import Button from "@/app/components/ui/Button";
 import Alert from "@/app/components/ui/Alert";
 import Tooltip from "@/app/components/ui/Tooltip";
-import { setupTasksApi, useCurrentUser } from "@/lib/api";
-import type { SetupTask, SchedulingStatus, RequiredDocument } from "@/lib/api/types";
+import { setupTasksApi, useCurrentUser, useDocumentTypes } from "@/lib/api";
+import type { SetupTask, SchedulingStatus, RequiredDocument, DocumentType } from "@/lib/api/types";
 import { useToast } from "@/app/context/ToastContext";
 import { usePermission } from "@/lib/hooks/usePermission";
 import { PERMISSIONS } from "@/lib/constants/permissions";
@@ -54,6 +54,9 @@ export default function KickoffMeetingModal({
   // Permissions
   const canEditProject = hasPermission(PERMISSIONS.EDIT_PROJECTS);
 
+  // Fetch document types to show pending required/requested documents
+  const { data: documentTypes } = useDocumentTypes(projectId, { includeAssignees: true });
+
   // Check if current user is an attendee
   const currentUserAttendee = useMemo(() => {
     if (!task || !currentUser || !task.assignees) return null;
@@ -91,6 +94,30 @@ export default function KickoffMeetingModal({
   const meetingDocument = useMemo(() => {
     return task?.documents?.[0] || null;
   }, [task?.documents]);
+
+  // Get pending documents (required or requested but not yet uploaded)
+  const pendingDocuments = useMemo(() => {
+    if (!documentTypes) return [];
+
+    // Filter document types that are required and have no documents uploaded yet
+    return documentTypes.filter(dt => {
+      // Must be required AND have no documents uploaded
+      if (!dt.isRequired || dt.documentCount > 0) return false;
+      return true;
+    }).map(dt => ({
+      ...dt,
+      // Check if it's assigned (requested) vs just required
+      isRequested: dt.assignees && dt.assignees.length > 0,
+      // Due date is the meeting date
+      dueDate: selectedTimeSlotInfo?.date || null,
+    }));
+  }, [documentTypes, selectedTimeSlotInfo]);
+
+  // Separate into required (not assigned) and requested (assigned)
+  const requiredPendingDocs = useMemo(() =>
+    pendingDocuments.filter(d => !d.isRequested), [pendingDocuments]);
+  const requestedPendingDocs = useMemo(() =>
+    pendingDocuments.filter(d => d.isRequested), [pendingDocuments]);
 
   // Calculate progress
   const progress = useMemo(() => {
@@ -438,6 +465,75 @@ export default function KickoffMeetingModal({
                     {t("noMeetingDocument")}
                   </p>
                 )}
+              </div>
+            )}
+
+            {/* Pending Documents - Required/Requested but not yet uploaded */}
+            {pendingDocuments.length > 0 && (
+              <div className="space-y-3">
+                <h4 className="text-sm font-semibold text-gray-900 dark:text-white">{t("pendingDocuments")}</h4>
+                <p className="text-xs text-gray-500 dark:text-gray-400">{t("pendingDocumentsDescription")}</p>
+
+                <div className="space-y-2">
+                  {/* Required documents (not assigned - blocking) */}
+                  {requiredPendingDocs.length > 0 && (
+                    <div className="space-y-2">
+                      <span className="text-xs font-medium text-red-600 dark:text-red-400 uppercase tracking-wider">
+                        {t("requiredBlocking")}
+                      </span>
+                      {requiredPendingDocs.map((doc) => (
+                        <div
+                          key={doc.identifier}
+                          className="flex items-center justify-between p-3 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800/30 rounded-lg"
+                        >
+                          <div className="flex items-center gap-3">
+                            <ExclamationTriangleIcon className="w-5 h-5 text-red-500 flex-shrink-0" />
+                            <span className="text-sm font-medium text-gray-900 dark:text-white">{doc.name}</span>
+                          </div>
+                          <span className="text-xs px-2 py-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-full font-medium">
+                            {t("notUploaded")}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Requested documents (assigned - not blocking) */}
+                  {requestedPendingDocs.length > 0 && (
+                    <div className="space-y-2">
+                      <span className="text-xs font-medium text-amber-600 dark:text-amber-400 uppercase tracking-wider">
+                        {t("requestedPending")}
+                      </span>
+                      {requestedPendingDocs.map((doc) => (
+                        <div
+                          key={doc.identifier}
+                          className="flex items-center justify-between p-3 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/30 rounded-lg"
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <ClockIcon className="w-5 h-5 text-amber-500 flex-shrink-0" />
+                            <div className="min-w-0">
+                              <span className="text-sm font-medium text-gray-900 dark:text-white block truncate">{doc.name}</span>
+                              <span className="text-xs text-gray-500 dark:text-gray-400">
+                                {t("assignedTo", { name: doc.assignees?.[0]?.name || "" })}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                            <span className="text-xs px-2 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-full font-medium">
+                              {t("requested")}
+                            </span>
+                            {doc.dueDate && (
+                              <span className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                                <CalendarIcon className="w-3 h-3" />
+                                {t("dueBy", { date: new Date(doc.dueDate).toLocaleDateString(undefined, { month: "short", day: "numeric" }) })}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 

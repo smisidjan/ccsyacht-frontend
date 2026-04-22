@@ -334,6 +334,8 @@
         "title": "Upload Verplichte Documenten",
         "description": "Upload alle verplichte projectdocumentatie inclusief contracten, specificaties en tekeningen",
         "descriptionIntro": "Upload de volgende verplichte documenten:",
+        "requestedIntro": "De volgende documenten zijn aangevraagd:",
+        "assignedTo": "toegewezen aan {name}",
         "action": "Upload Documenten"
       },
       "addMembers": {
@@ -439,7 +441,15 @@
         "noMeetingDocument": "Nog geen meeting document geüpload",
         "signMeetingDocument": "Document Ondertekenen",
         "meetingDocumentSigned": "Ondertekend",
-        "meetingDocumentPending": "Wacht op ondertekening"
+        "meetingDocumentPending": "Wacht op ondertekening",
+        "pendingDocuments": "Ontbrekende Documenten",
+        "pendingDocumentsDescription": "De volgende documenten zijn vereist voor of tijdens de meeting",
+        "requiredBlocking": "Verplicht (Blokkerend)",
+        "notUploaded": "Niet geüpload",
+        "requestedPending": "Aangevraagd",
+        "assignedTo": "Toegewezen aan {name}",
+        "requested": "Aangevraagd",
+        "dueBy": "Deadline: {date}"
       },
       "kickoffScheduling": {
         "title": "Plan Kickoff Meeting",
@@ -566,6 +576,7 @@
       "documentTypes": "Documenttypes",
       "requiredProgress": "{uploaded} van {required} verplichte documenttypes voltooid",
       "required": "Verplicht",
+      "requested": "Aangevraagd",
       "documentCount": "{count, plural, =0 {Geen documenten} one {1 document} other {# documenten}}",
       "documentName": "Documentnaam",
       "type": "Type",

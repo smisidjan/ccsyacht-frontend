@@ -334,6 +334,8 @@
         "title": "Upload Required Documents",
         "description": "Upload all required project documentation including contracts, specifications, and drawings",
         "descriptionIntro": "Upload the following required documents:",
+        "requestedIntro": "The following documents have been requested:",
+        "assignedTo": "assigned to {name}",
         "action": "Upload Documents"
       },
       "addMembers": {
@@ -439,7 +441,15 @@
         "noMeetingDocument": "No meeting document uploaded yet",
         "signMeetingDocument": "Sign Document",
         "meetingDocumentSigned": "Signed",
-        "meetingDocumentPending": "Awaiting signature"
+        "meetingDocumentPending": "Awaiting signature",
+        "pendingDocuments": "Pending Documents",
+        "pendingDocumentsDescription": "The following documents are required before or at the meeting",
+        "requiredBlocking": "Required (Blocking)",
+        "notUploaded": "Not uploaded",
+        "requestedPending": "Requested",
+        "assignedTo": "Assigned to {name}",
+        "requested": "Requested",
+        "dueBy": "Due: {date}"
       },
       "kickoffScheduling": {
         "title": "Schedule Kickoff Meeting",
@@ -566,6 +576,7 @@
       "documentTypes": "Document Types",
       "requiredProgress": "{uploaded} of {required} required document types completed",
       "required": "Required",
+      "requested": "Requested",
       "documentCount": "{count, plural, =0 {No documents} one {1 document} other {# documents}}",
       "documentName": "Document Name",
       "type": "Type",
