@@ -605,7 +605,20 @@
       "uploadFirst": "Upload first document",
       "noDocumentTypes": "No Document Types Yet",
       "createFirstDocumentType": "Create document types to organize your project files",
-      "loadError": "Failed to load documents"
+      "loadError": "Failed to load documents",
+      "acknowledgements": {
+        "title": "Acknowledgements",
+        "agreed": "Agreed",
+        "disagreed": "Disagreed",
+        "pending": "Pending review",
+        "disagreedReason": "Reason",
+        "status": {
+          "draft": "Draft",
+          "pendingReview": "Pending Review",
+          "active": "Active",
+          "disputed": "Disputed"
+        }
+      }
     },
     "generalArrangement": {
       "title": "General Arrangement",

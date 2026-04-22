@@ -605,7 +605,20 @@
       "uploadFirst": "Upload eerste document",
       "noDocumentTypes": "Nog Geen Documenttypes",
       "createFirstDocumentType": "Maak documenttypes aan om je projectbestanden te organiseren",
-      "loadError": "Kan documenten niet laden"
+      "loadError": "Kan documenten niet laden",
+      "acknowledgements": {
+        "title": "Ondertekeningen",
+        "agreed": "Akkoord",
+        "disagreed": "Niet akkoord",
+        "pending": "In afwachting",
+        "disagreedReason": "Reden",
+        "status": {
+          "draft": "Concept",
+          "pendingReview": "In Behandeling",
+          "active": "Actief",
+          "disputed": "Betwist"
+        }
+      }
     },
     "generalArrangement": {
       "title": "General Arrangement",
