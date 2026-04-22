@@ -34,7 +34,7 @@ import Alert from "@/app/components/ui/Alert";
 import DropdownMenu from "@/app/components/ui/DropdownMenu";
 import type { DropdownMenuItem } from "@/app/components/ui/DropdownMenu";
 import { UploadDocumentModal, AssignDocumentModal } from "@/app/features/documents";
-import DocumentTypeModal from "@/app/components/modals/DocumentTypeModal";
+import DocumentTypeModal from "./DocumentTypeModal";
 import BaseModal from "@/app/components/modals/BaseModal";
 import { DocumentStatusBadge, calculateDocumentStatus } from "@/app/components/ui/DocumentAcknowledgementStatus";
 import { normalizeAcknowledgements } from "@/lib/utils/typeNormalization";
