@@ -61,8 +61,8 @@ export default function OverviewTab({
   // Fetch decks for edit mode
   const { data: decks, refetch: refetchDecks } = useDecks(projectId);
 
-  // Fetch document types for setup task description
-  const { data: documentTypes } = useDocumentTypes(projectId);
+  // Fetch document types for setup task description (include assignees for blocking logic)
+  const { data: documentTypes } = useDocumentTypes(projectId, { includeAssignees: true });
 
   // GA Image for deck modal
   const gaImageUrl = generalArrangement?.imageUrl
@@ -170,8 +170,10 @@ export default function OverviewTab({
   }, [setupTasks, currentUser, canEditProject]);
 
   // Check if all required documents are uploaded (for kickoff meeting blocking)
+  // Only documents that are required AND not assigned to anyone block the kickoff
   const requiredDocs = documentTypes?.filter(dt => dt.isRequired) || [];
-  const allRequiredDocsUploaded = requiredDocs.length === 0 || requiredDocs.every(doc => doc.documentCount > 0);
+  const requiredNotAssignedDocs = requiredDocs.filter(doc => !doc.assignees || doc.assignees.length === 0);
+  const allRequiredDocsUploaded = requiredNotAssignedDocs.length === 0 || requiredNotAssignedDocs.every(doc => doc.documentCount > 0);
 
   // Check if members have been added
   const addMembersTask = visibleSetupTasks.find(t => t.additionalType === "add_members");
