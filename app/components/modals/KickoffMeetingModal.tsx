@@ -623,6 +623,15 @@ export default function KickoffMeetingModal({
                     const hasDisagreement = hasDocumentDisagreement(doc);
                     const isExpanded = expandedDocId === doc.identifier;
 
+                    // Use task.assignees.length as fallback when totalAssignees is 0 or undefined
+                    const effectiveTotalAssignees = doc.totalAssignees || task?.assignees?.length || 0;
+                    // Count actual acknowledgements (agreed or disagreed)
+                    const actualAckCount = doc.acknowledgements.filter(ack => ack.hasAgreed === true || ack.hasAgreed === false).length;
+                    // All acknowledged only if we have assignees AND all have responded with agreement
+                    const effectiveAllAcknowledged = effectiveTotalAssignees > 0 &&
+                      actualAckCount === effectiveTotalAssignees &&
+                      !hasDisagreement;
+
                     return (
                       <div key={doc.identifier}>
                         <button
@@ -631,7 +640,7 @@ export default function KickoffMeetingModal({
                           className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors ${
                             hasDisagreement
                               ? "bg-red-50/50 dark:bg-red-900/10"
-                              : doc.allAcknowledged
+                              : effectiveAllAcknowledged
                               ? "bg-green-50/50 dark:bg-green-900/10"
                               : ""
                           }`}
@@ -639,7 +648,7 @@ export default function KickoffMeetingModal({
                           {isExpanded ? <ChevronDownIcon className="w-4 h-4 text-gray-400" /> : <ChevronRightIcon className="w-4 h-4 text-gray-400" />}
                           {hasDisagreement ? (
                             <XMarkIcon className="w-4 h-4 text-red-600" />
-                          ) : doc.allAcknowledged ? (
+                          ) : effectiveAllAcknowledged ? (
                             <CheckIcon className="w-4 h-4 text-green-600" />
                           ) : (
                             <DocumentIcon className="w-4 h-4 text-gray-400" />
@@ -650,16 +659,16 @@ export default function KickoffMeetingModal({
                           <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${
                             hasDisagreement
                               ? "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400"
-                              : doc.allAcknowledged
+                              : effectiveAllAcknowledged
                               ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400"
                               : "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400"
                           }`}>
                             {hasDisagreement ? (
                               <XMarkIcon className="w-3 h-3 inline mr-1" />
-                            ) : doc.allAcknowledged ? (
+                            ) : effectiveAllAcknowledged ? (
                               <CheckIcon className="w-3 h-3 inline mr-1" />
                             ) : null}
-                            {doc.acknowledgementCount}/{doc.totalAssignees}
+                            {actualAckCount}/{effectiveTotalAssignees}
                           </span>
                         </button>
 
