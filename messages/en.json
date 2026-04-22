@@ -575,10 +575,10 @@
           "addButton": "Propose Alternative Times",
           "formTitle": "Suggest Alternative Times",
           "addDate": "Add Date",
-          "submit": "Submit Proposed Times",
-          "submitted": "Your proposed times have been sent to the organizer",
-          "submitError": "Failed to submit proposed times",
-          "helpText": "The organizer will review your suggestions and may add them as new options"
+          "submit": "Add as Voting Options",
+          "submitted": "Your proposed times have been added. All attendees can now vote on them.",
+          "submitError": "Failed to add proposed times",
+          "helpText": "These times will be added as new voting options for all attendees"
         }
       },
       "viewDetails": "View Details",

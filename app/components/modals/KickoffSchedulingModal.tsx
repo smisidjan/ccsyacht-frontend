@@ -464,7 +464,7 @@ export default function KickoffSchedulingModal({
   // === Propose Alternative Dates Functions ===
 
   // Add a new proposed alternative date
-  const handleAddProposedDate = () => {
+  const handleAddProposedAlternativeDate = () => {
     if (!newProposedDateInput) return;
 
     const exists = proposedAlternatives.some((d) => d.date === newProposedDateInput);
@@ -552,10 +552,10 @@ export default function KickoffSchedulingModal({
     });
   };
 
-  // Check if there are valid proposed alternatives
+  // Check if there are valid proposed alternatives (at least one date with time slots)
   const hasValidProposedAlternatives = proposedAlternatives.some((d) => d.timeSlots.length > 0);
 
-  // Submit proposed alternatives
+  // Submit proposed alternatives - suggests new time slots that all attendees can vote on
   const handleSubmitProposedAlternatives = async () => {
     if (!hasValidProposedAlternatives) return;
 
@@ -563,18 +563,24 @@ export default function KickoffSchedulingModal({
       setIsSubmittingProposal(true);
       setError(null);
 
-      // TODO: Backend API call to submit proposed alternatives
-      // await setupTasksApi.proposeAlternativeDates(projectId, taskId, {
-      //   proposed_dates: proposedAlternatives.map((d) => ({
-      //     date: d.date,
-      //     time_slots: d.timeSlots.map((slot) => ({
-      //       start_time: slot.startTime,
-      //       end_time: slot.endTime,
-      //     })),
-      //   })),
-      // });
+      // Convert date cards + time slots to API format
+      // API expects: { suggestions: [{ start_datetime: "...", end_datetime: "..." }, ...] }
+      // Max 5 suggestions per request, end_datetime is optional
+      const suggestions: Array<{ start_datetime: string; end_datetime?: string }> = [];
+      for (const dateWithTimes of proposedAlternatives) {
+        for (const slot of dateWithTimes.timeSlots) {
+          // Combine date + startTime/endTime to create ISO datetime strings
+          // Date format: YYYY-MM-DD, Time format: HH:MM
+          suggestions.push({
+            start_datetime: `${dateWithTimes.date}T${slot.startTime}:00`,
+            end_datetime: slot.endTime ? `${dateWithTimes.date}T${slot.endTime}:00` : undefined,
+          });
+        }
+      }
 
-      // For now, just show success and clear the state
+      // Call the suggest-time-slots endpoint
+      await setupTasksApi.suggestTimeSlots(projectId, taskId, suggestions);
+
       showToast("success", t("proposeAlternative.submitted"));
       setProposedAlternatives([]);
       setShowProposeAlternative(false);
@@ -1480,7 +1486,7 @@ export default function KickoffSchedulingModal({
                 </div>
               </div>
             ) : (
-              // Expanded state - show form to add alternative dates
+              // Expanded state - show form to add alternative dates with date cards and time slots
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <h4 className="text-sm font-semibold text-gray-900 dark:text-white">
@@ -1633,7 +1639,7 @@ export default function KickoffSchedulingModal({
                   <Button
                     variant="secondary"
                     size="sm"
-                    onClick={handleAddProposedDate}
+                    onClick={handleAddProposedAlternativeDate}
                     disabled={!newProposedDateInput}
                   >
                     <PlusIcon className="w-4 h-4" />

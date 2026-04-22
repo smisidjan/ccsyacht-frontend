@@ -404,6 +404,25 @@ export const setupTasksApi = {
     });
   },
 
+  /**
+   * POST /api/projects/{projectId}/setup-task/{setupTaskId}/suggest-time-slots
+   * Suggest alternative time slots as an attendee (when all existing slots are declined)
+   * Suggested slots become voting options for all attendees with isAttendeeSuggestion: true
+   * @param suggestions - Array of time slot suggestions (max 5)
+   *   - start_datetime: required, ISO datetime string, must be in the future
+   *   - end_datetime: optional, ISO datetime string, must be after start_datetime
+   */
+  suggestTimeSlots: async (
+    projectId: string,
+    setupTaskId: string,
+    suggestions: Array<{ start_datetime: string; end_datetime?: string }>
+  ): Promise<void> => {
+    return apiFetch(`/projects/${projectId}/setup-task/${setupTaskId}/suggest-time-slots`, {
+      method: "POST",
+      body: JSON.stringify({ suggestions }),
+    });
+  },
+
   // ============ Required Document Acknowledgements ============
 
   /**

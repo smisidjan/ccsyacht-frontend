@@ -575,10 +575,10 @@
           "addButton": "Alternatieve tijden voorstellen",
           "formTitle": "Stel alternatieve tijden voor",
           "addDate": "Datum toevoegen",
-          "submit": "Voorgestelde tijden versturen",
-          "submitted": "Je voorgestelde tijden zijn naar de organisator gestuurd",
-          "submitError": "Kan voorgestelde tijden niet versturen",
-          "helpText": "De organisator bekijkt je suggesties en kan ze als nieuwe opties toevoegen"
+          "submit": "Toevoegen als stemopties",
+          "submitted": "Je voorgestelde tijden zijn toegevoegd. Alle deelnemers kunnen er nu op stemmen.",
+          "submitError": "Kan voorgestelde tijden niet toevoegen",
+          "helpText": "Deze tijden worden toegevoegd als nieuwe stemopties voor alle deelnemers"
         }
       },
       "viewDetails": "Bekijk Details",
