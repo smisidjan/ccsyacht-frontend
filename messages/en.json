@@ -458,7 +458,14 @@
         "requestedPending": "Requested",
         "assignedTo": "Assigned to {name}",
         "requested": "Requested",
-        "dueBy": "Due: {date}"
+        "dueBy": "Due: {date}",
+        "documentStatus": "Document Status",
+        "documentsTotal": "documents",
+        "needsYourAction": "needs your action",
+        "disputed": "disputed",
+        "pendingOthers": "awaiting others",
+        "completed": "completed",
+        "allDocumentsAcknowledged": "All documents acknowledged"
       },
       "kickoffScheduling": {
         "title": "Schedule Kickoff Meeting",

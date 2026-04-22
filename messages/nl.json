@@ -458,7 +458,14 @@
         "requestedPending": "Aangevraagd",
         "assignedTo": "Toegewezen aan {name}",
         "requested": "Aangevraagd",
-        "dueBy": "Deadline: {date}"
+        "dueBy": "Deadline: {date}",
+        "documentStatus": "Document Status",
+        "documentsTotal": "documenten",
+        "needsYourAction": "actie vereist",
+        "disputed": "betwist",
+        "pendingOthers": "wacht op anderen",
+        "completed": "afgerond",
+        "allDocumentsAcknowledged": "Alle documenten bevestigd"
       },
       "kickoffScheduling": {
         "title": "Plan Kickoff Meeting",

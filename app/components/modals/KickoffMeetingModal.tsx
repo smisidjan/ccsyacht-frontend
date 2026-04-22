@@ -124,20 +124,67 @@ export default function KickoffMeetingModal({
   const requestedPendingDocs = useMemo(() =>
     pendingDocuments.filter(d => d.isRequested), [pendingDocuments]);
 
-  // Calculate progress
+  // Calculate progress with correct stats
   const progress = useMemo(() => {
     if (!task || !task.assignees) return null;
 
     const totalAttendees = task.assignees.length;
     const signedAttendees = task.assignees.filter(a => a.hasSigned).length;
-    const totalDocs = requiredDocuments.length;
-    const acknowledgedDocs = requiredDocuments.filter(doc => doc.allAcknowledged).length;
 
     return {
       signatures: { count: signedAttendees, total: totalAttendees },
-      documents: { count: acknowledgedDocs, total: totalDocs },
     };
-  }, [task, requiredDocuments]);
+  }, [task]);
+
+  // Calculate detailed document stats for enterprise display
+  const documentStats = useMemo(() => {
+    if (!requiredDocuments.length) return null;
+
+    const totalAssignees = task?.assignees?.length || 0;
+
+    // Documents that need current user's action
+    const needsUserAction = requiredDocuments.filter(doc => {
+      if (!currentUser) return false;
+      const userAck = doc.acknowledgements.find(a =>
+        a.identifier === currentUser.identifier || a.name === currentUser.name
+      );
+      // User hasn't responded yet (no ack record OR hasAgreed is null)
+      return !userAck || userAck.hasAgreed === null;
+    });
+
+    // Documents with disagreements
+    const disputed = requiredDocuments.filter(doc =>
+      doc.acknowledgements.some(a => a.hasAgreed === false)
+    );
+
+    // Documents fully acknowledged (all responded with agree, no disputes)
+    const completed = requiredDocuments.filter(doc => {
+      const respondedCount = doc.acknowledgements.filter(a =>
+        a.hasAgreed === true || a.hasAgreed === false
+      ).length;
+      const effectiveTotal = doc.totalAssignees || totalAssignees;
+      const hasDisagreement = doc.acknowledgements.some(a => a.hasAgreed === false);
+      return effectiveTotal > 0 && respondedCount === effectiveTotal && !hasDisagreement;
+    });
+
+    // Documents waiting for others (some responded, no disputes, not complete)
+    const pendingOthers = requiredDocuments.filter(doc => {
+      const respondedCount = doc.acknowledgements.filter(a =>
+        a.hasAgreed === true || a.hasAgreed === false
+      ).length;
+      const effectiveTotal = doc.totalAssignees || totalAssignees;
+      const hasDisagreement = doc.acknowledgements.some(a => a.hasAgreed === false);
+      return !hasDisagreement && respondedCount < effectiveTotal;
+    });
+
+    return {
+      total: requiredDocuments.length,
+      needsUserAction: needsUserAction.length,
+      disputed: disputed.length,
+      completed: completed.length,
+      pendingOthers: pendingOthers.length,
+    };
+  }, [requiredDocuments, currentUser, task]);
 
   // Fetch task details
   useEffect(() => {
@@ -379,25 +426,67 @@ export default function KickoffMeetingModal({
               <Alert type="success" message={t("taskCompleted")} />
             )}
 
-            {/* Progress Bar - Compact */}
-            {progress && (task.actionStatus === "scheduled" || requiredDocuments.length > 0) && (
-              <div className="flex items-center gap-6 text-sm">
-                {requiredDocuments.length > 0 && (
-                  <div className="flex items-center gap-2">
-                    <DocumentIcon className="w-4 h-4 text-gray-400" />
-                    <span className="text-gray-600 dark:text-gray-400">{t("documentsProgress")}</span>
-                    <span className={`font-semibold ${progress.documents.count === progress.documents.total ? "text-green-600" : "text-gray-900 dark:text-white"}`}>
-                      {progress.documents.count}/{progress.documents.total}
+            {/* Document & Signature Status - Enterprise Style */}
+            {(documentStats || progress) && (task.actionStatus === "scheduled" || requiredDocuments.length > 0) && (
+              <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4 space-y-3">
+                {/* Document Status Breakdown */}
+                {documentStats && documentStats.total > 0 && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{t("documentStatus")}</span>
+                      <span className="text-xs text-gray-500">{documentStats.total} {t("documentsTotal")}</span>
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {/* Needs Your Action - Most important, show first */}
+                      {documentStats.needsUserAction > 0 && (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800">
+                          <ClockIcon className="w-3.5 h-3.5" />
+                          {documentStats.needsUserAction} {t("needsYourAction")}
+                        </span>
+                      )}
+                      {/* Disputed */}
+                      {documentStats.disputed > 0 && (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800">
+                          <XMarkIcon className="w-3.5 h-3.5" />
+                          {documentStats.disputed} {t("disputed")}
+                        </span>
+                      )}
+                      {/* Pending Others */}
+                      {documentStats.pendingOthers > 0 && documentStats.pendingOthers !== documentStats.needsUserAction && (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
+                          <ClockIcon className="w-3.5 h-3.5" />
+                          {documentStats.pendingOthers} {t("pendingOthers")}
+                        </span>
+                      )}
+                      {/* Completed */}
+                      {documentStats.completed > 0 && (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800">
+                          <CheckIcon className="w-3.5 h-3.5" />
+                          {documentStats.completed} {t("completed")}
+                        </span>
+                      )}
+                      {/* All done state */}
+                      {documentStats.completed === documentStats.total && documentStats.disputed === 0 && (
+                        <span className="text-xs text-green-600 dark:text-green-400 font-medium ml-1">
+                          ✓ {t("allDocumentsAcknowledged")}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Signature Progress */}
+                {progress && task.actionStatus === "scheduled" && (
+                  <div className="flex items-center justify-between pt-2 border-t border-gray-200 dark:border-gray-700">
+                    <div className="flex items-center gap-2">
+                      <CheckIcon className="w-4 h-4 text-gray-400" />
+                      <span className="text-sm text-gray-600 dark:text-gray-400">{t("signatures")}</span>
+                    </div>
+                    <span className={`text-sm font-semibold ${progress.signatures.count === progress.signatures.total ? "text-green-600" : "text-gray-900 dark:text-white"}`}>
+                      {progress.signatures.count}/{progress.signatures.total}
                     </span>
                   </div>
                 )}
-                <div className="flex items-center gap-2">
-                  <CheckIcon className="w-4 h-4 text-gray-400" />
-                  <span className="text-gray-600 dark:text-gray-400">{t("signatures")}</span>
-                  <span className={`font-semibold ${progress.signatures.count === progress.signatures.total ? "text-green-600" : "text-gray-900 dark:text-white"}`}>
-                    {progress.signatures.count}/{progress.signatures.total}
-                  </span>
-                </div>
               </div>
             )}
 
