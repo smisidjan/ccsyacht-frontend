@@ -56,3 +56,77 @@ export function translateApiError(
   // If no mapping found, return the original message or fallback
   return message || t(fallbackKey);
 }
+
+/**
+ * Error severity levels for different handling strategies
+ */
+export type ErrorSeverity = "silent" | "toast" | "console" | "both";
+
+export interface HandleErrorOptions {
+  /** How to handle the error */
+  severity?: ErrorSeverity;
+  /** Fallback message if error message can't be extracted */
+  fallbackMessage?: string;
+  /** Toast function for showing user-facing errors */
+  showToast?: (type: "error" | "success" | "warning", message: string) => void;
+  /** Context for better error logging */
+  context?: string;
+}
+
+/**
+ * Centralized error handler for consistent error handling across the app
+ *
+ * @example
+ * ```tsx
+ * const { showToast } = useToast();
+ *
+ * try {
+ *   await api.doSomething();
+ * } catch (error) {
+ *   handleError(error, {
+ *     severity: "both",
+ *     showToast,
+ *     context: "Creating project",
+ *     fallbackMessage: "Failed to create project"
+ *   });
+ * }
+ * ```
+ */
+export function handleError(
+  error: unknown,
+  options: HandleErrorOptions = {}
+): string {
+  const {
+    severity = "both",
+    fallbackMessage = "An error occurred",
+    showToast,
+    context,
+  } = options;
+
+  const message = getErrorMessage(error, fallbackMessage);
+  const logMessage = context ? `[${context}] ${message}` : message;
+
+  // Console logging (for debugging)
+  if (severity === "console" || severity === "both") {
+    console.error(logMessage, error);
+  }
+
+  // Toast notification (for user feedback)
+  if ((severity === "toast" || severity === "both") && showToast) {
+    showToast("error", message);
+  }
+
+  return message;
+}
+
+/**
+ * Type guard to check if an error is an ApiError
+ */
+export function isApiError(error: unknown): error is { message: string; status?: number; code?: string } {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "message" in error &&
+    typeof (error as Record<string, unknown>).message === "string"
+  );
+}
