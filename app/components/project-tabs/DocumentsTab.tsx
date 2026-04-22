@@ -37,7 +37,19 @@ import UploadDocumentModal from "@/app/components/modals/UploadDocumentModal";
 import DocumentTypeModal from "@/app/components/modals/DocumentTypeModal";
 import AssignDocumentModal from "@/app/components/modals/AssignDocumentModal";
 import BaseModal from "@/app/components/modals/BaseModal";
-import type { UploadDocumentRequest, Document, DocumentType, DocumentTypeAssignee, CreateDocumentTypeRequest, AddDocumentTypeAssigneeRequest } from "@/lib/api/types";
+import { DocumentStatusBadge, calculateDocumentStatus } from "@/app/components/ui/DocumentAcknowledgementStatus";
+import type { UploadDocumentRequest, Document, DocumentType, DocumentTypeAssignee, CreateDocumentTypeRequest, AddDocumentTypeAssigneeRequest, DocumentStatus, DocumentAcknowledgement } from "@/lib/api/types";
+
+// Helper to normalize acknowledgements from object to array
+function normalizeAcknowledgements(acknowledgements: unknown): DocumentAcknowledgement[] {
+  if (!acknowledgements) return [];
+  if (Array.isArray(acknowledgements)) return acknowledgements;
+  if (typeof acknowledgements === 'object') {
+    // Convert object with numeric keys to array
+    return Object.values(acknowledgements as Record<string, DocumentAcknowledgement>);
+  }
+  return [];
+}
 
 interface DocumentsTabProps {
   projectId: string;
@@ -92,12 +104,23 @@ export default function DocumentsTab({ projectId, projectStatus }: DocumentsTabP
   const typesLoading = useMinimumLoadingTime(rawTypesLoading);
   const documentsLoading = useMinimumLoadingTime(rawDocumentsLoading);
 
-  // Auto-select first document type if none selected
+  // Sort document types: required first, then alphabetically
+  const sortedDocumentTypes = documentTypes
+    ? [...documentTypes].sort((a, b) => {
+        // Required types first
+        if (a.isRequired && !b.isRequired) return -1;
+        if (!a.isRequired && b.isRequired) return 1;
+        // Then alphabetically
+        return a.name.localeCompare(b.name);
+      })
+    : [];
+
+  // Auto-select first document type if none selected (from sorted list - required first)
   useEffect(() => {
-    if (!selectedTypeId && documentTypes && documentTypes.length > 0) {
-      setSelectedTypeId(documentTypes[0].identifier);
+    if (!selectedTypeId && sortedDocumentTypes.length > 0) {
+      setSelectedTypeId(sortedDocumentTypes[0].identifier);
     }
-  }, [selectedTypeId, documentTypes]);
+  }, [selectedTypeId, sortedDocumentTypes]);
 
   // Real-time updates for documents
   useRealtimeDocuments(projectId, () => {
@@ -122,17 +145,6 @@ export default function DocumentsTab({ projectId, projectStatus }: DocumentsTabP
     (assignee) => assignee.identifier === currentUser?.identifier
   );
   const isCurrentUserAssigneeWithPendingTask = currentUserAssignment && !currentUserAssignment.isCompleted;
-
-  // Sort document types: required first, then alphabetically
-  const sortedDocumentTypes = documentTypes
-    ? [...documentTypes].sort((a, b) => {
-        // Required types first
-        if (a.isRequired && !b.isRequired) return -1;
-        if (!a.isRequired && b.isRequired) return 1;
-        // Then alphabetically
-        return a.name.localeCompare(b.name);
-      })
-    : [];
 
   const handleUploadDocument = async (data: UploadDocumentRequest) => {
     if (!selectedTypeId) return;
@@ -475,6 +487,105 @@ export default function DocumentsTab({ projectId, projectStatus }: DocumentsTabP
                 )}
               </div>
             )}
+
+            {/* Document Acknowledgements Summary - Enterprise style */}
+            {documents && documents.length > 0 && (() => {
+              // Aggregate acknowledgements across all documents
+              const allAcks = documents.flatMap(doc => normalizeAcknowledgements(doc.acknowledgements));
+              if (allAcks.length === 0) return null;
+
+              const totalRequired = documents.reduce((sum, doc) =>
+                sum + (doc.totalAssignees || doc.totalRequiredAcknowledgers || 0), 0
+              );
+              const agreedCount = allAcks.filter(a => a.hasAgreed === true).length;
+              const disagreedCount = allAcks.filter(a => a.hasAgreed === false).length;
+              const pendingCount = totalRequired - agreedCount - disagreedCount;
+
+              // Find disputed acknowledgements with reasons
+              const disputedAcks = allAcks.filter(a => a.hasAgreed === false && a.disagreementReason);
+
+              // Determine overall status
+              const status = disagreedCount > 0 ? "disputed" : agreedCount === totalRequired ? "active" : "pending_review";
+
+              return (
+                <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
+                  <div className="flex flex-col sm:flex-row sm:items-start gap-3">
+                    {/* Status & Progress */}
+                    <div className="flex items-center gap-3">
+                      <DocumentStatusBadge status={status} />
+                      <div className="flex items-center gap-2 text-xs">
+                        {agreedCount > 0 && (
+                          <span className="inline-flex items-center gap-1 text-green-600 dark:text-green-400">
+                            <CheckCircleIcon className="w-3.5 h-3.5" />
+                            {agreedCount}
+                          </span>
+                        )}
+                        {disagreedCount > 0 && (
+                          <span className="inline-flex items-center gap-1 text-red-600 dark:text-red-400">
+                            <XMarkIcon className="w-3.5 h-3.5" />
+                            {disagreedCount}
+                          </span>
+                        )}
+                        {pendingCount > 0 && (
+                          <span className="inline-flex items-center gap-1 text-gray-500 dark:text-gray-400">
+                            <ClockIcon className="w-3.5 h-3.5" />
+                            {pendingCount}
+                          </span>
+                        )}
+                        <span className="text-gray-400">/ {totalRequired}</span>
+                      </div>
+                    </div>
+
+                    {/* Individual acknowledgement chips */}
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {allAcks.map((ack, idx) => {
+                        const ackId = ack.agent?.identifier || ack.identifier;
+                        const ackName = ack.agent?.name || ack.name;
+                        return (
+                          <span
+                            key={ackId || idx}
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
+                              ack.hasAgreed === true
+                                ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400"
+                                : ack.hasAgreed === false
+                                ? "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400"
+                                : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400"
+                            }`}
+                          >
+                            {ack.hasAgreed === true ? (
+                              <CheckCircleIcon className="w-3 h-3" />
+                            ) : ack.hasAgreed === false ? (
+                              <XMarkIcon className="w-3 h-3" />
+                            ) : (
+                              <ClockIcon className="w-3 h-3" />
+                            )}
+                            {ackName}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Disputed reasons - shown separately for clarity */}
+                  {disputedAcks.length > 0 && (
+                    <div className="mt-2 space-y-1">
+                      {disputedAcks.map((ack, idx) => {
+                        const ackName = ack.agent?.name || ack.name;
+                        return (
+                          <div key={idx} className="flex items-start gap-2 text-xs bg-red-50 dark:bg-red-900/20 rounded-lg px-2.5 py-1.5">
+                            <XMarkIcon className="w-3.5 h-3.5 text-red-500 flex-shrink-0 mt-0.5" />
+                            <div>
+                              <span className="font-medium text-red-700 dark:text-red-400">{ackName}:</span>
+                              <span className="text-red-600 dark:text-red-300 ml-1">{ack.disagreementReason}</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
 
           <div className="flex-1 overflow-auto">
@@ -512,6 +623,19 @@ export default function DocumentsTab({ projectId, projectStatus }: DocumentsTabP
                             {doc.description}
                           </p>
                         )}
+                        {/* Document status badge - details shown in header summary */}
+                        {(() => {
+                          const acks = normalizeAcknowledgements(doc.acknowledgements);
+                          const totalRequired = doc.totalAssignees || doc.totalRequiredAcknowledgers || 0;
+                          if (!totalRequired && acks.length === 0) return null;
+                          return (
+                            <div className="mt-2">
+                              <DocumentStatusBadge
+                                status={calculateDocumentStatus(acks, totalRequired)}
+                              />
+                            </div>
+                          );
+                        })()}
                       </div>
                       {canDownloadDocuments && (
                         <button
@@ -575,6 +699,20 @@ export default function DocumentsTab({ projectId, projectStatus }: DocumentsTabP
                             {new Date(doc.dateCreated).toLocaleDateString()}
                           </span>
                         ),
+                      },
+                      {
+                        key: "status",
+                        header: t("status"),
+                        cell: (doc: Document) => {
+                          const acks = normalizeAcknowledgements(doc.acknowledgements);
+                          const totalRequired = doc.totalAssignees || doc.totalRequiredAcknowledgers || 0;
+                          const status = calculateDocumentStatus(acks, totalRequired);
+                          // Only show status badge if there are required acknowledgers
+                          if (!totalRequired && acks.length === 0) {
+                            return <span className="text-xs text-gray-400">-</span>;
+                          }
+                          return <DocumentStatusBadge status={status} />;
+                        },
                       },
                       {
                         key: "actions",
