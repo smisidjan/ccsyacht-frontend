@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useTranslations } from "next-intl";
-import { CalendarIcon, CheckIcon, DocumentIcon, EyeIcon, TrashIcon, ClockIcon, ChevronDownIcon, ChevronRightIcon, ArrowUpTrayIcon, ExclamationTriangleIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { CalendarIcon, CheckIcon, DocumentIcon, EyeIcon, TrashIcon, ClockIcon, ChevronDownIcon, ChevronRightIcon, ArrowUpTrayIcon, ExclamationTriangleIcon, XMarkIcon, ArrowPathIcon } from "@heroicons/react/24/outline";
 import Modal from "@/app/components/ui/Modal";
 import Button from "@/app/components/ui/Button";
 import Alert from "@/app/components/ui/Alert";
@@ -373,6 +373,27 @@ export default function KickoffMeetingModal({
     return doc.acknowledgements.some(ack => ack.hasAgreed === false);
   };
 
+  // Detect if a document is a resubmission (new version replacing a rejected one)
+  // A document is considered resubmitted if:
+  // 1. It has 0 acknowledgements (brand new)
+  // 2. There's another document of the same category/type that has disagreements
+  const isDocumentResubmission = (doc: RequiredDocument): boolean => {
+    const actualAckCount = doc.acknowledgements.filter(ack => ack.hasAgreed === true || ack.hasAgreed === false).length;
+    if (actualAckCount > 0) return false; // Has responses, not a fresh resubmission
+
+    // Check if there's a rejected document of the same type/category
+    const docCategory = doc.category?.identifier || doc.category?.name;
+    if (!docCategory) return false;
+
+    return requiredDocuments.some(otherDoc => {
+      if (otherDoc.identifier === doc.identifier) return false; // Skip self
+      const otherCategory = otherDoc.category?.identifier || otherDoc.category?.name;
+      if (otherCategory !== docCategory) return false; // Different category
+      // Check if the other document has disagreements
+      return otherDoc.acknowledgements.some(ack => ack.hasAgreed === false);
+    });
+  };
+
   const actions = useMemo(() => {
     return [
       {
@@ -736,10 +757,12 @@ export default function KickoffMeetingModal({
                   {requiredDocuments.map((doc) => {
                     const userHasResponded = hasUserRespondedToDocument(doc);
                     const hasDisagreement = hasDocumentDisagreement(doc);
+                    const isResubmission = isDocumentResubmission(doc);
                     const isExpanded = expandedDocId === doc.identifier;
 
-                    // Use task.assignees.length as fallback when totalAssignees is 0 or undefined
-                    const effectiveTotalAssignees = doc.totalAssignees || task?.assignees?.length || 0;
+                    // Use task.assignees.length as the primary source (authoritative for kickoff meeting)
+                    // Only fall back to doc.totalAssignees if task assignees are not available
+                    const effectiveTotalAssignees = task?.assignees?.length || doc.totalAssignees || 0;
                     // Count actual acknowledgements (agreed or disagreed)
                     const actualAckCount = doc.acknowledgements.filter(ack => ack.hasAgreed === true || ack.hasAgreed === false).length;
                     // All acknowledged only if we have assignees AND all have responded with agreement
@@ -757,6 +780,8 @@ export default function KickoffMeetingModal({
                               ? "bg-red-50/50 dark:bg-red-900/10"
                               : effectiveAllAcknowledged
                               ? "bg-green-50/50 dark:bg-green-900/10"
+                              : isResubmission
+                              ? "bg-purple-50/50 dark:bg-purple-900/10"
                               : ""
                           }`}
                         >
@@ -765,17 +790,28 @@ export default function KickoffMeetingModal({
                             <XMarkIcon className="w-4 h-4 text-red-600" />
                           ) : effectiveAllAcknowledged ? (
                             <CheckIcon className="w-4 h-4 text-green-600" />
+                          ) : isResubmission ? (
+                            <ArrowPathIcon className="w-4 h-4 text-purple-600" />
                           ) : (
                             <DocumentIcon className="w-4 h-4 text-gray-400" />
                           )}
                           <span className="flex-1 text-sm font-medium text-gray-900 dark:text-white truncate">
                             {doc.category?.name ? `${doc.category.name} - ${doc.name}` : doc.name}
                           </span>
+                          {/* Resubmitted badge - distinct from status badge */}
+                          {isResubmission && (
+                            <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 border border-purple-200 dark:border-purple-800">
+                              <ArrowPathIcon className="w-3 h-3 inline mr-1" />
+                              {t("resubmitted")}
+                            </span>
+                          )}
                           <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${
                             hasDisagreement
                               ? "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400"
                               : effectiveAllAcknowledged
                               ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400"
+                              : isResubmission
+                              ? "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400"
                               : "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400"
                           }`}>
                             {hasDisagreement ? (

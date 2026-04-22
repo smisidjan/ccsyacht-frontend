@@ -627,12 +627,16 @@ export default function DocumentsTab({ projectId, projectStatus }: DocumentsTabP
                         {(() => {
                           const acks = normalizeAcknowledgements(doc.acknowledgements);
                           const totalRequired = doc.totalAssignees || doc.totalRequiredAcknowledgers || 0;
-                          if (!totalRequired && acks.length === 0) return null;
+
+                          // For newly uploaded documents without explicit acknowledgement requirements,
+                          // show "pending_review" to indicate they need review
+                          const status = (!totalRequired && acks.length === 0)
+                            ? "pending_review" as const
+                            : calculateDocumentStatus(acks, totalRequired);
+
                           return (
                             <div className="mt-2">
-                              <DocumentStatusBadge
-                                status={calculateDocumentStatus(acks, totalRequired)}
-                              />
+                              <DocumentStatusBadge status={status} />
                             </div>
                           );
                         })()}
@@ -706,11 +710,14 @@ export default function DocumentsTab({ projectId, projectStatus }: DocumentsTabP
                         cell: (doc: Document) => {
                           const acks = normalizeAcknowledgements(doc.acknowledgements);
                           const totalRequired = doc.totalAssignees || doc.totalRequiredAcknowledgers || 0;
-                          const status = calculateDocumentStatus(acks, totalRequired);
-                          // Only show status badge if there are required acknowledgers
+
+                          // For newly uploaded documents without explicit acknowledgement requirements,
+                          // show "pending_review" to indicate they need review
                           if (!totalRequired && acks.length === 0) {
-                            return <span className="text-xs text-gray-400">-</span>;
+                            return <DocumentStatusBadge status="pending_review" />;
                           }
+
+                          const status = calculateDocumentStatus(acks, totalRequired);
                           return <DocumentStatusBadge status={status} />;
                         },
                       },

@@ -468,7 +468,8 @@
         "allDocumentsAcknowledged": "Alle documenten bevestigd",
         "pendingUploads": "Nog te uploaden",
         "requiredMissing": "verplicht",
-        "requestedPendingShort": "aangevraagd"
+        "requestedPendingShort": "aangevraagd",
+        "resubmitted": "Opnieuw ingediend"
       },
       "kickoffScheduling": {
         "title": "Plan Kickoff Meeting",
@@ -624,7 +625,7 @@
         "disagreedReason": "Reden",
         "status": {
           "draft": "Concept",
-          "pendingReview": "In Behandeling",
+          "pendingReview": "In afwachting",
           "active": "Actief",
           "disputed": "Betwist"
         }

@@ -468,7 +468,8 @@
         "allDocumentsAcknowledged": "All documents acknowledged",
         "pendingUploads": "Pending Uploads",
         "requiredMissing": "required",
-        "requestedPendingShort": "requested"
+        "requestedPendingShort": "requested",
+        "resubmitted": "Resubmitted"
       },
       "kickoffScheduling": {
         "title": "Schedule Kickoff Meeting",
@@ -624,7 +625,7 @@
         "disagreedReason": "Reason",
         "status": {
           "draft": "Draft",
-          "pendingReview": "Pending Review",
+          "pendingReview": "Pending",
           "active": "Active",
           "disputed": "Disputed"
         }
