@@ -306,12 +306,14 @@ export default function InvitationsTab({
         </div>
       )}
 
-      <DeleteInvitationModal
-        isOpen={deleteModal.isOpen}
-        email={deleteModal.email}
-        onClose={handleDeleteClose}
-        onConfirm={handleDeleteConfirm}
-      />
+      {deleteModal.isOpen && (
+        <DeleteInvitationModal
+          isOpen={deleteModal.isOpen}
+          email={deleteModal.email}
+          onClose={handleDeleteClose}
+          onConfirm={handleDeleteConfirm}
+        />
+      )}
     </div>
   );
 }

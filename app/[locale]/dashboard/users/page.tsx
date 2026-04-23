@@ -204,22 +204,26 @@ export default function UsersPage() {
 
         {renderTabContent()}
 
-        <InviteUserModal
-          isOpen={isInviteModalOpen}
-          onClose={() => setIsInviteModalOpen(false)}
-          onSubmit={handleInviteUser}
-          tenantName={tenantName || undefined}
-        />
+        {isInviteModalOpen && (
+          <InviteUserModal
+            isOpen={isInviteModalOpen}
+            onClose={() => setIsInviteModalOpen(false)}
+            onSubmit={handleInviteUser}
+            tenantName={tenantName || undefined}
+          />
+        )}
 
-        <EditUserModal
-          isOpen={isEditModalOpen}
-          user={editingUser}
-          onClose={() => {
-            setIsEditModalOpen(false);
-            setEditingUser(null);
-          }}
-          onSubmit={handleUpdateUser}
-        />
+        {isEditModalOpen && (
+          <EditUserModal
+            isOpen={isEditModalOpen}
+            user={editingUser}
+            onClose={() => {
+              setIsEditModalOpen(false);
+              setEditingUser(null);
+            }}
+            onSubmit={handleUpdateUser}
+          />
+        )}
       </div>
     </ProtectedRoute>
   );

@@ -227,21 +227,25 @@ export default function TenantsTab() {
         minWidth="400px"
       />
 
-      <CreateTenantModal
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-        onSubmit={handleCreateTenant}
-      />
+      {isCreateModalOpen && (
+        <CreateTenantModal
+          isOpen={isCreateModalOpen}
+          onClose={() => setIsCreateModalOpen(false)}
+          onSubmit={handleCreateTenant}
+        />
+      )}
 
-      <EditTenantPermissionsModal
-        isOpen={isEditPermissionsModalOpen}
-        tenant={selectedTenant}
-        onClose={() => {
-          setIsEditPermissionsModalOpen(false);
-          setSelectedTenant(null);
-        }}
-        onSubmit={handleUpdatePermissions}
-      />
+      {isEditPermissionsModalOpen && (
+        <EditTenantPermissionsModal
+          isOpen={isEditPermissionsModalOpen}
+          tenant={selectedTenant}
+          onClose={() => {
+            setIsEditPermissionsModalOpen(false);
+            setSelectedTenant(null);
+          }}
+          onSubmit={handleUpdatePermissions}
+        />
+      )}
     </div>
   );
 }

@@ -230,26 +230,30 @@ export default function ShipyardsPage() {
           </div>
         )}
 
-        {/* Modals */}
-        <ShipyardFormModal
-          isOpen={isFormModalOpen}
-          onClose={() => {
-            setIsFormModalOpen(false);
-            setEditingShipyard(null);
-          }}
-          onSubmit={handleFormSubmit}
-          shipyard={editingShipyard}
-        />
+        {/* Modals - only render when open to avoid unnecessary hook calls */}
+        {isFormModalOpen && (
+          <ShipyardFormModal
+            isOpen={isFormModalOpen}
+            onClose={() => {
+              setIsFormModalOpen(false);
+              setEditingShipyard(null);
+            }}
+            onSubmit={handleFormSubmit}
+            shipyard={editingShipyard}
+          />
+        )}
 
-        <DeleteShipyardModal
-          isOpen={isDeleteModalOpen}
-          shipyardName={deletingShipyard?.name || ""}
-          onClose={() => {
-            setIsDeleteModalOpen(false);
-            setDeletingShipyard(null);
-          }}
-          onConfirm={handleDeleteConfirm}
-        />
+        {isDeleteModalOpen && (
+          <DeleteShipyardModal
+            isOpen={isDeleteModalOpen}
+            shipyardName={deletingShipyard?.name || ""}
+            onClose={() => {
+              setIsDeleteModalOpen(false);
+              setDeletingShipyard(null);
+            }}
+            onConfirm={handleDeleteConfirm}
+          />
+        )}
       </div>
     </ProtectedRoute>
   );

@@ -85,14 +85,16 @@ export default function RegistrationRequestCard({
         )}
       </div>
 
-      <ProcessRegistrationRequestModal
-        isOpen={isModalOpen}
-        action={modalAction}
-        userName={request.agent.name}
-        userEmail={request.agent.email}
-        onClose={() => setIsModalOpen(false)}
-        onConfirm={handleConfirm}
-      />
+      {isModalOpen && (
+        <ProcessRegistrationRequestModal
+          isOpen={isModalOpen}
+          action={modalAction}
+          userName={request.agent.name}
+          userEmail={request.agent.email}
+          onClose={() => setIsModalOpen(false)}
+          onConfirm={handleConfirm}
+        />
+      )}
     </>
   );
 }
