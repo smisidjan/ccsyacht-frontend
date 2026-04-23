@@ -6,3 +6,4 @@
 export { default as ChangeNameModal } from "./ChangeNameModal";
 export { default as ChangePasswordModal } from "./ChangePasswordModal";
 export { default as EditUserModal } from "./EditUserModal";
+export { default as ProfileInfoItem } from "./ProfileInfoItem";
