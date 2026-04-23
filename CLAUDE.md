@@ -216,9 +216,43 @@ Each component does ONE thing:
 
 ## Modal Patterns
 
-### BaseModal (for forms)
+### Modal Selection Guide
 
-Handles loading state, error handling, and toast notifications automatically:
+| Use Case | Modal Component |
+|----------|-----------------|
+| Delete/Remove confirmation | `DeleteConfirmModal` (ALWAYS use this first) |
+| Forms with inputs | `BaseModal` |
+| General confirmations | `ConfirmModal` |
+| Custom complex modals | `BaseModal` with children |
+
+**IMPORTANT:** For ANY delete or remove action, ALWAYS use `DeleteConfirmModal` as the default. Only use `BaseModal` if you need special features like `submitDisabled`.
+
+### DeleteConfirmModal (PREFERRED for delete/remove)
+
+**Use this for ALL delete and remove confirmations:**
+
+```tsx
+import DeleteConfirmModal from "@/app/components/modals/DeleteConfirmModal";
+
+const [itemToDelete, setItemToDelete] = useState<Item | null>(null);
+
+<DeleteConfirmModal
+  isOpen={!!itemToDelete}
+  onClose={() => setItemToDelete(null)}
+  onConfirm={async () => {
+    await deleteItem(itemToDelete.id);
+    setItemToDelete(null);
+  }}
+  title={t("deleteTitle")}
+  message={t("deleteMessage", { name: itemToDelete?.name })}
+  successMessage={t("deleteSuccess")}
+  confirmLabel={t("delete")}  // Optional, defaults to "Delete"
+/>
+```
+
+### BaseModal (for forms or special cases)
+
+Use for forms with inputs, or when you need `submitDisabled`:
 
 ```tsx
 import BaseModal from "@/app/components/modals/BaseModal";
@@ -230,24 +264,10 @@ import BaseModal from "@/app/components/modals/BaseModal";
   onSubmit={handleSubmit}
   successMessage={t("success")}
   errorFallbackMessage={t("error")}
+  submitDisabled={!isValid}  // Only BaseModal has this
 >
   <FormInput label={t("name")} value={name} onChange={setName} />
 </BaseModal>
-```
-
-### DeleteConfirmModal (for delete confirmations)
-
-```tsx
-import DeleteConfirmModal from "@/app/components/modals/DeleteConfirmModal";
-
-<DeleteConfirmModal
-  isOpen={isOpen}
-  onClose={onClose}
-  onConfirm={handleDelete}
-  title={t("deleteTitle")}
-  message={t("deleteMessage")}
-  successMessage={t("deleteSuccess")}
-/>
 ```
 
 ### ConfirmModal (for other confirmations)
