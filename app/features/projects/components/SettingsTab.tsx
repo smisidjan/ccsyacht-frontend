@@ -4,8 +4,9 @@ import { useState, useEffect, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { UserPlusIcon, TrashIcon, PencilIcon, UserCircleIcon, StarIcon, DocumentTextIcon, TagIcon, BuildingOffice2Icon, CalendarIcon, UserIcon, CheckIcon, UserGroupIcon, EnvelopeIcon } from "@heroicons/react/24/outline";
 import { StarIcon as StarIconSolid } from "@heroicons/react/24/solid";
-import { useProjectSigners, useUsers, useProject, useRoles, projectsApi, setupTasksApi, invitationsApi } from "@/lib/api";
+import { useProjectSigners, useUsers, useProject, projectsApi, setupTasksApi, invitationsApi } from "@/lib/api";
 import { useProjectMembersFromContext } from "@/app/context/ProjectContext";
+import { useRolesContext } from "@/app/context/RolesContext";
 import { usePermission } from "@/lib/hooks/usePermission";
 import { useMinimumLoadingTime } from "@/lib/hooks/useMinimumLoadingTime";
 import { useRealtimeMembers, useRealtimeSigners } from "@/lib/hooks/useRealtimeProject";
@@ -76,8 +77,9 @@ export default function SettingsTab({ projectId, onProjectUpdate }: SettingsTabP
   const [employmentType, setEmploymentType] = useState<"employee" | "guest">("employee");
   const [homeOrganization, setHomeOrganization] = useState("");
 
-  // Fetch roles for invitation (filtered by employment type)
-  const { data: roles } = useRoles(employmentType);
+  // Get cached roles from context (filtered by employment type)
+  const { employeeRoles, guestRoles } = useRolesContext();
+  const roles = employmentType === "guest" ? guestRoles : employeeRoles;
 
   // Project types for modal
   const projectTypes = [

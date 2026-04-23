@@ -6,7 +6,7 @@ import BaseModal from "@/app/components/modals/BaseModal";
 import FormInput from "@/app/components/ui/FormInput";
 import FormSelect from "@/app/components/ui/FormSelect";
 import type { User, UserRole, UpdateUserRequest } from "@/lib/api/types";
-import { useRoles } from "@/lib/api";
+import { useRolesContext } from "@/app/context/RolesContext";
 import { formatRoleName } from "@/lib/utils/roleFormatter";
 
 interface EditUserModalProps {
@@ -25,9 +25,10 @@ export default function EditUserModal({ isOpen, user, onClose, onSubmit }: EditU
     active: true,
   });
 
-  // Fetch roles based on user's employment type
+  // Get cached roles from context
+  const { employeeRoles, guestRoles } = useRolesContext();
   const userEmploymentType = user?.employmentType || "employee";
-  const { data: availableRoles } = useRoles(userEmploymentType);
+  const availableRoles = userEmploymentType === "guest" ? guestRoles : employeeRoles;
 
   useEffect(() => {
     if (user) {

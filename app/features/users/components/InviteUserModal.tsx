@@ -9,7 +9,7 @@ import FormSelect from "@/app/components/ui/FormSelect";
 import FormRadioGroup from "@/app/components/ui/FormRadioGroup";
 import Alert from "@/app/components/ui/Alert";
 import type { CreateInvitationRequest } from "@/lib/api/types";
-import { useRoles } from "@/lib/api";
+import { useRolesContext } from "@/app/context/RolesContext";
 import { formatRoleName } from "@/lib/utils/roleFormatter";
 
 export interface InviteUserFormData {
@@ -44,9 +44,8 @@ export default function InviteUserModal({ isOpen, onClose, onSubmit, tenantName 
   });
   const [linkCopied, setLinkCopied] = useState(false);
 
-  // Fetch roles dynamically from API
-  const { data: employeeRoles } = useRoles("employee");
-  const { data: guestRoles } = useRoles("guest");
+  // Get cached roles from context
+  const { employeeRoles, guestRoles } = useRolesContext();
 
   // Generate registration link
   const tenantSlug = tenantName ? generateSlug(tenantName) : "";

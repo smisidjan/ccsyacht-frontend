@@ -12,8 +12,9 @@ import Modal from "@/app/components/ui/Modal";
 import Button from "@/app/components/ui/Button";
 import Stepper, { Step } from "@/app/components/ui/Stepper";
 import Alert from "@/app/components/ui/Alert";
-import { setupTasksApi, useRoles } from "@/lib/api";
+import { setupTasksApi } from "@/lib/api";
 import { useCurrentUserContext } from "@/app/context/CurrentUserContext";
+import { useRolesContext } from "@/app/context/RolesContext";
 import { useProjectMembersFromContext } from "@/app/context/ProjectContext";
 import { useToast } from "@/app/context/ToastContext";
 import { usePermission } from "@/lib/hooks/usePermission";
@@ -84,9 +85,8 @@ export default function KickoffSchedulingModal({
   // Permissions
   const canManageKickoff = hasPermission(PERMISSIONS.MANAGE_KICKOFF_MEETING);
 
-  // Fetch roles (project members come from context)
-  const { data: employeeRoles } = useRoles("employee");
-  const { data: guestRoles } = useRoles("guest");
+  // Get cached roles from context (project members come from context)
+  const { employeeRoles, guestRoles } = useRolesContext();
 
   // Create a map of role names to their type
   const roleTypeMap = useMemo(() => {

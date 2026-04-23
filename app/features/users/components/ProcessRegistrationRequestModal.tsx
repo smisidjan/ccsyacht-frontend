@@ -10,7 +10,7 @@ import {
   CheckCircleIcon,
   ExclamationTriangleIcon,
 } from "@heroicons/react/24/outline";
-import { useRoles } from "@/lib/api";
+import { useRolesContext } from "@/app/context/RolesContext";
 import { formatRoleName } from "@/lib/utils/roleFormatter";
 
 export type ProcessAction = "approve" | "reject";
@@ -43,9 +43,8 @@ export default function ProcessRegistrationRequestModal({
   const [selectedRole, setSelectedRole] = useState("");
   const [homeOrganization, setHomeOrganization] = useState("");
 
-  // Fetch roles based on employment type
-  const { data: employeeRoles } = useRoles("employee");
-  const { data: guestRoles } = useRoles("guest");
+  // Get cached roles from context
+  const { employeeRoles, guestRoles } = useRolesContext();
   const availableRoles = employmentType === "guest" ? guestRoles : employeeRoles;
 
   // Reset form when modal opens
