@@ -36,6 +36,8 @@ import type {
   LocalDateWithTimes,
   LocalTimeSlot,
   TimeInputState,
+  TimeSlotUserResponse,
+  MeetingFormat,
 } from "./types";
 
 export default function KickoffSchedulingModal({
@@ -73,6 +75,7 @@ export default function KickoffSchedulingModal({
   const [isSelectingDate, setIsSelectingDate] = useState(false);
   const [confirmationMode, setConfirmationMode] = useState<"select" | "propose">("select");
   const [isRespondingToDate, setIsRespondingToDate] = useState(false);
+  const [selectedMeetingFormat, setSelectedMeetingFormat] = useState<MeetingFormat>(null);
 
   // Propose alternative dates state
   const [showProposeAlternative, setShowProposeAlternative] = useState(false);
@@ -260,21 +263,28 @@ export default function KickoffSchedulingModal({
   // Current user responses
   const currentUserResponses = useMemo(() => {
     if (!schedulingStatus || !currentUser) return {};
-    const responses: Record<string, boolean | null> = {};
+    const responses: Record<string, TimeSlotUserResponse | null> = {};
 
     schedulingStatus.proposedDates.forEach((date) => {
       date.timeSlots.forEach((slot) => {
         const userResponse = slot.responses.find(
           (r) => r.userId === currentUser.identifier
         );
-        responses[slot.id] = userResponse?.isAvailable ?? null;
+        if (userResponse) {
+          responses[slot.id] = {
+            online: userResponse.canAttendOnline,
+            live: userResponse.canAttendLive,
+          };
+        } else {
+          responses[slot.id] = null;
+        }
       });
     });
 
     return responses;
   }, [schedulingStatus, currentUser]);
 
-  // Check if current user has declined all slots
+  // Check if current user has declined all slots (neither online nor live for any slot)
   const hasDeclinedAllSlots = useMemo(() => {
     if (!schedulingStatus || !currentUser || !isCurrentUserAttendee) return false;
 
@@ -288,7 +298,10 @@ export default function KickoffSchedulingModal({
     if (allSlotIds.length === 0) return false;
 
     const allResponded = allSlotIds.every((slotId) => currentUserResponses[slotId] !== null);
-    const allDeclined = allSlotIds.every((slotId) => currentUserResponses[slotId] === false);
+    const allDeclined = allSlotIds.every((slotId) => {
+      const response = currentUserResponses[slotId];
+      return response !== null && !response.online && !response.live;
+    });
 
     return allResponded && allDeclined;
   }, [schedulingStatus, currentUser, isCurrentUserAttendee, currentUserResponses]);
@@ -447,12 +460,15 @@ export default function KickoffSchedulingModal({
     }
   };
 
-  const handleRespondToTimeSlot = async (slotId: string, isAvailable: boolean) => {
+  const handleRespondToTimeSlot = async (slotId: string, canAttendOnline: boolean, canAttendLive: boolean) => {
     try {
       setIsRespondingToDate(true);
       setError(null);
 
-      await setupTasksApi.respondToTimeSlot(projectId, taskId, slotId, { is_available: isAvailable });
+      await setupTasksApi.respondToTimeSlot(projectId, taskId, slotId, {
+        can_attend_online: canAttendOnline,
+        can_attend_live: canAttendLive,
+      });
 
       showToast("success", t("responseRecorded"));
       await refreshData();
@@ -463,9 +479,11 @@ export default function KickoffSchedulingModal({
     }
   };
 
-  const handleSelectFinalDate = async (slotIdOverride?: string) => {
+  const handleSelectFinalDate = async (slotIdOverride?: string, format?: MeetingFormat) => {
     const slotId = slotIdOverride || selectedFinalDateId;
     if (!slotId) return;
+    // TODO: Send format to API when backend supports it
+    console.log("Meeting format selected:", format);
 
     try {
       setIsSelectingDate(true);
@@ -709,6 +727,8 @@ export default function KickoffSchedulingModal({
             onRefresh={refreshData}
             selectedFinalDateId={selectedFinalDateId}
             setSelectedFinalDateId={setSelectedFinalDateId}
+            selectedMeetingFormat={selectedMeetingFormat}
+            setSelectedMeetingFormat={setSelectedMeetingFormat}
             isSelectingDate={isSelectingDate}
             onSelectFinalDate={handleSelectFinalDate}
             canManageKickoff={canManageKickoff}

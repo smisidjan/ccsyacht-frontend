@@ -1565,7 +1565,9 @@ export interface DocumentAcknowledgementStatus {
 export interface TimeSlotResponseUser {
   userId: string;
   userName: string;
-  isAvailable: boolean;
+  canAttendOnline: boolean;
+  canAttendLive: boolean;
+  isAvailable: boolean; // Computed: canAttendOnline OR canAttendLive
 }
 
 export interface TimeSlot {
@@ -1574,8 +1576,10 @@ export interface TimeSlot {
   startTime: string; // HH:MM format
   endTime: string; // HH:MM format
   isSelected: boolean;
-  availableCount: number;
-  unavailableCount?: number;
+  availableCount: number; // Users who can attend (online or live)
+  unavailableCount?: number; // Users who can't attend at all
+  onlineCount?: number; // Users who can attend online
+  liveCount?: number; // Users who can attend live
   responseCount?: number;
   totalAttendees: number;
   allCanAttend: boolean;
@@ -1625,12 +1629,14 @@ export interface AddTimeSlotRequest {
 }
 
 export interface RespondToTimeSlotRequest {
-  is_available: boolean;
+  can_attend_online: boolean;
+  can_attend_live: boolean;
 }
 
 export interface BulkTimeSlotResponse {
   time_slot_id: string;
-  is_available: boolean;
+  can_attend_online: boolean;
+  can_attend_live: boolean;
 }
 
 export interface BulkRespondRequest {

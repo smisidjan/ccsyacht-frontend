@@ -5,6 +5,8 @@ import { useTranslations } from "next-intl";
 import {
   CalendarDaysIcon,
   ClockIcon,
+  ComputerDesktopIcon,
+  UserIcon,
   CheckIcon,
   XMarkIcon,
   PlusIcon,
@@ -13,14 +15,13 @@ import {
 } from "@heroicons/react/24/outline";
 import Button from "@/app/components/ui/Button";
 import Alert from "@/app/components/ui/Alert";
-import { DateCard, AttendeeAvatar } from "../shared";
+import { DateCard, AttendeeAvatar, getAvatarStatus } from "../shared";
 import { formatDateDisplay, formatTimeDisplay, getTodayDateString } from "../../utils";
 import type { ResponsesPhaseProps, LocalTimeSlot } from "./types";
 
 export default function ResponsesPhase({
   task,
   schedulingStatus,
-  currentUser,
   currentUserResponses,
   isRespondingToDate,
   onRespondToTimeSlot,
@@ -48,6 +49,12 @@ export default function ResponsesPhase({
 
   // Track which date cards are expanded (with manual overrides)
   const [responseDateExpansionOverrides, setResponseDateExpansionOverrides] = useState<Map<string, boolean>>(new Map());
+
+  // Track which slots have been "accepted" (expanded to show attendance options)
+  const [acceptedSlots, setAcceptedSlots] = useState<Set<string>>(new Set());
+
+  // Track pending attendance selection for accepted slots
+  const [pendingResponses, setPendingResponses] = useState<Record<string, { online: boolean; live: boolean }>>({});
 
   if (!schedulingStatus) {
     return <Alert type="info" message={t("responses.loading")} />;
@@ -119,6 +126,69 @@ export default function ResponsesPhase({
     }));
   };
 
+  // Handle Accept button - show attendance options
+  const handleAccept = (slotId: string) => {
+    setAcceptedSlots((prev) => new Set([...prev, slotId]));
+    // Initialize with both options unchecked
+    setPendingResponses((prev) => ({
+      ...prev,
+      [slotId]: { online: false, live: false },
+    }));
+  };
+
+  // Handle Decline button - submit immediately with both false
+  const handleDecline = async (slotId: string) => {
+    await onRespondToTimeSlot(slotId, false, false);
+  };
+
+  // Handle checkbox toggle for pending responses
+  const handleToggleAttendance = (slotId: string, type: "online" | "live") => {
+    setPendingResponses((prev) => {
+      const current = prev[slotId] || { online: false, live: false };
+      return {
+        ...prev,
+        [slotId]: {
+          ...current,
+          [type]: !current[type],
+        },
+      };
+    });
+  };
+
+  // Submit response for a time slot
+  const handleSubmitResponse = async (slotId: string) => {
+    const response = pendingResponses[slotId];
+    if (!response) return;
+
+    await onRespondToTimeSlot(slotId, response.online, response.live);
+
+    // Clear states after successful submission
+    setAcceptedSlots((prev) => {
+      const next = new Set(prev);
+      next.delete(slotId);
+      return next;
+    });
+    setPendingResponses((prev) => {
+      const next = { ...prev };
+      delete next[slotId];
+      return next;
+    });
+  };
+
+  // Cancel accept - go back to accept/decline buttons
+  const handleCancelAccept = (slotId: string) => {
+    setAcceptedSlots((prev) => {
+      const next = new Set(prev);
+      next.delete(slotId);
+      return next;
+    });
+    setPendingResponses((prev) => {
+      const next = { ...prev };
+      delete next[slotId];
+      return next;
+    });
+  };
+
   // Check if there are valid proposed alternatives
   const hasValidProposedAlternatives = proposedAlternatives.some(
     (d) => d.timeSlots.length > 0
@@ -142,6 +212,18 @@ export default function ResponsesPhase({
             {slotsNeedingResponse} {t("responses.needsYourResponse")}
           </span>
         )}
+      </div>
+
+      {/* Legend */}
+      <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/50 rounded-lg px-3 py-2">
+        <div className="flex items-center gap-1.5">
+          <ComputerDesktopIcon className="w-4 h-4 text-blue-500" />
+          <span>{t("responses.online")}</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <UserIcon className="w-4 h-4 text-purple-500" />
+          <span>{t("responses.inPerson")}</span>
+        </div>
       </div>
 
       {/* Date cards with time slots */}
@@ -200,7 +282,7 @@ export default function ResponsesPhase({
                         {totalSlots} {t("responses.timeSlots")}
                         {slotsWithAllAvailable > 0 && (
                           <span className="text-green-600 dark:text-green-400 ml-2">
-                            • {slotsWithAllAvailable}{" "}
+                            {slotsWithAllAvailable}{" "}
                             {t("confirmation.allCanAttend").toLowerCase()}
                           </span>
                         )}
@@ -247,6 +329,8 @@ export default function ResponsesPhase({
                 <div className="divide-y divide-gray-100 dark:divide-gray-800">
                   {proposedDate.timeSlots.map((slot, slotIdx) => {
                     const userResponse = currentUserResponses[slot.id];
+                    const isSlotAccepted = acceptedSlots.has(slot.id);
+                    const pendingResponse = pendingResponses[slot.id];
                     const pendingAttendees =
                       task?.assignees?.filter(
                         (assignee) =>
@@ -255,102 +339,176 @@ export default function ResponsesPhase({
                           )
                       ) || [];
 
+                    const hasPendingSelection = pendingResponse && (pendingResponse.online || pendingResponse.live);
+
                     return (
                       <div
                         key={slot.id || `slot-${dateIdx}-${slotIdx}`}
-                        className={`px-4 py-2.5 flex items-center gap-4 ${
+                        className={`px-4 py-3 ${
                           slot.allCanAttend ? "bg-green-50 dark:bg-green-900/10" : ""
                         }`}
                       >
-                        {/* Time */}
-                        <div className="flex items-center gap-2 min-w-[120px]">
-                          <ClockIcon className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                          <span className="text-sm font-medium text-gray-900 dark:text-white">
-                            {formatTimeDisplay(slot.startTime)} -{" "}
-                            {formatTimeDisplay(slot.endTime)}
-                          </span>
-                        </div>
+                        <div className="flex items-center gap-4">
+                          {/* Time */}
+                          <div className="flex items-center gap-2 min-w-[120px]">
+                            <ClockIcon className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                            <span className="text-sm font-medium text-gray-900 dark:text-white">
+                              {formatTimeDisplay(slot.startTime)} -{" "}
+                              {formatTimeDisplay(slot.endTime)}
+                            </span>
+                          </div>
 
-                        {/* Doodle-style avatar grid */}
-                        <div className="flex items-center gap-0.5 flex-1">
-                          {/* Responded - available */}
-                          {slot.responses
-                            .filter((r) => r.isAvailable)
-                            .map((response) => (
+                          {/* Avatar grid with online/live status */}
+                          <div className="flex items-center gap-0.5 flex-1">
+                            {/* Responded users */}
+                            {slot.responses.map((response) => (
                               <AttendeeAvatar
                                 key={response.userId}
                                 name={response.userName}
-                                status="available"
+                                status={getAvatarStatus(response.canAttendOnline, response.canAttendLive)}
                               />
                             ))}
-                          {/* Responded - unavailable */}
-                          {slot.responses
-                            .filter((r) => !r.isAvailable)
-                            .map((response) => (
+                            {/* Pending users */}
+                            {pendingAttendees.map((attendee) => (
                               <AttendeeAvatar
-                                key={response.userId}
-                                name={response.userName}
-                                status="unavailable"
+                                key={attendee.identifier}
+                                name={attendee.name}
+                                status="pending"
                               />
                             ))}
-                          {/* Pending */}
-                          {pendingAttendees.map((attendee) => (
-                            <AttendeeAvatar
-                              key={attendee.identifier}
-                              name={attendee.name}
-                              status="pending"
-                            />
-                          ))}
+                          </div>
+
+                          {/* Availability counts */}
+                          <div className="flex items-center gap-2 text-xs">
+                            {slot.onlineCount !== undefined && slot.onlineCount > 0 && (
+                              <span className="flex items-center gap-1 px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded">
+                                <ComputerDesktopIcon className="w-3 h-3" />
+                                {slot.onlineCount}
+                              </span>
+                            )}
+                            {slot.liveCount !== undefined && slot.liveCount > 0 && (
+                              <span className="flex items-center gap-1 px-1.5 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 rounded">
+                                <UserIcon className="w-3 h-3" />
+                                {slot.liveCount}
+                              </span>
+                            )}
+                            <span
+                              className={`px-2 py-0.5 rounded font-medium ${
+                                slot.allCanAttend
+                                  ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400"
+                                  : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"
+                              }`}
+                            >
+                              {slot.availableCount}/{slot.totalAttendees}
+                            </span>
+                          </div>
                         </div>
 
-                        {/* Availability count */}
-                        <div
-                          className={`text-xs font-medium px-2 py-1 rounded ${
-                            slot.allCanAttend
-                              ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400"
-                              : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"
-                          }`}
-                        >
-                          {slot.availableCount}/{slot.totalAttendees}
-                        </div>
-
-                        {/* User response actions */}
-                        {isCurrentUserAttendee && (
-                          <div className="flex items-center gap-1 min-w-[80px] justify-end">
-                            {userResponse === null ? (
-                              <>
-                                <button
-                                  onClick={() =>
-                                    onRespondToTimeSlot(slot.id, true)
-                                  }
-                                  disabled={isRespondingToDate}
-                                  className="w-7 h-7 flex items-center justify-center rounded-full bg-green-100 hover:bg-green-200 dark:bg-green-900/30 dark:hover:bg-green-900/50 text-green-600 dark:text-green-400 transition-colors"
-                                >
-                                  <CheckIcon className="w-4 h-4" />
-                                </button>
-                                <button
-                                  onClick={() =>
-                                    onRespondToTimeSlot(slot.id, false)
-                                  }
-                                  disabled={isRespondingToDate}
-                                  className="w-7 h-7 flex items-center justify-center rounded-full bg-red-100 hover:bg-red-200 dark:bg-red-900/30 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 transition-colors"
-                                >
-                                  <XMarkIcon className="w-4 h-4" />
-                                </button>
-                              </>
-                            ) : (
-                              <span
-                                className={`w-7 h-7 flex items-center justify-center rounded-full ${
-                                  userResponse
-                                    ? "bg-green-500 text-white"
-                                    : "bg-red-500 text-white"
-                                }`}
+                        {/* User response section - Step 1: Accept/Decline buttons */}
+                        {isCurrentUserAttendee && userResponse === null && !isSlotAccepted && (
+                          <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
+                            <div className="flex items-center justify-end gap-2">
+                              <button
+                                onClick={() => handleDecline(slot.id)}
+                                disabled={isRespondingToDate}
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-100 hover:bg-red-200 dark:bg-red-900/30 dark:hover:bg-red-900/50 text-red-700 dark:text-red-400 text-sm font-medium transition-colors disabled:opacity-50"
                               >
-                                {userResponse ? (
-                                  <CheckIcon className="w-4 h-4" />
-                                ) : (
-                                  <XMarkIcon className="w-4 h-4" />
-                                )}
+                                <XMarkIcon className="w-4 h-4" />
+                                {t("responses.decline")}
+                              </button>
+                              <button
+                                onClick={() => handleAccept(slot.id)}
+                                disabled={isRespondingToDate}
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-100 hover:bg-green-200 dark:bg-green-900/30 dark:hover:bg-green-900/50 text-green-700 dark:text-green-400 text-sm font-medium transition-colors disabled:opacity-50"
+                              >
+                                <CheckIcon className="w-4 h-4" />
+                                {t("responses.accept")}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* User response section - Step 2: Attendance type selection */}
+                        {isCurrentUserAttendee && userResponse === null && isSlotAccepted && (
+                          <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                              {t("responses.howWillYouAttend")}
+                            </p>
+                            <div className="flex items-center justify-between flex-wrap gap-3">
+                              <div className="flex items-center gap-4">
+                                {/* Online checkbox */}
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={pendingResponse?.online || false}
+                                    onChange={() => handleToggleAttendance(slot.id, "online")}
+                                    disabled={isRespondingToDate}
+                                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                                  />
+                                  <ComputerDesktopIcon className="w-4 h-4 text-blue-500" />
+                                  <span className="text-sm text-gray-700 dark:text-gray-300">
+                                    {t("responses.online")}
+                                  </span>
+                                </label>
+
+                                {/* Live/In-person checkbox */}
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={pendingResponse?.live || false}
+                                    onChange={() => handleToggleAttendance(slot.id, "live")}
+                                    disabled={isRespondingToDate}
+                                    className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+                                  />
+                                  <UserIcon className="w-4 h-4 text-purple-500" />
+                                  <span className="text-sm text-gray-700 dark:text-gray-300">
+                                    {t("responses.inPerson")}
+                                  </span>
+                                </label>
+                              </div>
+
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => handleCancelAccept(slot.id)}
+                                  disabled={isRespondingToDate}
+                                  className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+                                >
+                                  {t("responses.back")}
+                                </button>
+                                <Button
+                                  size="sm"
+                                  onClick={() => handleSubmitResponse(slot.id)}
+                                  disabled={!hasPendingSelection || isRespondingToDate}
+                                  loading={isRespondingToDate}
+                                >
+                                  {t("responses.confirm")}
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Already responded indicator */}
+                        {isCurrentUserAttendee && userResponse !== null && (
+                          <div className="mt-2 flex items-center gap-2 text-xs">
+                            <span className="text-gray-500 dark:text-gray-400">
+                              {t("responses.yourResponse")}:
+                            </span>
+                            {userResponse.online && (
+                              <span className="flex items-center gap-1 px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-full">
+                                <ComputerDesktopIcon className="w-3 h-3" />
+                                {t("responses.online")}
+                              </span>
+                            )}
+                            {userResponse.live && (
+                              <span className="flex items-center gap-1 px-2 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 rounded-full">
+                                <UserIcon className="w-3 h-3" />
+                                {t("responses.inPerson")}
+                              </span>
+                            )}
+                            {!userResponse.online && !userResponse.live && (
+                              <span className="px-2 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-full">
+                                {t("responses.unavailable")}
                               </span>
                             )}
                           </div>

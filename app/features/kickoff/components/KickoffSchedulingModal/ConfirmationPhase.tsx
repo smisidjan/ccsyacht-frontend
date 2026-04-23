@@ -6,10 +6,12 @@ import {
   CheckIcon,
   PlusIcon,
   PaperAirplaneIcon,
+  ComputerDesktopIcon,
+  UserIcon,
 } from "@heroicons/react/24/outline";
 import Button from "@/app/components/ui/Button";
 import Alert from "@/app/components/ui/Alert";
-import { DateCard } from "../shared";
+import { DateCard, AttendeeAvatar, getAvatarStatus } from "../shared";
 import { formatDateDisplay, formatTimeDisplay, getTodayDateString } from "../../utils";
 import type { ConfirmationPhaseProps, LocalTimeSlot } from "./types";
 
@@ -18,6 +20,8 @@ export default function ConfirmationPhase({
   schedulingStatus,
   selectedFinalDateId,
   setSelectedFinalDateId,
+  selectedMeetingFormat,
+  setSelectedMeetingFormat,
   isSelectingDate,
   onSelectFinalDate,
   canManageKickoff,
@@ -58,6 +62,8 @@ export default function ConfirmationPhase({
     allCanAttend: boolean;
     availableCount: number;
     totalAttendees: number;
+    onlineCount: number;
+    liveCount: number;
     responses: typeof schedulingStatus.proposedDates[0]["timeSlots"][0]["responses"];
   }> = [];
 
@@ -71,6 +77,8 @@ export default function ConfirmationPhase({
         allCanAttend: slot.allCanAttend,
         availableCount: slot.availableCount,
         totalAttendees: slot.totalAttendees,
+        onlineCount: slot.onlineCount || 0,
+        liveCount: slot.liveCount || 0,
         responses: slot.responses,
       });
     });
@@ -131,7 +139,7 @@ export default function ConfirmationPhase({
           </p>
         </div>
 
-        {/* Attendees list */}
+        {/* Attendees list with online/live status */}
         <div className="space-y-2">
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
             {t("confirmation.attendees")}
@@ -141,7 +149,9 @@ export default function ConfirmationPhase({
               const response = selectedTimeSlot.responses.find(
                 (r) => r.userId === assignee.identifier
               );
-              const isAvailable = response?.isAvailable ?? true;
+              const canAttendOnline = response?.canAttendOnline ?? false;
+              const canAttendLive = response?.canAttendLive ?? false;
+              const isAvailable = canAttendOnline || canAttendLive;
 
               return (
                 <div
@@ -155,17 +165,25 @@ export default function ConfirmationPhase({
                   <span className="text-sm text-gray-900 dark:text-white">
                     {assignee.name}
                   </span>
-                  <span
-                    className={`text-xs px-2 py-1 rounded ${
-                      isAvailable
-                        ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400"
-                        : "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400"
-                    }`}
-                  >
-                    {isAvailable
-                      ? t("confirmation.attending")
-                      : t("confirmation.absent")}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    {canAttendOnline && (
+                      <span className="flex items-center gap-1 text-xs px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded">
+                        <ComputerDesktopIcon className="w-3 h-3" />
+                        {t("responses.online")}
+                      </span>
+                    )}
+                    {canAttendLive && (
+                      <span className="flex items-center gap-1 text-xs px-2 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 rounded">
+                        <UserIcon className="w-3 h-3" />
+                        {t("responses.inPerson")}
+                      </span>
+                    )}
+                    {!isAvailable && (
+                      <span className="text-xs px-2 py-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded">
+                        {t("confirmation.absent")}
+                      </span>
+                    )}
+                  </div>
                 </div>
               );
             })}
@@ -220,60 +238,151 @@ export default function ConfirmationPhase({
         <>
           {/* Time slot selection */}
           <div className="space-y-2">
-            {slotsToShow.map((slot, idx) => (
-              <label
-                key={slot.slotId || `confirm-slot-${idx}`}
-                className={`flex items-center gap-3 p-4 rounded-lg border-2 transition-all ${
-                  shouldAutoSelect
-                    ? "border-blue-600 bg-blue-50 dark:bg-blue-900/20"
-                    : effectiveSelectedId === slot.slotId
-                    ? "border-blue-600 bg-blue-50 dark:bg-blue-900/20 cursor-pointer"
-                    : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 cursor-pointer"
-                }`}
-              >
-                <input
-                  type="radio"
-                  name="finalTimeSlot"
-                  checked={effectiveSelectedId === slot.slotId}
-                  onChange={() =>
-                    !shouldAutoSelect && setSelectedFinalDateId(slot.slotId)
-                  }
-                  disabled={shouldAutoSelect}
-                  className={`w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500 ${
-                    shouldAutoSelect ? "cursor-not-allowed" : ""
+            {slotsToShow.map((slot, idx) => {
+              const isSelected = effectiveSelectedId === slot.slotId;
+
+              return (
+                <div
+                  key={slot.slotId || `confirm-slot-${idx}`}
+                  className={`rounded-lg border-2 transition-all ${
+                    shouldAutoSelect || isSelected
+                      ? "border-blue-600 bg-blue-50 dark:bg-blue-900/20"
+                      : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
                   }`}
-                />
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-gray-900 dark:text-white">
-                      {formatDateDisplay(slot.date)}
-                    </span>
-                    <span className="text-gray-500 dark:text-gray-400">
-                      {formatTimeDisplay(slot.startTime)} -{" "}
-                      {formatTimeDisplay(slot.endTime)}
-                    </span>
-                    {slot.allCanAttend && (
-                      <span className="text-xs px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded">
-                        {t("confirmation.allCanAttend")}
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    {slot.availableCount}/{slot.totalAttendees}{" "}
-                    {t("confirmation.available")}
-                  </p>
+                >
+                  {/* Slot header */}
+                  <label
+                    className="flex items-center gap-3 p-4 cursor-pointer"
+                    onClick={() => {
+                      if (!shouldAutoSelect) {
+                        setSelectedFinalDateId(slot.slotId);
+                        // Reset format when changing slot
+                        setSelectedMeetingFormat(null);
+                      }
+                    }}
+                  >
+                    <input
+                      type="radio"
+                      name="finalTimeSlot"
+                      checked={isSelected}
+                      onChange={() => {}}
+                      disabled={shouldAutoSelect}
+                      className={`w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500 ${
+                        shouldAutoSelect ? "cursor-not-allowed" : ""
+                      }`}
+                    />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-medium text-gray-900 dark:text-white">
+                          {formatDateDisplay(slot.date)}
+                        </span>
+                        <span className="text-gray-500 dark:text-gray-400">
+                          {formatTimeDisplay(slot.startTime)} -{" "}
+                          {formatTimeDisplay(slot.endTime)}
+                        </span>
+                        {slot.allCanAttend && (
+                          <span className="text-xs px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded">
+                            {t("confirmation.allCanAttend")}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3 mt-1 text-sm text-gray-500 dark:text-gray-400">
+                        <span>
+                          {slot.availableCount}/{slot.totalAttendees}{" "}
+                          {t("confirmation.available")}
+                        </span>
+                        {slot.onlineCount > 0 && (
+                          <span className="flex items-center gap-1 text-blue-600 dark:text-blue-400">
+                            <ComputerDesktopIcon className="w-3.5 h-3.5" />
+                            {slot.onlineCount}
+                          </span>
+                        )}
+                        {slot.liveCount > 0 && (
+                          <span className="flex items-center gap-1 text-purple-600 dark:text-purple-400">
+                            <UserIcon className="w-3.5 h-3.5" />
+                            {slot.liveCount}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </label>
+
+                  {/* Expanded attendee details when selected */}
+                  {isSelected && (
+                    <div className="px-4 pb-4 pt-0 border-t border-blue-200 dark:border-blue-800 mt-0">
+                      {/* Attendee avatars grouped by availability */}
+                      <div className="flex items-center gap-2 flex-wrap mt-3">
+                        {slot.responses.map((response) => (
+                          <AttendeeAvatar
+                            key={response.userId}
+                            name={response.userName}
+                            status={getAvatarStatus(response.canAttendOnline, response.canAttendLive)}
+                          />
+                        ))}
+                      </div>
+
+                      {/* Meeting format selection */}
+                      {canManageKickoff && (
+                        <div className="mt-4">
+                          <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            {t("confirmation.selectFormat")}
+                          </p>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => setSelectedMeetingFormat("online")}
+                              disabled={slot.onlineCount === 0}
+                              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border-2 transition-all ${
+                                selectedMeetingFormat === "online"
+                                  ? "border-blue-600 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400"
+                                  : slot.onlineCount === 0
+                                  ? "border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-600 cursor-not-allowed"
+                                  : "border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-700 text-gray-700 dark:text-gray-300"
+                              }`}
+                            >
+                              <ComputerDesktopIcon className="w-5 h-5" />
+                              <div className="text-left">
+                                <p className="font-medium">{t("responses.online")}</p>
+                                <p className="text-xs opacity-75">
+                                  {slot.onlineCount} {t("confirmation.canAttend")}
+                                </p>
+                              </div>
+                            </button>
+                            <button
+                              onClick={() => setSelectedMeetingFormat("in_person")}
+                              disabled={slot.liveCount === 0}
+                              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border-2 transition-all ${
+                                selectedMeetingFormat === "in_person"
+                                  ? "border-purple-600 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400"
+                                  : slot.liveCount === 0
+                                  ? "border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-600 cursor-not-allowed"
+                                  : "border-gray-200 dark:border-gray-700 hover:border-purple-300 dark:hover:border-purple-700 text-gray-700 dark:text-gray-300"
+                              }`}
+                            >
+                              <UserIcon className="w-5 h-5" />
+                              <div className="text-left">
+                                <p className="font-medium">{t("responses.inPerson")}</p>
+                                <p className="text-xs opacity-75">
+                                  {slot.liveCount} {t("confirmation.canAttend")}
+                                </p>
+                              </div>
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
-              </label>
-            ))}
+              );
+            })}
           </div>
 
           {/* Confirm button */}
           {canManageKickoff && (
             <Button
               variant="success"
-              onClick={() => onSelectFinalDate(effectiveSelectedId || undefined)}
+              onClick={() => onSelectFinalDate(effectiveSelectedId || undefined, selectedMeetingFormat)}
               loading={isSelectingDate}
-              disabled={!effectiveSelectedId || isSelectingDate}
+              disabled={!effectiveSelectedId || !selectedMeetingFormat || isSelectingDate}
               className="w-full"
             >
               <CheckIcon className="w-4 h-4" />

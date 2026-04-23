@@ -2,7 +2,7 @@
 
 interface AttendeeAvatarProps {
   name: string;
-  status: "available" | "unavailable" | "pending";
+  status: "available" | "unavailable" | "pending" | "online" | "live" | "both";
   tooltipSuffix?: string;
 }
 
@@ -10,12 +10,18 @@ const statusStyles = {
   available: "bg-green-500 text-white",
   unavailable: "bg-red-500 text-white",
   pending: "bg-gray-300 dark:bg-gray-600 text-gray-600 dark:text-gray-300",
+  online: "bg-blue-500 text-white",
+  live: "bg-purple-500 text-white",
+  both: "bg-gradient-to-br from-blue-500 to-purple-500 text-white",
 };
 
-const tooltipIcons = {
-  available: "✓",
-  unavailable: "✗",
-  pending: "?",
+const tooltipLabels = {
+  available: "(available)",
+  unavailable: "(unavailable)",
+  pending: "(pending)",
+  online: "(online)",
+  live: "(in person)",
+  both: "(online + in person)",
 };
 
 /**
@@ -36,7 +42,7 @@ export default function AttendeeAvatar({
   tooltipSuffix,
 }: AttendeeAvatarProps) {
   const initials = getInitials(name);
-  const suffix = tooltipSuffix ?? tooltipIcons[status];
+  const suffix = tooltipSuffix ?? tooltipLabels[status];
 
   return (
     <div className="group relative">
@@ -50,4 +56,17 @@ export default function AttendeeAvatar({
       </div>
     </div>
   );
+}
+
+/**
+ * Helper function to determine avatar status from response
+ */
+export function getAvatarStatus(
+  canAttendOnline: boolean,
+  canAttendLive: boolean
+): AttendeeAvatarProps["status"] {
+  if (canAttendOnline && canAttendLive) return "both";
+  if (canAttendOnline) return "online";
+  if (canAttendLive) return "live";
+  return "unavailable";
 }

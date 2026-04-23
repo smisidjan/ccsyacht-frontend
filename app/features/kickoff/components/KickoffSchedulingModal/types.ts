@@ -88,12 +88,18 @@ export interface DatesPhaseProps extends PhaseBaseProps {
   onBack: () => void;
 }
 
+/** User response for a time slot with online/live attendance */
+export interface TimeSlotUserResponse {
+  online: boolean;
+  live: boolean;
+}
+
 /** Responses phase specific props */
 export interface ResponsesPhaseProps extends PhaseBaseProps {
   currentUser: { identifier: string; name: string } | null;
-  currentUserResponses: Record<string, boolean | null>;
+  currentUserResponses: Record<string, TimeSlotUserResponse | null>;
   isRespondingToDate: boolean;
-  onRespondToTimeSlot: (slotId: string, isAvailable: boolean) => Promise<void>;
+  onRespondToTimeSlot: (slotId: string, canAttendOnline: boolean, canAttendLive: boolean) => Promise<void>;
   isCurrentUserAttendee: boolean;
   hasDeclinedAllSlots: boolean;
   // Propose alternative props
@@ -116,12 +122,17 @@ export interface ResponsesPhaseProps extends PhaseBaseProps {
   onRemoveProposedAlternativeDate: (date: string) => void;
 }
 
+/** Meeting format options */
+export type MeetingFormat = "online" | "in_person" | null;
+
 /** Confirmation phase specific props */
 export interface ConfirmationPhaseProps extends PhaseBaseProps {
   selectedFinalDateId: string | null;
   setSelectedFinalDateId: (id: string | null) => void;
+  selectedMeetingFormat: MeetingFormat;
+  setSelectedMeetingFormat: (format: MeetingFormat) => void;
   isSelectingDate: boolean;
-  onSelectFinalDate: (slotId?: string) => Promise<void>;
+  onSelectFinalDate: (slotId?: string, format?: MeetingFormat) => Promise<void>;
   // For propose new dates mode
   confirmationMode: "select" | "propose";
   setConfirmationMode: (mode: "select" | "propose") => void;
