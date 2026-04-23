@@ -237,6 +237,15 @@ export default function SetupTaskCard({ task, documentTypes, allTasks, onMarkCom
                 hour: "2-digit",
                 minute: "2-digit",
               })}
+              {task.scheduledEndDate && (
+                <>
+                  {" - "}
+                  {new Date(task.scheduledEndDate).toLocaleTimeString(undefined, {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </>
+              )}
             </span>
           </div>
           {task.meetingFormat && (

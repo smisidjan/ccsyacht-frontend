@@ -392,6 +392,8 @@
         "statusPending": "Setup",
         "statusScheduled": "Scheduled",
         "statusCompleted": "Completed",
+        "formatOnline": "Online",
+        "formatInPerson": "In Person",
         "signatures": "Signatures",
         "checklistProgress": "Checklist",
         "onlyAttendeesCanCheck": "Only meeting attendees can check items",

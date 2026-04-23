@@ -392,6 +392,8 @@
         "statusPending": "Setup",
         "statusScheduled": "Gepland",
         "statusCompleted": "Voltooid",
+        "formatOnline": "Online",
+        "formatInPerson": "Fysiek",
         "signatures": "Handtekeningen",
         "checklistProgress": "Checklist",
         "onlyAttendeesCanCheck": "Alleen meeting deelnemers kunnen items aanvinken",

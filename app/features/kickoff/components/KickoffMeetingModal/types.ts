@@ -24,6 +24,7 @@ export interface TimeSlotInfo {
   date: string;
   startTime: string;
   endTime: string;
+  meetingFormat: "online" | "live" | null;
 }
 
 export interface DocumentStats {
@@ -72,7 +73,8 @@ export interface SectionBaseProps {
 
 export interface StatusHeaderProps {
   task: SetupTask;
-  selectedTimeSlotInfo: TimeSlotInfo | null;
+  startTime?: string;
+  endTime?: string;
 }
 
 export interface DocumentStatsProps {

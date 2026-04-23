@@ -1290,6 +1290,7 @@ export interface SetupTask {
   additionalType: SetupTaskType;
   actionStatus: SetupTaskStatus;
   scheduledDate: string | null;
+  scheduledEndDate: string | null;
   meetingFormat: SetupTaskMeetingFormat | null;
   completedAt: string | null;
   sortOrder: number;

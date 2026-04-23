@@ -414,7 +414,7 @@ export default function KickoffMeetingModal({
         ) : (
           task && (
             <div className="space-y-6">
-              <StatusHeader task={task} selectedTimeSlotInfo={selectedTimeSlotInfo} />
+              <StatusHeader task={task} />
 
               {task.actionStatus === "completed" && (
                 <Alert type="success" message={t("taskCompleted")} />
