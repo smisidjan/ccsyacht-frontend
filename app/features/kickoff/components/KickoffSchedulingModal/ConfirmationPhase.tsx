@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { useTranslations } from "next-intl";
 import {
   CheckCircleIcon,
@@ -69,6 +70,10 @@ export default function ConfirmationPhase({
 
   schedulingStatus.proposedDates.forEach((pd) => {
     pd.timeSlots.forEach((slot) => {
+      // Calculate counts from responses if API doesn't provide them
+      const calculatedOnlineCount = slot.responses.filter(r => r.canAttendOnline).length;
+      const calculatedLiveCount = slot.responses.filter(r => r.canAttendLive).length;
+
       allTimeSlots.push({
         slotId: slot.id,
         date: pd.proposedDate,
@@ -77,24 +82,67 @@ export default function ConfirmationPhase({
         allCanAttend: slot.allCanAttend,
         availableCount: slot.availableCount,
         totalAttendees: slot.totalAttendees,
-        onlineCount: slot.onlineCount || 0,
-        liveCount: slot.liveCount || 0,
+        onlineCount: slot.onlineCount || calculatedOnlineCount,
+        liveCount: slot.liveCount || calculatedLiveCount,
         responses: slot.responses,
       });
     });
   });
 
   // Filter to only slots where all can attend, or show all if none match
-  const slotsToShow =
+  const filteredSlots =
     availableSlotIds.length > 0
       ? allTimeSlots.filter((s) => availableSlotIds.includes(s.slotId))
       : allTimeSlots;
+
+  // Sort slots: 1) Everyone can attend in person, 2) Everyone can attend online, 3) Others
+  const slotsToShow = [...filteredSlots].sort((a, b) => {
+    const aAllInPerson = a.liveCount === a.totalAttendees;
+    const bAllInPerson = b.liveCount === b.totalAttendees;
+    const aAllOnline = a.onlineCount === a.totalAttendees;
+    const bAllOnline = b.onlineCount === b.totalAttendees;
+
+    // Priority 1: Everyone can attend in person
+    if (aAllInPerson && !bAllInPerson) return -1;
+    if (!aAllInPerson && bAllInPerson) return 1;
+
+    // Priority 2: Everyone can attend online
+    if (aAllOnline && !bAllOnline) return -1;
+    if (!aAllOnline && bAllOnline) return 1;
+
+    // Priority 3: More people available
+    return b.availableCount - a.availableCount;
+  });
+
+  // Check if first slot is recommended (everyone can attend in person)
+  const recommendedSlotId = slotsToShow.length > 0 && slotsToShow[0].liveCount === slotsToShow[0].totalAttendees
+    ? slotsToShow[0].slotId
+    : null;
 
   // Auto-select if there's only one slot where everyone can attend
   const shouldAutoSelect =
     slotsToShow.length === 1 && availableSlotIds.length === 1;
   const autoSelectedSlotId = shouldAutoSelect ? slotsToShow[0].slotId : null;
   const effectiveSelectedId = autoSelectedSlotId || selectedFinalDateId;
+
+  // Auto-preselect meeting format when auto-selecting slot (only one available)
+  useEffect(() => {
+    if (!shouldAutoSelect || !canManageKickoff || !autoSelectedSlotId) return;
+    if (selectedMeetingFormat !== null) return; // Already selected
+
+    const selectedSlot = slotsToShow[0];
+    if (!selectedSlot) return;
+
+    const canSelectOnline = selectedSlot.onlineCount === selectedSlot.totalAttendees;
+    const canSelectInPerson = selectedSlot.liveCount === selectedSlot.totalAttendees;
+
+    // Auto-select if exactly one option is available
+    if (canSelectOnline && !canSelectInPerson) {
+      setSelectedMeetingFormat("online");
+    } else if (canSelectInPerson && !canSelectOnline) {
+      setSelectedMeetingFormat("in_person");
+    }
+  }, [shouldAutoSelect, autoSelectedSlotId, slotsToShow, canManageKickoff, selectedMeetingFormat, setSelectedMeetingFormat]);
 
   // Toggle date expansion
   const toggleDateExpansion = (date: string) => {
@@ -166,16 +214,18 @@ export default function ConfirmationPhase({
                     {assignee.name}
                   </span>
                   <div className="flex items-center gap-2">
-                    {canAttendOnline && (
+                    {canAttendOnline && canAttendLive && (
+                      <span className="flex items-center gap-1 text-xs px-2 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 rounded">
+                        <ComputerDesktopIcon className="w-3 h-3" />
+                        <span>+</span>
+                        <UserIcon className="w-3 h-3" />
+                        {t("responses.onlineAndInPerson")}
+                      </span>
+                    )}
+                    {canAttendOnline && !canAttendLive && (
                       <span className="flex items-center gap-1 text-xs px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded">
                         <ComputerDesktopIcon className="w-3 h-3" />
                         {t("responses.online")}
-                      </span>
-                    )}
-                    {canAttendLive && (
-                      <span className="flex items-center gap-1 text-xs px-2 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 rounded">
-                        <UserIcon className="w-3 h-3" />
-                        {t("responses.inPerson")}
                       </span>
                     )}
                     {!isAvailable && (
@@ -256,8 +306,16 @@ export default function ConfirmationPhase({
                     onClick={() => {
                       if (!shouldAutoSelect) {
                         setSelectedFinalDateId(slot.slotId);
-                        // Reset format when changing slot
-                        setSelectedMeetingFormat(null);
+                        // Auto-preselect format if only one option is available
+                        const canSelectOnline = slot.onlineCount === slot.totalAttendees;
+                        const canSelectInPerson = slot.liveCount === slot.totalAttendees;
+                        if (canSelectOnline && !canSelectInPerson) {
+                          setSelectedMeetingFormat("online");
+                        } else if (canSelectInPerson && !canSelectOnline) {
+                          setSelectedMeetingFormat("in_person");
+                        } else {
+                          setSelectedMeetingFormat(null);
+                        }
                       }
                     }}
                   >
@@ -280,29 +338,30 @@ export default function ConfirmationPhase({
                           {formatTimeDisplay(slot.startTime)} -{" "}
                           {formatTimeDisplay(slot.endTime)}
                         </span>
+                        {recommendedSlotId === slot.slotId && (
+                          <span className="text-xs px-2 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded font-medium">
+                            {t("confirmation.recommended")}
+                          </span>
+                        )}
                         {slot.allCanAttend && (
                           <span className="text-xs px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded">
                             {t("confirmation.allCanAttend")}
                           </span>
                         )}
                       </div>
-                      <div className="flex items-center gap-3 mt-1 text-sm text-gray-500 dark:text-gray-400">
-                        <span>
+                      <div className="flex items-center gap-2 mt-1 text-sm">
+                        <span className="text-gray-500 dark:text-gray-400">
                           {slot.availableCount}/{slot.totalAttendees}{" "}
                           {t("confirmation.available")}
                         </span>
-                        {slot.onlineCount > 0 && (
-                          <span className="flex items-center gap-1 text-blue-600 dark:text-blue-400">
-                            <ComputerDesktopIcon className="w-3.5 h-3.5" />
-                            {slot.onlineCount}
-                          </span>
-                        )}
-                        {slot.liveCount > 0 && (
-                          <span className="flex items-center gap-1 text-purple-600 dark:text-purple-400">
-                            <UserIcon className="w-3.5 h-3.5" />
-                            {slot.liveCount}
-                          </span>
-                        )}
+                        <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-xs">
+                          <ComputerDesktopIcon className="w-3 h-3" />
+                          {slot.onlineCount}
+                        </span>
+                        <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 text-xs">
+                          <UserIcon className="w-3 h-3" />
+                          {slot.liveCount}
+                        </span>
                       </div>
                     </div>
                   </label>
@@ -330,11 +389,11 @@ export default function ConfirmationPhase({
                           <div className="flex gap-2">
                             <button
                               onClick={() => setSelectedMeetingFormat("online")}
-                              disabled={slot.onlineCount === 0}
+                              disabled={slot.onlineCount !== slot.totalAttendees}
                               className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border-2 transition-all ${
                                 selectedMeetingFormat === "online"
                                   ? "border-blue-600 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400"
-                                  : slot.onlineCount === 0
+                                  : slot.onlineCount !== slot.totalAttendees
                                   ? "border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-600 cursor-not-allowed"
                                   : "border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-700 text-gray-700 dark:text-gray-300"
                               }`}
@@ -343,17 +402,17 @@ export default function ConfirmationPhase({
                               <div className="text-left">
                                 <p className="font-medium">{t("responses.online")}</p>
                                 <p className="text-xs opacity-75">
-                                  {slot.onlineCount} {t("confirmation.canAttend")}
+                                  {slot.onlineCount}/{slot.totalAttendees}
                                 </p>
                               </div>
                             </button>
                             <button
                               onClick={() => setSelectedMeetingFormat("in_person")}
-                              disabled={slot.liveCount === 0}
+                              disabled={slot.liveCount !== slot.totalAttendees}
                               className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border-2 transition-all ${
                                 selectedMeetingFormat === "in_person"
                                   ? "border-purple-600 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400"
-                                  : slot.liveCount === 0
+                                  : slot.liveCount !== slot.totalAttendees
                                   ? "border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-600 cursor-not-allowed"
                                   : "border-gray-200 dark:border-gray-700 hover:border-purple-300 dark:hover:border-purple-700 text-gray-700 dark:text-gray-300"
                               }`}
@@ -362,7 +421,7 @@ export default function ConfirmationPhase({
                               <div className="text-left">
                                 <p className="font-medium">{t("responses.inPerson")}</p>
                                 <p className="text-xs opacity-75">
-                                  {slot.liveCount} {t("confirmation.canAttend")}
+                                  {slot.liveCount}/{slot.totalAttendees}
                                 </p>
                               </div>
                             </button>

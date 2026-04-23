@@ -141,18 +141,16 @@ export default function ResponsesPhase({
     await onRespondToTimeSlot(slotId, false, false);
   };
 
-  // Handle checkbox toggle for pending responses
-  const handleToggleAttendance = (slotId: string, type: "online" | "live") => {
-    setPendingResponses((prev) => {
-      const current = prev[slotId] || { online: false, live: false };
-      return {
-        ...prev,
-        [slotId]: {
-          ...current,
-          [type]: !current[type],
-        },
-      };
-    });
+  // Handle attendance selection - "Online" or "Online + In Person"
+  // If in-person is selected, online is automatically included
+  const handleSelectAttendance = (slotId: string, includeInPerson: boolean) => {
+    setPendingResponses((prev) => ({
+      ...prev,
+      [slotId]: {
+        online: true, // Always online when accepting
+        live: includeInPerson,
+      },
+    }));
   };
 
   // Submit response for a time slot
@@ -378,30 +376,36 @@ export default function ResponsesPhase({
                             ))}
                           </div>
 
-                          {/* Availability counts */}
-                          <div className="flex items-center gap-2 text-xs">
-                            {slot.onlineCount !== undefined && slot.onlineCount > 0 && (
-                              <span className="flex items-center gap-1 px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded">
-                                <ComputerDesktopIcon className="w-3 h-3" />
-                                {slot.onlineCount}
-                              </span>
-                            )}
-                            {slot.liveCount !== undefined && slot.liveCount > 0 && (
-                              <span className="flex items-center gap-1 px-1.5 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 rounded">
-                                <UserIcon className="w-3 h-3" />
-                                {slot.liveCount}
-                              </span>
-                            )}
-                            <span
-                              className={`px-2 py-0.5 rounded font-medium ${
-                                slot.allCanAttend
-                                  ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400"
-                                  : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"
-                              }`}
-                            >
-                              {slot.availableCount}/{slot.totalAttendees}
-                            </span>
-                          </div>
+                          {/* Availability counts - calculate from responses if API doesn't provide */}
+                          {(() => {
+                            const onlineCount = slot.onlineCount ?? slot.responses.filter(r => r.canAttendOnline).length;
+                            const liveCount = slot.liveCount ?? slot.responses.filter(r => r.canAttendLive).length;
+                            return (
+                              <div className="flex items-center gap-2 text-xs">
+                                {onlineCount > 0 && (
+                                  <span className="flex items-center gap-1 px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded">
+                                    <ComputerDesktopIcon className="w-3 h-3" />
+                                    {onlineCount}
+                                  </span>
+                                )}
+                                {liveCount > 0 && (
+                                  <span className="flex items-center gap-1 px-1.5 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 rounded">
+                                    <UserIcon className="w-3 h-3" />
+                                    {liveCount}
+                                  </span>
+                                )}
+                                <span
+                                  className={`px-2 py-0.5 rounded font-medium ${
+                                    slot.allCanAttend
+                                      ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400"
+                                      : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"
+                                  }`}
+                                >
+                                  {slot.availableCount}/{slot.totalAttendees}
+                                </span>
+                              </div>
+                            );
+                          })()}
                         </div>
 
                         {/* User response section - Step 1: Accept/Decline buttons */}
@@ -435,36 +439,34 @@ export default function ResponsesPhase({
                               {t("responses.howWillYouAttend")}
                             </p>
                             <div className="flex items-center justify-between flex-wrap gap-3">
-                              <div className="flex items-center gap-4">
-                                {/* Online checkbox */}
-                                <label className="flex items-center gap-2 cursor-pointer">
-                                  <input
-                                    type="checkbox"
-                                    checked={pendingResponse?.online || false}
-                                    onChange={() => handleToggleAttendance(slot.id, "online")}
-                                    disabled={isRespondingToDate}
-                                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                                  />
-                                  <ComputerDesktopIcon className="w-4 h-4 text-blue-500" />
-                                  <span className="text-sm text-gray-700 dark:text-gray-300">
-                                    {t("responses.online")}
-                                  </span>
-                                </label>
+                              <div className="flex items-center gap-2">
+                                {/* Online only button */}
+                                <button
+                                  onClick={() => handleSelectAttendance(slot.id, false)}
+                                  disabled={isRespondingToDate}
+                                  className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 transition-all ${
+                                    pendingResponse?.online && !pendingResponse?.live
+                                      ? "border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400"
+                                      : "border-gray-200 dark:border-gray-600 hover:border-blue-300 dark:hover:border-blue-700 text-gray-700 dark:text-gray-300"
+                                  }`}
+                                >
+                                  <ComputerDesktopIcon className="w-4 h-4" />
+                                  <span className="text-sm font-medium">{t("responses.online")}</span>
+                                </button>
 
-                                {/* Live/In-person checkbox */}
-                                <label className="flex items-center gap-2 cursor-pointer">
-                                  <input
-                                    type="checkbox"
-                                    checked={pendingResponse?.live || false}
-                                    onChange={() => handleToggleAttendance(slot.id, "live")}
-                                    disabled={isRespondingToDate}
-                                    className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
-                                  />
-                                  <UserIcon className="w-4 h-4 text-purple-500" />
-                                  <span className="text-sm text-gray-700 dark:text-gray-300">
-                                    {t("responses.inPerson")}
-                                  </span>
-                                </label>
+                                {/* In Person button (includes online) */}
+                                <button
+                                  onClick={() => handleSelectAttendance(slot.id, true)}
+                                  disabled={isRespondingToDate}
+                                  className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 transition-all ${
+                                    pendingResponse?.online && pendingResponse?.live
+                                      ? "border-purple-500 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400"
+                                      : "border-gray-200 dark:border-gray-600 hover:border-purple-300 dark:hover:border-purple-700 text-gray-700 dark:text-gray-300"
+                                  }`}
+                                >
+                                  <UserIcon className="w-4 h-4" />
+                                  <span className="text-sm font-medium">{t("responses.inPerson")}</span>
+                                </button>
                               </div>
 
                               <div className="flex items-center gap-2">
