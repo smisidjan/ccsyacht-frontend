@@ -21,6 +21,7 @@ import DocumentTypeModal from "./DocumentTypeModal";
 import DocumentTypeSidebar from "./DocumentTypeSidebar";
 import DocumentsPanel from "./DocumentsPanel";
 import BaseModal from "@/app/components/modals/BaseModal";
+import DeleteConfirmModal from "@/app/components/modals/DeleteConfirmModal";
 import { handleError } from "@/lib/utils/errors";
 import type {
   UploadDocumentRequest,
@@ -84,6 +85,7 @@ export default function DocumentsTab({ projectId, projectStatus }: DocumentsTabP
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [typeToEdit, setTypeToEdit] = useState<DocumentType | null>(null);
   const [typeToDelete, setTypeToDelete] = useState<DocumentType | null>(null);
+  const [assigneeToRemove, setAssigneeToRemove] = useState<DocumentTypeAssignee | null>(null);
 
   // Fetch documents for selected type
   const {
@@ -188,12 +190,15 @@ export default function DocumentsTab({ projectId, projectStatus }: DocumentsTabP
     setIsAssignModalOpen(false);
   };
 
-  const handleRemoveAssignee = async (assignee: DocumentTypeAssignee) => {
-    if (!selectedTypeId) return;
-    if (confirm(tDocTypes("assignees.confirmRemove", { name: assignee.name }))) {
-      await removeAssignee(selectedTypeId, assignee.identifier);
-      showToast("success", tDocTypes("assignees.removeSuccess"));
-    }
+  const handleRemoveAssignee = (assignee: DocumentTypeAssignee) => {
+    setAssigneeToRemove(assignee);
+  };
+
+  const confirmRemoveAssignee = async () => {
+    if (!selectedTypeId || !assigneeToRemove) return;
+    await removeAssignee(selectedTypeId, assigneeToRemove.identifier);
+    showToast("success", tDocTypes("assignees.removeSuccess"));
+    setAssigneeToRemove(null);
   };
 
   const handleNotifyAssignee = async (assignee: DocumentTypeAssignee) => {
@@ -373,6 +378,18 @@ export default function DocumentsTab({ projectId, projectStatus }: DocumentsTabP
           )}
         </div>
       </BaseModal>
+
+      {/* Remove Assignee Confirmation Modal */}
+      <DeleteConfirmModal
+        isOpen={!!assigneeToRemove}
+        onClose={() => setAssigneeToRemove(null)}
+        onConfirm={confirmRemoveAssignee}
+        title={tDocTypes("assignees.removeModal.title")}
+        message={tDocTypes("assignees.removeModal.message", { name: assigneeToRemove?.name || "" })}
+        successMessage={tDocTypes("assignees.removeSuccess")}
+        errorMessage={tDocTypes("assignees.removeError")}
+        confirmLabel={tDocTypes("assignees.removeModal.confirm")}
+      />
     </div>
   );
 }

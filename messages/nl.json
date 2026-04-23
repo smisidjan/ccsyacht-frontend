@@ -2165,6 +2165,7 @@
       "noAssigneesHint": "Vraag een document op bij een teamlid of externe partij",
       "confirmRemove": "Weet je zeker dat je het documentverzoek voor {name} wilt verwijderen?",
       "removeSuccess": "Documentverzoek verwijderd",
+      "removeError": "Kan documentverzoek niet verwijderen",
       "notifySuccess": "Herinnering verzonden naar {name}",
       "sendReminder": "Herinnering Sturen",
       "remove": "Verzoek Verwijderen",
@@ -2173,6 +2174,11 @@
         "pending": "In afwachting",
         "completed": "Voltooid",
         "overdue": "Te laat"
+      },
+      "removeModal": {
+        "title": "Documentverzoek Verwijderen",
+        "message": "Weet je zeker dat je het documentverzoek voor {name} wilt verwijderen?",
+        "confirm": "Verwijderen"
       },
       "assignModal": {
         "title": "Document Opvragen",

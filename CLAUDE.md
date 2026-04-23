@@ -264,6 +264,39 @@ import ConfirmModal from "@/app/components/modals/ConfirmModal";
 />
 ```
 
+### NEVER Use Browser Dialogs
+
+**Do NOT use `confirm()`, `alert()`, or `prompt()`**. Always use proper modal components:
+
+```tsx
+// ❌ BAD: Browser dialog
+const handleDelete = () => {
+  if (confirm("Are you sure?")) {
+    deleteItem();
+  }
+};
+
+// ✅ GOOD: Modal component
+const [itemToDelete, setItemToDelete] = useState<Item | null>(null);
+
+const handleDelete = (item: Item) => {
+  setItemToDelete(item);  // Open modal
+};
+
+<DeleteConfirmModal
+  isOpen={!!itemToDelete}
+  onClose={() => setItemToDelete(null)}
+  onConfirm={async () => {
+    await deleteItem(itemToDelete.id);
+    setItemToDelete(null);
+  }}
+  title={t("deleteTitle")}
+  message={t("deleteMessage", { name: itemToDelete?.name })}
+/>
+```
+
+**Why:** Browser dialogs are ugly, not themeable, block the main thread, and provide poor UX.
+
 ---
 
 ## API & Data Fetching
@@ -432,3 +465,4 @@ export * from "./[name]";
 - [ ] Dark mode styles included
 - [ ] Responsive design considered
 - [ ] Uses existing UI primitives
+- [ ] No browser dialogs (confirm/alert/prompt) - use Modal components

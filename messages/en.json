@@ -2135,6 +2135,7 @@
       "noAssigneesHint": "Request a document from a team member or external party",
       "confirmRemove": "Are you sure you want to remove the document request for {name}?",
       "removeSuccess": "Document request removed",
+      "removeError": "Failed to remove document request",
       "notifySuccess": "Reminder sent to {name}",
       "sendReminder": "Send Reminder",
       "remove": "Remove Request",
@@ -2143,6 +2144,11 @@
         "pending": "Pending",
         "completed": "Completed",
         "overdue": "Overdue"
+      },
+      "removeModal": {
+        "title": "Remove Document Request",
+        "message": "Are you sure you want to remove the document request for {name}?",
+        "confirm": "Remove"
       },
       "assignModal": {
         "title": "Request Document",
