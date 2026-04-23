@@ -2,7 +2,8 @@
 
 import { useState, useMemo } from "react";
 import { useTranslations } from "next-intl";
-import { UserCircleIcon, CheckIcon } from "@heroicons/react/24/outline";
+import { UserCircleIcon, CheckIcon, UserPlusIcon } from "@heroicons/react/24/outline";
+import { Link } from "@/i18n/navigation";
 import BaseModal from "@/app/components/modals/BaseModal";
 import FormInput from "@/app/components/ui/FormInput";
 import FormTextarea from "@/app/components/ui/FormTextarea";
@@ -15,6 +16,8 @@ interface AssignDocumentModalProps {
   documentTypeName: string;
   availableUsers: User[];
   existingAssigneeIds: string[];
+  currentUserId?: string;
+  projectId?: string;
 }
 
 export default function AssignDocumentModal({
@@ -24,6 +27,8 @@ export default function AssignDocumentModal({
   documentTypeName,
   availableUsers,
   existingAssigneeIds,
+  currentUserId,
+  projectId,
 }: AssignDocumentModalProps) {
   const t = useTranslations("documentTypes.assignees");
 
@@ -33,10 +38,12 @@ export default function AssignDocumentModal({
   const [dueDate, setDueDate] = useState("");
   const [sendNotification, setSendNotification] = useState(true);
 
-  // Filter out already assigned users
+  // Filter out already assigned users AND current user
   const filteredAvailableUsers = useMemo(() => {
-    return availableUsers.filter((user) => !existingAssigneeIds.includes(user.id));
-  }, [availableUsers, existingAssigneeIds]);
+    return availableUsers.filter(
+      (user) => !existingAssigneeIds.includes(user.id) && user.id !== currentUserId
+    );
+  }, [availableUsers, existingAssigneeIds, currentUserId]);
 
   // Filter users based on search input
   const filteredUsers = useMemo(() => {
@@ -167,8 +174,20 @@ export default function AssignDocumentModal({
         )}
 
         {filteredAvailableUsers.length === 0 && !searchInput.trim() && (
-          <div className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 text-center border border-gray-200 dark:border-gray-600 rounded-lg">
-            {t("assignModal.noUsersAvailable")}
+          <div className="px-4 py-4 text-center border border-gray-200 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700/50">
+            <UserPlusIcon className="w-8 h-8 text-gray-400 dark:text-gray-500 mx-auto mb-2" />
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+              {t("assignModal.noUsersAvailable")}
+            </p>
+            {projectId && (
+              <Link
+                href={`/dashboard/projects/${projectId}?tab=settings`}
+                className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
+                onClick={onClose}
+              >
+                {t("assignModal.addMembersLink")}
+              </Link>
+            )}
           </div>
         )}
 

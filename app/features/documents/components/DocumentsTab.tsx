@@ -327,6 +327,8 @@ export default function DocumentsTab({ projectId, projectStatus }: DocumentsTabP
             documentTypeName={selectedType.name}
             availableUsers={availableUsers}
             existingAssigneeIds={selectedType.assignees?.map((a) => a.identifier) || []}
+            currentUserId={currentUser?.identifier}
+            projectId={projectId}
           />
         </>
       )}
