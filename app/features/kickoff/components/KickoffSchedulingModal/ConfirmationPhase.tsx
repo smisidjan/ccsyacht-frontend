@@ -185,6 +185,21 @@ export default function ConfirmationPhase({
             {formatTimeDisplay(selectedTimeSlot.startTime)} -{" "}
             {formatTimeDisplay(selectedTimeSlot.endTime)}
           </p>
+          {selectedTimeSlot.meetingFormat && (
+            <div className="mt-3">
+              {selectedTimeSlot.meetingFormat === "live" ? (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 rounded-full text-sm font-medium">
+                  <UserIcon className="w-4 h-4" />
+                  {t("responses.inPerson")}
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-full text-sm font-medium">
+                  <ComputerDesktopIcon className="w-4 h-4" />
+                  {t("responses.online")}
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Attendees list with online/live status */}

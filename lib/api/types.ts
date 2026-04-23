@@ -1219,6 +1219,7 @@ export interface GetAreaTemplatesParams {
 
 export type SetupTaskType = "upload_documents" | "add_members" | "add_signers" | "kickoff_meeting" | "define_decks" | "custom";
 export type SetupTaskStatus = "pending" | "awaiting_responses" | "scheduled" | "completed";
+export type SetupTaskMeetingFormat = "online" | "live";
 
 export interface SetupTaskAssignee {
   "@type": "Person";
@@ -1289,6 +1290,7 @@ export interface SetupTask {
   additionalType: SetupTaskType;
   actionStatus: SetupTaskStatus;
   scheduledDate: string | null;
+  meetingFormat: SetupTaskMeetingFormat | null;
   completedAt: string | null;
   sortOrder: number;
   allDocumentsAcknowledged: boolean; // All required documents acknowledged
@@ -1599,6 +1601,7 @@ export interface SelectedTimeSlot {
   date: string;
   startTime: string;
   endTime: string;
+  meetingFormat: SetupTaskMeetingFormat | null;
   responses: TimeSlotResponseUser[];
 }
 

@@ -481,15 +481,16 @@ export default function KickoffSchedulingModal({
 
   const handleSelectFinalDate = async (slotIdOverride?: string, format?: MeetingFormat) => {
     const slotId = slotIdOverride || selectedFinalDateId;
-    if (!slotId) return;
-    // TODO: Send format to API when backend supports it
-    console.log("Meeting format selected:", format);
+    if (!slotId || !format) return;
+
+    // Convert frontend format to API format
+    const apiFormat: "online" | "live" = format === "in_person" ? "live" : "online";
 
     try {
       setIsSelectingDate(true);
       setError(null);
 
-      await setupTasksApi.selectTimeSlot(projectId, taskId, slotId);
+      await setupTasksApi.selectTimeSlot(projectId, taskId, slotId, apiFormat);
 
       showToast("success", t("dateConfirmed"));
       onUpdate?.();
