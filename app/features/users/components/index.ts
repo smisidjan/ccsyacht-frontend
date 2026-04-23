@@ -11,7 +11,6 @@ export { default as InvitationsTab } from "./InvitationsTab";
 export { default as RegistrationRequestCard } from "./RegistrationRequestCard";
 
 // Modals
-export { default as DeleteInvitationModal } from "./DeleteInvitationModal";
 export { default as InviteUserModal, type InviteUserFormData } from "./InviteUserModal";
 export {
   default as ProcessRegistrationRequestModal,

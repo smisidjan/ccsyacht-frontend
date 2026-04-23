@@ -6,7 +6,7 @@ import { PlusIcon, ArrowPathIcon, TrashIcon, EnvelopeIcon, ChevronDownIcon, Chev
 import type { Invitation, RegistrationRequest } from "@/lib/api/types";
 import { getStatusBadgeColor } from "@/lib/utils/badges";
 import { getInvitationStatusKey, canDeleteInvitation, canResendInvitation } from "@/lib/utils/status";
-import DeleteInvitationModal from "@/app/features/users/components/DeleteInvitationModal";
+import DeleteConfirmModal from "@/app/components/modals/DeleteConfirmModal";
 import RegistrationRequestCard from "./RegistrationRequestCard";
 import type { ApproveRequestData } from "./ProcessRegistrationRequestModal";
 import Button from "@/app/components/ui/Button";
@@ -41,6 +41,7 @@ export default function InvitationsTab({
   onRejectRequest,
 }: InvitationsTabProps) {
   const t = useTranslations("usersPage.invitations");
+  const tDelete = useTranslations("usersPage.deleteInvitationModal");
 
   // Auto-refresh registration requests every 10 minutes
   useEffect(() => {
@@ -307,12 +308,20 @@ export default function InvitationsTab({
       )}
 
       {deleteModal.isOpen && (
-        <DeleteInvitationModal
+        <DeleteConfirmModal
           isOpen={deleteModal.isOpen}
-          email={deleteModal.email}
           onClose={handleDeleteClose}
           onConfirm={handleDeleteConfirm}
-        />
+          title={tDelete("title")}
+          message={tDelete("message")}
+          successMessage={tDelete("success")}
+          confirmLabel={tDelete("delete")}
+          showIcon
+        >
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            <span className="font-medium text-gray-900 dark:text-white">{deleteModal.email}</span>
+          </p>
+        </DeleteConfirmModal>
       )}
     </div>
   );

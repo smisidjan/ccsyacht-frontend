@@ -21,14 +21,13 @@ import StatusBadge from "@/app/components/ui/StatusBadge";
 import LoadingSkeleton from "@/app/components/ui/LoadingSkeleton";
 import Alert from "@/app/components/ui/Alert";
 import Button from "@/app/components/ui/Button";
-import { ReplaceGeneralArrangementModal, DeleteGeneralArrangementModal } from "@/app/features/ga";
+import { ReplaceGeneralArrangementModal } from "@/app/features/ga";
 import {
   CreateDocumentTypeModal,
   EditDocumentTypeModal,
-  DeleteDocumentTypeModal,
   UploadDocumentModal,
-  DeleteDocumentModal,
 } from "@/app/features/documents";
+import DeleteConfirmModal from "@/app/components/modals/DeleteConfirmModal";
 
 interface ProjectDetailViewProps {
   tenantId: string;
@@ -665,10 +664,16 @@ export default function ProjectDetailView({
         onConfirm={handleConfirmReplace}
       />
 
-      <DeleteGeneralArrangementModal
+      <DeleteConfirmModal
         isOpen={showDeleteModal}
         onClose={() => setShowDeleteModal(false)}
         onConfirm={handleConfirmDelete}
+        title={t("ga.deleteModal.title")}
+        message={t("ga.deleteModal.message")}
+        warning={t("ga.deleteModal.warning")}
+        successMessage={t("ga.deleteModal.success")}
+        errorMessage={t("ga.deleteModal.error")}
+        confirmLabel={t("ga.deleteModal.confirm")}
       />
 
       {/* Document Type Modals */}
@@ -688,15 +693,21 @@ export default function ProjectDetailView({
         documentType={selectedDocType}
       />
 
-      <DeleteDocumentTypeModal
+      <DeleteConfirmModal
         isOpen={showDeleteDocTypeModal}
         onClose={() => {
           setShowDeleteDocTypeModal(false);
           setSelectedDocType(null);
         }}
         onConfirm={handleDeleteDocType}
-        documentTypeName={selectedDocType?.name || ""}
-        documentCount={selectedDocType ? (documents[selectedDocType.identifier]?.length || 0) : 0}
+        title={t("documentTypes.deleteModal.title")}
+        message={t("documentTypes.deleteModal.message", { name: selectedDocType?.name || "" })}
+        warning={selectedDocType && (documents[selectedDocType.identifier]?.length || 0) > 0
+          ? t("documentTypes.deleteModal.warning", { count: documents[selectedDocType.identifier]?.length || 0 })
+          : undefined}
+        successMessage={t("documentTypes.deleteModal.success")}
+        errorMessage={t("documentTypes.deleteModal.error")}
+        confirmLabel={t("documentTypes.deleteModal.confirm")}
       />
 
       {/* Document Modals */}
@@ -710,14 +721,19 @@ export default function ProjectDetailView({
         documentTypeName={documentTypes.find(dt => dt.identifier === uploadDocTypeId)?.name || ""}
       />
 
-      <DeleteDocumentModal
+      <DeleteConfirmModal
         isOpen={showDeleteDocModal}
         onClose={() => {
           setShowDeleteDocModal(false);
           setSelectedDocument(null);
         }}
         onConfirm={handleDeleteDocument}
-        documentName={selectedDocument?.name || ""}
+        title={t("documents.deleteModal.title")}
+        message={t("documents.deleteModal.message", { name: selectedDocument?.name || "" })}
+        warning={t("documents.deleteModal.warning")}
+        successMessage={t("documents.deleteModal.success")}
+        errorMessage={t("documents.deleteModal.error")}
+        confirmLabel={t("documents.deleteModal.confirm")}
       />
     </div>
   );

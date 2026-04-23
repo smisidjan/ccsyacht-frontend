@@ -9,4 +9,3 @@ export * from "./shared";
 // Modals
 export { default as CreateGAPinModal } from "./CreateGAPinModal";
 export { default as ReplaceGeneralArrangementModal } from "./ReplaceGeneralArrangementModal";
-export { default as DeleteGeneralArrangementModal } from "./DeleteGeneralArrangementModal";
