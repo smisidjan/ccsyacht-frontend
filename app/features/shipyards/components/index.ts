@@ -4,5 +4,5 @@
  */
 
 export { default as ShipyardFormModal } from "./ShipyardFormModal";
-export { default as DeleteShipyardModal } from "./DeleteShipyardModal";
 export { default as InlineShipyardForm } from "./InlineShipyardForm";
+export { default as ShipyardCard } from "./ShipyardCard";
