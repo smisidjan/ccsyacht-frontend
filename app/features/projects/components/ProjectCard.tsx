@@ -12,7 +12,7 @@ import {
   LockClosedIcon,
   UsersIcon,
 } from "@heroicons/react/24/outline";
-import StatusBadge from "./StatusBadge";
+import StatusBadge from "@/app/components/ui/StatusBadge";
 import type { Project, UserRole } from "@/lib/api/types";
 import { projectMembersApi } from "@/lib/api";
 import { useToast } from "@/app/context/ToastContext";
@@ -33,7 +33,7 @@ export default function ProjectCard({ project, isMember, userRole, memberCount, 
   const { showToast } = useToast();
   const { user: currentUser } = usePermission();
   const [isJoining, setIsJoining] = useState(false);
-  
+
   return (
     <div className="group bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-2xl dark:shadow-gray-900/50 dark:hover:shadow-gray-900/70 transition-all duration-300 hover:-translate-y-1 overflow-hidden h-full flex flex-col">
       {/* Gradient accent */}

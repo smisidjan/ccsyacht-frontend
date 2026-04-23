@@ -15,7 +15,7 @@ import Button from "@/app/components/ui/Button";
 import LoadingSkeleton from "@/app/components/ui/LoadingSkeleton";
 import Alert from "@/app/components/ui/Alert";
 import BaseModal from "@/app/components/modals/BaseModal";
-import ProfileInfoItem from "@/app/components/ui/ProfileInfoItem";
+import { ProfileInfoItem } from "@/app/features/profile";
 import { EditProjectModal } from "@/app/features/projects";
 import type { User, ProjectType, SetupTask, SelectedTimeSlot } from "@/lib/api/types";
 import { handleError } from "@/lib/utils/errors";

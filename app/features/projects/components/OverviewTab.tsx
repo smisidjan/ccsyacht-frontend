@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { PlusIcon, ChevronDownIcon } from "@heroicons/react/24/outline";
 import { AreaCard, CreateAreaModal, type Area as AreaCardData } from "@/app/features/areas";
-import SetupTaskCard from "@/app/components/ui/SetupTaskCard";
+import SetupTaskCard from "./SetupTaskCard";
 import type { ProjectStatus } from "@/app/components/ui/StatusBadge";
 import Button from "@/app/components/ui/Button";
 import Alert from "@/app/components/ui/Alert";
