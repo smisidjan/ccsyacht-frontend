@@ -268,24 +268,28 @@ export default function TaskCard({ task }: TaskCardProps) {
               </span>
             )}
             {task.type === "setup_task" && task.scheduledDate && (
-              <span className="flex items-center gap-1">
-                <CalendarIcon className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-                {formatDate(task.scheduledDate)}
-                <span className="text-gray-400 mx-0.5">•</span>
-                {new Date(task.scheduledDate).toLocaleTimeString(undefined, {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-                {task.scheduledEndDate && (
-                  <>
-                    {" - "}
-                    {new Date(task.scheduledEndDate).toLocaleTimeString(undefined, {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </>
-                )}
-              </span>
+              <>
+                <span className="flex items-center gap-1">
+                  <CalendarIcon className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                  {formatDate(task.scheduledDate)}
+                </span>
+                <span className="flex items-center gap-1">
+                  <ClockIcon className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                  {new Date(task.scheduledDate).toLocaleTimeString(undefined, {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                  {task.scheduledEndDate && (
+                    <>
+                      {" - "}
+                      {new Date(task.scheduledEndDate).toLocaleTimeString(undefined, {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </>
+                  )}
+                </span>
+              </>
             )}
             {task.type === "setup_task" && task.meetingFormat && (
               <span
