@@ -181,7 +181,7 @@ export default function AssignDocumentModal({
             </p>
             {projectId && (
               <Link
-                href={`/dashboard/projects/${projectId}?tab=settings`}
+                href={`/dashboard/projects/${projectId}#settings`}
                 className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
                 onClick={onClose}
               >
