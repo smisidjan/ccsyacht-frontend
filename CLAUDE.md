@@ -1,256 +1,434 @@
 # CCS Yacht Frontend
 
-## Project Overview
-
-Dit is de frontend applicatie voor CCS Yacht, gebouwd met Next.js 16 en React 19.
+Enterprise-grade yacht coating inspection management system built with Next.js 16 and React 19.
 
 ## Tech Stack
 
-- **Framework:** Next.js 16 (App Router)
-- **UI Library:** React 19
-- **Styling:** Tailwind CSS 4
-- **Language:** TypeScript 5
-- **Linting:** ESLint 9
-- **i18n:** next-intl (EN/NL)
-- **Theme:** next-themes (light/dark)
+| Category | Technology |
+|----------|------------|
+| Framework | Next.js 16 (App Router) |
+| UI Library | React 19 |
+| Language | TypeScript 5 |
+| Styling | Tailwind CSS 4 |
+| State | React Context + Custom Hooks |
+| i18n | next-intl (EN/NL) |
+| Theme | next-themes (light/dark) |
+| Linting | ESLint 9 |
 
-## Project Structure
+---
+
+## Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         app/[locale]/                           │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │                    Page Components                       │   │
+│  │         (Thin orchestration layer - <200 lines)         │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                              │                                  │
+│                              ▼                                  │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │                   app/features/                          │   │
+│  │  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐        │   │
+│  │  │projects │ │ stages  │ │  tasks  │ │ users   │  ...   │   │
+│  │  └─────────┘ └─────────┘ └─────────┘ └─────────┘        │   │
+│  │     Domain-specific components, logic, and types         │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                              │                                  │
+│                              ▼                                  │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │                  app/components/                         │   │
+│  │  ┌────────────┐  ┌────────────┐  ┌────────────┐         │   │
+│  │  │    ui/     │  │  modals/   │  │  guards/   │         │   │
+│  │  └────────────┘  └────────────┘  └────────────┘         │   │
+│  │        Generic, reusable UI primitives                   │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                              │                                  │
+│                              ▼                                  │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │                        lib/                              │   │
+│  │  ┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐         │   │
+│  │  │  api/  │  │ hooks/ │  │ utils/ │  │constants│        │   │
+│  │  └────────┘  └────────┘  └────────┘  └────────┘         │   │
+│  │     API clients, custom hooks, utilities, constants      │   │
+│  └─────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Directory Structure
 
 ```
 app/
-  [locale]/          # Locale-specifieke pagina's
-    layout.tsx       # Layout met NextIntlClientProvider
-    page.tsx         # Home pagina
-    login/
-      page.tsx
-    register/
-      page.tsx
-  components/        # Shared componenten
-  context/           # React contexts (Auth)
-  globals.css
-  layout.tsx         # Root layout
-i18n/
-  routing.ts         # Locale configuratie
-  request.ts         # Server-side i18n config
-  navigation.ts      # Locale-aware Link, useRouter, etc.
-messages/
-  en.json            # Engelse vertalingen
-  nl.json            # Nederlandse vertalingen
-public/              # Statische bestanden
+├── [locale]/                    # Route pages (thin orchestration)
+│   └── dashboard/
+│       ├── projects/
+│       ├── tasks/
+│       └── ...
+├── components/                  # Shared/generic components
+│   ├── ui/                      # UI primitives (Button, Modal, etc.)
+│   ├── modals/                  # Base modal components
+│   └── guards/                  # Route protection
+├── context/                     # React Context providers
+└── features/                    # Feature modules (domain logic)
+    ├── projects/
+    │   ├── components/
+    │   │   ├── index.ts         # Barrel export
+    │   │   ├── ProjectCard.tsx
+    │   │   └── ...
+    │   └── index.ts             # Feature barrel export
+    ├── stages/
+    ├── tasks/
+    └── ...
+
+lib/
+├── api/                         # API clients and hooks
+│   ├── index.ts                 # Central export
+│   ├── types.ts                 # TypeScript types
+│   └── [resource].ts            # Resource-specific APIs
+├── hooks/                       # Custom React hooks
+├── utils/                       # Utility functions
+└── constants/                   # App constants
+
+i18n/                            # Internationalization config
+messages/                        # Translation files (en.json, nl.json)
 ```
 
-## Commands
+---
 
-```bash
-npm run dev    # Start development server
-npm run build  # Build voor productie
-npm run start  # Start productie server
-npm run lint   # Run ESLint
+## Core Principles
+
+### 1. Feature-First Architecture
+
+All domain logic lives in `app/features/`. Each feature is self-contained:
+
+```
+features/
+└── [feature-name]/
+    ├── components/
+    │   ├── index.ts             # Barrel export (REQUIRED)
+    │   ├── [Feature]Card.tsx
+    │   ├── [Feature]List.tsx
+    │   ├── [Feature]Tab.tsx
+    │   └── [Feature]Modal.tsx
+    └── index.ts                 # Re-exports from components
 ```
 
-## Development Guidelines
-
-### Code Style
-
-- Gebruik TypeScript voor alle nieuwe bestanden
-- Volg de ESLint configuratie (`eslint.config.mjs`)
-- Gebruik functionele componenten met hooks
-- Gebruik de `@/*` path alias voor imports (bijv. `@/app/components`)
-
-### Component Hergebruik (BELANGRIJK)
-
-**Voordat je een nieuw component maakt, controleer altijd:**
-
-1. **Bestaat er al een vergelijkbaar component?**
-   - Check `app/components/ui/` voor herbruikbare UI componenten
-   - Check of een bestaand component uitgebreid kan worden
-
-2. **Kan een bestaand component generiek gemaakt worden?**
-   - Voeg props toe in plaats van een nieuw component te maken
-   - Gebruik composition pattern (children prop)
-
-3. **Herbruikbare componenten in `app/components/ui/`:**
-   - `Modal.tsx` - Basis modal met blur backdrop, ESC sluit, footer support
-   - `FormInput.tsx` - Input veld met label, error, hint support
-   - `Button.tsx` - Button met variants (primary, secondary, danger, etc.) en loading state
-   - `Alert.tsx` - Alert messages (error, success, info, warning)
-   - `Toast.tsx` - Toast notificaties (gebruik via `useToast()` hook)
-   - `StatusBadge.tsx` - Status badges (setup, active, locked, completed)
-   - `ProgressCircle.tsx` - Circulaire voortgangsindicator
-   - `ProjectCard.tsx` - Project kaart
-   - `SearchInput.tsx` - Zoekbalk met icoon
-   - `FilterTabs.tsx` - Filter tabs/buttons
-   - `ProfileInfoItem.tsx` - Profiel informatie item met icon en optionele change knop
-
-   **Toast gebruik:**
-   ```tsx
-   import { useToast } from "@/app/context/ToastContext";
-
-   const { showToast } = useToast();
-   showToast("success", "Actie geslaagd!");
-   showToast("error", "Er ging iets mis");
-   ```
-
-4. **Modal componenten - BELANGRIJK PATROON:**
-   - **NOOIT nieuwe modal wrapper componenten maken** (zoals DeleteConfirmModal, etc.)
-   - Gebruik ALTIJD direct de bestaande `Modal.tsx` of `BaseModal.tsx` componenten
-   - Alle modal logica moet in de parent component staan, niet in een nieuwe wrapper
-   - Dit voorkomt duplicate code en houdt modals simpel en configureerbaar
-
-   **Modal keuze:**
-   - Gebruik `BaseModal.tsx` voor modals met formulieren (automatische toast, error handling, loading state)
-   - Gebruik `Modal.tsx` voor simpele modals (confirmatie, info, etc.)
-
-   **BaseModal pattern (voor formulieren):**
-   ```tsx
-   import BaseModal from "@/app/components/modals/BaseModal";
-   import FormInput from "@/app/components/ui/FormInput";
-
-   export default function MyComponent() {
-     const [isOpen, setIsOpen] = useState(false);
-     const [value, setValue] = useState("");
-
-     const handleSubmit = async () => {
-       await api.doSomething(value);
-     };
-
-     return (
-       <>
-         <Button onClick={() => setIsOpen(true)}>Open</Button>
-         <BaseModal
-           isOpen={isOpen}
-           onClose={() => setIsOpen(false)}
-           title={t("title")}
-           formId="my-form"
-           onSubmit={handleSubmit}
-           successMessage={t("success")}
-           errorFallbackMessage={t("error")}
-         >
-           <FormInput
-             id="field"
-             label={t("label")}
-             value={value}
-             onChange={(e) => setValue(e.target.value)}
-             required
-           />
-         </BaseModal>
-       </>
-     );
-   }
-   ```
-
-   **Modal pattern (voor confirmatie/info):**
-   ```tsx
-   import Modal from "@/app/components/ui/Modal";
-   import Button from "@/app/components/ui/Button";
-
-   export default function MyComponent() {
-     const [isOpen, setIsOpen] = useState(false);
-
-     const handleConfirm = async () => {
-       await api.doSomething();
-       setIsOpen(false);
-     };
-
-     return (
-       <>
-         <Button onClick={() => setIsOpen(true)}>Delete</Button>
-         <Modal
-           isOpen={isOpen}
-           onClose={() => setIsOpen(false)}
-           title={t("confirmDelete")}
-           actions={[
-             { label: t("cancel"), onClick: () => setIsOpen(false), variant: "secondary" },
-             { label: t("delete"), onClick: handleConfirm, variant: "danger" }
-           ]}
-         >
-           <p>{t("deleteWarning")}</p>
-         </Modal>
-       </>
-     );
-   }
-   ```
-
-   **Voordelen van dit patroon:**
-   - Geen duplicate modal componenten
-   - Alle modal state en logica op één plek (parent component)
-   - Makkelijker te onderhouden
-   - Consistent gedrag voor alle modals
-
-5. **Pattern voor nieuwe UI componenten:**
-   - Maak ze generiek en herbruikbaar
-   - Plaats ze in `app/components/ui/`
-   - Gebruik props voor customization
-   - Documenteer de props met TypeScript interfaces
-
-6. **Helper functies en utilities:**
-   - Plaats in `lib/utils/` voor algemene utilities
-   - Plaats in `lib/hooks/` voor custom React hooks
-   - Hergebruik bestaande helpers waar mogelijk
-
-### Component Naming
-
-- Componenten: PascalCase (bijv. `UserProfile.tsx`)
-- Utilities/hooks: camelCase (bijv. `useAuth.ts`)
-- Pages: `page.tsx` in de juiste route folder
-
-### Styling
-
-- Gebruik Tailwind CSS utility classes
-- Vermijd inline styles in components, plaats ze in globals.css
-- Globale styles in `app/globals.css`
-
-### Internationalisatie (i18n)
-
-**Belangrijk:** Alle tekst in de UI moet vertaald worden via next-intl.
-
-1. **Nieuwe pagina's maken:**
-   - Plaats pagina's in `app/[locale]/` folder
-   - Gebruik `useTranslations()` hook voor vertalingen
-
-2. **Vertalingen toevoegen:**
-   - Voeg keys toe aan `messages/en.json` en `messages/nl.json`
-   - Gebruik geneste structuur: `{ "section": { "key": "value" } }`
-
-3. **Links in componenten:**
-   - Gebruik `Link` van `@/i18n/navigation` (niet van `next/link`)
-   - Gebruik `useRouter` van `@/i18n/navigation` voor programmatische navigatie
-
-4. **Voorbeeld:**
+**Barrel Export Pattern:**
 ```tsx
-import { useTranslations } from 'next-intl';
-import { Link } from '@/i18n/navigation';
+// features/[name]/components/index.ts
+export { default as ProjectCard } from "./ProjectCard";
+export { default as ProjectList } from "./ProjectList";
+export type { ProjectFormData } from "./CreateProjectModal";
+```
 
-export default function MyPage() {
-  const t = useTranslations('mySection');
+### 2. Thin Page Components
+
+Pages are orchestration layers ONLY. Extract all UI logic to feature components:
+
+```tsx
+// ✅ GOOD: Thin page (~100-200 lines max)
+export default function ProjectsPage() {
+  const { data, loading } = useProjects();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  if (loading) return <LoadingSkeleton />;
 
   return (
     <div>
-      <h1>{t('title')}</h1>
-      <Link href="/other-page">{t('linkText')}</Link>
+      <PageHeader title={t("title")} action={<Button>Create</Button>} />
+      <ProjectList projects={data} />
+      <CreateProjectModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+    </div>
+  );
+}
+
+// ❌ BAD: Fat page with inline rendering functions
+export default function ProjectsPage() {
+  const renderProjectCard = (project) => (
+    // 100+ lines of JSX inline...
+  );
+  // Multiple inline render functions...
+}
+```
+
+### 3. Component Hierarchy
+
+```
+UI Primitives (app/components/ui/)
+    └── Feature Components (app/features/*/components/)
+         └── Page Components (app/[locale]/**/page.tsx)
+```
+
+**Never skip levels.** Feature components compose UI primitives; pages compose feature components.
+
+### 4. Single Responsibility
+
+Each component does ONE thing:
+- `TaskCard` - Renders a single task
+- `TaskList` - Renders a list of TaskCards with layout
+- `TaskDetailsPanel` - Renders task details with filters
+
+---
+
+## Available Features
+
+| Feature | Path | Components |
+|---------|------|------------|
+| projects | `features/projects` | ProjectCard, OverviewTab, SettingsTab, CreateProjectModal |
+| stages | `features/stages` | StageListItem, StageDetailPanel, CreateStagesModal, RemarksList |
+| tasks | `features/tasks` | TaskCard, ProjectTasksList, TaskDetailsPanel |
+| users | `features/users` | UsersTab, InvitationsTab, InviteUserModal |
+| documents | `features/documents` | DocumentsTab, DocumentViewerModal, UploadDocumentModal |
+| punchlist | `features/punchlist` | PunchlistList, PunchlistItemCard |
+| shipyards | `features/shipyards` | ShipyardCard, ShipyardFormModal |
+| profile | `features/profile` | ProfileInfoItem, ChangeNameModal, ChangePasswordModal |
+| ga | `features/ga` | GAViewer, CreateGAPinModal |
+| areas | `features/areas` | AreaCard |
+| decks | `features/decks` | DeckCard |
+
+---
+
+## UI Primitives (`app/components/ui/`)
+
+| Component | Purpose |
+|-----------|---------|
+| `Button` | Buttons (variants: primary, secondary, danger, ghost) |
+| `FormInput` | Text inputs with label, error, hint |
+| `FormSelect` | Dropdowns |
+| `FormTextarea` | Multi-line input |
+| `FormCheckbox` | Checkboxes |
+| `Modal` | Base modal with backdrop, ESC close |
+| `Alert` | Inline alerts (error, success, info, warning) |
+| `StatusBadge` | Status indicators (setup, active, completed, etc.) |
+| `PageHeader` | Page title with optional action button |
+| `SearchInput` | Search field with icon |
+| `FilterTabs` | Tab-style filter buttons |
+| `TabNavState` | State-controlled tab navigation |
+| `LoadingSkeleton` | Loading placeholders |
+| `EmptyState` | Empty state with icon and CTA |
+| `ProgressCircle` | Circular progress indicator |
+| `Tooltip` | Hover tooltips |
+
+---
+
+## Modal Patterns
+
+### BaseModal (for forms)
+
+Handles loading state, error handling, and toast notifications automatically:
+
+```tsx
+import BaseModal from "@/app/components/modals/BaseModal";
+
+<BaseModal
+  isOpen={isOpen}
+  onClose={onClose}
+  title={t("createItem")}
+  onSubmit={handleSubmit}
+  successMessage={t("success")}
+  errorFallbackMessage={t("error")}
+>
+  <FormInput label={t("name")} value={name} onChange={setName} />
+</BaseModal>
+```
+
+### DeleteConfirmModal (for delete confirmations)
+
+```tsx
+import DeleteConfirmModal from "@/app/components/modals/DeleteConfirmModal";
+
+<DeleteConfirmModal
+  isOpen={isOpen}
+  onClose={onClose}
+  onConfirm={handleDelete}
+  title={t("deleteTitle")}
+  message={t("deleteMessage")}
+  successMessage={t("deleteSuccess")}
+/>
+```
+
+### ConfirmModal (for other confirmations)
+
+```tsx
+import ConfirmModal from "@/app/components/modals/ConfirmModal";
+
+<ConfirmModal
+  isOpen={isOpen}
+  onClose={onClose}
+  onConfirm={handleConfirm}
+  title={t("confirmTitle")}
+  message={t("confirmMessage")}
+/>
+```
+
+---
+
+## API & Data Fetching
+
+### Using API Hooks
+
+```tsx
+import { useProjects, useProject, projectsApi } from "@/lib/api";
+
+// List with pagination
+const { data, loading, error, pagination, refetch } = useProjects({ page: 1 });
+
+// Single resource
+const { data: project, loading, refetch } = useProject(projectId);
+
+// Mutations
+await projectsApi.create({ name: "New Project" });
+await projectsApi.update(id, { name: "Updated" });
+await projectsApi.delete(id);
+```
+
+### Available API Modules
+
+- `useProjects`, `projectsApi`
+- `useStages`, `stagesApi`
+- `useDocuments`, `documentsApi`
+- `useUsers`, `usersApi`
+- `useShipyards`, `shipyardsApi`
+- `usePunchlistItems`, `punchlistItemsApi`
+- And more in `lib/api/`
+
+---
+
+## Context Providers
+
+| Context | Purpose | Hook |
+|---------|---------|------|
+| `AuthContext` | Authentication state | `useAuth()` |
+| `CurrentUserContext` | Current user data | `useCurrentUserContext()` |
+| `ToastContext` | Toast notifications | `useToast()` |
+| `TenantContext` | Multi-tenant context | `useTenant()` |
+| `GAContext` | General Arrangement state | `useGA()` |
+| `ProjectContext` | Current project | `useProjectContext()` |
+| `RolesContext` | Available roles | `useRolesContext()` |
+
+**Toast Usage:**
+```tsx
+const { showToast } = useToast();
+showToast("success", "Item saved!");
+showToast("error", "Something went wrong");
+```
+
+---
+
+## Internationalization
+
+All UI text MUST use translations:
+
+```tsx
+import { useTranslations } from "next-intl";
+import { Link } from "@/i18n/navigation";  // NOT from next/link
+
+export default function MyComponent() {
+  const t = useTranslations("myFeature");
+
+  return (
+    <div>
+      <h1>{t("title")}</h1>
+      <p>{t("description", { count: 5 })}</p>
+      <Link href="/dashboard">{t("backLink")}</Link>
     </div>
   );
 }
 ```
 
-### Git Workflow
+**Translation files:** `messages/en.json` and `messages/nl.json`
 
-- Commit messages in het Engels
-- Branch naming: `feature/`, `fix/`, `chore/`
+---
 
-## Environment Variables
+## Styling Guidelines
 
-Maak een `.env.local` bestand aan voor lokale development:
+- Use Tailwind CSS utility classes
+- Dark mode: `text-gray-900 dark:text-white`
+- Responsive: `grid-cols-1 md:grid-cols-2 lg:grid-cols-3`
+- No inline styles; use Tailwind classes only
 
-```env
-NEXT_PUBLIC_API_URL=http://localhost:8000/api
-```
+---
 
-## Docker
-
-Start de applicatie met Docker:
+## Commands
 
 ```bash
-docker compose up        # Development mode
-docker compose up --build # Rebuild en start
+npm run dev      # Development server
+npm run build    # Production build
+npm run start    # Production server
+npm run lint     # ESLint check
 ```
+
+---
+
+## Adding New Features
+
+### Step 1: Create Feature Folder
+```bash
+mkdir -p app/features/[name]/components
+```
+
+### Step 2: Create Components
+```tsx
+// app/features/[name]/components/[Name]Card.tsx
+"use client";
+import { useTranslations } from "next-intl";
+// ... component implementation
+```
+
+### Step 3: Create Barrel Exports
+```tsx
+// app/features/[name]/components/index.ts
+export { default as [Name]Card } from "./[Name]Card";
+
+// app/features/[name]/index.ts
+export * from "./components";
+```
+
+### Step 4: Add to Central Export
+```tsx
+// app/features/index.ts
+export * from "./[name]";
+```
+
+### Step 5: Add Translations
+```json
+// messages/en.json + messages/nl.json
+{ "[name]": { "title": "...", "actions": { ... } } }
+```
+
+---
+
+## Backlog / Next Steps
+
+### High Priority
+1. **Kickoff Meeting Forms** - Pre-meeting docs, live form, sign-off flow, CCS internal setup
+2. **Pagination Component** - Extract reusable pagination from projects page
+3. **EmptyState Consolidation** - Use `EmptyState` component consistently
+
+### Medium Priority
+4. **Form Validation** - Add Zod schema validation
+5. **Error Boundaries** - Feature-level error boundaries
+6. **Optimistic Updates** - Better UX for mutations
+
+### Low Priority
+7. **Storybook** - UI component documentation
+8. **E2E Tests** - Playwright for critical flows
+9. **Bundle Optimization** - Performance audit
+
+---
+
+## Code Review Checklist
+
+- [ ] Component in correct location (ui/ vs features/)
+- [ ] Barrel exports updated
+- [ ] Translations added (EN + NL)
+- [ ] TypeScript types defined
+- [ ] No duplicate components
+- [ ] Page stays thin (<200 lines)
+- [ ] Props documented with interfaces
+- [ ] Dark mode styles included
+- [ ] Responsive design considered
+- [ ] Uses existing UI primitives
