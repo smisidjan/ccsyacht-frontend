@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { ArrowRightIcon, CheckIcon, ClockIcon, CalendarIcon, LockClosedIcon } from "@heroicons/react/24/outline";
+import { ArrowRightIcon, CheckIcon, ClockIcon, CalendarIcon, LockClosedIcon, ComputerDesktopIcon, UserIcon } from "@heroicons/react/24/outline";
 import type { SetupTask, SetupTaskType, DocumentType } from "@/lib/api/types";
 import { useCurrentUserContext } from "@/app/context/CurrentUserContext";
 import Tooltip from "@/app/components/ui/Tooltip";
@@ -215,6 +215,47 @@ export default function SetupTaskCard({ task, documentTypes, allTasks, onMarkCom
       <div className="text-sm text-gray-600 dark:text-gray-400 mb-4 flex-grow">
         {renderDescription()}
       </div>
+
+      {/* Scheduled meeting details */}
+      {isScheduled && task.scheduledDate && (
+        <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 mb-4 space-y-2">
+          <div className="flex items-center gap-2 text-blue-700 dark:text-blue-400">
+            <CalendarIcon className="w-4 h-4 flex-shrink-0" />
+            <span className="font-medium">
+              {new Date(task.scheduledDate).toLocaleDateString(undefined, {
+                weekday: "long",
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              })}
+            </span>
+          </div>
+          <div className="flex items-center gap-2 text-blue-600 dark:text-blue-300">
+            <ClockIcon className="w-4 h-4 flex-shrink-0" />
+            <span>
+              {new Date(task.scheduledDate).toLocaleTimeString(undefined, {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </span>
+          </div>
+          {task.meetingFormat && (
+            <div className="flex items-center gap-2">
+              {task.meetingFormat === "live" ? (
+                <span className="inline-flex items-center gap-1.5 px-2 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 rounded text-xs font-medium">
+                  <UserIcon className="w-3 h-3" />
+                  {t("meetingFormat.inPerson")}
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded text-xs font-medium">
+                  <ComputerDesktopIcon className="w-3 h-3" />
+                  {t("meetingFormat.online")}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mt-auto">
       <div className="flex items-center justify-end gap-3">

@@ -330,6 +330,10 @@
       "completed": "Voltooid",
       "blocked": "Geblokkeerd",
       "markComplete": "Markeer als Voltooid",
+      "meetingFormat": {
+        "online": "Online",
+        "inPerson": "Fysiek"
+      },
       "uploadDocuments": {
         "title": "Upload Verplichte Documenten",
         "description": "Upload alle verplichte projectdocumentatie inclusief contracten, specificaties en tekeningen",

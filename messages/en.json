@@ -330,6 +330,10 @@
       "completed": "Completed",
       "blocked": "Blocked",
       "markComplete": "Mark Complete",
+      "meetingFormat": {
+        "online": "Online",
+        "inPerson": "In Person"
+      },
       "uploadDocuments": {
         "title": "Upload Required Documents",
         "description": "Upload all required project documentation including contracts, specifications, and drawings",
