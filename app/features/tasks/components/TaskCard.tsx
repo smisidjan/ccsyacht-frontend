@@ -13,6 +13,8 @@ import {
   BellIcon,
   EyeIcon,
   DocumentCheckIcon,
+  ComputerDesktopIcon,
+  UserIcon,
 } from "@heroicons/react/24/outline";
 import type {
   MyTaskDocumentRequest,
@@ -269,6 +271,38 @@ export default function TaskCard({ task }: TaskCardProps) {
               <span className="flex items-center gap-1">
                 <CalendarIcon className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                 {formatDate(task.scheduledDate)}
+                <span className="text-gray-400 mx-0.5">•</span>
+                {new Date(task.scheduledDate).toLocaleTimeString(undefined, {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+                {task.scheduledEndDate && (
+                  <>
+                    {" - "}
+                    {new Date(task.scheduledEndDate).toLocaleTimeString(undefined, {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </>
+                )}
+              </span>
+            )}
+            {task.type === "setup_task" && task.meetingFormat && (
+              <span
+                className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] sm:text-xs font-medium ${
+                  task.meetingFormat === "live"
+                    ? "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400"
+                    : "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400"
+                }`}
+              >
+                {task.meetingFormat === "live" ? (
+                  <UserIcon className="w-3 h-3" />
+                ) : (
+                  <ComputerDesktopIcon className="w-3 h-3" />
+                )}
+                <span className="hidden sm:inline">
+                  {task.meetingFormat === "live" ? t("meetingFormat.inPerson") : t("meetingFormat.online")}
+                </span>
               </span>
             )}
 

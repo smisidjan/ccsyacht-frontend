@@ -1809,6 +1809,8 @@ export interface MyTaskSetupTask {
   taskType: SetupTaskType;
   project: MyTaskProject;
   scheduledDate: string | null;
+  scheduledEndDate: string | null;
+  meetingFormat: SetupTaskMeetingFormat | null;
   hasSigned: boolean;
   signedAt: string | null;
   assignedAt: string;

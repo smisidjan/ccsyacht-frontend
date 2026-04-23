@@ -188,6 +188,10 @@
       "tryDifferentFilter": "Pas je filters aan om meer taken te zien",
       "selectProject": "Selecteer een project",
       "selectProjectHint": "Kies een project uit de lijst om de taken te bekijken"
+    },
+    "meetingFormat": {
+      "online": "Online",
+      "inPerson": "Fysiek"
     }
   },
   "projects": {

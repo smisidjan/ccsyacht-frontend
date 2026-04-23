@@ -188,6 +188,10 @@
       "tryDifferentFilter": "Try adjusting your filters to see more tasks",
       "selectProject": "Select a project",
       "selectProjectHint": "Choose a project from the list to view its tasks"
+    },
+    "meetingFormat": {
+      "online": "Online",
+      "inPerson": "In Person"
     }
   },
   "projects": {
