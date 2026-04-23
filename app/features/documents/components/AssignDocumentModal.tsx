@@ -3,7 +3,6 @@
 import { useState, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { UserCircleIcon, CheckIcon, UserPlusIcon } from "@heroicons/react/24/outline";
-import { Link } from "@/i18n/navigation";
 import BaseModal from "@/app/components/modals/BaseModal";
 import FormInput from "@/app/components/ui/FormInput";
 import FormTextarea from "@/app/components/ui/FormTextarea";
@@ -180,13 +179,19 @@ export default function AssignDocumentModal({
               {t("assignModal.noUsersAvailable")}
             </p>
             {projectId && (
-              <Link
-                href={`/dashboard/projects/${projectId}#settings`}
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  // Use setTimeout to ensure modal closes first, then change hash
+                  setTimeout(() => {
+                    window.location.hash = "settings";
+                  }, 100);
+                }}
                 className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
-                onClick={onClose}
               >
                 {t("assignModal.addMembersLink")}
-              </Link>
+              </button>
             )}
           </div>
         )}
