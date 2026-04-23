@@ -18,13 +18,13 @@ import { usePermission } from "@/lib/hooks/usePermission";
 import { useMinimumLoadingTime } from "@/lib/hooks/useMinimumLoadingTime";
 import { useRealtimeProjectsList } from "@/lib/hooks/useRealtimeProject";
 import ProtectedRoute from "@/app/components/guards/ProtectedRoute";
-import ProjectCard from "@/app/components/ui/ProjectCard";
 import SearchInput from "@/app/components/ui/SearchInput";
 import FilterTabs from "@/app/components/ui/FilterTabs";
 import type { FilterOption } from "@/app/components/ui/FilterTabs";
-import { CreateProjectModal, type ProjectFormData } from "@/app/features/projects";
+import { CreateProjectModal, ProjectCard, type ProjectFormData } from "@/app/features/projects";
 import LoadingSkeleton from "@/app/components/ui/LoadingSkeleton";
 import Button from "@/app/components/ui/Button";
+import PageHeader from "@/app/components/ui/PageHeader";
 import type { ProjectStatus, UserRole } from "@/lib/api/types";
 
 export default function ProjectsPage() {
@@ -173,23 +173,16 @@ export default function ProjectsPage() {
   return (
     <ProtectedRoute permissions={PERMISSIONS.VIEW_PROJECTS}>
       <div>
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-              {t("title")}
-            </h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-2">
-              {t("subtitle")}
-            </p>
-          </div>
-          {canCreateProject && (
+        <PageHeader
+          title={t("title")}
+          subtitle={t("subtitle")}
+          action={canCreateProject && (
             <Button onClick={() => setIsCreateModalOpen(true)}>
               <PlusIcon className="w-5 h-5" />
               {t("newProject")}
             </Button>
           )}
-        </div>
+        />
 
         {/* Filters */}
         <div className="space-y-8 mb-10">

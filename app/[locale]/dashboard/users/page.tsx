@@ -8,6 +8,7 @@ import type { StateTab } from "@/app/components/ui/TabNavState";
 import { UsersTab, InvitationsTab, InviteUserModal } from "@/app/features/users";
 import { EditUserModal } from "@/app/features/profile";
 import ProtectedRoute from "@/app/components/guards/ProtectedRoute";
+import PageHeader from "@/app/components/ui/PageHeader";
 import { PERMISSIONS } from "@/lib/constants/permissions";
 import { usePermission } from "@/lib/hooks/usePermission";
 import { useMinimumLoadingTime } from "@/lib/hooks/useMinimumLoadingTime";
@@ -185,14 +186,11 @@ export default function UsersPage() {
   return (
     <ProtectedRoute permissions={PERMISSIONS.VIEW_USERS}>
       <div>
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            {t("title")}
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
-            {t("subtitle")}
-          </p>
-        </div>
+        <PageHeader
+          title={t("title")}
+          subtitle={t("subtitle")}
+          className="mb-6"
+        />
 
         <div className="mb-8">
           <TabNavState
