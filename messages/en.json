@@ -2147,10 +2147,10 @@
       "assignModal": {
         "title": "Request Document",
         "forDocumentType": "Request document for:",
-        "selectUser": "Select Person",
+        "selectUser": "Select Member",
         "searchPlaceholder": "Search by name or email...",
-        "noResults": "No matching users found",
-        "noUsersAvailable": "No users available to assign",
+        "noResults": "No matching members found",
+        "noUsersAvailable": "No members available to assign",
         "message": "Message (optional)",
         "messagePlaceholder": "Add instructions or context for this request...",
         "dueDate": "Due Date (optional)",

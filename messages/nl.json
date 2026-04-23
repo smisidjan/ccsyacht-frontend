@@ -2177,10 +2177,10 @@
       "assignModal": {
         "title": "Document Opvragen",
         "forDocumentType": "Vraag document op voor:",
-        "selectUser": "Selecteer Persoon",
+        "selectUser": "Selecteer Lid",
         "searchPlaceholder": "Zoek op naam of email...",
-        "noResults": "Geen overeenkomende gebruikers gevonden",
-        "noUsersAvailable": "Geen gebruikers beschikbaar om toe te wijzen",
+        "noResults": "Geen overeenkomende leden gevonden",
+        "noUsersAvailable": "Geen leden beschikbaar om toe te wijzen",
         "message": "Bericht (optioneel)",
         "messagePlaceholder": "Voeg instructies of context toe voor dit verzoek...",
         "dueDate": "Deadline (optioneel)",
