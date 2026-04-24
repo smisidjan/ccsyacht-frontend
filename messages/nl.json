@@ -193,7 +193,10 @@
       "online": "Online",
       "inPerson": "Fysiek"
     },
-    "meetingLink": "Deelnemen"
+    "meetingLink": "Deelnemen",
+    "pendingReviews": "{count, plural, =1 {1 review} other {# reviews}}",
+    "relatedReviews": "{count, plural, =1 {1 gerelateerde review} other {# gerelateerde reviews}}",
+    "pending": "openstaand"
   },
   "projects": {
     "title": "Projecten",

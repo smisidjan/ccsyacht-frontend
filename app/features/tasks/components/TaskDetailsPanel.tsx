@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import {
@@ -14,7 +14,9 @@ import {
 } from "@heroicons/react/24/outline";
 import { FolderIcon as FolderIconSolid } from "@heroicons/react/24/solid";
 import TaskCard, { type TaskItem } from "./TaskCard";
+import TaskCardGroup from "./TaskCardGroup";
 import type { ProjectGroup } from "./ProjectTasksList";
+import type { MyTaskSetupTask, MyTaskDocumentAcknowledgement } from "@/lib/api/types";
 
 type FilterType = "all" | "documents" | "punchlist" | "meetings" | "acknowledgements";
 type FilterStatus = "all" | "pending" | "overdue" | "completed";
@@ -106,6 +108,51 @@ export default function TaskDetailsPanel({
         return true;
       })
     : [];
+
+  // Group tasks: meetings with their related acknowledgements
+  const groupedTasks = useMemo(() => {
+    // Separate tasks by type
+    const meetings: MyTaskSetupTask[] = [];
+    const acknowledgements: MyTaskDocumentAcknowledgement[] = [];
+    const otherTasks: TaskItem[] = [];
+
+    filteredTasks.forEach((task) => {
+      if (task.type === "setup_task") {
+        meetings.push(task);
+      } else if (task.type === "document_acknowledgement") {
+        acknowledgements.push(task);
+      } else {
+        otherTasks.push(task);
+      }
+    });
+
+    // Create a map of meeting identifier -> acknowledgements
+    const meetingAcknowledgements = new Map<string, MyTaskDocumentAcknowledgement[]>();
+    const orphanAcknowledgements: MyTaskDocumentAcknowledgement[] = [];
+
+    acknowledgements.forEach((ack) => {
+      const meetingId = ack.setupTask.identifier;
+      // Check if this meeting exists in our filtered meetings
+      const meetingExists = meetings.some((m) => m.identifier === meetingId);
+
+      if (meetingExists) {
+        if (!meetingAcknowledgements.has(meetingId)) {
+          meetingAcknowledgements.set(meetingId, []);
+        }
+        meetingAcknowledgements.get(meetingId)!.push(ack);
+      } else {
+        // This acknowledgement's meeting is not in the filtered list (e.g., filtered by type)
+        orphanAcknowledgements.push(ack);
+      }
+    });
+
+    return {
+      meetings,
+      meetingAcknowledgements,
+      orphanAcknowledgements,
+      otherTasks,
+    };
+  }, [filteredTasks]);
 
   if (!selectedProject) {
     return (
@@ -261,7 +308,25 @@ export default function TaskDetailsPanel({
           </div>
         ) : (
           <div className="grid gap-3 sm:gap-4">
-            {filteredTasks.map((task) => (
+            {/* Render meetings with their grouped acknowledgements */}
+            {groupedTasks.meetings.map((meeting) => {
+              const relatedAcks = groupedTasks.meetingAcknowledgements.get(meeting.identifier) || [];
+              return (
+                <TaskCardGroup
+                  key={`meeting-${meeting.identifier}`}
+                  meeting={meeting}
+                  acknowledgements={relatedAcks}
+                />
+              );
+            })}
+
+            {/* Render orphan acknowledgements (when meeting is filtered out) */}
+            {groupedTasks.orphanAcknowledgements.map((task) => (
+              <TaskCard key={`${task.type}-${task.identifier}`} task={task} />
+            ))}
+
+            {/* Render other tasks (document requests, punchlist items) */}
+            {groupedTasks.otherTasks.map((task) => (
               <TaskCard key={`${task.type}-${task.identifier}`} task={task} />
             ))}
           </div>

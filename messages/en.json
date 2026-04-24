@@ -193,7 +193,10 @@
       "online": "Online",
       "inPerson": "In Person"
     },
-    "meetingLink": "Join Meeting"
+    "meetingLink": "Join Meeting",
+    "pendingReviews": "{count, plural, =1 {1 review} other {# reviews}}",
+    "relatedReviews": "{count, plural, =1 {1 related review} other {# related reviews}}",
+    "pending": "pending"
   },
   "projects": {
     "title": "Projects",
