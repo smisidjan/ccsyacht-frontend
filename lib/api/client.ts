@@ -39,6 +39,24 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
 // Token management
 let authToken: string | null = null;
 
+// Logout callback for 401 handling
+let onUnauthorizedCallback: (() => void) | null = null;
+
+export function setOnUnauthorized(callback: (() => void) | null) {
+  onUnauthorizedCallback = callback;
+}
+
+// Track last successful API call time for session keep-alive
+let lastApiCallTime: number = Date.now();
+
+export function getLastApiCallTime(): number {
+  return lastApiCallTime;
+}
+
+export function updateLastApiCallTime(): void {
+  lastApiCallTime = Date.now();
+}
+
 // Tenant management
 let tenantId: string | null = null;
 let tenantName: string | null = null;
@@ -158,6 +176,12 @@ export async function apiFetch<T>(
   });
 
   if (!response.ok) {
+    // Handle 401 Unauthorized - token expired
+    if (response.status === 401 && onUnauthorizedCallback) {
+      onUnauthorizedCallback();
+      // Still throw the error so the calling code knows what happened
+    }
+
     const errorData = await response.json().catch(() => ({}));
     // Handle various error response formats from the backend
     const errorMessage =
@@ -173,6 +197,9 @@ export async function apiFetch<T>(
     };
     throw error;
   }
+
+  // Update last API call time on successful request
+  updateLastApiCallTime();
 
   // Handle 204 No Content
   if (response.status === 204) {
@@ -236,6 +263,15 @@ export const authApi = {
       method: "POST",
       body: JSON.stringify(data),
     }),
+
+  refreshToken: (): Promise<{ token: string }> =>
+    apiFetch("/auth/refresh", {
+      method: "POST",
+    }),
+
+  // Keep session alive - resets Sanctum token expiration
+  ping: (): Promise<{ status: string }> =>
+    apiFetch("/auth/ping"),
 };
 
 // Paginated API response

@@ -61,7 +61,8 @@
       "weakPassword": "Wachtwoord is te zwak.",
       "tooManyAttempts": "Te veel pogingen. Probeer het later opnieuw.",
       "tokenUsed": "Deze registratielink is al gebruikt.",
-      "invalidToken": "Deze registratielink is ongeldig of verlopen."
+      "invalidToken": "Deze registratielink is ongeldig of verlopen.",
+      "sessionExpired": "Je sessie is verlopen. Log opnieuw in."
     },
     "adminRegistrationTitle": "Maak Je Admin Account Aan",
     "adminRegistrationSubtitle": "Stel je account in om {orgName} te beheren",

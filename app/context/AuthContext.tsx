@@ -3,8 +3,10 @@
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { useRouter, usePathname } from "@/i18n/navigation";
 import { useTenant } from "@/app/context/TenantContext";
-import { setAuthToken, getAuthToken } from "@/lib/api/client";
-import { useInactivityLogout } from "@/lib/hooks/useInactivityLogout";
+import { setAuthToken, getAuthToken, setOnUnauthorized } from "@/lib/api/client";
+import { useSessionKeepAlive } from "@/lib/hooks/useSessionKeepAlive";
+import { useToast } from "@/app/context/ToastContext";
+import { useTranslations } from "next-intl";
 
 interface AuthContextType {
   token: string | null;
@@ -69,17 +71,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     router.push("/dashboard");
   };
 
-  const logout = useCallback(() => {
+  const { showToast } = useToast();
+  const t = useTranslations("auth.errors");
+
+  const logout = useCallback((showSessionExpired = false) => {
     setAuthToken(null);
     clearTenant();
     setToken(null);
+    if (showSessionExpired) {
+      // Store flag in sessionStorage to show toast after redirect
+      sessionStorage.setItem("sessionExpired", "true");
+    }
     router.push("/login");
   }, [clearTenant, router]);
 
-  // Auto-logout after 1 hour of inactivity
-  useInactivityLogout({
-    onLogout: logout,
-    enabled: !!token, // Only track when user is logged in
+  // Handle 401 responses - token expired
+  useEffect(() => {
+    setOnUnauthorized(() => {
+      logout(true);
+    });
+
+    return () => {
+      setOnUnauthorized(null);
+    };
+  }, [logout]);
+
+  // Show session expired toast on login page if redirected
+  useEffect(() => {
+    if (pathname === "/login" && sessionStorage.getItem("sessionExpired")) {
+      sessionStorage.removeItem("sessionExpired");
+      showToast("warning", t("sessionExpired"));
+    }
+  }, [pathname, showToast]);
+
+  // Keep session alive for active users
+  useSessionKeepAlive({
+    enabled: !!token,
+    onPingError: () => logout(true),
   });
 
   return (

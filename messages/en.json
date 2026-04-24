@@ -61,7 +61,8 @@
       "weakPassword": "Password is too weak.",
       "tooManyAttempts": "Too many attempts. Please try again later.",
       "tokenUsed": "This registration link has already been used.",
-      "invalidToken": "This registration link is invalid or has expired."
+      "invalidToken": "This registration link is invalid or has expired.",
+      "sessionExpired": "Your session has expired. Please log in again."
     },
     "adminRegistrationTitle": "Create Your Admin Account",
     "adminRegistrationSubtitle": "Set up your account to manage {orgName}",
