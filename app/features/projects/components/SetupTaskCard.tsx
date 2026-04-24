@@ -104,20 +104,20 @@ export default function SetupTaskCard({ task, documentTypes, allTasks, onMarkCom
             </span>
             <ul className="mt-2 space-y-1">
               {requestedDocs.map(doc => (
-                <li key={doc.identifier} className="flex items-center gap-2">
+                <li key={doc.identifier} className="flex items-start gap-2">
                   {doc.documentCount > 0 ? (
-                    <CheckIcon className="w-4 h-4 text-green-500 flex-shrink-0" />
+                    <CheckIcon className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
                   ) : (
-                    <ClockIcon className="w-4 h-4 text-amber-500 flex-shrink-0" />
+                    <ClockIcon className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
                   )}
                   <span className={doc.documentCount > 0 ? "line-through text-gray-400" : "text-amber-600 dark:text-amber-400"}>
                     {doc.name}
+                    {doc.documentCount === 0 && (
+                      <span className="text-xs text-gray-400 font-normal ml-1 whitespace-nowrap">
+                        ({t("uploadDocuments.assignedTo", { name: doc.assignees?.[0]?.name || "" })})
+                      </span>
+                    )}
                   </span>
-                  {doc.documentCount === 0 && (
-                    <span className="text-xs text-gray-400">
-                      ({t("uploadDocuments.assignedTo", { name: doc.assignees?.[0]?.name || "" })})
-                    </span>
-                  )}
                 </li>
               ))}
             </ul>
