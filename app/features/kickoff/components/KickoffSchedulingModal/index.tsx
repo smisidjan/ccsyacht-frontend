@@ -109,22 +109,6 @@ export default function KickoffSchedulingModal({
     return projectMembers?.find((m) => m.member.identifier === assigneeId);
   };
 
-  // Pre-select current user as attendee when modal opens
-  useEffect(() => {
-    if (currentUser && projectMembers && task) {
-      const isProjectMember = projectMembers.some(
-        (m) => m.member.identifier === currentUser.identifier
-      );
-      const isAlreadyAttendee = task.assignees?.some(
-        (a) => a.identifier === currentUser.identifier
-      );
-
-      if (isProjectMember && !isAlreadyAttendee && !selectedUserIds.includes(currentUser.identifier)) {
-        setSelectedUserIds((prev) => [...prev, currentUser.identifier]);
-      }
-    }
-  }, [currentUser, projectMembers, task]);
-
   // Determine the natural phase based on task status
   const naturalPhase = useMemo((): Phase => {
     if (!task) return "attendees";
@@ -310,19 +294,28 @@ export default function KickoffSchedulingModal({
   // === Handlers ===
 
   const handleAddAttendees = async () => {
-    if (selectedUserIds.length === 0) return;
+    // Include current user (meeting creator) if not already an attendee
+    const userIdsToAdd = [...selectedUserIds];
+    const isCurrentUserAlreadyAttendee = task?.assignees?.some(
+      (a) => a.identifier === currentUser?.identifier
+    );
+    if (currentUser && !isCurrentUserAlreadyAttendee && !userIdsToAdd.includes(currentUser.identifier)) {
+      userIdsToAdd.push(currentUser.identifier);
+    }
+
+    if (userIdsToAdd.length === 0) return;
 
     try {
       setIsAddingAssignees(true);
       setError(null);
 
       await Promise.all(
-        selectedUserIds.map((userId) =>
+        userIdsToAdd.map((userId) =>
           setupTasksApi.addAssignee(projectId, taskId, { user_id: userId })
         )
       );
 
-      showToast("success", t("attendeesAdded", { count: selectedUserIds.length }));
+      showToast("success", t("attendeesAdded", { count: userIdsToAdd.length }));
       setSelectedUserIds([]);
       onUpdate?.();
       await refreshData();
@@ -654,6 +647,7 @@ export default function KickoffSchedulingModal({
             roleTypeMap={roleTypeMap}
             canManageKickoff={canManageKickoff}
             onNext={goForward}
+            currentUserId={currentUser?.identifier}
           />
         );
 

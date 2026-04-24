@@ -65,6 +65,7 @@ export interface AttendeesPhaseProps extends PhaseBaseProps {
   getMemberInfo: (userId: string) => ProjectMember | undefined;
   roleTypeMap: Record<string, RoleType>;
   onNext: () => void;
+  currentUserId?: string;
 }
 
 /** Dates phase specific props */

@@ -18,12 +18,15 @@ export default function AttendeesPhase({
   roleTypeMap,
   canManageKickoff,
   onNext,
+  currentUserId,
 }: AttendeesPhaseProps) {
   const t = useTranslations("projectDetail.setupTasks.kickoffScheduling");
 
-  // Filter out members who are already attendees
+  // Filter out members who are already attendees AND the current user (they're auto-added)
   const availableMembers = projectMembers?.filter(
-    (member) => !task?.assignees?.some((a) => a.identifier === member.member.identifier)
+    (member) =>
+      !task?.assignees?.some((a) => a.identifier === member.member.identifier) &&
+      member.member.identifier !== currentUserId
   );
 
   // Toggle user selection for attendees
