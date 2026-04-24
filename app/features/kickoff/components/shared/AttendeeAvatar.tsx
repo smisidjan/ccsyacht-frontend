@@ -1,28 +1,43 @@
 "use client";
 
+import Tooltip from "@/app/components/ui/Tooltip";
+
+type AvatarStatus = "available" | "unavailable" | "pending" | "online" | "live" | "both" | "signed" | "unsigned";
+type AvatarSize = "sm" | "md";
+
 interface AttendeeAvatarProps {
   name: string;
-  status: "available" | "unavailable" | "pending" | "online" | "live" | "both";
+  status: AvatarStatus;
   tooltipSuffix?: string;
   email?: string;
+  size?: AvatarSize;
 }
 
-const statusStyles = {
+const statusStyles: Record<AvatarStatus, string> = {
   available: "bg-green-500 text-white",
   unavailable: "bg-red-500 text-white",
   pending: "bg-gray-300 dark:bg-gray-600 text-gray-600 dark:text-gray-300",
   online: "bg-blue-500 text-white",
   live: "bg-purple-500 text-white",
   both: "bg-gradient-to-br from-blue-500 to-purple-500 text-white",
+  signed: "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400",
+  unsigned: "bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400",
 };
 
-const tooltipLabels = {
+const sizeStyles: Record<AvatarSize, string> = {
+  sm: "w-6 h-6 text-[10px]",
+  md: "w-8 h-8 text-xs ring-2 ring-white dark:ring-gray-900",
+};
+
+const tooltipLabels: Record<AvatarStatus, string> = {
   available: "(available)",
   unavailable: "(unavailable)",
   pending: "(pending)",
   online: "(online)",
   live: "(in person)",
   both: "(online + in person)",
+  signed: "(signed)",
+  unsigned: "(pending)",
 };
 
 /**
@@ -42,33 +57,35 @@ export default function AttendeeAvatar({
   status,
   tooltipSuffix,
   email,
+  size = "sm",
 }: AttendeeAvatarProps) {
   const initials = getInitials(name);
   const suffix = tooltipSuffix ?? tooltipLabels[status];
+  const tooltipContent = email ? `${name} ${suffix}\n${email}` : `${name} ${suffix}`;
 
-  const avatarContent = (
-    <>
-      <div
-        className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-medium ${statusStyles[status]} ${email ? "cursor-pointer hover:ring-2 hover:ring-offset-1 hover:ring-blue-400" : ""}`}
-      >
-        {initials}
-      </div>
-      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-gray-900 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
-        {name} {suffix}
-        {email && <div className="text-gray-300">{email}</div>}
-      </div>
-    </>
+  const avatarElement = (
+    <div
+      className={`rounded-full flex items-center justify-center font-medium transition-all duration-150 hover:scale-125 hover:z-10 hover:ring-2 hover:ring-blue-500 hover:ring-offset-1 ${sizeStyles[size]} ${statusStyles[status]} ${email ? "cursor-pointer" : ""}`}
+    >
+      {initials}
+    </div>
   );
 
   if (email) {
     return (
-      <a href={`mailto:${email}`} className="group relative">
-        {avatarContent}
-      </a>
+      <Tooltip content={tooltipContent} position="top" multiline>
+        <a href={`mailto:${email}`}>
+          {avatarElement}
+        </a>
+      </Tooltip>
     );
   }
 
-  return <div className="group relative">{avatarContent}</div>;
+  return (
+    <Tooltip content={tooltipContent} position="top" multiline>
+      {avatarElement}
+    </Tooltip>
+  );
 }
 
 /**
