@@ -394,16 +394,24 @@ export const setupTasksApi = {
    * POST /api/projects/{projectId}/setup-task/{setupTaskId}/select-time-slot/{slotId}
    * Select the final time slot for the kickoff meeting
    * @param meetingFormat - Required: "online" or "live"
+   * @param meetingLink - Required when meetingFormat is "online"
    */
   selectTimeSlot: async (
     projectId: string,
     setupTaskId: string,
     slotId: string,
-    meetingFormat: "online" | "live"
+    meetingFormat: "online" | "live",
+    meetingLink?: string
   ): Promise<{ data: SetupTask }> => {
+    const body: { meeting_format: string; meeting_link?: string } = {
+      meeting_format: meetingFormat,
+    };
+    if (meetingLink) {
+      body.meeting_link = meetingLink;
+    }
     return apiFetch(`/projects/${projectId}/setup-task/${setupTaskId}/select-time-slot/${slotId}`, {
       method: "POST",
-      body: JSON.stringify({ meeting_format: meetingFormat }),
+      body: JSON.stringify(body),
     });
   },
 

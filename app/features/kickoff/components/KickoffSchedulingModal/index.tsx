@@ -76,6 +76,7 @@ export default function KickoffSchedulingModal({
   const [confirmationMode, setConfirmationMode] = useState<"select" | "propose">("select");
   const [isRespondingToDate, setIsRespondingToDate] = useState(false);
   const [selectedMeetingFormat, setSelectedMeetingFormat] = useState<MeetingFormat>(null);
+  const [meetingLink, setMeetingLink] = useState("");
 
   // Propose alternative dates state
   const [showProposeAlternative, setShowProposeAlternative] = useState(false);
@@ -479,18 +480,25 @@ export default function KickoffSchedulingModal({
     }
   };
 
-  const handleSelectFinalDate = async (slotIdOverride?: string, format?: MeetingFormat) => {
+  const handleSelectFinalDate = async (slotIdOverride?: string, format?: MeetingFormat, link?: string) => {
     const slotId = slotIdOverride || selectedFinalDateId;
     if (!slotId || !format) return;
 
     // Convert frontend format to API format
     const apiFormat: "online" | "live" = format === "in_person" ? "live" : "online";
 
+    // Meeting link is required when format is online
+    const linkToSend = link ?? meetingLink;
+    if (apiFormat === "online" && !linkToSend) {
+      setError(t("meetingLinkRequired"));
+      return;
+    }
+
     try {
       setIsSelectingDate(true);
       setError(null);
 
-      await setupTasksApi.selectTimeSlot(projectId, taskId, slotId, apiFormat);
+      await setupTasksApi.selectTimeSlot(projectId, taskId, slotId, apiFormat, linkToSend || undefined);
 
       showToast("success", t("dateConfirmed"));
       onUpdate?.();
@@ -730,6 +738,8 @@ export default function KickoffSchedulingModal({
             setSelectedFinalDateId={setSelectedFinalDateId}
             selectedMeetingFormat={selectedMeetingFormat}
             setSelectedMeetingFormat={setSelectedMeetingFormat}
+            meetingLink={meetingLink}
+            setMeetingLink={setMeetingLink}
             isSelectingDate={isSelectingDate}
             onSelectFinalDate={handleSelectFinalDate}
             canManageKickoff={canManageKickoff}

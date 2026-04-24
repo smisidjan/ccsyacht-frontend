@@ -192,7 +192,8 @@
     "meetingFormat": {
       "online": "Online",
       "inPerson": "Fysiek"
-    }
+    },
+    "meetingLink": "Deelnemen"
   },
   "projects": {
     "title": "Projecten",
@@ -763,6 +764,9 @@
           "selectFormat": "Meeting format",
           "canAttend": "kunnen deelnemen",
           "canAttendInPerson": "kunnen fysiek aanwezig zijn",
+          "meetingLink": "Meeting Link",
+          "meetingLinkPlaceholder": "https://meet.google.com/... of https://teams.microsoft.com/...",
+          "meetingLinkHelp": "Geef een link waarmee deelnemers kunnen deelnemen aan de online meeting (bijv. Google Meet, Microsoft Teams, Zoom).",
           "someAbsent": "Sommige deelnemers kunnen niet op deze datum. Zij worden hiervan op de hoogte gesteld.",
           "scheduled": "Meeting Gepland",
           "attendees": "Meeting Deelnemers",
@@ -771,6 +775,7 @@
         },
         "dateConfirmed": "Meeting datum bevestigd. Bevestigingsmails verstuurd.",
         "confirmError": "Kan meeting datum niet bevestigen",
+        "meetingLinkRequired": "Geef een meeting link op voor de online meeting.",
         "proposeAlternative": {
           "title": "Past geen van deze tijden?",
           "description": "Je hebt alle voorgestelde tijdslots afgewezen. Wil je alternatieve tijden voorstellen die beter uitkomen?",

@@ -192,7 +192,8 @@
     "meetingFormat": {
       "online": "Online",
       "inPerson": "In Person"
-    }
+    },
+    "meetingLink": "Join Meeting"
   },
   "projects": {
     "title": "Projects",
@@ -763,6 +764,9 @@
           "selectFormat": "Meeting format",
           "canAttend": "can attend",
           "canAttendInPerson": "can attend in person",
+          "meetingLink": "Meeting Link",
+          "meetingLinkPlaceholder": "https://meet.google.com/... or https://teams.microsoft.com/...",
+          "meetingLinkHelp": "Provide a link for attendees to join the online meeting (e.g., Google Meet, Microsoft Teams, Zoom).",
           "someAbsent": "Some attendees cannot attend on this date. They will be notified.",
           "scheduled": "Meeting Scheduled",
           "attendees": "Meeting Attendees",
@@ -771,6 +775,7 @@
         },
         "dateConfirmed": "Meeting date confirmed. Confirmation emails sent.",
         "confirmError": "Failed to confirm meeting date",
+        "meetingLinkRequired": "Please provide a meeting link for the online meeting.",
         "proposeAlternative": {
           "title": "None of these times work?",
           "description": "You've declined all proposed time slots. Would you like to suggest alternative times that work better for you?",

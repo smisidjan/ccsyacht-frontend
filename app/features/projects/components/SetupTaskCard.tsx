@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { ArrowRightIcon, CheckIcon, ClockIcon, CalendarIcon, LockClosedIcon, ComputerDesktopIcon, UserIcon } from "@heroicons/react/24/outline";
+import { ArrowRightIcon, CheckIcon, ClockIcon, CalendarIcon, LockClosedIcon, ComputerDesktopIcon, UserIcon, LinkIcon } from "@heroicons/react/24/outline";
 import type { SetupTask, SetupTaskType, DocumentType } from "@/lib/api/types";
 import { useCurrentUserContext } from "@/app/context/CurrentUserContext";
 import Tooltip from "@/app/components/ui/Tooltip";
@@ -262,6 +262,17 @@ export default function SetupTaskCard({ task, documentTypes, allTasks, onMarkCom
                 </span>
               )}
             </div>
+          )}
+          {task.meetingFormat === "online" && task.meetingLink && (
+            <a
+              href={task.meetingLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 text-blue-600 dark:text-blue-300 hover:text-blue-700 dark:hover:text-blue-200 transition-colors text-sm"
+            >
+              <LinkIcon className="w-4 h-4 flex-shrink-0" />
+              <span className="underline truncate">{task.meetingLink}</span>
+            </a>
           )}
         </div>
       )}

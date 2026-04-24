@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { CalendarIcon, CheckIcon, ClockIcon, ComputerDesktopIcon, UserIcon } from "@heroicons/react/24/outline";
+import { CalendarIcon, CheckIcon, ClockIcon, ComputerDesktopIcon, UserIcon, LinkIcon } from "@heroicons/react/24/outline";
 import type { StatusHeaderProps } from "./types";
 
 export default function StatusHeader({
@@ -87,6 +87,17 @@ export default function StatusHeader({
               )}
             </span>
           </div>
+          {meetingFormat === "online" && task.meetingLink && (
+            <a
+              href={task.meetingLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 text-blue-600 dark:text-blue-300 hover:text-blue-700 dark:hover:text-blue-200 transition-colors"
+            >
+              <LinkIcon className="w-4 h-4 flex-shrink-0" />
+              <span className="underline truncate">{task.meetingLink}</span>
+            </a>
+          )}
         </div>
       )}
     </div>

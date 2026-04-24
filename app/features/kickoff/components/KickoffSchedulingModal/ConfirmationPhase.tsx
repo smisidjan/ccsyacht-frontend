@@ -23,6 +23,8 @@ export default function ConfirmationPhase({
   setSelectedFinalDateId,
   selectedMeetingFormat,
   setSelectedMeetingFormat,
+  meetingLink,
+  setMeetingLink,
   isSelectingDate,
   onSelectFinalDate,
   canManageKickoff,
@@ -441,6 +443,26 @@ export default function ConfirmationPhase({
                               </div>
                             </button>
                           </div>
+
+                          {/* Meeting link input when online is selected */}
+                          {selectedMeetingFormat === "online" && (
+                            <div className="mt-4">
+                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                {t("confirmation.meetingLink")}
+                                <span className="text-red-500 ml-1">*</span>
+                              </label>
+                              <input
+                                type="url"
+                                value={meetingLink}
+                                onChange={(e) => setMeetingLink(e.target.value)}
+                                placeholder={t("confirmation.meetingLinkPlaceholder")}
+                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              />
+                              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                {t("confirmation.meetingLinkHelp")}
+                              </p>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
@@ -454,9 +476,14 @@ export default function ConfirmationPhase({
           {canManageKickoff && (
             <Button
               variant="success"
-              onClick={() => onSelectFinalDate(effectiveSelectedId || undefined, selectedMeetingFormat)}
+              onClick={() => onSelectFinalDate(effectiveSelectedId || undefined, selectedMeetingFormat, meetingLink)}
               loading={isSelectingDate}
-              disabled={!effectiveSelectedId || !selectedMeetingFormat || isSelectingDate}
+              disabled={
+                !effectiveSelectedId ||
+                !selectedMeetingFormat ||
+                isSelectingDate ||
+                (selectedMeetingFormat === "online" && !meetingLink.trim())
+              }
               className="w-full"
             >
               <CheckIcon className="w-4 h-4" />

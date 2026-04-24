@@ -131,8 +131,10 @@ export interface ConfirmationPhaseProps extends PhaseBaseProps {
   setSelectedFinalDateId: (id: string | null) => void;
   selectedMeetingFormat: MeetingFormat;
   setSelectedMeetingFormat: (format: MeetingFormat) => void;
+  meetingLink: string;
+  setMeetingLink: (link: string) => void;
   isSelectingDate: boolean;
-  onSelectFinalDate: (slotId?: string, format?: MeetingFormat) => Promise<void>;
+  onSelectFinalDate: (slotId?: string, format?: MeetingFormat, link?: string) => Promise<void>;
   // For propose new dates mode
   confirmationMode: "select" | "propose";
   setConfirmationMode: (mode: "select" | "propose") => void;

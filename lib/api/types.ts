@@ -1292,6 +1292,7 @@ export interface SetupTask {
   scheduledDate: string | null;
   scheduledEndDate: string | null;
   meetingFormat: SetupTaskMeetingFormat | null;
+  meetingLink: string | null;
   completedAt: string | null;
   sortOrder: number;
   allDocumentsAcknowledged: boolean; // All required documents acknowledged
@@ -1811,6 +1812,7 @@ export interface MyTaskSetupTask {
   scheduledDate: string | null;
   scheduledEndDate: string | null;
   meetingFormat: SetupTaskMeetingFormat | null;
+  meetingLink: string | null;
   hasSigned: boolean;
   signedAt: string | null;
   assignedAt: string;
