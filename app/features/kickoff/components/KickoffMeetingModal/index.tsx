@@ -86,6 +86,7 @@ export default function KickoffMeetingModal({
         date: schedulingStatus.selectedTimeSlot.date,
         startTime: schedulingStatus.selectedTimeSlot.startTime,
         endTime: schedulingStatus.selectedTimeSlot.endTime,
+        meetingFormat: schedulingStatus.selectedTimeSlot.meetingFormat || null,
       };
     }
     if (task?.proposedDates) {
@@ -96,13 +97,14 @@ export default function KickoffMeetingModal({
               date: proposedDate.proposedDate,
               startTime: slot.startTime,
               endTime: slot.endTime,
+              meetingFormat: task.meetingFormat || null,
             };
           }
         }
       }
     }
     return null;
-  }, [task?.proposedDates, schedulingStatus?.selectedTimeSlot]);
+  }, [task?.proposedDates, task?.meetingFormat, schedulingStatus?.selectedTimeSlot]);
 
   // Get the meeting document
   const meetingDocument = useMemo(() => {

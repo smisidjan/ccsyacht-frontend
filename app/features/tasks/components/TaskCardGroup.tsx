@@ -10,23 +10,28 @@ import {
   ChevronRightIcon,
   ChevronDownIcon,
   DocumentCheckIcon,
+  ArrowUpTrayIcon,
   ComputerDesktopIcon,
   UserIcon,
   LinkIcon,
+  ExclamationCircleIcon,
 } from "@heroicons/react/24/outline";
 import type {
   MyTaskSetupTask,
   MyTaskDocumentAcknowledgement,
+  MyTaskDocumentRequest,
 } from "@/lib/api/types";
 
 interface TaskCardGroupProps {
   meeting: MyTaskSetupTask;
   acknowledgements: MyTaskDocumentAcknowledgement[];
+  documentRequests: MyTaskDocumentRequest[];
 }
 
 export default function TaskCardGroup({
   meeting,
   acknowledgements,
+  documentRequests,
 }: TaskCardGroupProps) {
   const t = useTranslations("myTasks");
   const [isExpanded, setIsExpanded] = useState(false);
@@ -35,9 +40,16 @@ export default function TaskCardGroup({
   const pendingAcknowledgements = acknowledgements.filter(
     (ack) => !ack.isAcknowledged
   );
-  const completedAcknowledgements = acknowledgements.filter(
-    (ack) => ack.isAcknowledged
+  const pendingDocumentRequests = documentRequests.filter(
+    (doc) => !doc.isCompleted
   );
+  const overdueDocumentRequests = documentRequests.filter(
+    (doc) => doc.isOverdue && !doc.isCompleted
+  );
+
+  // Total nested tasks
+  const totalNestedTasks = acknowledgements.length + documentRequests.length;
+  const totalPendingTasks = pendingAcknowledgements.length + pendingDocumentRequests.length;
 
   const formatDate = (dateString: string | null): string => {
     if (!dateString) return "";
@@ -66,7 +78,7 @@ export default function TaskCardGroup({
           isCompleted
             ? "border-l-green-500 bg-green-50/50 dark:bg-green-900/10"
             : "border-l-purple-500"
-        } ${acknowledgements.length > 0 ? "rounded-b-none" : ""}`}
+        } ${totalNestedTasks > 0 ? "rounded-b-none" : ""}`}
       >
         <div className="p-3 sm:p-4">
           {/* Header row */}
@@ -85,6 +97,20 @@ export default function TaskCardGroup({
                   <span className="hidden sm:inline">
                     {t("status.completed")}
                   </span>
+                </span>
+              )}
+
+              {/* Pending documents badge */}
+              {pendingDocumentRequests.length > 0 && (
+                <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] sm:text-xs font-semibold rounded-md ${
+                  overdueDocumentRequests.length > 0
+                    ? "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400"
+                    : "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400"
+                }`}>
+                  <ArrowUpTrayIcon className="w-3 h-3" />
+                  {t("pendingDocuments", {
+                    count: pendingDocumentRequests.length,
+                  })}
                 </span>
               )}
 
@@ -197,8 +223,8 @@ export default function TaskCardGroup({
         </div>
       </div>
 
-      {/* Nested acknowledgement tasks */}
-      {acknowledgements.length > 0 && (
+      {/* Nested tasks (document requests and acknowledgements) */}
+      {totalNestedTasks > 0 && (
         <div className="relative">
           {/* Connector line */}
           <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-200 dark:bg-gray-700" />
@@ -213,13 +239,16 @@ export default function TaskCardGroup({
             ) : (
               <ChevronRightIcon className="w-4 h-4" />
             )}
-            <DocumentCheckIcon className="w-4 h-4 text-teal-600 dark:text-teal-400" />
             <span>
-              {t("relatedReviews", { count: acknowledgements.length })}
+              {t("relatedTasks", { count: totalNestedTasks })}
             </span>
-            {pendingAcknowledgements.length > 0 && (
-              <span className="ml-auto px-2 py-0.5 text-xs font-semibold rounded-full bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-400">
-                {pendingAcknowledgements.length} {t("pending")}
+            {totalPendingTasks > 0 && (
+              <span className={`ml-auto px-2 py-0.5 text-xs font-semibold rounded-full ${
+                overdueDocumentRequests.length > 0
+                  ? "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400"
+                  : "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400"
+              }`}>
+                {totalPendingTasks} {t("pending")}
               </span>
             )}
           </button>
@@ -227,6 +256,11 @@ export default function TaskCardGroup({
           {/* Nested task cards */}
           {isExpanded && (
             <div className="pl-6 border-x border-b border-gray-200 dark:border-gray-700 rounded-b-xl bg-gray-50/50 dark:bg-gray-800/50">
+              {/* Document requests first */}
+              {documentRequests.map((doc) => (
+                <NestedDocumentRequestCard key={doc.identifier} task={doc} />
+              ))}
+              {/* Then acknowledgements */}
               {acknowledgements.map((ack) => (
                 <NestedAcknowledgementCard key={ack.identifier} task={ack} />
               ))}
@@ -297,6 +331,101 @@ function NestedAcknowledgementCard({
           }`}
         >
           {isCompleted ? t("actions.view") : t("actions.acknowledge")}
+          <ChevronRightIcon className="w-3 h-3" />
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+// Nested document request card component
+function NestedDocumentRequestCard({
+  task,
+}: {
+  task: MyTaskDocumentRequest;
+}) {
+  const t = useTranslations("myTasks");
+  const isCompleted = task.isCompleted;
+  const isOverdue = task.isOverdue && !task.isCompleted;
+
+  const taskLink = `/dashboard/projects/${task.project.identifier}#documents`;
+
+  const formatDate = (dateString: string | null): string => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    const today = new Date();
+    const diffDays = Math.ceil(
+      (date.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+    );
+
+    if (diffDays === 0) return t("dates.today");
+    if (diffDays === 1) return t("dates.tomorrow");
+    if (diffDays === -1) return t("dates.yesterday");
+    if (diffDays < -1) return t("dates.daysAgo", { days: Math.abs(diffDays) });
+    if (diffDays <= 7) return t("dates.inDays", { days: diffDays });
+
+    return date.toLocaleDateString();
+  };
+
+  return (
+    <div
+      className={`relative py-3 px-4 border-b border-gray-200 dark:border-gray-700 last:border-b-0 ${
+        isCompleted ? "opacity-60" : ""
+      }`}
+    >
+      {/* Connector dot */}
+      <div className={`absolute left-[-14px] top-1/2 -translate-y-1/2 w-2 h-2 rounded-full border-2 border-white dark:border-gray-800 ${
+        isOverdue ? "bg-red-500" : "bg-blue-500"
+      }`} />
+
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] sm:text-xs font-semibold rounded-md ${
+              isOverdue
+                ? "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400"
+                : "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400"
+            }`}>
+              <ArrowUpTrayIcon className="w-3 h-3" />
+              <span className="hidden sm:inline">{t("types.documentRequest")}</span>
+            </span>
+            {isCompleted && (
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] sm:text-xs font-semibold rounded-md bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">
+                <CheckCircleIcon className="w-3 h-3" />
+              </span>
+            )}
+            {isOverdue && (
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] sm:text-xs font-semibold rounded-md bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400">
+                <ExclamationCircleIcon className="w-3 h-3" />
+              </span>
+            )}
+          </div>
+          <h4
+            className={`text-sm font-medium text-gray-900 dark:text-white truncate ${
+              isCompleted ? "line-through text-gray-500" : ""
+            }`}
+          >
+            {t("uploadDocument", { type: task.documentType.name })}
+          </h4>
+          <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+            {task.dueDate && (
+              <span className={isOverdue ? "text-red-600 dark:text-red-400 font-semibold" : ""}>
+                {formatDate(task.dueDate)}
+              </span>
+            )}
+            <span>• {t("requestedBy", { name: task.assignedBy.name })}</span>
+          </div>
+        </div>
+
+        <Link
+          href={taskLink}
+          className={`flex-shrink-0 inline-flex items-center gap-1 px-2 py-1 sm:px-3 sm:py-1.5 text-[10px] sm:text-xs font-semibold rounded-lg transition-colors ${
+            isCompleted
+              ? "bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400"
+              : "bg-blue-600 hover:bg-blue-700 text-white"
+          }`}
+        >
+          {isCompleted ? t("actions.view") : t("actions.upload")}
           <ChevronRightIcon className="w-3 h-3" />
         </Link>
       </div>

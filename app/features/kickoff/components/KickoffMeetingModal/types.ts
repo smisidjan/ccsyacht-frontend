@@ -5,7 +5,6 @@
 
 import type {
   SetupTask,
-  SchedulingStatus,
   RequiredDocument,
   DocumentType,
   SetupTaskAssignee,
@@ -92,7 +91,7 @@ export interface AttendeesProps {
 }
 
 export interface MeetingDocumentProps extends SectionBaseProps {
-  meetingDocument: RequiredDocument["documents"][0] | null;
+  meetingDocument: SetupTaskDocument | null;
   canEditProject: boolean;
   isUploadingDocument: boolean;
   onUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;

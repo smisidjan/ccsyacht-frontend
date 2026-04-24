@@ -16,7 +16,7 @@ import { FolderIcon as FolderIconSolid } from "@heroicons/react/24/solid";
 import TaskCard, { type TaskItem } from "./TaskCard";
 import TaskCardGroup from "./TaskCardGroup";
 import type { ProjectGroup } from "./ProjectTasksList";
-import type { MyTaskSetupTask, MyTaskDocumentAcknowledgement } from "@/lib/api/types";
+import type { MyTaskSetupTask, MyTaskDocumentAcknowledgement, MyTaskDocumentRequest } from "@/lib/api/types";
 
 type FilterType = "all" | "documents" | "punchlist" | "meetings" | "acknowledgements";
 type FilterStatus = "all" | "pending" | "overdue" | "completed";
@@ -109,11 +109,12 @@ export default function TaskDetailsPanel({
       })
     : [];
 
-  // Group tasks: meetings with their related acknowledgements
+  // Group tasks: meetings with their related acknowledgements and document requests
   const groupedTasks = useMemo(() => {
     // Separate tasks by type
     const meetings: MyTaskSetupTask[] = [];
     const acknowledgements: MyTaskDocumentAcknowledgement[] = [];
+    const documentRequests: MyTaskDocumentRequest[] = [];
     const otherTasks: TaskItem[] = [];
 
     filteredTasks.forEach((task) => {
@@ -121,6 +122,8 @@ export default function TaskDetailsPanel({
         meetings.push(task);
       } else if (task.type === "document_acknowledgement") {
         acknowledgements.push(task);
+      } else if (task.type === "document_request") {
+        documentRequests.push(task);
       } else {
         otherTasks.push(task);
       }
@@ -146,10 +149,34 @@ export default function TaskDetailsPanel({
       }
     });
 
+    // Create a map of meeting identifier -> document requests (only for open meetings)
+    const meetingDocumentRequests = new Map<string, MyTaskDocumentRequest[]>();
+    const standaloneDocumentRequests: MyTaskDocumentRequest[] = [];
+
+    documentRequests.forEach((doc) => {
+      const projectId = doc.project.identifier;
+      // Find an open (not completed) kickoff meeting for this project
+      const openMeeting = meetings.find(
+        (m) => m.project.identifier === projectId && !m.hasSigned
+      );
+
+      if (openMeeting) {
+        if (!meetingDocumentRequests.has(openMeeting.identifier)) {
+          meetingDocumentRequests.set(openMeeting.identifier, []);
+        }
+        meetingDocumentRequests.get(openMeeting.identifier)!.push(doc);
+      } else {
+        // No open meeting for this project, show as standalone
+        standaloneDocumentRequests.push(doc);
+      }
+    });
+
     return {
       meetings,
       meetingAcknowledgements,
+      meetingDocumentRequests,
       orphanAcknowledgements,
+      standaloneDocumentRequests,
       otherTasks,
     };
   }, [filteredTasks]);
@@ -308,14 +335,16 @@ export default function TaskDetailsPanel({
           </div>
         ) : (
           <div className="grid gap-3 sm:gap-4">
-            {/* Render meetings with their grouped acknowledgements */}
+            {/* Render meetings with their grouped acknowledgements and document requests */}
             {groupedTasks.meetings.map((meeting) => {
               const relatedAcks = groupedTasks.meetingAcknowledgements.get(meeting.identifier) || [];
+              const relatedDocs = groupedTasks.meetingDocumentRequests.get(meeting.identifier) || [];
               return (
                 <TaskCardGroup
                   key={`meeting-${meeting.identifier}`}
                   meeting={meeting}
                   acknowledgements={relatedAcks}
+                  documentRequests={relatedDocs}
                 />
               );
             })}
@@ -325,7 +354,12 @@ export default function TaskDetailsPanel({
               <TaskCard key={`${task.type}-${task.identifier}`} task={task} />
             ))}
 
-            {/* Render other tasks (document requests, punchlist items) */}
+            {/* Render standalone document requests (meeting completed or no meeting) */}
+            {groupedTasks.standaloneDocumentRequests.map((task) => (
+              <TaskCard key={`${task.type}-${task.identifier}`} task={task} />
+            ))}
+
+            {/* Render other tasks (punchlist items) */}
             {groupedTasks.otherTasks.map((task) => (
               <TaskCard key={`${task.type}-${task.identifier}`} task={task} />
             ))}

@@ -196,6 +196,8 @@
     "meetingLink": "Deelnemen",
     "pendingReviews": "{count, plural, =1 {1 review} other {# reviews}}",
     "relatedReviews": "{count, plural, =1 {1 gerelateerde review} other {# gerelateerde reviews}}",
+    "pendingDocuments": "{count, plural, =1 {1 document} other {# documenten}}",
+    "relatedTasks": "{count, plural, =1 {1 gerelateerde taak} other {# gerelateerde taken}}",
     "pending": "openstaand"
   },
   "projects": {

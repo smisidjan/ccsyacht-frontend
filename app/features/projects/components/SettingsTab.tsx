@@ -217,6 +217,7 @@ export default function SettingsTab({ projectId, onProjectUpdate }: SettingsTabP
                     date: pd.proposedDate,
                     startTime: selected.startTime,
                     endTime: selected.endTime,
+                    meetingFormat: kickoff.meetingFormat || null,
                     responses: selected.responses || [],
                   };
                   break;
