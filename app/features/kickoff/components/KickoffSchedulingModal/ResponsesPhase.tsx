@@ -359,19 +359,24 @@ export default function ResponsesPhase({
                           {/* Avatar grid with online/live status */}
                           <div className="flex items-center gap-0.5 flex-1">
                             {/* Responded users */}
-                            {slot.responses.map((response) => (
-                              <AttendeeAvatar
-                                key={response.userId}
-                                name={response.userName}
-                                status={getAvatarStatus(response.canAttendOnline, response.canAttendLive)}
-                              />
-                            ))}
+                            {slot.responses.map((response) => {
+                              const assignee = task?.assignees?.find(a => a.identifier === response.userId);
+                              return (
+                                <AttendeeAvatar
+                                  key={response.userId}
+                                  name={response.userName}
+                                  status={getAvatarStatus(response.canAttendOnline, response.canAttendLive)}
+                                  email={assignee?.email}
+                                />
+                              );
+                            })}
                             {/* Pending users */}
                             {pendingAttendees.map((attendee) => (
                               <AttendeeAvatar
                                 key={attendee.identifier}
                                 name={attendee.name}
                                 status="pending"
+                                email={attendee.email}
                               />
                             ))}
                           </div>

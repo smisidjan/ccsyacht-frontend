@@ -4,6 +4,7 @@ interface AttendeeAvatarProps {
   name: string;
   status: "available" | "unavailable" | "pending" | "online" | "live" | "both";
   tooltipSuffix?: string;
+  email?: string;
 }
 
 const statusStyles = {
@@ -40,22 +41,34 @@ export default function AttendeeAvatar({
   name,
   status,
   tooltipSuffix,
+  email,
 }: AttendeeAvatarProps) {
   const initials = getInitials(name);
   const suffix = tooltipSuffix ?? tooltipLabels[status];
 
-  return (
-    <div className="group relative">
+  const avatarContent = (
+    <>
       <div
-        className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-medium ${statusStyles[status]}`}
+        className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-medium ${statusStyles[status]} ${email ? "cursor-pointer hover:ring-2 hover:ring-offset-1 hover:ring-blue-400" : ""}`}
       >
         {initials}
       </div>
       <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-gray-900 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
         {name} {suffix}
+        {email && <div className="text-gray-300">{email}</div>}
       </div>
-    </div>
+    </>
   );
+
+  if (email) {
+    return (
+      <a href={`mailto:${email}`} className="group relative">
+        {avatarContent}
+      </a>
+    );
+  }
+
+  return <div className="group relative">{avatarContent}</div>;
 }
 
 /**

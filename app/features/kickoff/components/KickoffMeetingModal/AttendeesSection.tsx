@@ -18,8 +18,9 @@ export default function AttendeesSection({ assignees }: AttendeesProps) {
             position="top"
             multiline
           >
-            <div
-              className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium ring-2 ring-white dark:ring-gray-900 cursor-default transition-transform duration-150 hover:scale-125 hover:z-10 ${
+            <a
+              href={`mailto:${assignee.email}`}
+              className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium ring-2 ring-white dark:ring-gray-900 cursor-pointer transition-transform duration-150 hover:scale-125 hover:z-10 ${
                 assignee.hasSigned
                   ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400"
                   : "bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400"
@@ -31,7 +32,7 @@ export default function AttendeesSection({ assignees }: AttendeesProps) {
                 .join("")
                 .slice(0, 2)
                 .toUpperCase()}
-            </div>
+            </a>
           </Tooltip>
         ))}
       </div>
