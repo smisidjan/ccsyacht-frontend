@@ -1,9 +1,10 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { useRouter, usePathname } from "@/i18n/navigation";
 import { useTenant } from "@/app/context/TenantContext";
 import { setAuthToken, getAuthToken } from "@/lib/api/client";
+import { useInactivityLogout } from "@/lib/hooks/useInactivityLogout";
 
 interface AuthContextType {
   token: string | null;
@@ -68,12 +69,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     router.push("/dashboard");
   };
 
-  const logout = () => {
+  const logout = useCallback(() => {
     setAuthToken(null);
     clearTenant();
     setToken(null);
     router.push("/login");
-  };
+  }, [clearTenant, router]);
+
+  // Auto-logout after 1 hour of inactivity
+  useInactivityLogout({
+    onLogout: logout,
+    enabled: !!token, // Only track when user is logged in
+  });
 
   return (
     <AuthContext.Provider value={{ token, isLoading, login, logout }}>
