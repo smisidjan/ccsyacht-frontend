@@ -598,6 +598,42 @@ export const setupTasksApi = {
     });
   },
 
+  /**
+   * POST /api/projects/{projectId}/setup-task/{setupTaskId}/documents/{docId}/finalize
+   * Finalize the kickoff document (generates PDF/DOCX and enables signing)
+   */
+  finalizeKickoffDocument: async (
+    projectId: string,
+    setupTaskId: string,
+    docId: string
+  ): Promise<import("./types").KickoffDocument> => {
+    return apiFetch(`/projects/${projectId}/setup-task/${setupTaskId}/documents/${docId}/finalize`, {
+      method: "POST",
+    });
+  },
+
+  /**
+   * POST /api/projects/{projectId}/setup-task/{setupTaskId}/documents/{docId}/sign
+   * Sign or reject the finalized kickoff document (current user)
+   * @param agreed - Whether the user agrees/signs the document
+   * @param disagreementReason - Required when agreed is false
+   */
+  signKickoffDocument: async (
+    projectId: string,
+    setupTaskId: string,
+    docId: string,
+    agreed: boolean,
+    disagreementReason?: string
+  ): Promise<import("./types").KickoffDocument> => {
+    return apiFetch(`/projects/${projectId}/setup-task/${setupTaskId}/documents/${docId}/sign`, {
+      method: "POST",
+      body: JSON.stringify({
+        agreed,
+        ...(disagreementReason && { disagreement_reason: disagreementReason }),
+      }),
+    });
+  },
+
   // ============ Document Comments ============
 
   /**

@@ -1512,10 +1512,18 @@ export interface InternalProjectSetup {
 
 // Document Acknowledgement Types
 export interface RequiredDocumentAcknowledgement {
-  "@type"?: "Person";
+  "@type"?: "AgreeAction" | "Person";
   identifier: string;
-  name: string;
-  acknowledgedAt: string | null;
+  name?: string;
+  // Agent object (backend nests user data here for AgreeAction type)
+  agent?: {
+    "@type"?: "Person";
+    identifier: string;
+    name: string;
+    email?: string;
+  };
+  acknowledgedAt?: string | null;
+  dateCreated?: string | null;
   hasRead: boolean;
   readAt: string | null;
   hasAgreed: boolean | null;
@@ -1797,6 +1805,15 @@ export interface ReorderKickoffDocumentTemplatesRequest {
 }
 
 // ============ Kickoff Document (Per Project) ============
+export interface KickoffDocumentSigner {
+  "@type"?: "Person";
+  identifier: string;
+  name: string;
+  email?: string;
+  hasSigned: boolean;
+  signedAt: string | null;
+}
+
 export interface KickoffDocument {
   "@context"?: "https://schema.org";
   "@type": "DigitalDocument";
@@ -1812,6 +1829,19 @@ export interface KickoffDocument {
   description?: string;
   dateCreated: string;
   dateModified: string;
+  // Finalization fields
+  isFinalDocument: boolean;
+  finalizedAt: string | null;
+  finalizedBy: {
+    "@type"?: "Person";
+    identifier: string;
+    name: string;
+  } | null;
+  // Signing fields (for finalized documents)
+  signers: KickoffDocumentSigner[];
+  allSigned: boolean;
+  signedCount: number;
+  totalAssignees: number;
 }
 
 export interface UpdateKickoffDocumentContentRequest {

@@ -406,6 +406,7 @@
         "formatOnline": "Online",
         "formatInPerson": "Fysiek",
         "signatures": "Handtekeningen",
+        "meetingDocumentSignoff": "Meeting Document",
         "checklistProgress": "Checklist",
         "onlyAttendeesCanCheck": "Alleen meeting deelnemers kunnen items aanvinken",
         "onlyAttendeesCanSign": "Alleen meeting deelnemers kunnen ondertekenen",
@@ -507,8 +508,27 @@
           "resolve": "Oplossen",
           "saving": "Opslaan",
           "view": "Bekijken",
-          "download": "Downloaden"
-        }
+          "download": "Downloaden",
+          "finalize": "Document Definitief Maken",
+          "finalized": "Definitief",
+          "finalizedBy": "Definitief gemaakt door",
+          "finalizeTitle": "Document Definitief Maken",
+          "finalizeDescription": "Na het definitief maken kan het document niet meer worden bewerkt en moeten alle deelnemers het ondertekenen. Weet je zeker dat je door wilt gaan?",
+          "confirmFinalize": "Definitief Maken",
+          "finalizeSuccess": "Document succesvol definitief gemaakt",
+          "finalizeError": "Document definitief maken mislukt",
+          "signatures": "Handtekeningen",
+          "sign": "Ondertekenen",
+          "reject": "Afwijzen",
+          "signSuccess": "Document succesvol ondertekend",
+          "rejectSuccess": "Document afgewezen",
+          "signError": "Document ondertekenen mislukt",
+          "rejectTitle": "Document Afwijzen",
+          "rejectDescription": "Geef een reden voor het afwijzen van dit document.",
+          "rejectReasonPlaceholder": "Voer je reden voor afwijzen in...",
+          "confirmReject": "Afwijzing Bevestigen"
+        },
+        "cancel": "Annuleren"
       },
       "kickoffForm": {
         "tabs": {

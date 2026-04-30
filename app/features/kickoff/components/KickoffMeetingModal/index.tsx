@@ -56,6 +56,13 @@ export default function KickoffMeetingModal({
   const [disagreementReason, setDisagreementReason] = useState("");
   const [isSubmittingDisagree, setIsSubmittingDisagree] = useState(false);
 
+  // Meeting document signing status (from CollaborativeDocumentSection)
+  const [meetingDocSigningStatus, setMeetingDocSigningStatus] = useState<{
+    count: number;
+    total: number;
+    signers: { identifier: string; name: string; hasSigned: boolean; signedAt: string | null }[];
+  } | null>(null);
+
 
   // Fetch document types
   const { data: documentTypes } = useDocumentTypes(projectId, { includeAssignees: true });
@@ -116,19 +123,27 @@ export default function KickoffMeetingModal({
     [pendingDocuments]
   );
 
-  // Calculate progress
+  // Calculate progress - use meeting doc signing status when available
   const progress = useMemo((): Progress | null => {
+    // Use meeting document signing status if available (from CollaborativeDocumentSection)
+    if (meetingDocSigningStatus) {
+      return {
+        signatures: meetingDocSigningStatus,
+      };
+    }
+    // Fallback to task assignees (for when document isn't finalized yet)
     if (!task || !task.assignees) return null;
     const totalAttendees = task.assignees.length;
     const signedAttendees = task.assignees.filter((a) => a.hasSigned).length;
     return {
       signatures: { count: signedAttendees, total: totalAttendees },
     };
-  }, [task]);
-
+  }, [task, meetingDocSigningStatus]);
+  
   // Calculate document stats
   const documentStats = useMemo((): DocumentStats | null => {
     if (!requiredDocuments.length) return null;
+    // Use task assignees count as the authoritative total (same as UI displays)
     const totalAssignees = task?.assignees?.length || 0;
 
     const needsUserAction = requiredDocuments.filter((doc) => {
@@ -147,7 +162,8 @@ export default function KickoffMeetingModal({
       const respondedCount = doc.acknowledgements.filter(
         (a) => a.hasAgreed === true || a.hasAgreed === false
       ).length;
-      const effectiveTotal = doc.totalAssignees || totalAssignees;
+      // Use task assignees as authoritative count (consistent with UI)
+      const effectiveTotal = totalAssignees || doc.totalAssignees || 0;
       const hasDisagreement = doc.acknowledgements.some((a) => a.hasAgreed === false);
       return effectiveTotal > 0 && respondedCount === effectiveTotal && !hasDisagreement;
     });
@@ -156,7 +172,8 @@ export default function KickoffMeetingModal({
       const respondedCount = doc.acknowledgements.filter(
         (a) => a.hasAgreed === true || a.hasAgreed === false
       ).length;
-      const effectiveTotal = doc.totalAssignees || totalAssignees;
+      // Use task assignees as authoritative count (consistent with UI)
+      const effectiveTotal = totalAssignees || doc.totalAssignees || 0;
       const hasDisagreement = doc.acknowledgements.some((a) => a.hasAgreed === false);
       return !hasDisagreement && respondedCount < effectiveTotal;
     });
@@ -182,9 +199,10 @@ export default function KickoffMeetingModal({
   ): NormalizedAcknowledgement[] => {
     if (Array.isArray(rawAcks)) {
       return rawAcks.map((ack) => ({
-        identifier: ack.identifier || "",
-        name: ack.name || "Unknown",
-        acknowledgedAt: ack.acknowledgedAt || null,
+        // Check agent object first (backend nests user data in agent for AgreeAction)
+        identifier: ack.agent?.identifier || ack.identifier || "",
+        name: ack.agent?.name || ack.name || "Unknown",
+        acknowledgedAt: ack.dateCreated || ack.acknowledgedAt || null,
         hasRead: ack.hasRead ?? false,
         readAt: ack.readAt || null,
         hasAgreed: ack.hasAgreed ?? null,
@@ -377,7 +395,10 @@ export default function KickoffMeetingModal({
                 hasRequiredDocuments={requiredDocuments.length > 0}
               />
 
-              <AttendeesSection assignees={task.assignees || []} />
+              <AttendeesSection
+                assignees={task.assignees || []}
+                signers={meetingDocSigningStatus?.signers}
+              />
 
               <CollaborativeDocumentSection
                 task={task}
@@ -385,6 +406,8 @@ export default function KickoffMeetingModal({
                 taskId={taskId}
                 currentUser={currentUser}
                 isAttendee={isAttendee}
+                onUpdate={refreshTaskDetails}
+                onSigningStatusChange={setMeetingDocSigningStatus}
               />
 
 

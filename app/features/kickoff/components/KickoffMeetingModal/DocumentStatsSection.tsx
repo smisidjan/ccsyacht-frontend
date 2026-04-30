@@ -109,13 +109,13 @@ export default function DocumentStatsSection({
         </div>
       )}
 
-      {/* Signature Progress */}
+      {/* Meeting Document Sign-off Progress */}
       {progress && taskStatus === "scheduled" && (
         <div className="flex items-center justify-between pt-2 border-t border-gray-200 dark:border-gray-700">
           <div className="flex items-center gap-2">
             <CheckIcon className="w-4 h-4 text-gray-400" />
             <span className="text-sm text-gray-600 dark:text-gray-400">
-              {t("signatures")}
+              {t("meetingDocumentSignoff")}
             </span>
           </div>
           <span

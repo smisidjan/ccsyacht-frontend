@@ -86,8 +86,16 @@ export interface DocumentStatsProps {
   hasRequiredDocuments: boolean;
 }
 
+export interface DocumentSigner {
+  identifier: string;
+  name: string;
+  hasSigned: boolean;
+  signedAt: string | null;
+}
+
 export interface AttendeesProps {
   assignees: SetupTaskAssignee[];
+  signers?: DocumentSigner[];
 }
 
 export interface MeetingDocumentProps extends SectionBaseProps {

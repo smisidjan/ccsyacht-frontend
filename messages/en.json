@@ -406,6 +406,7 @@
         "formatOnline": "Online",
         "formatInPerson": "In Person",
         "signatures": "Signatures",
+        "meetingDocumentSignoff": "Meeting Document",
         "checklistProgress": "Checklist",
         "onlyAttendeesCanCheck": "Only meeting attendees can check items",
         "onlyAttendeesCanSign": "Only meeting attendees can sign",
@@ -507,8 +508,27 @@
           "resolve": "Resolve",
           "saving": "Saving",
           "view": "View",
-          "download": "Download"
-        }
+          "download": "Download",
+          "finalize": "Finalize Document",
+          "finalized": "Finalized",
+          "finalizedBy": "Finalized by",
+          "finalizeTitle": "Finalize Document",
+          "finalizeDescription": "Once finalized, the document can no longer be edited and all attendees will need to sign it. Are you sure you want to continue?",
+          "confirmFinalize": "Finalize",
+          "finalizeSuccess": "Document finalized successfully",
+          "finalizeError": "Failed to finalize document",
+          "signatures": "Signatures",
+          "sign": "Sign",
+          "reject": "Reject",
+          "signSuccess": "Document signed successfully",
+          "rejectSuccess": "Document rejected",
+          "signError": "Failed to sign document",
+          "rejectTitle": "Reject Document",
+          "rejectDescription": "Please provide a reason for rejecting this document.",
+          "rejectReasonPlaceholder": "Enter your reason for rejecting...",
+          "confirmReject": "Confirm Rejection"
+        },
+        "cancel": "Cancel"
       },
       "kickoffForm": {
         "tabs": {
