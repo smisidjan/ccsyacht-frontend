@@ -34,3 +34,4 @@ export { default as StageTemplateForm } from "./StageTemplateForm";
 export { default as AreaTemplateForm } from "./AreaTemplateForm";
 export { default as DocumentTypeTemplateForm } from "./DocumentTypeTemplateForm";
 export { default as ChecklistTemplateForm } from "./ChecklistTemplateForm";
+export { default as KickoffDocumentTemplateForm } from "./KickoffDocumentTemplateForm";

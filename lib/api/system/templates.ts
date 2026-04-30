@@ -20,8 +20,12 @@ import type {
   UpdateChecklistTemplateRequest,
   ReorderChecklistTemplatesRequest,
   GetChecklistTemplatesParams,
+  KickoffDocumentTemplate,
+  CreateKickoffDocumentTemplateRequest,
+  UpdateKickoffDocumentTemplateRequest,
+  ReorderKickoffDocumentTemplatesRequest,
 } from "../types";
-import { apiFetchSystemTenant } from "./helpers";
+import { apiFetchSystemTenant, apiFetchSystemTenantWithFile } from "./helpers";
 
 // ============ Stage Templates ============
 export const systemStageTemplatesApi = {
@@ -212,4 +216,74 @@ export const systemChecklistTemplatesApi = {
       method: "POST",
       body: JSON.stringify(data),
     }),
+};
+
+// ============ Kickoff Document Templates ============
+export const systemKickoffDocumentTemplatesApi = {
+  getAll: (
+    tenantId: string,
+    params?: { active_only?: boolean }
+  ): Promise<{ data: KickoffDocumentTemplate[] }> => {
+    const queryParams = params?.active_only ? `?active_only=${params.active_only}` : "";
+    return apiFetchSystemTenant(tenantId, `/system/tenant/kickoff-document-templates${queryParams}`);
+  },
+
+  getById: (tenantId: string, id: string): Promise<KickoffDocumentTemplate> =>
+    apiFetchSystemTenant(tenantId, `/system/tenant/kickoff-document-templates/${id}`),
+
+  create: (
+    tenantId: string,
+    data: CreateKickoffDocumentTemplateRequest
+  ): Promise<KickoffDocumentTemplate> =>
+    apiFetchSystemTenant(tenantId, "/system/tenant/kickoff-document-templates", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  update: (
+    tenantId: string,
+    id: string,
+    data: UpdateKickoffDocumentTemplateRequest
+  ): Promise<KickoffDocumentTemplate> =>
+    apiFetchSystemTenant(tenantId, `/system/tenant/kickoff-document-templates/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
+  delete: (tenantId: string, id: string): Promise<void> =>
+    apiFetchSystemTenant(tenantId, `/system/tenant/kickoff-document-templates/${id}`, {
+      method: "DELETE",
+    }),
+
+  reorder: (
+    tenantId: string,
+    data: ReorderKickoffDocumentTemplatesRequest
+  ): Promise<void> =>
+    apiFetchSystemTenant(tenantId, "/system/tenant/kickoff-document-templates/reorder", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  createWithFile: (
+    tenantId: string,
+    formData: FormData
+  ): Promise<KickoffDocumentTemplate> =>
+    apiFetchSystemTenantWithFile(
+      tenantId,
+      "/system/tenant/kickoff-document-templates",
+      formData,
+      "POST"
+    ),
+
+  updateWithFile: (
+    tenantId: string,
+    id: string,
+    formData: FormData
+  ): Promise<KickoffDocumentTemplate> =>
+    apiFetchSystemTenantWithFile(
+      tenantId,
+      `/system/tenant/kickoff-document-templates/${id}`,
+      formData,
+      "PUT"
+    ),
 };

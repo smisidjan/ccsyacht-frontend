@@ -1752,6 +1752,121 @@ export interface GetChecklistTemplatesParams {
   active_only?: boolean;
 }
 
+// ============ Kickoff Document Templates ============
+export interface KickoffDocumentTemplateFile {
+  fileName: string;
+  encodingFormat: string;
+  contentSize: string;
+  contentSizeBytes: number;
+}
+
+export interface KickoffDocumentTemplate {
+  "@context"?: "https://schema.org";
+  "@type": "DigitalDocument";
+  identifier: string;
+  name: string;
+  description: string | null;
+  content: Record<string, unknown> | null; // TipTap JSON content
+  hasFile: boolean;
+  file?: KickoffDocumentTemplateFile;
+  sortOrder: number;
+  isActive: boolean;
+  canDelete: boolean;
+  dateCreated: string;
+  dateModified: string;
+}
+
+export interface CreateKickoffDocumentTemplateRequest {
+  name: string;
+  description?: string;
+  content?: Record<string, unknown>;
+  is_active?: boolean;
+  sort_order?: number;
+}
+
+export interface UpdateKickoffDocumentTemplateRequest {
+  name?: string;
+  description?: string;
+  content?: Record<string, unknown>;
+  is_active?: boolean;
+  remove_file?: boolean;
+}
+
+export interface ReorderKickoffDocumentTemplatesRequest {
+  order: string[];
+}
+
+// ============ Kickoff Document (Per Project) ============
+export interface KickoffDocument {
+  "@context"?: "https://schema.org";
+  "@type": "DigitalDocument";
+  identifier: string;
+  name: string;
+  hasFile: boolean;
+  fileName: string | null;
+  encodingFormat: string | null;
+  contentSize: string | null;
+  contentSizeBytes: number | null;
+  isEditable: boolean;
+  content: Record<string, unknown> | null; // TipTap JSON content
+  description?: string;
+  dateCreated: string;
+  dateModified: string;
+}
+
+export interface UpdateKickoffDocumentContentRequest {
+  content: Record<string, unknown>;
+}
+
+// ============ Document Comments ============
+export interface DocumentCommentAuthor {
+  "@type": "Person";
+  identifier: string;
+  name: string;
+}
+
+export interface DocumentCommentReply {
+  identifier: string;
+  text: string;
+  author: DocumentCommentAuthor;
+  dateCreated: string;
+}
+
+export interface DocumentComment {
+  "@context"?: "https://schema.org";
+  "@type": "Comment";
+  identifier: string;
+  text: string;
+  author: DocumentCommentAuthor;
+  dateCreated: string;
+  dateModified: string;
+  selectedText: string | null;
+  from: number | null;
+  to: number | null;
+  isResolved: boolean;
+  replies: DocumentCommentReply[];
+}
+
+export interface CreateDocumentCommentRequest {
+  content: string;
+  selected_text?: string;
+  from?: number;
+  to?: number;
+}
+
+export interface UpdateDocumentCommentRequest {
+  content?: string;
+  is_resolved?: boolean;
+}
+
+export interface CreateCommentReplyRequest {
+  content: string;
+}
+
+export interface ResolveCommentRequest {
+  is_resolved: boolean;
+}
+
 // ============ My Tasks ============
 export type MyTaskType = "document_request" | "punchlist_item" | "setup_task";
 export type MyTaskStatus = "pending" | "in_progress" | "overdue" | "completed";

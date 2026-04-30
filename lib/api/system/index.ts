@@ -17,6 +17,7 @@ export {
   systemDocumentTypeTemplatesApi,
   systemAreaTemplatesApi,
   systemChecklistTemplatesApi,
+  systemKickoffDocumentTemplatesApi,
 } from "./templates";
 
 // Combined systemApi object for backwards compatibility and convenience
@@ -31,6 +32,7 @@ import {
   systemDocumentTypeTemplatesApi,
   systemAreaTemplatesApi,
   systemChecklistTemplatesApi,
+  systemKickoffDocumentTemplatesApi,
 } from "./templates";
 
 export const systemApi = {
@@ -44,4 +46,5 @@ export const systemApi = {
   documentTypeTemplates: systemDocumentTypeTemplatesApi,
   areaTemplates: systemAreaTemplatesApi,
   checklistTemplates: systemChecklistTemplatesApi,
+  kickoffDocumentTemplates: systemKickoffDocumentTemplatesApi,
 };

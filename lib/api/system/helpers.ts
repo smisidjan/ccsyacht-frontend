@@ -114,4 +114,49 @@ export async function apiFetchSystemTenant<T>(
   return response.json();
 }
 
+// Fetch helper for tenant-specific system admin endpoints with file upload
+export async function apiFetchSystemTenantWithFile<T>(
+  tenantId: string,
+  endpoint: string,
+  formData: FormData,
+  method: "POST" | "PUT" = "POST"
+): Promise<T> {
+  const token = getSystemToken();
+
+  const headers: HeadersInit = {};
+
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  // Add X-Tenant-ID header for tenant-specific system endpoints
+  headers["X-Tenant-ID"] = tenantId;
+
+  // Don't set Content-Type - browser will set it with boundary for multipart/form-data
+
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    method,
+    headers,
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    const errorMessage =
+      errorData.message ||
+      errorData.error ||
+      errorData.detail ||
+      errorData["hydra:description"] ||
+      `HTTP error ${response.status}`;
+    const error: ApiError = {
+      message: errorMessage,
+      code: errorData.code,
+      status: response.status,
+    };
+    throw error;
+  }
+
+  return response.json();
+}
+
 export { API_BASE_URL };
