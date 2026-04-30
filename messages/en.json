@@ -486,7 +486,29 @@
         "pendingUploads": "Pending Uploads",
         "requiredMissing": "required",
         "requestedPendingShort": "requested",
-        "resubmitted": "Resubmitted"
+        "resubmitted": "Resubmitted",
+        "document": {
+          "placeholder": "Start typing or select text to add a comment...",
+          "noComments": "No comments yet",
+          "selectTextToComment": "Select text to add a comment",
+          "noDocument": "No kickoff document available for this meeting.",
+          "comments": "Comments",
+          "resolved": "Resolved",
+          "addComment": "Add Comment",
+          "commentPlaceholder": "Add your comment...",
+          "submitHint": "⌘+Enter to submit",
+          "cancel": "Cancel",
+          "comment": "Comment",
+          "startConversation": "Start a conversation",
+          "commentingOn": "Commenting on:",
+          "reply": "Reply",
+          "replyPlaceholder": "Write a reply...",
+          "delete": "Delete",
+          "resolve": "Resolve",
+          "saving": "Saving",
+          "view": "View",
+          "download": "Download"
+        }
       },
       "kickoffForm": {
         "tabs": {
@@ -1198,8 +1220,11 @@
       "documentTypesTab": "Document Types",
       "areasTab": "Areas",
       "checklistsTab": "Kickoff Meeting Checklist",
+      "kickoffDocumentsTab": "Kickoff Document Template",
       "name": "Name",
       "description": "Description",
+      "content": "Content",
+      "lastModified": "Last Modified",
       "required": "Required",
       "locked": "Locked",
       "active": "Active",
@@ -1210,7 +1235,15 @@
       "noTemplates": "No templates found",
       "requiresReleaseForm": "Requires Release Form",
       "deleteSuccess": "Template deleted successfully",
-      "deleteFailed": "Failed to delete template"
+      "deleteFailed": "Failed to delete template",
+      "kickoffDocumentNamePlaceholder": "Enter template name",
+      "kickoffDocumentDescriptionPlaceholder": "Enter template description (optional)",
+      "kickoffDocumentContentPlaceholder": "Enter the kickoff document content...",
+      "file": "Document File",
+      "fileHint": "PDF, DOC, DOCX, ODT (max 10MB)",
+      "uploadFile": "Upload File",
+      "removeFile": "Remove File",
+      "currentFile": "Current File"
     },
     "tenantDetail": {
       "backToOverview": "Back to overview",

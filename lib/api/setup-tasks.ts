@@ -566,4 +566,131 @@ export const setupTasksApi = {
   ): Promise<DocumentAcknowledgementStatus> => {
     return apiFetch(`/projects/${projectId}/setup-task/${setupTaskId}/document-acknowledgement-status`);
   },
+
+  // ============ Kickoff Document ============
+
+  /**
+   * GET /api/projects/{projectId}/setup-task/{setupTaskId}/kickoff-document
+   * Get the kickoff document for a setup task
+   */
+  getKickoffDocument: async (
+    projectId: string,
+    setupTaskId: string
+  ): Promise<import("./types").KickoffDocument | null> => {
+    return apiFetch<import("./types").KickoffDocument>(
+      `/projects/${projectId}/setup-task/${setupTaskId}/kickoff-document`
+    ).catch(() => null);
+  },
+
+  /**
+   * PUT /api/projects/{projectId}/setup-task/{setupTaskId}/documents/{docId}/content
+   * Update the TipTap content of a document
+   */
+  updateDocumentContent: async (
+    projectId: string,
+    setupTaskId: string,
+    docId: string,
+    content: Record<string, unknown>
+  ): Promise<import("./types").KickoffDocument> => {
+    return apiFetch(`/projects/${projectId}/setup-task/${setupTaskId}/documents/${docId}/content`, {
+      method: "PUT",
+      body: JSON.stringify({ content }),
+    });
+  },
+
+  // ============ Document Comments ============
+
+  /**
+   * GET /api/projects/{projectId}/setup-task/{setupTaskId}/documents/{docId}/comments
+   * Get all comments for a document
+   */
+  getDocumentComments: async (
+    projectId: string,
+    setupTaskId: string,
+    docId: string
+  ): Promise<{ data: import("./types").DocumentComment[] }> => {
+    return apiFetch(`/projects/${projectId}/setup-task/${setupTaskId}/documents/${docId}/comments`);
+  },
+
+  /**
+   * POST /api/projects/{projectId}/setup-task/{setupTaskId}/documents/{docId}/comments
+   * Add a new comment to a document
+   */
+  addDocumentComment: async (
+    projectId: string,
+    setupTaskId: string,
+    docId: string,
+    data: import("./types").CreateDocumentCommentRequest
+  ): Promise<import("./types").DocumentComment> => {
+    return apiFetch(`/projects/${projectId}/setup-task/${setupTaskId}/documents/${docId}/comments`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  },
+
+  /**
+   * PATCH /api/projects/{projectId}/setup-task/{setupTaskId}/documents/{docId}/comments/{commentId}
+   * Update a comment
+   */
+  updateDocumentComment: async (
+    projectId: string,
+    setupTaskId: string,
+    docId: string,
+    commentId: string,
+    data: import("./types").UpdateDocumentCommentRequest
+  ): Promise<import("./types").DocumentComment> => {
+    return apiFetch(`/projects/${projectId}/setup-task/${setupTaskId}/documents/${docId}/comments/${commentId}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    });
+  },
+
+  /**
+   * DELETE /api/projects/{projectId}/setup-task/{setupTaskId}/documents/{docId}/comments/{commentId}
+   * Delete a comment
+   */
+  deleteDocumentComment: async (
+    projectId: string,
+    setupTaskId: string,
+    docId: string,
+    commentId: string
+  ): Promise<void> => {
+    return apiFetch(`/projects/${projectId}/setup-task/${setupTaskId}/documents/${docId}/comments/${commentId}`, {
+      method: "DELETE",
+    });
+  },
+
+  /**
+   * POST /api/projects/{projectId}/setup-task/{setupTaskId}/documents/{docId}/comments/{commentId}/replies
+   * Add a reply to a comment
+   */
+  addCommentReply: async (
+    projectId: string,
+    setupTaskId: string,
+    docId: string,
+    commentId: string,
+    data: import("./types").CreateCommentReplyRequest
+  ): Promise<import("./types").DocumentCommentReply> => {
+    return apiFetch(`/projects/${projectId}/setup-task/${setupTaskId}/documents/${docId}/comments/${commentId}/replies`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  },
+
+  /**
+   * POST /api/projects/{projectId}/setup-task/{setupTaskId}/documents/{docId}/comments/{commentId}/resolve
+   * Mark a comment as resolved/unresolved
+   */
+  resolveComment: async (
+    projectId: string,
+    setupTaskId: string,
+    docId: string,
+    commentId: string,
+    isResolved: boolean
+  ): Promise<import("./types").DocumentComment> => {
+    return apiFetch(`/projects/${projectId}/setup-task/${setupTaskId}/documents/${docId}/comments/${commentId}/resolve`, {
+      method: "POST",
+      body: JSON.stringify({ is_resolved: isResolved }),
+    });
+  },
 };
