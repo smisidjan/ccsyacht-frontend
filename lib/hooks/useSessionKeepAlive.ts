@@ -1,12 +1,10 @@
 import { useEffect, useCallback, useRef } from "react";
 import { authApi, getLastApiCallTime } from "@/lib/api/client";
 
-// Check every 5 minutes
-const CHECK_INTERVAL = 5 * 60 * 1000; // 5 minutes
-// Ping if no API call in last 50 minutes (token expires at 60 min)
-const PING_THRESHOLD = 50 * 60 * 1000; // 50 minutes
-// Consider user active if activity in last 5 minutes
-const ACTIVITY_THRESHOLD = 5 * 60 * 1000; // 5 minutes
+// Check every 2 minutes for more responsive keep-alive
+const CHECK_INTERVAL = 2 * 60 * 1000; // 2 minutes
+// Ping if no API call in last 45 minutes (token expires at 60 min, gives 15 min buffer)
+const PING_THRESHOLD = 45 * 60 * 1000; // 45 minutes
 
 const ACTIVITY_EVENTS = [
   "mousedown",
@@ -15,6 +13,7 @@ const ACTIVITY_EVENTS = [
   "scroll",
   "touchstart",
   "click",
+  "focus",
 ] as const;
 
 interface UseSessionKeepAliveOptions {
@@ -29,8 +28,11 @@ interface UseSessionKeepAliveOptions {
  * - Sanctum tokens expire after 60 minutes of no API activity
  * - Every API call automatically resets the expiration timer
  * - This hook tracks user activity (mouse, keyboard, etc.)
- * - If user is active but hasn't made an API call in 50 minutes, we ping the server
+ * - If user was active since the last API call and we're approaching expiration, we ping
  * - This prevents active users from being logged out unexpectedly
+ *
+ * Key improvement: We track if user was active AT ANY POINT since the last API call,
+ * not just in the last few minutes. This prevents logout when user is reading/viewing.
  */
 export function useSessionKeepAlive({
   enabled = true,
@@ -38,11 +40,15 @@ export function useSessionKeepAlive({
 }: UseSessionKeepAliveOptions = {}) {
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastActivityRef = useRef<number>(Date.now());
+  // Track if user was active since the last API call
+  const hadActivitySinceLastApiCallRef = useRef<boolean>(true);
   const isPingingRef = useRef<boolean>(false);
+  const lastKnownApiCallRef = useRef<number>(Date.now());
 
-  // Track user activity (debounced - only update once per second max)
+  // Track user activity
   const handleActivity = useCallback(() => {
     lastActivityRef.current = Date.now();
+    hadActivitySinceLastApiCallRef.current = true;
   }, []);
 
   // Check if we need to ping
@@ -51,21 +57,27 @@ export function useSessionKeepAlive({
 
     const now = Date.now();
     const lastApiCall = getLastApiCallTime();
-    const lastActivity = lastActivityRef.current;
-
     const timeSinceLastApiCall = now - lastApiCall;
-    const timeSinceLastActivity = now - lastActivity;
 
-    // Only ping if:
-    // 1. No API call in last 50 minutes
-    // 2. User was active in the last 5 minutes
+    // Reset activity tracking if a new API call was made
+    if (lastApiCall > lastKnownApiCallRef.current) {
+      lastKnownApiCallRef.current = lastApiCall;
+      hadActivitySinceLastApiCallRef.current = false;
+    }
+
+    // Ping if:
+    // 1. No API call in last 45 minutes (approaching 60 min expiration)
+    // 2. User had ANY activity since the last API call (even if they're idle now)
     const needsPing = timeSinceLastApiCall > PING_THRESHOLD;
-    const userIsActive = timeSinceLastActivity < ACTIVITY_THRESHOLD;
+    const userWasActive = hadActivitySinceLastApiCallRef.current;
 
-    if (needsPing && userIsActive) {
+    if (needsPing && userWasActive) {
       try {
         isPingingRef.current = true;
         await authApi.ping();
+        // Reset activity tracking after successful ping
+        hadActivitySinceLastApiCallRef.current = false;
+        lastKnownApiCallRef.current = Date.now();
       } catch {
         // Ping failed - token might be expired
         onPingError?.();
@@ -80,6 +92,7 @@ export function useSessionKeepAlive({
     if (document.visibilityState === "visible") {
       // Update activity timestamp
       lastActivityRef.current = Date.now();
+      hadActivitySinceLastApiCallRef.current = true;
       // Check if we need to ping
       checkAndPing();
     }
