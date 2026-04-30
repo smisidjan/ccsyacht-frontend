@@ -116,10 +116,38 @@ export default function ConfirmationPhase({
     return b.availableCount - a.availableCount;
   });
 
-  // Check if first slot is recommended (everyone can attend in person)
-  const recommendedSlotId = slotsToShow.length > 0 && slotsToShow[0].liveCount === slotsToShow[0].totalAttendees
-    ? slotsToShow[0].slotId
-    : null;
+  // Determine recommended slots with priority: in-person > online > availability count
+  const recommendedSlotIds = (() => {
+    // Priority 1: Slots where everyone can attend in person
+    const allInPersonSlots = slotsToShow.filter(
+      s => s.liveCount === s.totalAttendees && s.totalAttendees > 0
+    );
+    if (allInPersonSlots.length > 0) {
+      return new Set(allInPersonSlots.map(s => s.slotId));
+    }
+
+    // Priority 2: Slots where everyone can attend online
+    const allOnlineSlots = slotsToShow.filter(
+      s => s.onlineCount === s.totalAttendees && s.totalAttendees > 0
+    );
+    if (allOnlineSlots.length > 0) {
+      return new Set(allOnlineSlots.map(s => s.slotId));
+    }
+
+    // Priority 3: Slots with highest availability count
+    const maxAvailableCount = slotsToShow.length > 0
+      ? Math.max(...slotsToShow.map(s => s.availableCount))
+      : 0;
+    if (maxAvailableCount > 0) {
+      return new Set(
+        slotsToShow
+          .filter(s => s.availableCount === maxAvailableCount)
+          .map(s => s.slotId)
+      );
+    }
+
+    return new Set<string>();
+  })();
 
   // Auto-select if there's only one slot where everyone can attend
   const shouldAutoSelect =
@@ -355,7 +383,7 @@ export default function ConfirmationPhase({
                           {formatTimeDisplay(slot.startTime)} -{" "}
                           {formatTimeDisplay(slot.endTime)}
                         </span>
-                        {recommendedSlotId === slot.slotId && (
+                        {recommendedSlotIds.has(slot.slotId) && (
                           <span className="text-xs px-2 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded font-medium">
                             {t("confirmation.recommended")}
                           </span>
