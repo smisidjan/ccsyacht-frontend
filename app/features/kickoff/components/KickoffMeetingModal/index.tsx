@@ -7,8 +7,6 @@ import Alert from "@/app/components/ui/Alert";
 import { setupTasksApi, useDocumentTypes } from "@/lib/api";
 import { useCurrentUserContext } from "@/app/context/CurrentUserContext";
 import { useToast } from "@/app/context/ToastContext";
-import { usePermission } from "@/lib/hooks/usePermission";
-import { PERMISSIONS } from "@/lib/constants/permissions";
 import { handleError } from "@/lib/utils/errors";
 import type { SetupTask, SchedulingStatus, RequiredDocument } from "@/lib/api/types";
 
@@ -16,7 +14,7 @@ import type { SetupTask, SchedulingStatus, RequiredDocument } from "@/lib/api/ty
 import StatusHeader from "./StatusHeader";
 import DocumentStatsSection from "./DocumentStatsSection";
 import AttendeesSection from "./AttendeesSection";
-import MeetingDocumentSection from "./MeetingDocumentSection";
+import CollaborativeDocumentSection from "./CollaborativeDocumentSection";
 import PendingDocumentsSection from "./PendingDocumentsSection";
 import RequiredDocumentsSection from "./RequiredDocumentsSection";
 
@@ -40,7 +38,6 @@ export default function KickoffMeetingModal({
   const t = useTranslations("projectDetail.setupTasks.kickoffMeeting");
   const tCommon = useTranslations("common");
   const { showToast } = useToast();
-  const { hasPermission } = usePermission();
   const { currentUser } = useCurrentUserContext();
 
   const [task, setTask] = useState<SetupTask | null>(null);
@@ -48,8 +45,6 @@ export default function KickoffMeetingModal({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Document state
-  const [isUploadingDocument, setIsUploadingDocument] = useState(false);
 
   // Required Documents state
   const [requiredDocuments, setRequiredDocuments] = useState<NormalizedRequiredDocument[]>([]);
@@ -61,12 +56,6 @@ export default function KickoffMeetingModal({
   const [disagreementReason, setDisagreementReason] = useState("");
   const [isSubmittingDisagree, setIsSubmittingDisagree] = useState(false);
 
-  // Delete confirmation state
-  const [documentToDelete, setDocumentToDelete] = useState<string | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
-
-  // Permissions
-  const canEditProject = hasPermission(PERMISSIONS.EDIT_PROJECTS);
 
   // Fetch document types
   const { data: documentTypes } = useDocumentTypes(projectId, { includeAssignees: true });
@@ -105,11 +94,6 @@ export default function KickoffMeetingModal({
     }
     return null;
   }, [task?.proposedDates, task?.meetingFormat, schedulingStatus?.selectedTimeSlot]);
-
-  // Get the meeting document
-  const meetingDocument = useMemo(() => {
-    return task?.documents?.[0] || null;
-  }, [task?.documents]);
 
   // Get pending documents
   const pendingDocuments = useMemo((): PendingDocument[] => {
@@ -272,45 +256,6 @@ export default function KickoffMeetingModal({
   const refreshTaskDetails = () => fetchTaskDetails(true);
 
   // Handlers
-  const handleUploadDocument = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const maxSize = 20 * 1024 * 1024;
-    if (file.size > maxSize) {
-      showToast("error", t("fileTooLarge"));
-      return;
-    }
-
-    try {
-      setIsUploadingDocument(true);
-      await setupTasksApi.uploadDocument(projectId, taskId, file);
-      showToast("success", t("documentUploaded"));
-      await refreshTaskDetails();
-      e.target.value = "";
-    } catch {
-      showToast("error", t("documentUploadError"));
-    } finally {
-      setIsUploadingDocument(false);
-    }
-  };
-
-  const handleDeleteDocument = async () => {
-    if (!documentToDelete) return;
-
-    try {
-      setIsDeleting(true);
-      await setupTasksApi.deleteDocument(projectId, taskId, documentToDelete);
-      showToast("success", t("documentDeleted"));
-      setDocumentToDelete(null);
-      await refreshTaskDetails();
-    } catch {
-      showToast("error", t("documentDeleteError"));
-    } finally {
-      setIsDeleting(false);
-    }
-  };
-
   const handleAcknowledgeDocument = async (docId: string, agreed: boolean, reason?: string) => {
     try {
       setAcknowledgingDocId(docId);
@@ -434,18 +379,14 @@ export default function KickoffMeetingModal({
 
               <AttendeesSection assignees={task.assignees || []} />
 
-              <MeetingDocumentSection
+              <CollaborativeDocumentSection
                 task={task}
                 projectId={projectId}
                 taskId={taskId}
-                meetingDocument={meetingDocument}
-                canEditProject={canEditProject}
-                isUploadingDocument={isUploadingDocument}
-                onUpload={handleUploadDocument}
-                onDelete={setDocumentToDelete}
+                currentUser={currentUser}
                 isAttendee={isAttendee}
-                currentUserAttendee={currentUserAttendee ?? null}
               />
+
 
               <PendingDocumentsSection
                 requiredPendingDocs={requiredPendingDocs}
@@ -470,30 +411,6 @@ export default function KickoffMeetingModal({
             </div>
           )
         )}
-      </Modal>
-
-      {/* Delete Confirmation Modal */}
-      <Modal
-        isOpen={!!documentToDelete}
-        onClose={() => setDocumentToDelete(null)}
-        title={t("deleteDocumentTitle")}
-        size="sm"
-        actions={[
-          {
-            label: tCommon("cancel"),
-            onClick: () => setDocumentToDelete(null),
-            variant: "secondary",
-          },
-          {
-            label: tCommon("delete"),
-            onClick: handleDeleteDocument,
-            variant: "danger",
-            loading: isDeleting,
-            disabled: isDeleting,
-          },
-        ]}
-      >
-        <p className="text-gray-600 dark:text-gray-400">{t("confirmDeleteDocument")}</p>
       </Modal>
 
       {/* Disagree Reason Modal */}
