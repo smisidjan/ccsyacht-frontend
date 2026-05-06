@@ -53,6 +53,7 @@
     "registerForOrg": "Registreren voor {orgName}",
     "orgNotFound": "Organisatie niet gevonden",
     "orgNotFoundMessage": "De organisatie waarvoor je probeert te registreren bestaat niet.",
+    "loggedOut": "Je bent succesvol uitgelogd.",
     "errors": {
       "invalidCredentials": "De opgegeven inloggegevens zijn onjuist.",
       "userNotFound": "Gebruiker niet gevonden.",

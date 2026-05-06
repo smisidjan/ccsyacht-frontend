@@ -53,6 +53,7 @@
     "registerForOrg": "Register for {orgName}",
     "orgNotFound": "Organization not found",
     "orgNotFoundMessage": "The organization you're trying to register for doesn't exist.",
+    "loggedOut": "You have been logged out successfully.",
     "errors": {
       "invalidCredentials": "The provided credentials are incorrect.",
       "userNotFound": "User not found.",

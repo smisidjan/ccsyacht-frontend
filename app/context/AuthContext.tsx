@@ -72,23 +72,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const { showToast } = useToast();
-  const t = useTranslations("auth.errors");
+  const t = useTranslations("auth");
 
-  const logout = useCallback((showSessionExpired = false) => {
+  const logout = useCallback((reason: "user" | "expired" = "user") => {
+    // User-initiated logout wins over a later "expired" signal (e.g. an in-flight
+    // 401 or keep-alive ping that fires after the token was just cleared).
+    const existing = sessionStorage.getItem("logoutReason");
+    if (!existing || reason === "user") {
+      sessionStorage.setItem("logoutReason", reason);
+    }
     setAuthToken(null);
     clearTenant();
     setToken(null);
-    if (showSessionExpired) {
-      // Store flag in sessionStorage to show toast after redirect
-      sessionStorage.setItem("sessionExpired", "true");
-    }
     router.push("/login");
   }, [clearTenant, router]);
 
   // Handle 401 responses - token expired
   useEffect(() => {
     setOnUnauthorized(() => {
-      logout(true);
+      logout("expired");
     });
 
     return () => {
@@ -96,18 +98,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [logout]);
 
-  // Show session expired toast on login page if redirected
+  // Show post-logout toast on login page if redirected
   useEffect(() => {
-    if (pathname === "/login" && sessionStorage.getItem("sessionExpired")) {
-      sessionStorage.removeItem("sessionExpired");
-      showToast("warning", t("sessionExpired"));
+    if (pathname !== "/login") return;
+    const reason = sessionStorage.getItem("logoutReason");
+    if (!reason) return;
+    sessionStorage.removeItem("logoutReason");
+    if (reason === "expired") {
+      showToast("warning", t("errors.sessionExpired"));
+    } else {
+      showToast("success", t("loggedOut"));
     }
-  }, [pathname, showToast]);
+  }, [pathname, showToast, t]);
 
   // Keep session alive for active users
   useSessionKeepAlive({
     enabled: !!token,
-    onPingError: () => logout(true),
+    onPingError: () => logout("expired"),
   });
 
   return (
