@@ -16,7 +16,8 @@ import CommentSidebar from "./CommentSidebar";
 import AddCommentPopover from "./AddCommentPopover";
 import CommentInputPanel from "./CommentInputPanel";
 import { setupTasksApi } from "@/lib/api";
-import type { DocumentComment as ApiDocumentComment } from "@/lib/api/types";
+import { useToast } from "@/app/context/ToastContext";
+import type { DocumentComment as ApiDocumentComment, ApiError } from "@/lib/api/types";
 import type { CollaborativeDocumentProps, InternalComment } from "./types";
 import { normalizeComment, normalizeComments } from "./types";
 
@@ -26,13 +27,16 @@ export default function CollaborativeDocument({
   documentId,
   initialContent,
   initialComments,
+  version,
   currentUser,
   editable = false,
   canComment = true,
   onContentChange,
   onCommentsChange,
+  onRefetch,
 }: CollaborativeDocumentProps) {
   const t = useTranslations("projectDetail.setupTasks.kickoffMeeting.document");
+  const { showToast } = useToast();
 
   const [comments, setComments] = useState<InternalComment[]>(() =>
     initialComments ? normalizeComments(initialComments) : []
@@ -49,24 +53,24 @@ export default function CollaborativeDocument({
   const canCommentRef = useRef(canComment);
   const currentUserRef = useRef(currentUser);
   const editableRef = useRef(editable);
+  // Track latest version so the auto-save can read it without a re-creation cycle.
+  const versionRef = useRef(version);
 
   // Keep refs updated
   useEffect(() => {
     canCommentRef.current = canComment;
     currentUserRef.current = currentUser;
     editableRef.current = editable;
-  }, [canComment, currentUser, editable]);
+    versionRef.current = version;
+  }, [canComment, currentUser, editable, version]);
 
   // Store initialContent in a ref to access in onCreate
   const initialContentRef = useRef(initialContent);
   initialContentRef.current = initialContent;
 
-  // Track if we're programmatically adding a comment mark
-  const isAddingCommentRef = useRef(false);
-
-  // Create a stable extension that blocks document changes when not editable
-  // Must use useMemo to ensure the extension is created only once
-  // The refs are accessed at runtime so they'll always have current values
+  // Create a stable extension that blocks document changes when not editable.
+  // Comment marks are now applied server-side, so no programmatic-edit escape
+  // hatch is needed here — only block real user edits.
   const ConditionalReadOnly = useMemo(
     () =>
       Extension.create({
@@ -76,23 +80,15 @@ export default function CollaborativeDocument({
             new Plugin({
               key: new PluginKey("conditionalReadOnly"),
               filterTransaction: (transaction) => {
-                // Allow all transactions if editable
                 if (editableRef.current) return true;
-
-                // Allow if we're programmatically adding a comment
-                if (isAddingCommentRef.current) return true;
-
-                // Block any transaction that changes the document
                 if (transaction.docChanged) return false;
-
-                // Allow selection-only transactions
-                return true;
+                return true; // selection-only transactions
               },
             }),
           ];
         },
       }),
-    [] // Empty deps - refs are stable and accessed at runtime
+    []
   );
 
   const editor = useEditor({
@@ -165,9 +161,6 @@ export default function CollaborativeDocument({
       }
     },
     onUpdate: ({ editor }) => {
-      // Allow comment mark updates even when not editable
-      if (isAddingCommentRef.current) return;
-
       // Only process content changes if editable
       if (!editableRef.current) return;
 
@@ -311,15 +304,32 @@ export default function CollaborativeDocument({
     };
   }, [editor]);
 
-  // Save content to API
+  // Save content to API with optimistic-locking + empty-doc guard.
   const saveContent = async (content: Record<string, unknown>) => {
     if (!editable) return;
+    // Cheap local check before the network round-trip — backend has the same
+    // guard but failing fast avoids overwriting valid content with empties.
+    if (isEmptyDoc(content)) return;
 
     try {
       setIsSaving(true);
-      await setupTasksApi.updateDocumentContent(projectId, taskId, documentId, content);
+      await setupTasksApi.updateDocumentContent(
+        projectId,
+        taskId,
+        documentId,
+        content,
+        versionRef.current
+      );
     } catch (error) {
-      console.error("Failed to save document:", error);
+      const status = (error as ApiError | undefined)?.status;
+      if (status === 409) {
+        showToast("warning", t("saveConflict"));
+        await onRefetch?.();
+      } else if (status === 422) {
+        showToast("warning", t("saveRejectedEmpty"));
+      } else {
+        console.error("Failed to save document:", error);
+      }
     } finally {
       setIsSaving(false);
     }
@@ -339,6 +349,9 @@ export default function CollaborativeDocument({
       if (!selectedText.trim()) return;
 
       try {
+        // Backend handles the comment record AND the mark injection in one
+        // transaction. Frontend just POSTs and refetches — no setMark, no
+        // updateDocumentContent round-trip.
         const apiComment = await setupTasksApi.addDocumentComment(projectId, taskId, documentId, {
           content: text,
           selected_text: selectedText,
@@ -347,39 +360,19 @@ export default function CollaborativeDocument({
         });
 
         const newComment = normalizeComment(apiComment);
-
-        // Explicitly target the saved range — don't rely on whatever selection the
-        // editor happens to have when this runs. Without setTextSelection, setMark
-        // can apply to a collapsed range (no-op) if focus shifted to the comment
-        // panel input.
-        isAddingCommentRef.current = true;
-        editor.chain()
-          .focus()
-          .setTextSelection({ from, to })
-          .setComment(newComment.id)
-          .run();
-        isAddingCommentRef.current = false;
-
-        // Guard against persisting an empty document on top of valid content.
-        // If something resets the editor mid-flow, getJSON may return an empty
-        // doc — saving that wipes the kickoff template on the backend.
-        const updatedContent = editor.getJSON();
-        if (isEmptyDoc(updatedContent)) {
-          console.error("Refusing to save empty document content");
-        } else {
-          await setupTasksApi.updateDocumentContent(projectId, taskId, documentId, updatedContent);
-        }
-
         setComments((prev) => [...prev, newComment]);
         setPopoverPosition(null);
         setSelectionRange(null);
         setIsCommentPanelOpen(false);
         setActiveCommentId(newComment.id);
+
+        // Pull fresh content with the server-injected mark.
+        await onRefetch?.();
       } catch (error) {
         console.error("Failed to add comment:", error);
       }
     },
-    [editor, selectionRange, currentUser, projectId, taskId, documentId]
+    [editor, selectionRange, currentUser, projectId, taskId, documentId, onRefetch]
   );
 
   const handleReplyToComment = useCallback(
@@ -421,39 +414,21 @@ export default function CollaborativeDocument({
 
   const handleDeleteComment = useCallback(
     async (commentId: string) => {
-      if (!editor) return;
-
       try {
+        // Backend strips the mark from the content as part of the delete.
         await setupTasksApi.deleteDocumentComment(projectId, taskId, documentId, commentId);
-
-        // Remove the comment mark from the document
-        const { doc } = editor.state;
-        const markType = editor.schema.marks.comment;
-
-        doc.descendants((node, pos) => {
-          if (node.isText) {
-            const marks = node.marks.filter(
-              (mark) => mark.type === markType && mark.attrs.commentId === commentId
-            );
-            if (marks.length > 0) {
-              editor
-                .chain()
-                .setTextSelection({ from: pos, to: pos + node.nodeSize })
-                .unsetComment()
-                .run();
-            }
-          }
-        });
 
         setComments((prev) => prev.filter((c) => c.id !== commentId));
         if (activeCommentId === commentId) {
           setActiveCommentId(null);
         }
+
+        await onRefetch?.();
       } catch (error) {
         console.error("Failed to delete comment:", error);
       }
     },
-    [editor, activeCommentId, projectId, taskId, documentId]
+    [activeCommentId, projectId, taskId, documentId, onRefetch]
   );
 
   const handleResolveComment = useCallback(

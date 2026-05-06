@@ -508,6 +508,8 @@
           "delete": "Delete",
           "resolve": "Resolve",
           "saving": "Saving",
+          "saveConflict": "Document was changed elsewhere. Reloaded to the latest version — please redo your edit.",
+          "saveRejectedEmpty": "The document is empty and was not saved.",
           "view": "View",
           "download": "Download",
           "finalize": "Finalize Document",

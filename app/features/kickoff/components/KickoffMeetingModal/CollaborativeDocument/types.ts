@@ -83,6 +83,8 @@ export interface CollaborativeDocumentProps {
   initialContent?: Record<string, unknown> | null;
   /** Initial comments from API */
   initialComments?: ApiDocumentComment[];
+  /** Optimistic-locking version from the server. Sent back on content saves. */
+  version?: number;
   /** Current user info */
   currentUser: {
     identifier: string;
@@ -96,6 +98,8 @@ export interface CollaborativeDocumentProps {
   onContentChange?: (content: Record<string, unknown>) => void;
   /** Callback when comments change (API format) */
   onCommentsChange?: (comments: ApiDocumentComment[]) => void;
+  /** Refetch the parent's document state (after comment add/delete or 409). */
+  onRefetch?: () => void | Promise<void>;
 }
 
 export interface CommentThreadProps {

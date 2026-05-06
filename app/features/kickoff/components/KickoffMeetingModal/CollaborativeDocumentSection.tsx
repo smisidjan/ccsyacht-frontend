@@ -461,10 +461,12 @@ export default function CollaborativeDocumentSection({
           documentId={kickoffDocument.identifier}
           initialContent={kickoffDocument.content}
           initialComments={comments}
+          version={kickoffDocument.version}
           currentUser={currentUser}
           editable={contentEditable}
           canComment={canComment}
           onCommentsChange={setComments}
+          onRefetch={fetchData}
         />
       )}
 

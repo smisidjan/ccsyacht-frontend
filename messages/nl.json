@@ -508,6 +508,8 @@
           "delete": "Verwijderen",
           "resolve": "Oplossen",
           "saving": "Opslaan",
+          "saveConflict": "Document is elders gewijzigd. Laatste versie geladen — herhaal je aanpassing.",
+          "saveRejectedEmpty": "Het document is leeg en is niet opgeslagen.",
           "view": "Bekijken",
           "download": "Downloaden",
           "finalize": "Document Definitief Maken",

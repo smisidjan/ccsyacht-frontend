@@ -1826,6 +1826,7 @@ export interface KickoffDocument {
   contentSizeBytes: number | null;
   isEditable: boolean;
   content: Record<string, unknown> | null; // TipTap JSON content
+  version?: number; // Optimistic-locking version on editable documents
   description?: string;
   dateCreated: string;
   dateModified: string;
@@ -1846,6 +1847,8 @@ export interface KickoffDocument {
 
 export interface UpdateKickoffDocumentContentRequest {
   content: Record<string, unknown>;
+  version?: number;
+  force?: boolean;
 }
 
 // ============ Document Comments ============

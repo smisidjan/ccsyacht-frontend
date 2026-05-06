@@ -585,16 +585,22 @@ export const setupTasksApi = {
   /**
    * PUT /api/projects/{projectId}/setup-task/{setupTaskId}/documents/{docId}/content
    * Update the TipTap content of a document
+   *
+   * @param version Optimistic-locking version. Backend returns 409 on mismatch.
+   * @param force Bypass server-side empty/short-doc guards. Use only when the
+   *   user explicitly confirms wiping the document.
    */
   updateDocumentContent: async (
     projectId: string,
     setupTaskId: string,
     docId: string,
-    content: Record<string, unknown>
+    content: Record<string, unknown>,
+    version?: number,
+    force?: boolean
   ): Promise<import("./types").KickoffDocument> => {
     return apiFetch(`/projects/${projectId}/setup-task/${setupTaskId}/documents/${docId}/content`, {
       method: "PUT",
-      body: JSON.stringify({ content }),
+      body: JSON.stringify({ content, version, force }),
     });
   },
 
