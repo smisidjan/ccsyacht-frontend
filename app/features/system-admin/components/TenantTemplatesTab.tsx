@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import dynamic from "next/dynamic";
 import { useTranslations } from "next-intl";
 import TabNavState from "@/app/components/ui/TabNavState";
 import type { StateTab } from "@/app/components/ui/TabNavState";
@@ -12,8 +13,13 @@ import {
   DocumentTypeTemplateForm,
   AreaTemplateForm,
   ChecklistTemplateForm,
-  KickoffDocumentTemplateForm,
 } from "@/app/features/system-admin";
+
+// Lazy: pulls in TipTap. Keeps the system-admin route compile fast in dev.
+const KickoffDocumentTemplateForm = dynamic(
+  () => import("./KickoffDocumentTemplateForm"),
+  { ssr: false }
+);
 import { PlusIcon, ExclamationTriangleIcon } from "@heroicons/react/24/outline";
 import { useModalForm } from "@/lib/hooks/useModalForm";
 import { useToast } from "@/app/context/ToastContext";

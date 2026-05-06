@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import dynamic from "next/dynamic";
 import { useTranslations } from "next-intl";
 import {
   DocumentTextIcon,
@@ -14,7 +15,13 @@ import {
   ChevronRightIcon,
   ArrowDownTrayIcon,
 } from "@heroicons/react/24/outline";
-import { CollaborativeDocument } from "./CollaborativeDocument";
+
+// Lazy: TipTap (~200 ESM modules) only loads when this section actually renders.
+// Keeps it out of every dashboard route's compile graph in dev.
+const CollaborativeDocument = dynamic(
+  () => import("./CollaborativeDocument").then((m) => m.CollaborativeDocument),
+  { ssr: false }
+);
 import { setupTasksApi } from "@/lib/api";
 import { useToast } from "@/app/context/ToastContext";
 import { usePermission } from "@/lib/hooks/usePermission";
