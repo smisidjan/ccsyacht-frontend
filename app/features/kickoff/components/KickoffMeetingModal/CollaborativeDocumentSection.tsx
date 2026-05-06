@@ -14,6 +14,7 @@ import {
   ChevronDownIcon,
   ChevronRightIcon,
   ArrowDownTrayIcon,
+  PencilIcon,
 } from "@heroicons/react/24/outline";
 
 // Lazy: TipTap (~200 ESM modules) only loads when this section actually renders.
@@ -28,6 +29,7 @@ import { usePermission } from "@/lib/hooks/usePermission";
 import { PERMISSIONS } from "@/lib/constants/permissions";
 import Button from "@/app/components/ui/Button";
 import Modal from "@/app/components/ui/Modal";
+import TabNavState from "@/app/components/ui/TabNavState";
 import type { SetupTask, KickoffDocument, DocumentComment } from "@/lib/api/types";
 
 interface DocumentSigner {
@@ -87,6 +89,11 @@ export default function CollaborativeDocumentSection({
   const [isSigning, setIsSigning] = useState(false);
   const [showFinalizeModal, setShowFinalizeModal] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [activeTab, setActiveTab] = useState<"document" | "comments">("document");
+  // Frontend-only edit toggle. Hosts (canFinalize) can flip it on to actually
+  // type into the doc. The "Send for Signing" action is a separate, terminal
+  // step that locks the document — those two flows are independent.
+  const [isEditMode, setIsEditMode] = useState(false);
 
   // Check if we should show the document section
   const isPending = task.actionStatus === "pending";
@@ -231,14 +238,16 @@ export default function CollaborativeDocumentSection({
     }
   }, [kickoffDocument?.isFinalDocument, signedCount, totalAssignees, effectiveSigners, onSigningStatusChange]);
 
-  // Separate content editing from commenting
-  // Content is only editable if kickoffDocument.isEditable is true and document is not finalized
-  const contentEditable = isAttendee &&
-    task.actionStatus !== "completed" &&
-    kickoffDocument?.isEditable === true &&
-    !kickoffDocument?.isFinalDocument;
-  // Comments are allowed for attendees when document is not finalized
-  const canComment = isAttendee && task.actionStatus !== "completed" && !kickoffDocument?.isFinalDocument;
+  // Doc is read-only for everyone unless the host (canFinalize) explicitly
+  // enters edit mode via the "Edit Document" button. The "Send for Signing"
+  // action is independent — it locks the doc as the version that gets signed.
+  const contentEditable =
+    isEditMode &&
+    canFinalize &&
+    !kickoffDocument?.isFinalDocument &&
+    task.actionStatus !== "completed";
+  const canComment =
+    isAttendee && task.actionStatus !== "completed" && !kickoffDocument?.isFinalDocument;
 
   // Unresolved comment count
   const unresolvedCount = comments.filter((c) => !c.isResolved).length;
@@ -310,17 +319,39 @@ export default function CollaborativeDocumentSection({
               {unresolvedCount} {t("document.comments").toLowerCase()}
             </span>
           )}
-          {/* Finalize button */}
+          {/* Host actions: edit toggle + send-for-signing. Hidden once the doc
+              is finalized — at that point only the signing flow is relevant. */}
           {!kickoffDocument.isFinalDocument && canFinalize && (
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => setShowFinalizeModal(true)}
-              disabled={isFinalizing}
-            >
-              <LockClosedIcon className="w-4 h-4" />
-              {t("document.finalize")}
-            </Button>
+            isEditMode ? (
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => setIsEditMode(false)}
+              >
+                <CheckIcon className="w-4 h-4" />
+                {t("document.doneEditing")}
+              </Button>
+            ) : (
+              <>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setIsEditMode(true)}
+                >
+                  <PencilIcon className="w-4 h-4" />
+                  {t("document.editDocument")}
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => setShowFinalizeModal(true)}
+                  disabled={isFinalizing}
+                >
+                  <LockClosedIcon className="w-4 h-4" />
+                  {t("document.finalize")}
+                </Button>
+              </>
+            )
           )}
         </div>
       </div>
@@ -453,21 +484,32 @@ export default function CollaborativeDocumentSection({
         </div>
       )}
 
-      {/* Collaborative editor for content (only when not finalized) */}
+      {/* Tabbed editor / comments view (only when not finalized) */}
       {!kickoffDocument.isFinalDocument && kickoffDocument.content && (
-        <CollaborativeDocument
-          projectId={projectId}
-          taskId={taskId}
-          documentId={kickoffDocument.identifier}
-          initialContent={kickoffDocument.content}
-          initialComments={comments}
-          version={kickoffDocument.version}
-          currentUser={currentUser}
-          editable={contentEditable}
-          canComment={canComment}
-          onCommentsChange={setComments}
-          onRefetch={fetchData}
-        />
+        <>
+          <TabNavState
+            tabs={[
+              { key: "document", label: t("document.tabDocument") },
+              { key: "comments", label: `${t("document.tabComments")} (${comments.length})` },
+            ]}
+            activeTab={activeTab}
+            onChange={(key) => setActiveTab(key as "document" | "comments")}
+          />
+          <CollaborativeDocument
+            projectId={projectId}
+            taskId={taskId}
+            documentId={kickoffDocument.identifier}
+            initialContent={kickoffDocument.content}
+            initialComments={comments}
+            version={kickoffDocument.version}
+            currentUser={currentUser}
+            editable={contentEditable}
+            canComment={canComment}
+            view={activeTab}
+            onCommentsChange={setComments}
+            onRefetch={fetchData}
+          />
+        </>
       )}
 
       {/* Finalize Confirmation Modal */}

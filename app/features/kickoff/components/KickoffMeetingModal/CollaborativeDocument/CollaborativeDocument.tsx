@@ -31,10 +31,13 @@ export default function CollaborativeDocument({
   currentUser,
   editable = false,
   canComment = true,
+  view,
   onContentChange,
   onCommentsChange,
   onRefetch,
 }: CollaborativeDocumentProps) {
+  const showDocument = view !== "comments";
+  const showComments = view !== "document";
   const t = useTranslations("projectDetail.setupTasks.kickoffMeeting.document");
   const { showToast } = useToast();
 
@@ -249,19 +252,36 @@ export default function CollaborativeDocument({
     }
   }, [comments, onCommentsChange]);
 
-  // Handle click on comment highlight
+  // Handle click on comment highlight — open the comment panel for that range
+  // so the existing comments are visible and the user can add a reply / new
+  // comment on the same selection.
   useEffect(() => {
     if (!editor) return;
 
     const handleClick = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
       const commentSpan = target.closest("[data-comment-id]");
-      if (commentSpan) {
-        const commentId = commentSpan.getAttribute("data-comment-id");
-        if (commentId) {
-          setActiveCommentId(commentId);
-        }
-      }
+      if (!commentSpan) return;
+
+      const commentId = commentSpan.getAttribute("data-comment-id");
+      if (!commentId) return;
+
+      setActiveCommentId(commentId);
+
+      // Find the clicked comment so we can open the panel anchored to its range.
+      const clicked = comments.find((c) => c.id === commentId);
+      if (!clicked || !canCommentRef.current || !currentUserRef.current) return;
+
+      const docSize = editor.state.doc.content.size;
+      const from = Math.max(0, Math.min(clicked.from, docSize));
+      const to = Math.max(0, Math.min(clicked.to, docSize));
+      if (from >= to) return;
+
+      const text = editor.state.doc.textBetween(from, to);
+      setSelectionRange({ from, to });
+      setSelectedText(text);
+      setIsCommentPanelOpen(true);
+      setPopoverPosition(null);
     };
 
     const editorElement = editor.view.dom;
@@ -270,7 +290,7 @@ export default function CollaborativeDocument({
     return () => {
       editorElement.removeEventListener("click", handleClick);
     };
-  }, [editor]);
+  }, [editor, comments]);
 
   // Handle mouseup to show comment button after selection
   useEffect(() => {
@@ -500,55 +520,70 @@ export default function CollaborativeDocument({
     window.getSelection()?.removeAllRanges();
   }, [editor]);
 
+  // Comments whose range overlaps the current selection — surfaced in the panel
+  // so the user sees what's already attached to this passage before commenting.
+  const existingCommentsForSelection = useMemo(() => {
+    if (!selectionRange) return [];
+    const { from, to } = selectionRange;
+    return comments.filter((c) => c.from < to && c.to > from);
+  }, [comments, selectionRange]);
+
   return (
     <div className="space-y-4">
       {/* Editor - full width */}
-      <div className="relative">
-        <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden bg-white dark:bg-gray-900">
-          {/* Save indicator */}
-          {isSaving && (
-            <div className="absolute top-2 right-2 text-xs text-gray-400 dark:text-gray-500 z-10">
-              {t("saving")}...
-            </div>
+      {showDocument && (
+        <div className="relative">
+          <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden bg-white dark:bg-gray-900">
+            {/* Save indicator */}
+            {isSaving && (
+              <div className="absolute top-2 right-2 text-xs text-gray-400 dark:text-gray-500 z-10">
+                {t("saving")}...
+              </div>
+            )}
+            <EditorContent
+              editor={editor}
+              className="prose prose-sm dark:prose-invert max-w-none p-4 min-h-[300px] focus:outline-none [&_.ProseMirror]:outline-none [&_.ProseMirror]:min-h-[280px] [&_.ProseMirror]:[&::selection]:bg-blue-200 [&_.ProseMirror]:dark:[&::selection]:bg-blue-800 [&_.comment-highlight]:bg-yellow-200 [&_.comment-highlight]:dark:bg-yellow-900/50 [&_.comment-highlight]:cursor-pointer [&_.ProseMirror_p.is-editor-empty:first-child::before]:content-[attr(data-placeholder)] [&_.ProseMirror_p.is-editor-empty:first-child::before]:text-gray-400 [&_.ProseMirror_p.is-editor-empty:first-child::before]:float-left [&_.ProseMirror_p.is-editor-empty:first-child::before]:pointer-events-none [&_.ProseMirror_p.is-editor-empty:first-child::before]:h-0 [&_.ProseMirror_table]:border-collapse [&_.ProseMirror_table]:w-full [&_.ProseMirror_table]:my-4 [&_.ProseMirror_td]:border [&_.ProseMirror_td]:border-gray-300 [&_.ProseMirror_td]:dark:border-gray-600 [&_.ProseMirror_td]:p-2 [&_.ProseMirror_th]:border [&_.ProseMirror_th]:border-gray-300 [&_.ProseMirror_th]:dark:border-gray-600 [&_.ProseMirror_th]:p-2 [&_.ProseMirror_th]:bg-gray-100 [&_.ProseMirror_th]:dark:bg-gray-800 [&_.ProseMirror_th]:font-semibold"
+            />
+          </div>
+
+          {/* Button for adding comments */}
+          {currentUser && canComment && (
+            <AddCommentPopover
+              position={popoverPosition}
+              onOpenCommentPanel={handleOpenCommentPanel}
+            />
           )}
-          <EditorContent
-            editor={editor}
-            className="prose prose-sm dark:prose-invert max-w-none p-4 min-h-[300px] focus:outline-none [&_.ProseMirror]:outline-none [&_.ProseMirror]:min-h-[280px] [&_.ProseMirror]:[&::selection]:bg-blue-200 [&_.ProseMirror]:dark:[&::selection]:bg-blue-800 [&_.comment-highlight]:bg-yellow-200 [&_.comment-highlight]:dark:bg-yellow-900/50 [&_.comment-highlight]:cursor-pointer [&_.ProseMirror_p.is-editor-empty:first-child::before]:content-[attr(data-placeholder)] [&_.ProseMirror_p.is-editor-empty:first-child::before]:text-gray-400 [&_.ProseMirror_p.is-editor-empty:first-child::before]:float-left [&_.ProseMirror_p.is-editor-empty:first-child::before]:pointer-events-none [&_.ProseMirror_p.is-editor-empty:first-child::before]:h-0 [&_.ProseMirror_table]:border-collapse [&_.ProseMirror_table]:w-full [&_.ProseMirror_table]:my-4 [&_.ProseMirror_td]:border [&_.ProseMirror_td]:border-gray-300 [&_.ProseMirror_td]:dark:border-gray-600 [&_.ProseMirror_td]:p-2 [&_.ProseMirror_th]:border [&_.ProseMirror_th]:border-gray-300 [&_.ProseMirror_th]:dark:border-gray-600 [&_.ProseMirror_th]:p-2 [&_.ProseMirror_th]:bg-gray-100 [&_.ProseMirror_th]:dark:bg-gray-800 [&_.ProseMirror_th]:font-semibold"
-          />
         </div>
+      )}
 
-        {/* Button for adding comments */}
-        {currentUser && canComment && (
-          <AddCommentPopover
-            position={popoverPosition}
-            onOpenCommentPanel={handleOpenCommentPanel}
-          />
-        )}
-      </div>
-
-      {/* Comment input panel - appears to the side */}
+      {/* Comment input panel - appears to the side. Always rendered so it can
+          open even from the comments tab via a click on a thread. */}
       {canComment && (
         <CommentInputPanel
           isOpen={isCommentPanelOpen}
           currentUser={currentUser}
           selectedText={selectedText}
+          existingComments={existingCommentsForSelection}
           onSubmit={handleAddComment}
           onCancel={handleCancelCommentPanel}
+          onReply={handleReplyToComment}
         />
       )}
 
-      {/* Comments section - below */}
-      <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-800/50">
-        <CommentSidebar
-          comments={comments}
-          currentUserId={currentUser?.identifier}
-          activeCommentId={activeCommentId}
-          onCommentClick={handleCommentClick}
-          onReply={currentUser && canComment ? handleReplyToComment : undefined}
-          onDelete={canComment ? handleDeleteComment : undefined}
-          onResolve={canComment ? handleResolveComment : undefined}
-        />
-      </div>
+      {/* Comments section */}
+      {showComments && (
+        <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-800/50">
+          <CommentSidebar
+            comments={comments}
+            currentUserId={currentUser?.identifier}
+            activeCommentId={activeCommentId}
+            onCommentClick={handleCommentClick}
+            onReply={currentUser && canComment ? handleReplyToComment : undefined}
+            onDelete={canComment ? handleDeleteComment : undefined}
+            onResolve={canComment ? handleResolveComment : undefined}
+          />
+        </div>
+      )}
     </div>
   );
 }

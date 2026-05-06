@@ -94,6 +94,8 @@ export interface CollaborativeDocumentProps {
   editable?: boolean;
   /** Whether the user can add comments (separate from content editing) */
   canComment?: boolean;
+  /** Which section to render. Defaults to both for backward compatibility. */
+  view?: "document" | "comments";
   /** Callback when content changes */
   onContentChange?: (content: Record<string, unknown>) => void;
   /** Callback when comments change (API format) */
@@ -135,6 +137,10 @@ export interface CommentInputPanelProps {
   } | null;
   /** The text that is being commented on */
   selectedText?: string;
+  /** Comments already attached to (or overlapping) the current selection */
+  existingComments?: InternalComment[];
   onSubmit: (text: string) => void;
   onCancel: () => void;
+  /** Reply to one of the existing comments shown in the panel */
+  onReply?: (commentId: string, text: string) => void | Promise<void>;
 }
