@@ -8,7 +8,7 @@ const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
 const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:9000";
 
 const nextConfig: NextConfig = {
-  output: "standalone",
+  ...(process.env.NODE_ENV === "production" && { output: "standalone" as const }),
   // Proxy /api requests to the Laravel backend in development
   async rewrites() {
     return [
