@@ -277,13 +277,8 @@ export default function CollaborativeDocument({
   useEffect(() => {
     if (!editor) return;
 
-    const handleMouseUp = (event: MouseEvent) => {
-      // Check refs for latest values
+    const handleMouseUp = () => {
       if (!canCommentRef.current || !currentUserRef.current) return;
-
-      // Capture mouse position immediately
-      const mouseX = event.clientX;
-      const mouseY = event.clientY;
 
       // Small delay to ensure selection is complete
       setTimeout(() => {
@@ -291,10 +286,17 @@ export default function CollaborativeDocument({
         const hasSelection = from !== to;
 
         if (hasSelection && canCommentRef.current && currentUserRef.current) {
-          // Use mouse position - this works for both left-to-right and right-to-left selection
+          // Anchor the icon to the right edge of the editor on the same line as
+          // the start of the selection — independent of mouse / selection direction.
+          const startCoords = editor.view.coordsAtPos(from);
+          const editorRect = editor.view.dom.getBoundingClientRect();
+          const lineMiddle = (startCoords.top + startCoords.bottom) / 2;
+          const ICON_SIZE = 32;
+          const RIGHT_GAP = 8;
+
           setPopoverPosition({
-            top: mouseY - 16, // Position slightly above the mouse
-            left: mouseX + 8,
+            top: lineMiddle - ICON_SIZE / 2,
+            left: editorRect.right - ICON_SIZE - RIGHT_GAP,
           });
           setSelectionRange({ from, to });
         }
@@ -328,10 +330,15 @@ export default function CollaborativeDocument({
       if (!editor || !selectionRange || !currentUser) return;
 
       const { from, to } = selectionRange;
+      // Validate the saved range still maps to real text in the current doc.
+      // If the editor remounted (e.g. content reload, HMR), positions may be stale.
+      const docSize = editor.state.doc.content.size;
+      if (from < 0 || to > docSize || from >= to) return;
+
       const selectedText = editor.state.doc.textBetween(from, to);
+      if (!selectedText.trim()) return;
 
       try {
-        // Create comment via API
         const apiComment = await setupTasksApi.addDocumentComment(projectId, taskId, documentId, {
           content: text,
           selected_text: selectedText,
@@ -341,15 +348,27 @@ export default function CollaborativeDocument({
 
         const newComment = normalizeComment(apiComment);
 
-        // Apply the comment mark to the selected text
-        // Use flag to allow this update even when not editable
+        // Explicitly target the saved range — don't rely on whatever selection the
+        // editor happens to have when this runs. Without setTextSelection, setMark
+        // can apply to a collapsed range (no-op) if focus shifted to the comment
+        // panel input.
         isAddingCommentRef.current = true;
-        editor.chain().focus().setComment(newComment.id).run();
+        editor.chain()
+          .focus()
+          .setTextSelection({ from, to })
+          .setComment(newComment.id)
+          .run();
         isAddingCommentRef.current = false;
 
-        // Save document content to persist the comment mark
+        // Guard against persisting an empty document on top of valid content.
+        // If something resets the editor mid-flow, getJSON may return an empty
+        // doc — saving that wipes the kickoff template on the backend.
         const updatedContent = editor.getJSON();
-        await setupTasksApi.updateDocumentContent(projectId, taskId, documentId, updatedContent);
+        if (isEmptyDoc(updatedContent)) {
+          console.error("Refusing to save empty document content");
+        } else {
+          await setupTasksApi.updateDocumentContent(projectId, taskId, documentId, updatedContent);
+        }
 
         setComments((prev) => [...prev, newComment]);
         setPopoverPosition(null);
@@ -544,6 +563,21 @@ export default function CollaborativeDocument({
       </div>
     </div>
   );
+}
+
+// True when a TipTap doc has no text and no non-trivial structure — i.e. saving
+// it would visually appear as an empty editor.
+function isEmptyDoc(doc: Record<string, unknown>): boolean {
+  type Node = { type?: string; text?: string; content?: Node[] };
+  const hasText = (node: Node): boolean => {
+    if (typeof node.text === "string" && node.text.length > 0) return true;
+    if (Array.isArray(node.content)) return node.content.some(hasText);
+    return false;
+  };
+  const root = doc as Node;
+  if (!root || root.type !== "doc") return true;
+  if (!Array.isArray(root.content) || root.content.length === 0) return true;
+  return !hasText(root);
 }
 
 function getDefaultContent(): Record<string, unknown> {
