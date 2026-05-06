@@ -94,7 +94,13 @@ export default function CollaborativeDocument({
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [
-      StarterKit,
+      // StarterKit v3 ships link + underline by default; backend whitelist
+      // doesn't include them, so save would 422 on "Invalid document structure"
+      // as soon as a user pasted a URL or hit ⌘U.
+      StarterKit.configure({
+        link: false,
+        underline: false,
+      }),
       Placeholder.configure({
         placeholder: t("placeholder"),
       }),
@@ -321,14 +327,21 @@ export default function CollaborativeDocument({
         versionRef.current
       );
     } catch (error) {
-      const status = (error as ApiError | undefined)?.status;
+      const apiError = error as ApiError | undefined;
+      const status = apiError?.status;
+      const backendMessage = apiError?.message;
+
       if (status === 409) {
         showToast("warning", t("saveConflict"));
         await onRefetch?.();
       } else if (status === 422) {
-        showToast("warning", t("saveRejectedEmpty"));
+        // Backend has three 422 reasons: empty, dramatic-shrink, invalid-structure.
+        // Surface the actual message so the user (and we) know what failed.
+        showToast("warning", backendMessage || t("saveRejectedEmpty"));
+        console.error("Save rejected by backend:", apiError);
       } else {
-        console.error("Failed to save document:", error);
+        showToast("error", backendMessage || "Failed to save document");
+        console.error("Failed to save document:", apiError);
       }
     } finally {
       setIsSaving(false);

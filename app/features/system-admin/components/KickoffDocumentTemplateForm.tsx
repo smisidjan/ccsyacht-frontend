@@ -81,7 +81,12 @@ export default function KickoffDocumentTemplateForm({
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [
-      StarterKit,
+      // Match the schema the backend whitelist accepts — drop link + underline
+      // which StarterKit v3 ships by default but aren't in the whitelist.
+      StarterKit.configure({
+        link: false,
+        underline: false,
+      }),
       Placeholder.configure({
         placeholder: t.contentPlaceholder,
       }),

@@ -598,9 +598,15 @@ export const setupTasksApi = {
     version?: number,
     force?: boolean
   ): Promise<import("./types").KickoffDocument> => {
+    // Build the body explicitly so we never send null for optional fields —
+    // some Laravel validation rules reject null on a nullable|boolean field.
+    const body: Record<string, unknown> = { content };
+    if (typeof version === "number") body.version = version;
+    if (typeof force === "boolean") body.force = force;
+
     return apiFetch(`/projects/${projectId}/setup-task/${setupTaskId}/documents/${docId}/content`, {
       method: "PUT",
-      body: JSON.stringify({ content, version, force }),
+      body: JSON.stringify(body),
     });
   },
 
