@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import dynamic from "next/dynamic";
 import { useTranslations } from "next-intl";
 import {
@@ -233,20 +233,45 @@ export default function CollaborativeDocumentSection({
   );
   const hasUserSigned = currentUserSigner?.hasSigned === true;
 
-  // Get effective signers - use task assignees as fallback if signers array is empty
-  const effectiveSigners = kickoffDocument?.signers?.length
-    ? kickoffDocument.signers
-    : task.assignees?.map(a => ({
+  // Build the canonical signer list off task.assignees (always the full set —
+  // matches how DocumentAccordionItem in Required Documents derives its total)
+  // and merge in signed-status from kickoffDocument.signers when present.
+  // Backend sometimes returns only the *signed* people in `signers`, which
+  // would understate the total if used directly.
+  // Memoized via stringified inputs so the identity stays stable when nothing
+  // meaningful changed; otherwise the useEffect pushing status upward would
+  // loop (parent setState → re-render → new array → effect → ...).
+  const docSignersKey = JSON.stringify(kickoffDocument?.signers ?? null);
+  const taskAssigneesKey = JSON.stringify(
+    task.assignees?.map((a) => ({
+      id: a.identifier,
+      n: a.name,
+      s: a.hasSigned || false,
+    })) ?? null
+  );
+  const effectiveSigners = useMemo<DocumentSigner[]>(() => {
+    const assignees = task.assignees ?? [];
+    return assignees.map((a) => {
+      const docSigner = kickoffDocument?.signers?.find(
+        (s) => s.identifier === a.identifier
+      );
+      return {
         identifier: a.identifier,
         name: a.name,
-        hasSigned: a.hasSigned || false,
-        signedAt: null,
-      })) || [];
+        hasSigned: docSigner?.hasSigned ?? a.hasSigned ?? false,
+        signedAt: docSigner?.signedAt ?? null,
+      };
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [docSignersKey, taskAssigneesKey]);
 
-  // Calculate counts from actual signers data (more reliable than backend fields)
-  const signedCount = kickoffDocument?.signedCount
-    ?? effectiveSigners.filter(s => s.hasSigned === true).length;
-  const totalAssignees = kickoffDocument?.totalAssignees ?? task.assignees?.length ?? 0;
+  // Derive counts from the same effectiveSigners list that drives the
+  // accordion's signer rows. The backend's signedCount/totalAssignees/allSigned
+  // fields can be stale (0/0/true) even when signers exist, which made the
+  // badge render green 0/0 instead of amber 0/2.
+  const signedCount = effectiveSigners.filter((s) => s.hasSigned === true).length;
+  const totalAssignees = effectiveSigners.length;
+  const allSigned = totalAssignees > 0 && signedCount === totalAssignees;
 
   // Notify parent of signing status changes
   useEffect(() => {
@@ -357,7 +382,7 @@ export default function CollaborativeDocumentSection({
             type="button"
             onClick={() => setIsExpanded(!isExpanded)}
             className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors ${
-              kickoffDocument.allSigned ? "bg-green-50/50 dark:bg-green-900/10" : ""
+              allSigned ? "bg-green-50/50 dark:bg-green-900/10" : ""
             }`}
           >
             {isExpanded ? (
@@ -366,17 +391,17 @@ export default function CollaborativeDocumentSection({
               <ChevronRightIcon className="w-4 h-4 text-gray-400" />
             )}
             <DocumentIcon className={`w-4 h-4 ${
-              kickoffDocument.allSigned ? "text-green-600" : "text-gray-400"
+              allSigned ? "text-green-600" : "text-gray-400"
             }`} />
             <span className="flex-1 text-sm font-medium text-gray-900 dark:text-white truncate">
               {kickoffDocument.name || t("meetingDocument")}
             </span>
             <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${
-              kickoffDocument.allSigned
+              allSigned
                 ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400"
                 : "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400"
             }`}>
-              {kickoffDocument.allSigned && <CheckIcon className="w-3 h-3 inline mr-1" />}
+              {allSigned && <CheckIcon className="w-3 h-3 inline mr-1" />}
               {signedCount}/{totalAssignees}
             </span>
           </button>
