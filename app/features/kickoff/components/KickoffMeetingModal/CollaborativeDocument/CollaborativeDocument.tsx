@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { useEditor, EditorContent } from "@tiptap/react";
+import { BubbleMenu } from "@tiptap/react/menus";
 import StarterKit from "@tiptap/starter-kit";
 import { Extension } from "@tiptap/core";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
@@ -11,15 +12,53 @@ import { Table } from "@tiptap/extension-table";
 import { TableRow } from "@tiptap/extension-table-row";
 import { TableCell } from "@tiptap/extension-table-cell";
 import { TableHeader } from "@tiptap/extension-table-header";
+import {
+  ChatBubbleOvalLeftIcon,
+  BoldIcon,
+  ItalicIcon,
+  ListBulletIcon,
+  NumberedListIcon,
+} from "@heroicons/react/24/outline";
 import CommentMark from "./CommentMark";
 import CommentSidebar from "./CommentSidebar";
-import AddCommentPopover from "./AddCommentPopover";
 import CommentInputPanel from "./CommentInputPanel";
+import EditorToolbar from "./EditorToolbar";
 import { setupTasksApi } from "@/lib/api";
 import { useToast } from "@/app/context/ToastContext";
 import type { DocumentComment as ApiDocumentComment, ApiError } from "@/lib/api/types";
 import type { CollaborativeDocumentProps, InternalComment } from "./types";
 import { normalizeComment, normalizeComments } from "./types";
+
+interface BubbleButtonProps {
+  onClick: () => void;
+  active?: boolean;
+  label: string;
+  onMouseDown?: (e: React.MouseEvent) => void;
+  children: React.ReactNode;
+}
+
+function BubbleButton({ onClick, active, label, onMouseDown, children }: BubbleButtonProps) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      // Default: prevent focus shift so the editor's selection is intact when
+      // the click handler fires. Callers can override (e.g. the comment button
+      // already does) but the default keeps block-level commands working.
+      onMouseDown={onMouseDown ?? ((e) => e.preventDefault())}
+      title={label}
+      aria-label={label}
+      aria-pressed={active}
+      className={`flex items-center justify-center min-w-8 h-8 px-2 rounded text-white transition-colors text-sm ${
+        active
+          ? "bg-blue-500 hover:bg-blue-400"
+          : "hover:bg-gray-700"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
 
 export default function CollaborativeDocument({
   projectId,
@@ -35,6 +74,7 @@ export default function CollaborativeDocument({
   onContentChange,
   onCommentsChange,
   onRefetch,
+  onSaved,
 }: CollaborativeDocumentProps) {
   const showDocument = view !== "comments";
   const showComments = view !== "document";
@@ -45,8 +85,15 @@ export default function CollaborativeDocument({
     initialComments ? normalizeComments(initialComments) : []
   );
   const [activeCommentId, setActiveCommentId] = useState<string | null>(null);
-  const [popoverPosition, setPopoverPosition] = useState<{ top: number; left: number } | null>(null);
   const [selectionRange, setSelectionRange] = useState<{ from: number; to: number } | null>(null);
+  // Frozen at the moment the comment panel opens. Decoupled from selectionRange
+  // so a selection change elsewhere doesn't make the open panel switch from a
+  // pinned highlight thread to a "Start a conversation" prompt.
+  const [panelRange, setPanelRange] = useState<{ from: number; to: number } | null>(null);
+  // Sticky BubbleMenu — opens on selection, closes only on a mousedown outside
+  // the menu DOM. Selection collapses (from menu actions, from the save round-
+  // trip resetting content, etc.) don't close it.
+  const [bubbleOpen, setBubbleOpen] = useState(false);
   const [isCommentPanelOpen, setIsCommentPanelOpen] = useState(false);
   const [selectedText, setSelectedText] = useState<string>("");
   const [isSaving, setIsSaving] = useState(false);
@@ -188,9 +235,7 @@ export default function CollaborativeDocument({
       const { from, to } = editor.state.selection;
       const hasSelection = from !== to;
 
-      // Only clear the button when selection is removed (not during selection)
       if (!hasSelection) {
-        setPopoverPosition(null);
         setSelectionRange(null);
       }
     },
@@ -270,7 +315,10 @@ export default function CollaborativeDocument({
 
       // Find the clicked comment so we can open the panel anchored to its range.
       const clicked = comments.find((c) => c.id === commentId);
-      if (!clicked || !canCommentRef.current || !currentUserRef.current) return;
+      // Open the panel even when the user can't *add* comments (e.g. host in
+      // editing phase) — they should still be able to read the existing
+      // thread. The panel itself hides the input when comments exist.
+      if (!clicked || !currentUserRef.current) return;
 
       const docSize = editor.state.doc.content.size;
       const from = Math.max(0, Math.min(clicked.from, docSize));
@@ -279,9 +327,9 @@ export default function CollaborativeDocument({
 
       const text = editor.state.doc.textBetween(from, to);
       setSelectionRange({ from, to });
+      setPanelRange({ from, to });
       setSelectedText(text);
       setIsCommentPanelOpen(true);
-      setPopoverPosition(null);
     };
 
     const editorElement = editor.view.dom;
@@ -292,43 +340,41 @@ export default function CollaborativeDocument({
     };
   }, [editor, comments]);
 
-  // Handle mouseup to show comment button after selection
+  // Track the live editor selection so handleOpenCommentPanel and
+  // handleAddComment have a fresh range when the user clicks the comment
+  // button in the BubbleMenu — TipTap manages the menu's positioning, but
+  // we still need the {from, to} for the panel + comment POST.
   useEffect(() => {
     if (!editor) return;
-
-    const handleMouseUp = () => {
-      if (!canCommentRef.current || !currentUserRef.current) return;
-
-      // Small delay to ensure selection is complete
-      setTimeout(() => {
-        const { from, to } = editor.state.selection;
-        const hasSelection = from !== to;
-
-        if (hasSelection && canCommentRef.current && currentUserRef.current) {
-          // Anchor the icon to the right edge of the editor on the same line as
-          // the start of the selection — independent of mouse / selection direction.
-          const startCoords = editor.view.coordsAtPos(from);
-          const editorRect = editor.view.dom.getBoundingClientRect();
-          const lineMiddle = (startCoords.top + startCoords.bottom) / 2;
-          const ICON_SIZE = 32;
-          const RIGHT_GAP = 8;
-
-          setPopoverPosition({
-            top: lineMiddle - ICON_SIZE / 2,
-            left: editorRect.right - ICON_SIZE - RIGHT_GAP,
-          });
-          setSelectionRange({ from, to });
-        }
-      }, 10);
+    const handler = () => {
+      const { from, to } = editor.state.selection;
+      if (from !== to) {
+        setSelectionRange({ from, to });
+        setBubbleOpen(true);
+      }
+      // Don't auto-close on collapsed selection — that gets triggered by menu
+      // actions and the save round-trip's setContent. Closing is handled by
+      // the document mousedown listener below.
     };
-
-    // Listen on document so we catch mouseup even when released outside the editor
-    document.addEventListener("mouseup", handleMouseUp);
-
+    editor.on("selectionUpdate", handler);
     return () => {
-      document.removeEventListener("mouseup", handleMouseUp);
+      editor.off("selectionUpdate", handler);
     };
   }, [editor]);
+
+  // Close the BubbleMenu when the user clicks outside it. Combined with the
+  // selectionUpdate listener above this gives a sticky-but-honest behavior:
+  // open on selection, stay through commands + save, close on outside click.
+  useEffect(() => {
+    if (!bubbleOpen) return;
+    const handler = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.closest("[data-bubble-menu='kickoff']")) return;
+      setBubbleOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [bubbleOpen]);
 
   // Save content to API with optimistic-locking + empty-doc guard.
   const saveContent = async (content: Record<string, unknown>) => {
@@ -337,15 +383,29 @@ export default function CollaborativeDocument({
     // guard but failing fast avoids overwriting valid content with empties.
     if (isEmptyDoc(content)) return;
 
+    // Strip any attribute the backend whitelist doesn't accept (TipTap v3's
+    // `align` on table cells, null colwidth, etc).
+    const sanitized = sanitizeForBackend(content as SanitizedNode) as Record<string, unknown>;
+
+    // TEMP debug — print the full distinct sets so we can spot any non-
+    // whitelisted node/mark type without hunting through the truncated JSON.
+    const types = collectNodeMarkTypes(sanitized);
+    console.log("📤 nodes:", types.nodes.join(", "));
+    console.log("📤 marks:", types.marks.join(", "));
+    console.log("📤 PUT /content payload:", JSON.stringify(sanitized));
+
     try {
       setIsSaving(true);
-      await setupTasksApi.updateDocumentContent(
+      const response = await setupTasksApi.updateDocumentContent(
         projectId,
         taskId,
         documentId,
-        content,
+        sanitized,
         versionRef.current
       );
+      // Bump the version (and any other server-normalized fields) in the
+      // parent's state so the next save doesn't 409 with a stale version.
+      onSaved?.(response);
     } catch (error) {
       const apiError = error as ApiError | undefined;
       const status = apiError?.status;
@@ -370,9 +430,12 @@ export default function CollaborativeDocument({
 
   const handleAddComment = useCallback(
     async (text: string) => {
-      if (!editor || !selectionRange || !currentUser) return;
+      // Prefer the panel's pinned range — that's what the user actually saw
+      // when they composed the comment. Falls back to live selection.
+      const range = panelRange ?? selectionRange;
+      if (!editor || !range || !currentUser) return;
 
-      const { from, to } = selectionRange;
+      const { from, to } = range;
       // Validate the saved range still maps to real text in the current doc.
       // If the editor remounted (e.g. content reload, HMR), positions may be stale.
       const docSize = editor.state.doc.content.size;
@@ -394,8 +457,8 @@ export default function CollaborativeDocument({
 
         const newComment = normalizeComment(apiComment);
         setComments((prev) => [...prev, newComment]);
-        setPopoverPosition(null);
         setSelectionRange(null);
+        setPanelRange(null);
         setIsCommentPanelOpen(false);
         setActiveCommentId(newComment.id);
 
@@ -405,7 +468,7 @@ export default function CollaborativeDocument({
         console.error("Failed to add comment:", error);
       }
     },
-    [editor, selectionRange, currentUser, projectId, taskId, documentId, onRefetch]
+    [editor, selectionRange, panelRange, currentUser, projectId, taskId, documentId, onRefetch]
   );
 
   const handleReplyToComment = useCallback(
@@ -498,18 +561,20 @@ export default function CollaborativeDocument({
   );
 
   const handleOpenCommentPanel = useCallback(() => {
-    // Capture the selected text before opening the panel
+    // Pin the panel to the live selection at the moment it's opened. After
+    // this, panelRange stays put even if the editor selection changes.
     if (editor && selectionRange) {
       const text = editor.state.doc.textBetween(selectionRange.from, selectionRange.to);
       setSelectedText(text);
+      setPanelRange(selectionRange);
     }
     setIsCommentPanelOpen(true);
-    setPopoverPosition(null);
   }, [editor, selectionRange]);
 
   const handleCancelCommentPanel = useCallback(() => {
     setIsCommentPanelOpen(false);
     setSelectionRange(null);
+    setPanelRange(null);
     setSelectedText("");
     // Clear the editor selection and blur to remove visual highlight
     if (editor) {
@@ -523,17 +588,36 @@ export default function CollaborativeDocument({
   // Comments whose range overlaps the current selection — surfaced in the panel
   // so the user sees what's already attached to this passage before commenting.
   const existingCommentsForSelection = useMemo(() => {
-    if (!selectionRange) return [];
-    const { from, to } = selectionRange;
+    // Use the panel's pinned range while it's open; falls back to the live
+    // selectionRange so the BubbleMenu's comment button still works correctly
+    // when no panel is open yet.
+    const range = panelRange ?? selectionRange;
+    if (!range) return [];
+    const { from, to } = range;
     return comments.filter((c) => c.from < to && c.to > from);
-  }, [comments, selectionRange]);
+  }, [comments, selectionRange, panelRange]);
+
+  // Wraps a BubbleMenu button's command. The menu stays open via the outside-
+  // click guard; this just runs the action and re-asserts the open flag in
+  // case it was somehow toggled off.
+  const runMenuAction = (action: () => void) => () => {
+    action();
+    setBubbleOpen(true);
+  };
 
   return (
     <div className="space-y-4">
       {/* Editor - full width */}
       {showDocument && (
         <div className="relative">
-          <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden bg-white dark:bg-gray-900">
+          {/* Fixed toolbar — only visible during the editing phase. Comments
+              don't need it (they go through the BubbleMenu instead). */}
+          {editor && editable && <EditorToolbar editor={editor} />}
+          <div
+            className={`border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-900 ${
+              editable ? "rounded-b-lg" : "rounded-lg"
+            }`}
+          >
             {/* Save indicator */}
             {isSaving && (
               <div className="absolute top-2 right-2 text-xs text-gray-400 dark:text-gray-500 z-10">
@@ -546,19 +630,112 @@ export default function CollaborativeDocument({
             />
           </div>
 
-          {/* Button for adding comments */}
-          {currentUser && canComment && (
-            <AddCommentPopover
-              position={popoverPosition}
-              onOpenCommentPanel={handleOpenCommentPanel}
-            />
+          {/* Selection-anchored toolbar — formatting marks during the editing
+              phase, comment trigger during commenting. TipTap's BubbleMenu
+              positions itself; we control visibility per-button. */}
+          {editor && (editable || (canComment && currentUser)) && (
+            <BubbleMenu
+              editor={editor}
+              shouldShow={() => bubbleOpen}
+            >
+              <div data-bubble-menu="kickoff" className="flex items-center gap-1 rounded-lg bg-gray-900 px-1 py-1 shadow-lg">
+                {editable && (
+                  <>
+                    {/* Block-type buttons — kept identical to the toolbar so the
+                        user can switch from either place. We use buttons (not a
+                        native <select>) because selects steal focus on open and
+                        break ProseMirror's selection. */}
+                    <BubbleButton
+                      onClick={runMenuAction(() => editor.chain().focus().setParagraph().run())}
+                      active={editor.isActive("paragraph") && !editor.isActive("heading")}
+                      label="Paragraph"
+                    >
+                      <span className="font-semibold">¶</span>
+                    </BubbleButton>
+                    <BubbleButton
+                      onClick={runMenuAction(() => editor.chain().focus().toggleHeading({ level: 1 }).run())}
+                      active={editor.isActive("heading", { level: 1 })}
+                      label="Heading 1"
+                    >
+                      <span className="font-bold">H1</span>
+                    </BubbleButton>
+                    <BubbleButton
+                      onClick={runMenuAction(() => editor.chain().focus().toggleHeading({ level: 2 }).run())}
+                      active={editor.isActive("heading", { level: 2 })}
+                      label="Heading 2"
+                    >
+                      <span className="font-bold">H2</span>
+                    </BubbleButton>
+                    <BubbleButton
+                      onClick={runMenuAction(() => editor.chain().focus().toggleHeading({ level: 3 }).run())}
+                      active={editor.isActive("heading", { level: 3 })}
+                      label="Heading 3"
+                    >
+                      <span className="font-bold">H3</span>
+                    </BubbleButton>
+                    <span className="w-px h-5 bg-gray-700 mx-0.5" />
+                    <BubbleButton
+                      onClick={runMenuAction(() => editor.chain().focus().toggleBold().run())}
+                      active={editor.isActive("bold")}
+                      label="Bold"
+                    >
+                      <BoldIcon className="w-4 h-4" />
+                    </BubbleButton>
+                    <BubbleButton
+                      onClick={runMenuAction(() => editor.chain().focus().toggleItalic().run())}
+                      active={editor.isActive("italic")}
+                      label="Italic"
+                    >
+                      <ItalicIcon className="w-4 h-4" />
+                    </BubbleButton>
+                    <BubbleButton
+                      onClick={runMenuAction(() => editor.chain().focus().toggleStrike().run())}
+                      active={editor.isActive("strike")}
+                      label="Strikethrough"
+                    >
+                      <span className="text-sm line-through font-semibold leading-none px-0.5">S</span>
+                    </BubbleButton>
+                    <span className="w-px h-5 bg-gray-700 mx-0.5" />
+                    <BubbleButton
+                      onClick={runMenuAction(() => editor.chain().focus().toggleBulletList().run())}
+                      active={editor.isActive("bulletList")}
+                      label="Bullet list"
+                    >
+                      <ListBulletIcon className="w-4 h-4" />
+                    </BubbleButton>
+                    <BubbleButton
+                      onClick={runMenuAction(() => editor.chain().focus().toggleOrderedList().run())}
+                      active={editor.isActive("orderedList")}
+                      label="Numbered list"
+                    >
+                      <NumberedListIcon className="w-4 h-4" />
+                    </BubbleButton>
+                  </>
+                )}
+                {canComment && currentUser && (
+                  <>
+                    {editable && <span className="w-px h-5 bg-gray-700 mx-0.5" />}
+                    <BubbleButton
+                      onClick={handleOpenCommentPanel}
+                      label="Add comment"
+                      onMouseDown={(e) => e.preventDefault()}
+                    >
+                      <ChatBubbleOvalLeftIcon className="w-4 h-4" />
+                    </BubbleButton>
+                  </>
+                )}
+              </div>
+            </BubbleMenu>
           )}
+
         </div>
       )}
 
-      {/* Comment input panel - appears to the side. Always rendered so it can
-          open even from the comments tab via a click on a thread. */}
-      {canComment && (
+      {/* Comment input panel — visible to anyone with a user (so editing-phase
+          host can still read existing threads). The panel itself hides the
+          input when there are existing comments, and we only pass onReply when
+          commenting is actually allowed (commenting phase + attendee). */}
+      {currentUser && (
         <CommentInputPanel
           isOpen={isCommentPanelOpen}
           currentUser={currentUser}
@@ -566,7 +743,7 @@ export default function CollaborativeDocument({
           existingComments={existingCommentsForSelection}
           onSubmit={handleAddComment}
           onCancel={handleCancelCommentPanel}
-          onReply={handleReplyToComment}
+          onReply={canComment ? handleReplyToComment : undefined}
         />
       )}
 
@@ -590,6 +767,96 @@ export default function CollaborativeDocument({
 
 // True when a TipTap doc has no text and no non-trivial structure — i.e. saving
 // it would visually appear as an empty editor.
+// Backend whitelist of attributes per node/mark type. Anything outside this
+// list (e.g. TipTap v3's new `align` attribute on table cells) triggers
+// "Invalid document structure" on save, so strip it before sending.
+const ALLOWED_NODE_ATTRS: Record<string, string[]> = {
+  heading: ["level"],
+  tableCell: ["colspan", "rowspan", "colwidth"],
+  tableHeader: ["colspan", "rowspan", "colwidth"],
+};
+const ALLOWED_MARK_ATTRS: Record<string, string[]> = {
+  comment: ["commentId"],
+};
+
+type SanitizedNode = {
+  type?: string;
+  text?: string;
+  attrs?: Record<string, unknown>;
+  marks?: { type?: string; attrs?: Record<string, unknown> }[];
+  content?: SanitizedNode[];
+};
+
+function pickAllowedAttrs(
+  attrs: Record<string, unknown> | undefined,
+  allowed: string[]
+): Record<string, unknown> | undefined {
+  if (!attrs) return undefined;
+  const out: Record<string, unknown> = {};
+  for (const key of allowed) {
+    const v = attrs[key];
+    if (v !== null && v !== undefined) out[key] = v;
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
+function sanitizeForBackend(node: SanitizedNode): SanitizedNode {
+  const out: SanitizedNode = { ...node };
+
+  if (out.type) {
+    const allowed = ALLOWED_NODE_ATTRS[out.type];
+    if (allowed) {
+      const picked = pickAllowedAttrs(out.attrs, allowed);
+      if (picked) out.attrs = picked;
+      else delete out.attrs;
+    } else {
+      delete out.attrs;
+    }
+  }
+
+  if (Array.isArray(out.marks)) {
+    out.marks = out.marks
+      .map((mark) => {
+        const result: { type?: string; attrs?: Record<string, unknown> } = { ...mark };
+        const allowed = mark.type ? ALLOWED_MARK_ATTRS[mark.type] : undefined;
+        if (allowed) {
+          const picked = pickAllowedAttrs(mark.attrs, allowed);
+          if (picked) result.attrs = picked;
+          else delete result.attrs;
+        } else {
+          delete result.attrs;
+        }
+        return result;
+      });
+  }
+
+  if (Array.isArray(out.content)) {
+    out.content = out.content.map(sanitizeForBackend);
+  }
+
+  return out;
+}
+
+// TEMP debug — collect every distinct node and mark type that appears in a
+// TipTap doc, so we can compare against the backend whitelist.
+function collectNodeMarkTypes(doc: Record<string, unknown>): {
+  nodes: string[];
+  marks: string[];
+} {
+  type Node = { type?: string; marks?: { type?: string }[]; content?: Node[] };
+  const nodes = new Set<string>();
+  const marks = new Set<string>();
+  const walk = (n: Node) => {
+    if (n.type) nodes.add(n.type);
+    if (Array.isArray(n.marks)) {
+      for (const m of n.marks) if (m.type) marks.add(m.type);
+    }
+    if (Array.isArray(n.content)) for (const c of n.content) walk(c);
+  };
+  walk(doc as Node);
+  return { nodes: [...nodes].sort(), marks: [...marks].sort() };
+}
+
 function isEmptyDoc(doc: Record<string, unknown>): boolean {
   type Node = { type?: string; text?: string; content?: Node[] };
   const hasText = (node: Node): boolean => {

@@ -102,6 +102,12 @@ export interface CollaborativeDocumentProps {
   onCommentsChange?: (comments: ApiDocumentComment[]) => void;
   /** Refetch the parent's document state (after comment add/delete or 409). */
   onRefetch?: () => void | Promise<void>;
+  /**
+   * Called after a successful content save with the server response.
+   * Parent should sync the document (especially the version field) so the
+   * next save is not rejected with 409 for sending a stale version.
+   */
+  onSaved?: (response: unknown) => void;
 }
 
 export interface CommentThreadProps {
