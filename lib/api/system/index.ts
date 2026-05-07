@@ -15,8 +15,6 @@ export { systemProjectsApi } from "./projects";
 export {
   systemStageTemplatesApi,
   systemDocumentTypeTemplatesApi,
-  systemAreaTemplatesApi,
-  systemChecklistTemplatesApi,
   systemKickoffDocumentTemplatesApi,
 } from "./templates";
 
@@ -30,8 +28,6 @@ import { systemProjectsApi } from "./projects";
 import {
   systemStageTemplatesApi,
   systemDocumentTypeTemplatesApi,
-  systemAreaTemplatesApi,
-  systemChecklistTemplatesApi,
   systemKickoffDocumentTemplatesApi,
 } from "./templates";
 
@@ -44,7 +40,5 @@ export const systemApi = {
   ...systemProjectsApi,
   stageTemplates: systemStageTemplatesApi,
   documentTypeTemplates: systemDocumentTypeTemplatesApi,
-  areaTemplates: systemAreaTemplatesApi,
-  checklistTemplates: systemChecklistTemplatesApi,
   kickoffDocumentTemplates: systemKickoffDocumentTemplatesApi,
 };

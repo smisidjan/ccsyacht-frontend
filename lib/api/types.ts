@@ -1208,41 +1208,6 @@ export interface GetDocumentTypeTemplatesParams {
   active_only?: boolean;
 }
 
-// ============ Area Templates ============
-export interface AreaTemplate {
-  "@context"?: string;
-  "@type"?: string;
-  identifier: string;
-  name: string;
-  description?: string;
-  isActive: boolean;
-  canDelete: boolean;
-  dateCreated: string;
-  dateModified: string;
-}
-
-export interface CreateAreaTemplateRequest {
-  name: string;
-  description?: string;
-  sort_order?: number;
-  is_active?: boolean;
-}
-
-export interface UpdateAreaTemplateRequest {
-  name?: string;
-  description?: string;
-  sort_order?: number;
-  is_active?: boolean;
-}
-
-export interface ReorderAreaTemplatesRequest {
-  order: string[];
-}
-
-export interface GetAreaTemplatesParams {
-  active_only?: boolean;
-}
-
 // ============ Setup Tasks ============
 
 export type SetupTaskType = "upload_documents" | "add_members" | "add_signers" | "kickoff_meeting" | "define_decks" | "custom";
@@ -1753,39 +1718,6 @@ export interface AddSetupTaskAssigneeRequest {
 
 export interface CreateChecklistItemRequest {
   description: string;
-}
-
-export interface ChecklistTemplate {
-  "@context"?: "https://schema.org";
-  "@type": "Thing";
-  identifier: string;
-  additionalType: SetupTaskType;
-  description: string;
-  sortOrder: number;
-  isActive: boolean;
-  canDelete: boolean;
-}
-
-export interface CreateChecklistTemplateRequest {
-  type: SetupTaskType;
-  description: string;
-  sort_order: number;
-  is_active: boolean;
-}
-
-export interface UpdateChecklistTemplateRequest {
-  description?: string;
-  sort_order?: number;
-  is_active?: boolean;
-}
-
-export interface ReorderChecklistTemplatesRequest {
-  order: string[];
-}
-
-export interface GetChecklistTemplatesParams {
-  type?: SetupTaskType;
-  active_only?: boolean;
 }
 
 // ============ Kickoff Document Templates ============

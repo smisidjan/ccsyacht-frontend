@@ -10,16 +10,6 @@ import type {
   UpdateDocumentTypeTemplateRequest,
   ReorderDocumentTypeTemplatesRequest,
   GetDocumentTypeTemplatesParams,
-  AreaTemplate,
-  CreateAreaTemplateRequest,
-  UpdateAreaTemplateRequest,
-  ReorderAreaTemplatesRequest,
-  GetAreaTemplatesParams,
-  ChecklistTemplate,
-  CreateChecklistTemplateRequest,
-  UpdateChecklistTemplateRequest,
-  ReorderChecklistTemplatesRequest,
-  GetChecklistTemplatesParams,
   KickoffDocumentTemplate,
   CreateKickoffDocumentTemplateRequest,
   UpdateKickoffDocumentTemplateRequest,
@@ -116,103 +106,6 @@ export const systemDocumentTypeTemplatesApi = {
     data: ReorderDocumentTypeTemplatesRequest
   ): Promise<void> =>
     apiFetchSystemTenant(tenantId, "/system/tenant/document-type-templates/reorder", {
-      method: "POST",
-      body: JSON.stringify(data),
-    }),
-};
-
-// ============ Area Templates ============
-export const systemAreaTemplatesApi = {
-  getAll: (
-    tenantId: string,
-    params?: GetAreaTemplatesParams
-  ): Promise<{ data: AreaTemplate[] }> => {
-    const queryParams = params?.active_only ? `?active_only=${params.active_only}` : "";
-    return apiFetchSystemTenant(tenantId, `/system/tenant/area-templates${queryParams}`);
-  },
-
-  getById: (tenantId: string, id: string): Promise<AreaTemplate> =>
-    apiFetchSystemTenant(tenantId, `/system/tenant/area-templates/${id}`),
-
-  create: (
-    tenantId: string,
-    data: CreateAreaTemplateRequest
-  ): Promise<AreaTemplate> =>
-    apiFetchSystemTenant(tenantId, "/system/tenant/area-templates", {
-      method: "POST",
-      body: JSON.stringify(data),
-    }),
-
-  update: (
-    tenantId: string,
-    id: string,
-    data: UpdateAreaTemplateRequest
-  ): Promise<AreaTemplate> =>
-    apiFetchSystemTenant(tenantId, `/system/tenant/area-templates/${id}`, {
-      method: "PUT",
-      body: JSON.stringify(data),
-    }),
-
-  delete: (tenantId: string, id: string): Promise<void> =>
-    apiFetchSystemTenant(tenantId, `/system/tenant/area-templates/${id}`, {
-      method: "DELETE",
-    }),
-
-  reorder: (
-    tenantId: string,
-    data: ReorderAreaTemplatesRequest
-  ): Promise<void> =>
-    apiFetchSystemTenant(tenantId, "/system/tenant/area-templates/reorder", {
-      method: "POST",
-      body: JSON.stringify(data),
-    }),
-};
-
-// ============ Checklist Templates ============
-export const systemChecklistTemplatesApi = {
-  getAll: (
-    tenantId: string,
-    params?: GetChecklistTemplatesParams
-  ): Promise<{ data: ChecklistTemplate[] }> => {
-    const queryParams = new URLSearchParams();
-    if (params?.type) queryParams.append("type", params.type);
-    if (params?.active_only) queryParams.append("active_only", "true");
-    const queryString = queryParams.toString() ? `?${queryParams.toString()}` : "";
-    return apiFetchSystemTenant(tenantId, `/system/tenant/checklist-templates${queryString}`);
-  },
-
-  getById: (tenantId: string, id: string): Promise<ChecklistTemplate> =>
-    apiFetchSystemTenant(tenantId, `/system/tenant/checklist-templates/${id}`),
-
-  create: (
-    tenantId: string,
-    data: CreateChecklistTemplateRequest
-  ): Promise<ChecklistTemplate> =>
-    apiFetchSystemTenant(tenantId, "/system/tenant/checklist-templates", {
-      method: "POST",
-      body: JSON.stringify(data),
-    }),
-
-  update: (
-    tenantId: string,
-    id: string,
-    data: UpdateChecklistTemplateRequest
-  ): Promise<ChecklistTemplate> =>
-    apiFetchSystemTenant(tenantId, `/system/tenant/checklist-templates/${id}`, {
-      method: "PUT",
-      body: JSON.stringify(data),
-    }),
-
-  delete: (tenantId: string, id: string): Promise<void> =>
-    apiFetchSystemTenant(tenantId, `/system/tenant/checklist-templates/${id}`, {
-      method: "DELETE",
-    }),
-
-  reorder: (
-    tenantId: string,
-    data: ReorderChecklistTemplatesRequest
-  ): Promise<void> =>
-    apiFetchSystemTenant(tenantId, "/system/tenant/checklist-templates/reorder", {
       method: "POST",
       body: JSON.stringify(data),
     }),

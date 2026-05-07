@@ -14,7 +14,6 @@ export { default as TenantRolesTable } from "./TenantRolesTable";
 export { default as TenantProjectsTable } from "./TenantProjectsTable";
 export { default as TenantInvitationsTable } from "./TenantInvitationsTable";
 export { default as StageTemplatesTable } from "./StageTemplatesTable";
-export { default as AreaTemplatesTable } from "./AreaTemplatesTable";
 export { default as DocumentTypeTemplatesTable } from "./DocumentTypeTemplatesTable";
 
 // Views
@@ -31,7 +30,5 @@ export { default as SystemCreateProjectModal } from "./SystemCreateProjectModal"
 
 // Template Forms
 export { default as StageTemplateForm } from "./StageTemplateForm";
-export { default as AreaTemplateForm } from "./AreaTemplateForm";
 export { default as DocumentTypeTemplateForm } from "./DocumentTypeTemplateForm";
-export { default as ChecklistTemplateForm } from "./ChecklistTemplateForm";
 export { default as KickoffDocumentTemplateForm } from "./KickoffDocumentTemplateForm";
