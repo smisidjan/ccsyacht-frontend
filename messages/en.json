@@ -1839,7 +1839,14 @@
     "hintPolygonReady": "Polygon ready — name the area and save.",
     "resetPolygon": "Reset polygon",
     "save": "Save",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "createStagesNow": "Create stages now",
+    "createStagesHint": "If unchecked, the area is created without stages and you add them manually later.",
+    "templateStages": "Template stages",
+    "customStages": "Custom stages",
+    "customStagePlaceholder": "Custom stage name",
+    "addCustomStage": "Add custom stage",
+    "remove": "Remove"
   },
   "decks": {
     "defineDecks": "Define Decks",

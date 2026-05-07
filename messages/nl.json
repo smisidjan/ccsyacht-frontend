@@ -1869,7 +1869,14 @@
     "hintPolygonReady": "Polygon klaar — geef de area een naam en sla op.",
     "resetPolygon": "Polygon resetten",
     "save": "Opslaan",
-    "cancel": "Annuleren"
+    "cancel": "Annuleren",
+    "createStagesNow": "Stages nu aanmaken",
+    "createStagesHint": "Als deze uitstaat wordt de area zonder stages aangemaakt en voeg je ze later handmatig toe.",
+    "templateStages": "Template stages",
+    "customStages": "Eigen stages",
+    "customStagePlaceholder": "Naam eigen stage",
+    "addCustomStage": "Eigen stage toevoegen",
+    "remove": "Verwijderen"
   },
   "decks": {
     "defineDecks": "Dekken Definiëren",

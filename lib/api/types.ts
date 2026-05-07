@@ -696,10 +696,27 @@ export interface Area {
   dateModified: string;
 }
 
+/** Custom (non-template) stage payload — only used alongside or instead of
+ *  stage_template_ids when creating an area with create_stages=true. */
+export interface CreateAreaStageInput {
+  name: string;
+  description?: string;
+  requires_release_form?: boolean;
+}
+
 export interface CreateAreaRequest {
   name: string;
   description?: string;
   polygon?: AreaPolygonPoint[];
+  /** Required. When true the backend creates stages on the new area; when
+   *  false the area is created without stages and the user adds them later. */
+  create_stages: boolean;
+  /** Stage-template UUIDs to materialize as stages on the new area. Only
+   *  meaningful when create_stages is true. */
+  stage_template_ids?: string[];
+  /** Custom stages to create on top of (or instead of) template stages. Only
+   *  meaningful when create_stages is true. */
+  stages?: CreateAreaStageInput[];
 }
 
 export interface UpdateAreaRequest {

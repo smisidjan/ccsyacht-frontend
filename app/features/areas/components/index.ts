@@ -4,5 +4,4 @@
  */
 
 export { default as AreaCard, type Area } from "./AreaCard";
-export { default as CreateAreaModal } from "./CreateAreaModal";
 export { default as CreateAndDefineAreaModal } from "./CreateAndDefineAreaModal";
