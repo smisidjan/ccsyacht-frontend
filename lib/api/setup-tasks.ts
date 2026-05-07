@@ -611,6 +611,21 @@ export const setupTasksApi = {
   },
 
   /**
+   * POST /api/projects/{projectId}/setup-task/{setupTaskId}/documents/{docId}/start-editing
+   * Transition the document from `commenting` to `editing` phase. After this
+   * the host can save content; comments are locked.
+   */
+  startDocumentEditing: async (
+    projectId: string,
+    setupTaskId: string,
+    docId: string
+  ): Promise<import("./types").KickoffDocument> => {
+    return apiFetch(`/projects/${projectId}/setup-task/${setupTaskId}/documents/${docId}/start-editing`, {
+      method: "POST",
+    });
+  },
+
+  /**
    * POST /api/projects/{projectId}/setup-task/{setupTaskId}/documents/{docId}/finalize
    * Finalize the kickoff document (generates PDF/DOCX and enables signing)
    */

@@ -1827,6 +1827,14 @@ export interface KickoffDocument {
   isEditable: boolean;
   content: Record<string, unknown> | null; // TipTap JSON content
   version?: number; // Optimistic-locking version on editable documents
+  /**
+   * Document workflow phase:
+   * - `commenting` (default): comments allowed, content saves rejected.
+   * - `editing`: content saves allowed for the host, comments locked.
+   * - `finalized`: read-only, signing phase.
+   * Older API responses may omit this — treat absent as `commenting`.
+   */
+  phase?: "commenting" | "editing" | "finalized";
   description?: string;
   dateCreated: string;
   dateModified: string;
