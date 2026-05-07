@@ -93,7 +93,7 @@ export default function CollaborativeDocumentSection({
   // Frontend-only edit toggle. Hosts (canFinalize) can flip it on to actually
   // type into the doc. The "Send for Signing" action is a separate, terminal
   // step that locks the document — those two flows are independent.
-  const [isEditMode, setIsEditMode] = useState(false);
+  const [isStartingEditing, setIsStartingEditing] = useState(false);
 
   // Check if we should show the document section
   const isPending = task.actionStatus === "pending";
@@ -143,6 +143,31 @@ export default function CollaborativeDocumentSection({
 
     fetchData();
   }, [projectId, taskId, isPending, fetchData]);
+
+  // Transition the document from `commenting` → `editing` so the host can save
+  // content. PUT /content is rejected by the backend until this has happened.
+  const handleStartEditing = async () => {
+    if (!kickoffDocument) return;
+
+    try {
+      setIsStartingEditing(true);
+      const response = await setupTasksApi.startDocumentEditing(
+        projectId,
+        taskId,
+        kickoffDocument.identifier
+      );
+      const updatedDoc = (response as { result?: KickoffDocument }).result || response;
+      if (updatedDoc && "identifier" in updatedDoc) {
+        setKickoffDocument(updatedDoc as KickoffDocument);
+      }
+      onUpdate?.();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : t("document.startEditingError");
+      showToast("error", message);
+    } finally {
+      setIsStartingEditing(false);
+    }
+  };
 
   // Handle finalize document
   const handleFinalize = async () => {
@@ -238,16 +263,20 @@ export default function CollaborativeDocumentSection({
     }
   }, [kickoffDocument?.isFinalDocument, signedCount, totalAssignees, effectiveSigners, onSigningStatusChange]);
 
-  // Doc is read-only for everyone unless the host (canFinalize) explicitly
-  // enters edit mode via the "Edit Document" button. The "Send for Signing"
-  // action is independent — it locks the doc as the version that gets signed.
+  // Document phase drives the UI:
+  //   commenting → comments allowed, editor read-only
+  //   editing    → host can save content, comments locked
+  //   finalized  → read-only for everyone, signing flow
+  // Older API responses without `phase` default to commenting.
+  const phase = kickoffDocument?.phase ?? "commenting";
   const contentEditable =
-    isEditMode &&
+    phase === "editing" &&
     canFinalize &&
-    !kickoffDocument?.isFinalDocument &&
     task.actionStatus !== "completed";
   const canComment =
-    isAttendee && task.actionStatus !== "completed" && !kickoffDocument?.isFinalDocument;
+    phase === "commenting" &&
+    isAttendee &&
+    task.actionStatus !== "completed";
 
   // Unresolved comment count
   const unresolvedCount = comments.filter((c) => !c.isResolved).length;
@@ -313,47 +342,11 @@ export default function CollaborativeDocumentSection({
             </span>
           )}
         </h4>
-        <div className="flex items-center gap-2">
-          {!kickoffDocument.isFinalDocument && unresolvedCount > 0 && (
-            <span className="text-xs text-gray-500 dark:text-gray-400">
-              {unresolvedCount} {t("document.comments").toLowerCase()}
-            </span>
-          )}
-          {/* Host actions: edit toggle + send-for-signing. Hidden once the doc
-              is finalized — at that point only the signing flow is relevant. */}
-          {!kickoffDocument.isFinalDocument && canFinalize && (
-            isEditMode ? (
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() => setIsEditMode(false)}
-              >
-                <CheckIcon className="w-4 h-4" />
-                {t("document.doneEditing")}
-              </Button>
-            ) : (
-              <>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => setIsEditMode(true)}
-                >
-                  <PencilIcon className="w-4 h-4" />
-                  {t("document.editDocument")}
-                </Button>
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={() => setShowFinalizeModal(true)}
-                  disabled={isFinalizing}
-                >
-                  <LockClosedIcon className="w-4 h-4" />
-                  {t("document.finalize")}
-                </Button>
-              </>
-            )
-          )}
-        </div>
+        {!kickoffDocument.isFinalDocument && unresolvedCount > 0 && (
+          <span className="text-xs text-gray-500 dark:text-gray-400">
+            {t("document.openComments", { count: unresolvedCount })}
+          </span>
+        )}
       </div>
 
       {/* Finalized document accordion */}
@@ -495,6 +488,35 @@ export default function CollaborativeDocumentSection({
             activeTab={activeTab}
             onChange={(key) => setActiveTab(key as "document" | "comments")}
           />
+          {/* Host toolbar — sits inside the Document tab so it's contextual to
+              what the user is looking at. Buttons follow the backend phase:
+              commenting → "Start Meeting", editing → "Send for Signing". */}
+          {activeTab === "document" && canFinalize && (
+            <div className="flex items-center justify-end gap-2">
+              {phase === "commenting" && (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={handleStartEditing}
+                  disabled={isStartingEditing}
+                >
+                  <PencilIcon className="w-4 h-4" />
+                  {t("document.startEditing")}
+                </Button>
+              )}
+              {phase === "editing" && (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => setShowFinalizeModal(true)}
+                  disabled={isFinalizing}
+                >
+                  <LockClosedIcon className="w-4 h-4" />
+                  {t("document.finalize")}
+                </Button>
+              )}
+            </div>
+          )}
           <CollaborativeDocument
             projectId={projectId}
             taskId={taskId}
@@ -508,6 +530,19 @@ export default function CollaborativeDocumentSection({
             view={activeTab}
             onCommentsChange={setComments}
             onRefetch={fetchData}
+            onSaved={(response) => {
+              const updatedDoc =
+                (response as { result?: KickoffDocument; data?: KickoffDocument }).result ||
+                (response as { data?: KickoffDocument }).data ||
+                response;
+              if (
+                updatedDoc &&
+                typeof updatedDoc === "object" &&
+                "identifier" in updatedDoc
+              ) {
+                setKickoffDocument(updatedDoc as KickoffDocument);
+              }
+            }}
           />
         </>
       )}

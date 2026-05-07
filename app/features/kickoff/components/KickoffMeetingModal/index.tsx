@@ -400,17 +400,6 @@ export default function KickoffMeetingModal({
                 signers={meetingDocSigningStatus?.signers}
               />
 
-              <CollaborativeDocumentSection
-                task={task}
-                projectId={projectId}
-                taskId={taskId}
-                currentUser={currentUser}
-                isAttendee={isAttendee}
-                onUpdate={refreshTaskDetails}
-                onSigningStatusChange={setMeetingDocSigningStatus}
-              />
-
-
               <PendingDocumentsSection
                 requiredPendingDocs={requiredPendingDocs}
                 requestedPendingDocs={requestedPendingDocs}
@@ -430,6 +419,16 @@ export default function KickoffMeetingModal({
                 hasUserRespondedToDocument={hasUserRespondedToDocument}
                 hasDocumentDisagreement={hasDocumentDisagreement}
                 isDocumentResubmission={isDocumentResubmission}
+              />
+
+              <CollaborativeDocumentSection
+                task={task}
+                projectId={projectId}
+                taskId={taskId}
+                currentUser={currentUser}
+                isAttendee={isAttendee}
+                onUpdate={refreshTaskDetails}
+                onSigningStatusChange={setMeetingDocSigningStatus}
               />
             </div>
           )
