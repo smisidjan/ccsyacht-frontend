@@ -1854,7 +1854,22 @@
     "deckName": "Dek Naam",
     "deckNamePlaceholder": "bijv. Hoofddek, Bovendek",
     "deckDescription": "Dek Beschrijving",
-    "deckDescriptionPlaceholder": "Beschrijf het dek..."
+    "deckDescriptionPlaceholder": "Beschrijf het dek...",
+    "createAndDefineAreaTitle": "Area aanmaken en intekenen",
+    "deck": "Dek",
+    "selectDeckPlaceholder": "Selecteer een dek…",
+    "selectDeckToStart": "Selecteer een dek om de area in te tekenen.",
+    "noGAUploaded": "Geen General Arrangement geüpload voor dit project.",
+    "deckMissingBoundsHint": "Dit dek heeft nog geen regio op de GA gedefinieerd.",
+    "hintSelectDeck": "Kies het dek waar deze area bij hoort.",
+    "hintDeckMissingBounds": "Geselecteerde dek heeft geen bounds — definieer eerst de regio van het dek.",
+    "hintStartDrawing": "Klik op de GA om de eerste vertex van de area te plaatsen.",
+    "hintAddMoreVertices": "Voeg minimaal 3 vertices toe om een polygon te vormen.",
+    "hintClosePolygon": "Klik op de groene vertex om de polygon te sluiten.",
+    "hintPolygonReady": "Polygon klaar — geef de area een naam en sla op.",
+    "resetPolygon": "Polygon resetten",
+    "save": "Opslaan",
+    "cancel": "Annuleren"
   },
   "decks": {
     "defineDecks": "Dekken Definiëren",

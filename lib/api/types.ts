@@ -670,6 +670,13 @@ export interface AreaStage {
   };
 }
 
+/** Normalized 0..1 coords on the GA image — same scheme as GaPin. Polygon
+ *  is closed implicitly (last vertex connects back to first). */
+export interface AreaPolygonPoint {
+  x: number;
+  y: number;
+}
+
 export interface Area {
   "@context"?: string;
   "@type"?: string;
@@ -682,6 +689,9 @@ export interface Area {
   inProgressStageCount?: number;
   containedInPlace?: AreaDeck;
   containsPlace?: AreaStage[];
+  /** Polygon outline on the GA in image-percentage coords. Optional for older
+   *  records that were created before polygon support was added. */
+  polygon?: AreaPolygonPoint[];
   dateCreated: string;
   dateModified: string;
 }
@@ -689,6 +699,7 @@ export interface Area {
 export interface CreateAreaRequest {
   name: string;
   description?: string;
+  polygon?: AreaPolygonPoint[];
 }
 
 export interface UpdateAreaRequest {

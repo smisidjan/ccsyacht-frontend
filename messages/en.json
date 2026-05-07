@@ -1824,7 +1824,22 @@
     "deckName": "Deck Name",
     "deckNamePlaceholder": "e.g., Main Deck, Upper Deck",
     "deckDescription": "Deck Description",
-    "deckDescriptionPlaceholder": "Describe the deck..."
+    "deckDescriptionPlaceholder": "Describe the deck...",
+    "createAndDefineAreaTitle": "Create and Define Area",
+    "deck": "Deck",
+    "selectDeckPlaceholder": "Select a deck…",
+    "selectDeckToStart": "Select a deck to start drawing the area.",
+    "noGAUploaded": "No General Arrangement uploaded for this project.",
+    "deckMissingBoundsHint": "This deck has no region defined on the GA yet.",
+    "hintSelectDeck": "Pick the deck where this area belongs.",
+    "hintDeckMissingBounds": "Selected deck has no bounds — define the deck's region first.",
+    "hintStartDrawing": "Click on the GA to add the first vertex of the area.",
+    "hintAddMoreVertices": "Add at least 3 vertices to form a polygon.",
+    "hintClosePolygon": "Click the green vertex to close the polygon.",
+    "hintPolygonReady": "Polygon ready — name the area and save.",
+    "resetPolygon": "Reset polygon",
+    "save": "Save",
+    "cancel": "Cancel"
   },
   "decks": {
     "defineDecks": "Define Decks",
