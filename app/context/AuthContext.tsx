@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { useRouter, usePathname } from "@/i18n/navigation";
 import { useTenant } from "@/app/context/TenantContext";
-import { setAuthToken, getAuthToken, setOnUnauthorized } from "@/lib/api/client";
+import { setAuthToken, getAuthToken, setOnUnauthorized, verifyAuth } from "@/lib/api/client";
 import { useSessionKeepAlive } from "@/lib/hooks/useSessionKeepAlive";
 import { useToast } from "@/app/context/ToastContext";
 import { useTranslations } from "next-intl";
@@ -87,11 +87,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     router.push("/login");
   }, [clearTenant, router]);
 
-  // Handle 401 responses - token expired
+  // Handle 401 responses — verify the session is actually gone before logging
+  // out. A single 401 from a permission-glitched endpoint (or a transient
+  // failure) shouldn't kick an active user out. Verify by hitting /auth/ping;
+  // only logout if that also 401s.
   useEffect(() => {
-    setOnUnauthorized(() => {
-      logout("expired");
-    });
+    // Dedup so a burst of 401s only triggers one verification.
+    let verifyPromise: Promise<boolean> | null = null;
+    let lastVerifyAt = 0;
+    const VERIFY_CACHE_MS = 5000;
+
+    const handleUnauthorized = () => {
+      // If we successfully verified within the last 5s, trust that result and
+      // skip — bursts of 401s after a transient blip would otherwise log out.
+      if (Date.now() - lastVerifyAt < VERIFY_CACHE_MS) return;
+
+      if (!verifyPromise) {
+        verifyPromise = verifyAuth().then((stillAuthed) => {
+          lastVerifyAt = Date.now();
+          verifyPromise = null;
+          if (!stillAuthed) logout("expired");
+          return stillAuthed;
+        });
+      }
+    };
+
+    setOnUnauthorized(handleUnauthorized);
 
     return () => {
       setOnUnauthorized(null);

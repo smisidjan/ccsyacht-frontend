@@ -46,6 +46,28 @@ export function setOnUnauthorized(callback: (() => void) | null) {
   onUnauthorizedCallback = callback;
 }
 
+// Suppresses the 401 → logout callback during an auth-verification ping. Without
+// this the verify itself would trigger another logout, causing an infinite loop.
+let suppressUnauthorizedCallback = false;
+
+/**
+ * Verify the current token by hitting /auth/ping with the 401-callback suppressed.
+ * Use this when you receive a 401 on a regular endpoint and want to confirm the
+ * session is genuinely gone (vs. a permission glitch or transient issue) before
+ * logging the user out.
+ */
+export async function verifyAuth(): Promise<boolean> {
+  suppressUnauthorizedCallback = true;
+  try {
+    await apiFetch("/auth/ping");
+    return true;
+  } catch {
+    return false;
+  } finally {
+    suppressUnauthorizedCallback = false;
+  }
+}
+
 // Track last successful API call time for session keep-alive
 let lastApiCallTime: number = Date.now();
 
@@ -176,8 +198,10 @@ export async function apiFetch<T>(
   });
 
   if (!response.ok) {
-    // Handle 401 Unauthorized - token expired
-    if (response.status === 401 && onUnauthorizedCallback) {
+    // 401 Unauthorized — let the consumer (AuthContext) decide whether to
+    // log out. Suppressed during an active verifyAuth() so the verify-ping
+    // itself can't recursively trigger logout.
+    if (response.status === 401 && onUnauthorizedCallback && !suppressUnauthorizedCallback) {
       onUnauthorizedCallback();
       // Still throw the error so the calling code knows what happened
     }
