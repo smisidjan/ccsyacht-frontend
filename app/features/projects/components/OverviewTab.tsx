@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { PlusIcon, ChevronDownIcon } from "@heroicons/react/24/outline";
-import { AreaCard, CreateAreaModal, type Area as AreaCardData } from "@/app/features/areas";
+import { AreaCard, CreateAndDefineAreaModal, type Area as AreaCardData } from "@/app/features/areas";
 import SetupTaskCard from "./SetupTaskCard";
 import type { ProjectStatus } from "@/app/components/ui/StatusBadge";
 import Button from "@/app/components/ui/Button";
@@ -343,14 +343,22 @@ export default function OverviewTab({
         </section>
       )}
 
-      {/* Info message for users without edit permission and not assigned to any tasks when project is in setup */}
-      {projectStatus === "setup" && !canEditProject && visibleSetupTasks.length === 0 ? (
+      {/* Info message for users without edit permission while the project is
+          still in setup. Shown both when they have no visible tasks at all and
+          when they've finished their own tasks but the project hasn't been
+          activated yet (e.g. Define decks is still open elsewhere). */}
+      {projectStatus === "setup" && !canEditProject &&
+        (visibleSetupTasks.length === 0 || allSetupTasksComplete) ? (
         <Alert
           type="info"
           message={t("setupTasks.setupPhaseInfo")}
         />
       ) : (
-        (projectStatus !== "setup" || allSetupTasksComplete) && (
+        // Project content (areas/decks) is gated on the backend-driven status,
+        // not the locally-derived allSetupTasksComplete. The local flag only
+        // counts *visible* setup tasks, so a guest assignee whose own task is
+        // done would see content even when Define decks is still open.
+        (projectStatus !== "setup" || (allSetupTasksComplete && canEditProject)) && (
           <section>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
@@ -458,12 +466,13 @@ export default function OverviewTab({
         )
       )}
 
-      {/* Create Area Modal */}
+      {/* Create + Define Area Modal — split-view with GA polygon drawing. */}
       {isCreateModalOpen && (
-        <CreateAreaModal
+        <CreateAndDefineAreaModal
           isOpen={isCreateModalOpen}
           onClose={() => setIsCreateModalOpen(false)}
           projectId={projectId}
+          generalArrangement={generalArrangement}
           onSuccess={handleCreateSuccess}
         />
       )}
