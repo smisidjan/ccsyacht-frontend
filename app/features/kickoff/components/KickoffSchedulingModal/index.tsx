@@ -52,7 +52,7 @@ export default function KickoffSchedulingModal({
   const { showToast } = useToast();
   const { hasPermission } = usePermission();
   const { currentUser } = useCurrentUserContext();
-  const { data: projectMembers, loading: membersLoading } = useProjectMembersFromContext();
+  const { data: projectMembers, loading: membersLoading, error: membersError, refetch: refetchMembers } = useProjectMembersFromContext();
 
   // Data state
   const [task, setTask] = useState<SetupTask | null>(null);
@@ -204,10 +204,14 @@ export default function KickoffSchedulingModal({
     ];
   }, [task, schedulingStatus, currentPhase, t]);
 
-  // Fetch data
+  // Fetch data and refetch members when modal opens
   useEffect(() => {
     if (isOpen && taskId) {
       fetchData();
+      // Also refetch members when modal opens
+      if (refetchMembers) {
+        refetchMembers();
+      }
     }
   }, [isOpen, taskId]);
 
