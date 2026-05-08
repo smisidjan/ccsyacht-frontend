@@ -30,12 +30,9 @@ export function ProjectProvider({ children, projectId }: ProjectProviderProps) {
     try {
       setMembersLoading(true);
       setMembersError(null);
-      console.log("Fetching members for project:", projectId);
       const response = await projectMembersApi.getAll(projectId);
-      console.log("Members response:", response);
       setMembers(response.data || []);
     } catch (err) {
-      console.error("Error fetching members:", err);
       setMembersError(err as ApiError);
       setMembers([]);
     } finally {

@@ -109,11 +109,6 @@ export default function KickoffSchedulingModal({
     return projectMembers?.find((m) => m.member.identifier === assigneeId);
   };
 
-  // Debug logging
-  useEffect(() => {
-    console.log("Project members:", projectMembers);
-    console.log("Members loading:", membersLoading);
-  }, [projectMembers, membersLoading]);
 
   // Determine the natural phase based on task status
   const naturalPhase = useMemo((): Phase => {
