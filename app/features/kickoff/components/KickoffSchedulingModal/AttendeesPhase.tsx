@@ -25,9 +25,10 @@ export default function AttendeesPhase({
   // Filter out members who are already attendees AND the current user (they're auto-added)
   const availableMembers = projectMembers?.filter((member) => {
     const isAlreadyAssignee = task?.assignees?.some((a) => a.identifier === member.member.identifier);
-    // For now, don't filter out current user - let them all be selectable
-    // This fixes issues with manually added users having different identifiers
-    return !isAlreadyAssignee;
+    // Only filter out current user if currentUserId is actually defined
+    const isCurrentUser = currentUserId && member.member.identifier === currentUserId;
+    // Exclude if already assignee OR if it's the current user (when we know who that is)
+    return !isAlreadyAssignee && !isCurrentUser;
   });
 
   // Toggle user selection for attendees

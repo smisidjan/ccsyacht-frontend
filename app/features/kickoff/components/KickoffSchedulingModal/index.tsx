@@ -620,6 +620,7 @@ export default function KickoffSchedulingModal({
 
   // Render phase content
   const renderPhaseContent = () => {
+    // Always wait for currentUser to be loaded before showing attendees phase
     if (loading || (currentPhase === "attendees" && (membersLoading || !currentUser))) {
       return (
         <div className="space-y-4 py-8">
