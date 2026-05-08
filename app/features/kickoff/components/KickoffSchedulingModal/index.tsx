@@ -52,7 +52,7 @@ export default function KickoffSchedulingModal({
   const { showToast } = useToast();
   const { hasPermission } = usePermission();
   const { currentUser } = useCurrentUserContext();
-  const { data: projectMembers } = useProjectMembersFromContext();
+  const { data: projectMembers, loading: membersLoading } = useProjectMembersFromContext();
 
   // Data state
   const [task, setTask] = useState<SetupTask | null>(null);
@@ -108,6 +108,12 @@ export default function KickoffSchedulingModal({
   const getMemberInfo = (assigneeId: string): ProjectMember | undefined => {
     return projectMembers?.find((m) => m.member.identifier === assigneeId);
   };
+
+  // Debug logging
+  useEffect(() => {
+    console.log("Project members:", projectMembers);
+    console.log("Members loading:", membersLoading);
+  }, [projectMembers, membersLoading]);
 
   // Determine the natural phase based on task status
   const naturalPhase = useMemo((): Phase => {
@@ -611,7 +617,7 @@ export default function KickoffSchedulingModal({
 
   // Render phase content
   const renderPhaseContent = () => {
-    if (loading) {
+    if (loading || (currentPhase === "attendees" && membersLoading)) {
       return (
         <div className="space-y-4 py-8">
           <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 animate-pulse mx-auto" />

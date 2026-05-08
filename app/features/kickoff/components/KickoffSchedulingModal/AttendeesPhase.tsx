@@ -29,6 +29,12 @@ export default function AttendeesPhase({
       member.member.identifier !== currentUserId
   );
 
+  // Debug logging
+  console.log("AttendeesPhase - projectMembers:", projectMembers);
+  console.log("AttendeesPhase - availableMembers:", availableMembers);
+  console.log("AttendeesPhase - task assignees:", task?.assignees);
+  console.log("AttendeesPhase - currentUserId:", currentUserId);
+
   // Toggle user selection for attendees
   const toggleUserSelection = (userId: string) => {
     setSelectedUserIds(

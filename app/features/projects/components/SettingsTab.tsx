@@ -15,6 +15,7 @@ import Button from "@/app/components/ui/Button";
 import LoadingSkeleton from "@/app/components/ui/LoadingSkeleton";
 import Alert from "@/app/components/ui/Alert";
 import BaseModal from "@/app/components/modals/BaseModal";
+import DeleteConfirmModal from "@/app/components/modals/DeleteConfirmModal";
 import { ProfileInfoItem } from "@/app/features/profile";
 import { EditProjectModal } from "@/app/features/projects";
 import type { User, ProjectType, SetupTask, SelectedTimeSlot } from "@/lib/api/types";
@@ -170,17 +171,9 @@ export default function SettingsTab({ projectId, onProjectUpdate }: SettingsTabP
     await addSigner({ user_id: userId });
   };
 
-  const handleRemoveMember = async (userId: string, memberName: string) => {
-    if (confirm(t("teamMembers.confirmRemove", { name: memberName }))) {
-      await removeMember(userId);
-    }
-  };
-
-  const handleRemoveSigner = async (userId: string, signerName: string) => {
-    if (confirm(t("signers.confirmRemove", { name: signerName }))) {
-      await removeSigner(userId);
-    }
-  };
+  // Confirmation modals replace the previous browser confirm() calls.
+  const [memberToRemove, setMemberToRemove] = useState<{ id: string; name: string } | null>(null);
+  const [signerToRemove, setSignerToRemove] = useState<{ id: string; name: string } | null>(null);
 
   const handleEditProject = async (data: { name: string; description: string; project_type: ProjectType; external_id: string }) => {
     await projectsApi.update(projectId, {
@@ -480,7 +473,7 @@ export default function SettingsTab({ projectId, onProjectUpdate }: SettingsTabP
                   )}
                   {canManageMembers && member.member.identifier !== currentUser?.identifier && !isReadOnly && (
                     <button
-                      onClick={() => handleRemoveMember(member.member.identifier, member.member.name)}
+                      onClick={() => setMemberToRemove({ id: member.member.identifier, name: member.member.name })}
                       className="text-gray-400 hover:text-red-500 transition-colors"
                       title={t("teamMembers.remove")}
                     >
@@ -541,7 +534,7 @@ export default function SettingsTab({ projectId, onProjectUpdate }: SettingsTabP
                   </span>
                   {canManageSigners && !isReadOnly && (
                     <button
-                      onClick={() => handleRemoveSigner(signer.member.identifier, signer.member.name)}
+                      onClick={() => setSignerToRemove({ id: signer.member.identifier, name: signer.member.name })}
                       className="text-gray-400 hover:text-red-500 transition-colors"
                       title={t("signers.remove")}
                     >
@@ -757,6 +750,36 @@ export default function SettingsTab({ projectId, onProjectUpdate }: SettingsTabP
           projectTypes={projectTypes}
         />
       )}
+
+      <DeleteConfirmModal
+        isOpen={!!memberToRemove}
+        onClose={() => setMemberToRemove(null)}
+        onConfirm={async () => {
+          if (!memberToRemove) return;
+          await removeMember(memberToRemove.id);
+          setMemberToRemove(null);
+        }}
+        title={t("teamMembers.removeTitle")}
+        message={t("teamMembers.confirmRemove", { name: memberToRemove?.name ?? "" })}
+        successMessage={t("teamMembers.removeSuccess")}
+        errorMessage={t("teamMembers.removeError")}
+        confirmLabel={t("teamMembers.remove")}
+      />
+
+      <DeleteConfirmModal
+        isOpen={!!signerToRemove}
+        onClose={() => setSignerToRemove(null)}
+        onConfirm={async () => {
+          if (!signerToRemove) return;
+          await removeSigner(signerToRemove.id);
+          setSignerToRemove(null);
+        }}
+        title={t("signers.removeTitle")}
+        message={t("signers.confirmRemove", { name: signerToRemove?.name ?? "" })}
+        successMessage={t("signers.removeSuccess")}
+        errorMessage={t("signers.removeError")}
+        confirmLabel={t("signers.remove")}
+      />
     </div>
   );
 }
