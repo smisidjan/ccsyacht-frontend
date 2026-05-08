@@ -11,7 +11,7 @@ import {
   ClockIcon,
   Cog6ToothIcon,
 } from "@heroicons/react/24/outline";
-import { systemApi } from "@/lib/api/system";
+import { systemApi, clearSystemToken } from "@/lib/api/system";
 import StatsCard from "@/app/components/ui/StatsCard";
 import Button from "@/app/components/ui/Button";
 import Spinner from "@/app/components/ui/Spinner";

@@ -37,6 +37,13 @@ export default function SystemSettingsPage() {
     setRawCheckingAuth(false);
   }, []);
 
+  // Clear system token when leaving the page
+  useEffect(() => {
+    return () => {
+      clearSystemToken();
+    };
+  }, []);
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
