@@ -52,7 +52,7 @@ export default function KickoffSchedulingModal({
   const { showToast } = useToast();
   const { hasPermission } = usePermission();
   const { currentUser } = useCurrentUserContext();
-  const { data: projectMembers, loading: membersLoading, error: membersError, refetch: refetchMembers } = useProjectMembersFromContext();
+  const { data: contextProjectMembers, loading: membersLoading, error: membersError, refetch: refetchMembers } = useProjectMembersFromContext();
 
   // Data state
   const [task, setTask] = useState<SetupTask | null>(null);
@@ -91,6 +91,14 @@ export default function KickoffSchedulingModal({
 
   // Get cached roles from context (project members come from context)
   const { employeeRoles, guestRoles } = useRolesContext();
+
+  // Use availableMembers from task if available, otherwise fall back to context
+  const projectMembers = useMemo(() => {
+    if (task?.availableMembers) {
+      return task.availableMembers;
+    }
+    return contextProjectMembers;
+  }, [task?.availableMembers, contextProjectMembers]);
 
   // Create a map of role names to their type
   const roleTypeMap = useMemo(() => {

@@ -1301,6 +1301,7 @@ export interface SetupTask {
   documents: SetupTaskDocument[];
   proposedDates?: ProposedDate[];
   kickoffForm?: KickoffFormData;
+  availableMembers?: ProjectMember[]; // Available members for kickoff meetings
 }
 
 // Kickoff Meeting Form Types
