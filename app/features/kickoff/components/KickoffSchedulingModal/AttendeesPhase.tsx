@@ -117,9 +117,12 @@ export default function AttendeesPhase({
         <Alert type="info" message={t("attendees.allMembersAdded")} />
       )}
 
-      {/* Show message if no members loaded */}
+      {/* Show message if no members loaded with debug info */}
       {canManageKickoff && (!projectMembers || projectMembers.length === 0) && (
-        <Alert type="info" message={t("attendees.noMembersLoaded")} />
+        <Alert
+          type="info"
+          message={`${t("attendees.noMembersLoaded")}${process.env.NODE_ENV === 'development' ? ` (Debug: projectMembers=${projectMembers?.length || 0})` : ''}`}
+        />
       )}
 
       {/* Add attendees */}

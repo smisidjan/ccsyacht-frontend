@@ -12,7 +12,7 @@ import Modal from "@/app/components/ui/Modal";
 import Button from "@/app/components/ui/Button";
 import Stepper, { Step } from "@/app/components/ui/Stepper";
 import Alert from "@/app/components/ui/Alert";
-import { setupTasksApi } from "@/lib/api";
+import { setupTasksApi, projectMembersApi } from "@/lib/api";
 import { useCurrentUserContext } from "@/app/context/CurrentUserContext";
 import { useRolesContext } from "@/app/context/RolesContext";
 import { useProjectMembersFromContext } from "@/app/context/ProjectContext";
@@ -92,13 +92,27 @@ export default function KickoffSchedulingModal({
   // Get cached roles from context (project members come from context)
   const { employeeRoles, guestRoles } = useRolesContext();
 
-  // Use availableMembers from task if available, otherwise fall back to context
+  // State for locally fetched members as fallback
+  const [localMembers, setLocalMembers] = useState<ProjectMember[]>([]);
+  const [fetchingLocalMembers, setFetchingLocalMembers] = useState(false);
+
+  // Use availableMembers from task first, then context, then local fallback
   const projectMembers = useMemo(() => {
-    if (task?.availableMembers) {
+    // Priority 1: Use availableMembers from task if available
+    if (task?.availableMembers && task.availableMembers.length > 0) {
       return task.availableMembers;
     }
-    return contextProjectMembers;
-  }, [task?.availableMembers, contextProjectMembers]);
+    // Priority 2: Use context members if available
+    if (contextProjectMembers && contextProjectMembers.length > 0) {
+      return contextProjectMembers;
+    }
+    // Priority 3: Use locally fetched members as fallback
+    if (localMembers.length > 0) {
+      return localMembers;
+    }
+    // Default: return empty array
+    return [];
+  }, [task?.availableMembers, contextProjectMembers, localMembers]);
 
   // Create a map of role names to their type
   const roleTypeMap = useMemo(() => {
@@ -216,16 +230,49 @@ export default function KickoffSchedulingModal({
     ];
   }, [task, schedulingStatus, currentPhase, t]);
 
-  // Fetch data and refetch members when modal opens
+  // Fetch data and ensure members are loaded when modal opens
   useEffect(() => {
     if (isOpen && taskId) {
       fetchData();
-      // Also refetch members when modal opens
+
+      // Try multiple strategies to ensure members are loaded
+      // Strategy 1: Refetch via context
       if (refetchMembers) {
         refetchMembers();
       }
+
+      // Strategy 2: If no members in context after a delay, fetch directly
+      const memberCheckTimer = setTimeout(() => {
+        if (!contextProjectMembers || contextProjectMembers.length === 0) {
+          fetchProjectMembers();
+        }
+      }, 500); // Small delay to let context load first
+
+      return () => clearTimeout(memberCheckTimer);
     }
   }, [isOpen, taskId]);
+
+  // Fetch project members directly as fallback
+  const fetchProjectMembers = async () => {
+    if (fetchingLocalMembers) return; // Prevent duplicate fetches
+
+    try {
+      setFetchingLocalMembers(true);
+      const membersResponse = await projectMembersApi.getAll(projectId);
+      if (membersResponse?.data) {
+        setLocalMembers(membersResponse.data);
+        // Also try to update context
+        if (refetchMembers) {
+          refetchMembers();
+        }
+      }
+    } catch (err) {
+      console.error("Error fetching project members directly:", err);
+      // Don't set error state, just log it
+    } finally {
+      setFetchingLocalMembers(false);
+    }
+  };
 
   const fetchData = async (showLoading = true) => {
     try {
