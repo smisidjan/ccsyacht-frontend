@@ -22,11 +22,12 @@ export default function AttendeesPhase({
 }: AttendeesPhaseProps) {
   const t = useTranslations("projectDetail.setupTasks.kickoffScheduling");
 
-  // Filter out members who are already attendees
-  // Don't filter out current user if they're not already an attendee
+  // Filter out members who are already attendees AND the current user (they're auto-added)
   const availableMembers = projectMembers?.filter((member) => {
     const isAlreadyAssignee = task?.assignees?.some((a) => a.identifier === member.member.identifier);
-    return !isAlreadyAssignee;
+    const isCurrentUser = member.member.identifier === currentUserId;
+    // Exclude if already assignee OR if it's the current user
+    return !isAlreadyAssignee && !isCurrentUser;
   });
 
   // Toggle user selection for attendees
