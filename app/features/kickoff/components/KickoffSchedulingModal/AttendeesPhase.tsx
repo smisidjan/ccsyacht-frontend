@@ -110,6 +110,11 @@ export default function AttendeesPhase({
         </div>
       )}
 
+      {/* Show message if no members available */}
+      {canManageKickoff && projectMembers && projectMembers.length > 0 && (!availableMembers || availableMembers.length === 0) && (
+        <Alert type="info" message={t("attendees.allMembersAdded")} />
+      )}
+
       {/* Show message if no members loaded */}
       {canManageKickoff && (!projectMembers || projectMembers.length === 0) && (
         <Alert type="info" message={t("attendees.noMembersLoaded")} />
