@@ -101,6 +101,10 @@ export default function KickoffSchedulingModal({
     guestRoles?.forEach((role) => {
       map[role.name] = "guest";
     });
+    // Default mapping for 'member' role
+    if (!map["member"]) {
+      map["member"] = "employee";
+    }
     return map;
   }, [employeeRoles, guestRoles]);
 
@@ -616,7 +620,7 @@ export default function KickoffSchedulingModal({
 
   // Render phase content
   const renderPhaseContent = () => {
-    if (loading || (currentPhase === "attendees" && membersLoading)) {
+    if (loading || (currentPhase === "attendees" && (membersLoading || !currentUser))) {
       return (
         <div className="space-y-4 py-8">
           <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 animate-pulse mx-auto" />

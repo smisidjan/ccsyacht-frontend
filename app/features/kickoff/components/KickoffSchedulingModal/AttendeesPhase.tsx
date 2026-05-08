@@ -26,7 +26,7 @@ export default function AttendeesPhase({
   const availableMembers = projectMembers?.filter(
     (member) =>
       !task?.assignees?.some((a) => a.identifier === member.member.identifier) &&
-      member.member.identifier !== currentUserId
+      (currentUserId ? member.member.identifier !== currentUserId : true)
   );
 
   // Toggle user selection for attendees
