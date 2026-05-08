@@ -1,10 +1,9 @@
 "use client";
 
-import { createContext, useContext, useEffect, useRef, useState, useCallback } from "react";
+import { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { useRouter, usePathname } from "@/i18n/navigation";
 import { useTenant } from "@/app/context/TenantContext";
 import { setAuthToken, getAuthToken, setOnUnauthorized, verifyAuth } from "@/lib/api/client";
-import { clearSystemToken } from "@/lib/api/system/helpers";
 import { useSessionKeepAlive } from "@/lib/hooks/useSessionKeepAlive";
 import { useToast } from "@/app/context/ToastContext";
 import { useTranslations } from "next-intl";
@@ -47,22 +46,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(false);
   }, []);
 
-  // Auto-logout from system admin when the user navigates away from any
-  // /dashboard/system/* route. The system token lives in sessionStorage and
-  // is independent of the regular user token, so leaving the area is the
-  // signal to drop it. We compare against the previous pathname (kept in a
-  // ref) instead of relying on unmount cleanup — that pattern would misfire
-  // under React strict mode's double-mount in dev.
-  const prevSystemPathRef = useRef<boolean>(false);
-  useEffect(() => {
-    const stripped = pathname.replace(/^\/(en|nl)/, "");
-    const isSystem = stripped.startsWith("/dashboard/system");
-    if (prevSystemPathRef.current && !isSystem) {
-      clearSystemToken();
-    }
-    prevSystemPathRef.current = isSystem;
-  }, [pathname]);
-
   useEffect(() => {
     if (isLoading) return;
 
@@ -73,22 +56,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       || pathWithoutLocale.startsWith("/register/")
       || pathWithoutLocale.startsWith("/dashboard/system/");
 
-    // Only redirect to login if not authenticated and not on public route
+    const isSystemRoute = pathWithoutLocale.startsWith("/dashboard/system/");
+
     if (!token && !isPublicRoute) {
       router.push("/login");
       return;
     }
 
-    // Remove auto-redirect for authenticated users to prevent conflicts
-    // The login function will handle navigation after authentication
+    // Don't redirect if on system routes - they use separate authentication
+    // Also check if already on dashboard to prevent loops
+    if (token && isPublicRoute && !isSystemRoute && !pathWithoutLocale.startsWith("/dashboard")) {
+      router.push("/dashboard");
+      return;
+    }
   }, [token, isLoading, pathname, router]);
 
   const login = useCallback((newToken: string) => {
     setAuthToken(newToken);
     setToken(newToken);
-    // Navigate directly to projects to avoid double redirect
-    router.replace("/dashboard/projects");
-  }, [router]);
+    // Let the useEffect handle the navigation to avoid conflicts
+  }, []);
 
   const { showToast } = useToast();
   const t = useTranslations("auth");
