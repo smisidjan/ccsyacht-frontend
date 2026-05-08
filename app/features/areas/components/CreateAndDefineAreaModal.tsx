@@ -45,12 +45,9 @@ import type {
 
 /** A single ordered list of stages combines template-derived rows (with an
  *  include checkbox) and custom rows (with a remove button), so the user can
- *  drag any row anywhere in the order.
- *
- *  Backend payload still has two separate fields (`stage_template_ids` and
- *  `stages`); at save time we partition by kind, preserving the relative
- *  order within each group. The full interleaved order isn't representable
- *  in the current API, but reordering within each group is honored. */
+ *  drag any row anywhere in the order. The list maps 1:1 to the backend
+ *  `stages` array (a discriminated union of template/custom entries), so
+ *  the visible order is exactly what gets persisted. */
 type StageRow =
   | { id: string; kind: "template"; templateId: string; name: string; included: boolean }
   | { id: string; kind: "custom"; name: string };
@@ -162,14 +159,13 @@ export default function CreateAndDefineAreaModal({
 
   // Stages config — host can either skip stages now (add later) or create a
   // selection from the project's stage template, optionally with custom
-  // stages on top. Backend takes:
+  // stages interleaved. Backend takes:
   //   create_stages: boolean (required)
-  //   stage_template_ids?: string[] — picks of the template, in order
-  //   stages?: { name, description?, requires_release_form? }[] — custom extras, in order
+  //   stages?: ({ type:"template", stage_template_id } | { type:"custom", name, ... })[]
+  // Order of `stages` is honored end-to-end.
   const [createStages, setCreateStages] = useState(true);
   // Single ordered list of every stage row (template + custom). User can drag
-  // any row anywhere. At save time we partition by kind so the backend's
-  // separate template_ids/stages arrays each receive their relative order.
+  // any row anywhere; the row order maps 1:1 to the backend stages array.
   const [stageRows, setStageRows] = useState<StageRow[]>([]);
   const [newCustomStageName, setNewCustomStageName] = useState("");
 
@@ -281,29 +277,25 @@ export default function CreateAndDefineAreaModal({
     setError(null);
     setSubmitting(true);
     try {
-      // Walk the unified list in its current order and partition by kind.
-      // Backend payload has two separate arrays — relative order within each
-      // is preserved.
-      const templateIds: string[] = [];
-      const customStagesPayload: CreateAreaStageInput[] = [];
-      if (createStages) {
-        for (const row of stageRows) {
-          if (row.kind === "template" && row.included) {
-            templateIds.push(row.templateId);
-          } else if (row.kind === "custom") {
-            customStagesPayload.push({ name: row.name });
-          }
-        }
-      }
+      // Walk the unified list in its current order. Each row maps to one
+      // entry in the backend's discriminated `stages` array — interleaved
+      // template/custom order is preserved end-to-end.
+      const stagesPayload: CreateAreaStageInput[] = createStages
+        ? stageRows.flatMap<CreateAreaStageInput>((row) => {
+            if (row.kind === "template") {
+              return row.included
+                ? [{ type: "template", stage_template_id: row.templateId }]
+                : [];
+            }
+            return [{ type: "custom", name: row.name }];
+          })
+        : [];
       await areasApi.create(projectId, selectedDeckId, {
         name: name.trim(),
         description: description.trim() || undefined,
         polygon,
         create_stages: createStages,
-        ...(templateIds.length > 0 ? { stage_template_ids: templateIds } : {}),
-        ...(customStagesPayload.length > 0
-          ? { stages: customStagesPayload }
-          : {}),
+        ...(stagesPayload.length > 0 ? { stages: stagesPayload } : {}),
       });
       onSuccess?.();
       onClose();

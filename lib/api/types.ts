@@ -696,13 +696,18 @@ export interface Area {
   dateModified: string;
 }
 
-/** Custom (non-template) stage payload — only used alongside or instead of
- *  stage_template_ids when creating an area with create_stages=true. */
-export interface CreateAreaStageInput {
-  name: string;
-  description?: string;
-  requires_release_form?: boolean;
-}
+/** A single stage entry when creating an area with create_stages=true.
+ *  Discriminated by `type`: template entries reference an existing
+ *  StageTemplate by id; custom entries supply their own fields. The order
+ *  of the surrounding array is the order the stages will be created in. */
+export type CreateAreaStageInput =
+  | { type: "template"; stage_template_id: string }
+  | {
+      type: "custom";
+      name: string;
+      description?: string;
+      requires_release_form?: boolean;
+    };
 
 export interface CreateAreaRequest {
   name: string;
@@ -711,11 +716,9 @@ export interface CreateAreaRequest {
   /** Required. When true the backend creates stages on the new area; when
    *  false the area is created without stages and the user adds them later. */
   create_stages: boolean;
-  /** Stage-template UUIDs to materialize as stages on the new area. Only
-   *  meaningful when create_stages is true. */
-  stage_template_ids?: string[];
-  /** Custom stages to create on top of (or instead of) template stages. Only
-   *  meaningful when create_stages is true. */
+  /** Ordered list of stage entries. Mix of template references and custom
+   *  stages — final stage order matches array order. Only meaningful when
+   *  create_stages is true. */
   stages?: CreateAreaStageInput[];
 }
 
