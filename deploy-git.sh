@@ -108,6 +108,5 @@ ENDSSH
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo -e "${GREEN}✨ Deployment completed successfully!${NC}"
 echo -e "${GREEN}🌐 Frontend: https://papertrail.ccsyacht.com${NC}"
-echo -e "${YELLOW}⚠️  WARNING: WebSocket mixed-content blocking expected${NC}"
-echo -e "${YELLOW}   HTTPS site → HTTP WebSocket (ws://167.235.135.241:8080)${NC}"
-echo -e "${YELLOW}   For production: Configure Reverb with TLS for wss://167.235.135.241${NC}"
+echo -e "${GREEN}🔒 WebSocket: wss://papertrail.ccsyacht.com/reverb${NC}"
+echo -e "${BLUE}📝 Note: Ensure nginx is configured to proxy /reverb → localhost:8080${NC}"
