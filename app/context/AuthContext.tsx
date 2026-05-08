@@ -49,27 +49,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (isLoading) return;
 
-    const isPublicRoute = PUBLIC_ROUTES.includes(pathname)
-      || pathname.startsWith("/register/")
-      || pathname.startsWith("/dashboard/system/");
+    // Remove locale prefix from pathname for route checking
+    const pathWithoutLocale = pathname.replace(/^\/(en|nl)/, '');
 
-    const isSystemRoute = pathname.startsWith("/dashboard/system/");
+    const isPublicRoute = PUBLIC_ROUTES.includes(pathWithoutLocale)
+      || pathWithoutLocale.startsWith("/register/")
+      || pathWithoutLocale.startsWith("/dashboard/system/");
+
+    const isSystemRoute = pathWithoutLocale.startsWith("/dashboard/system/");
 
     if (!token && !isPublicRoute) {
       router.push("/login");
+      return;
     }
 
     // Don't redirect if on system routes - they use separate authentication
-    if (token && isPublicRoute && !isSystemRoute) {
+    // Also check if already on dashboard to prevent loops
+    if (token && isPublicRoute && !isSystemRoute && !pathWithoutLocale.startsWith("/dashboard")) {
       router.push("/dashboard");
+      return;
     }
   }, [token, isLoading, pathname, router]);
 
-  const login = (newToken: string) => {
+  const login = useCallback((newToken: string) => {
     setAuthToken(newToken);
     setToken(newToken);
-    router.push("/dashboard");
-  };
+    // Let the useEffect handle the navigation to avoid conflicts
+  }, []);
 
   const { showToast } = useToast();
   const t = useTranslations("auth");
