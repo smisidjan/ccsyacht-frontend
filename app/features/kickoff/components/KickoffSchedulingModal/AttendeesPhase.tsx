@@ -22,6 +22,14 @@ export default function AttendeesPhase({
 }: AttendeesPhaseProps) {
   const t = useTranslations("projectDetail.setupTasks.kickoffScheduling");
 
+  // Debug logging
+  console.log('[AttendeesPhase] Rendering with:', {
+    projectMembersCount: projectMembers?.length || 0,
+    taskAssigneesCount: task?.assignees?.length || 0,
+    currentUserId,
+    canManageKickoff
+  });
+
   // Filter out members who are already attendees AND the current user (they're auto-added)
   const availableMembers = projectMembers?.filter((member) => {
     const isAlreadyAssignee = task?.assignees?.some((a) => a.identifier === member.member.identifier);
@@ -30,6 +38,8 @@ export default function AttendeesPhase({
     // Exclude if already assignee OR if it's the current user (when we know who that is)
     return !isAlreadyAssignee && !isCurrentUser;
   });
+
+  console.log('[AttendeesPhase] Available members:', availableMembers?.length || 0);
 
   // Toggle user selection for attendees
   const toggleUserSelection = (userId: string) => {
@@ -120,8 +130,8 @@ export default function AttendeesPhase({
       {/* Show message if no members loaded with debug info */}
       {canManageKickoff && (!projectMembers || projectMembers.length === 0) && (
         <Alert
-          type="info"
-          message={`${t("attendees.noMembersLoaded")}${process.env.NODE_ENV === 'development' ? ` (Debug: projectMembers=${projectMembers?.length || 0})` : ''}`}
+          type="warning"
+          message={`${t("attendees.noMembersLoaded")} (Members: ${projectMembers?.length || 0}, Check browser console for details)`}
         />
       )}
 

@@ -92,27 +92,27 @@ export default function KickoffSchedulingModal({
   // Get cached roles from context (project members come from context)
   const { employeeRoles, guestRoles } = useRolesContext();
 
-  // State for locally fetched members as fallback
+  // State for directly fetched members - ALWAYS fetch directly for reliability
   const [localMembers, setLocalMembers] = useState<ProjectMember[]>([]);
   const [fetchingLocalMembers, setFetchingLocalMembers] = useState(false);
+  const [hasFetchedMembers, setHasFetchedMembers] = useState(false);
 
-  // Use availableMembers from task first, then context, then local fallback
+  // ALWAYS use locally fetched members for maximum reliability
   const projectMembers = useMemo(() => {
-    // Priority 1: Use availableMembers from task if available
-    if (task?.availableMembers && task.availableMembers.length > 0) {
-      return task.availableMembers;
-    }
-    // Priority 2: Use context members if available
-    if (contextProjectMembers && contextProjectMembers.length > 0) {
-      return contextProjectMembers;
-    }
-    // Priority 3: Use locally fetched members as fallback
+    // Always prefer locally fetched members if we have them
     if (localMembers.length > 0) {
       return localMembers;
     }
-    // Default: return empty array
+    // Fallback to task availableMembers if no local members yet
+    if (task?.availableMembers && task.availableMembers.length > 0) {
+      return task.availableMembers;
+    }
+    // Last resort: context members
+    if (contextProjectMembers && contextProjectMembers.length > 0) {
+      return contextProjectMembers;
+    }
     return [];
-  }, [task?.availableMembers, contextProjectMembers, localMembers]);
+  }, [localMembers, task?.availableMembers, contextProjectMembers]);
 
   // Create a map of role names to their type
   const roleTypeMap = useMemo(() => {
@@ -230,45 +230,47 @@ export default function KickoffSchedulingModal({
     ];
   }, [task, schedulingStatus, currentPhase, t]);
 
-  // Fetch data and ensure members are loaded when modal opens
+  // Fetch data and ALWAYS fetch members directly when modal opens
   useEffect(() => {
-    if (isOpen && taskId) {
+    if (isOpen && taskId && projectId) {
+      // Fetch task data
       fetchData();
 
-      // Try multiple strategies to ensure members are loaded
-      // Strategy 1: Refetch via context
-      if (refetchMembers) {
-        refetchMembers();
-      }
-
-      // Strategy 2: If no members in context after a delay, fetch directly
-      const memberCheckTimer = setTimeout(() => {
-        if (!contextProjectMembers || contextProjectMembers.length === 0) {
-          fetchProjectMembers();
-        }
-      }, 500); // Small delay to let context load first
-
-      return () => clearTimeout(memberCheckTimer);
+      // ALWAYS fetch members directly - don't rely on context
+      fetchProjectMembers();
     }
-  }, [isOpen, taskId]);
 
-  // Fetch project members directly as fallback
+    // Reset when modal closes
+    if (!isOpen) {
+      setHasFetchedMembers(false);
+      setLocalMembers([]);
+    }
+  }, [isOpen, taskId, projectId]);
+
+  // ALWAYS fetch project members directly for reliability
   const fetchProjectMembers = async () => {
-    if (fetchingLocalMembers) return; // Prevent duplicate fetches
+    if (fetchingLocalMembers || hasFetchedMembers) return;
 
     try {
       setFetchingLocalMembers(true);
+      console.log(`[KickoffModal] Fetching members for project: ${projectId}`);
+
       const membersResponse = await projectMembersApi.getAll(projectId);
+      console.log(`[KickoffModal] Members response:`, membersResponse);
+
       if (membersResponse?.data) {
         setLocalMembers(membersResponse.data);
-        // Also try to update context
-        if (refetchMembers) {
-          refetchMembers();
-        }
+        setHasFetchedMembers(true);
+        console.log(`[KickoffModal] Loaded ${membersResponse.data.length} members`);
+      } else {
+        console.warn('[KickoffModal] No data in members response');
       }
     } catch (err) {
-      console.error("Error fetching project members directly:", err);
-      // Don't set error state, just log it
+      console.error("[KickoffModal] Error fetching members:", err);
+      // Try to parse error for better debugging
+      if (err instanceof Error) {
+        console.error('[KickoffModal] Error details:', err.message);
+      }
     } finally {
       setFetchingLocalMembers(false);
     }
