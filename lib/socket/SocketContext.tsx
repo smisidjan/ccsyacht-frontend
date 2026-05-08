@@ -90,6 +90,12 @@ export function SocketProvider({ children }: SocketProviderProps) {
         ? `${process.env.NEXT_PUBLIC_API_URL}/broadcasting/auth`
         : `${window.location.origin}${process.env.NEXT_PUBLIC_API_URL}/broadcasting/auth`;
 
+      // Check if we have a valid key
+      if (!process.env.NEXT_PUBLIC_REVERB_APP_KEY || process.env.NEXT_PUBLIC_REVERB_APP_KEY === 'your_reverb_key_here') {
+        console.warn('[SocketContext] Reverb key not configured, skipping Echo initialization');
+        return;
+      }
+
       const echoInstance = new LaravelEcho({
         broadcaster: "reverb",
         key: process.env.NEXT_PUBLIC_REVERB_APP_KEY,
@@ -159,7 +165,13 @@ export function SocketProvider({ children }: SocketProviderProps) {
 
       setEcho(echoInstance);
     } catch (error) {
-      handleError(error, { severity: "console", context: "Failed to initialize Laravel Echo" });
+      // Don't show errors for missing Pusher key - it's optional
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      if (!errorMessage.includes('You must pass your app key')) {
+        handleError(error, { severity: "console", context: "Failed to initialize Laravel Echo" });
+      } else {
+        console.warn('[SocketContext] Echo initialization skipped - Pusher key not configured');
+      }
     }
   }, [tenantLoaded, authLoading, tenantId, token]);
 
