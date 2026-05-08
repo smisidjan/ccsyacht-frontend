@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "CCS Yacht",
-  description: "CCS Yacht platform",
+  title: "Papertrail Marine by CCS Yacht",
+  description: "Papertrail Marine by CCS Yacht - Professional yacht coating inspection management",
 };
 
 export default function RootLayout({
