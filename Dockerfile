@@ -32,15 +32,6 @@ COPY . .
 
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Set build-time environment variables for production
-ENV NODE_ENV=production
-ENV NEXT_PUBLIC_API_URL=https://api.papertrail.ccsyacht.com/api
-ENV NEXT_PUBLIC_APP_NAME="Papertrail Marine by CCS Yacht"
-ENV NEXT_PUBLIC_REVERB_APP_KEY=ccsyacht-production-key
-ENV NEXT_PUBLIC_REVERB_HOST=papertrail.ccsyacht.com
-ENV NEXT_PUBLIC_REVERB_PORT=443
-ENV NEXT_PUBLIC_REVERB_SCHEME=https
-
 RUN npm run build
 
 # Production image
@@ -49,14 +40,6 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
-
-# Also set runtime environment variables
-ENV NEXT_PUBLIC_API_URL=https://api.papertrail.ccsyacht.com/api
-ENV NEXT_PUBLIC_APP_NAME="Papertrail Marine by CCS Yacht"
-ENV NEXT_PUBLIC_REVERB_APP_KEY=ccsyacht-production-key
-ENV NEXT_PUBLIC_REVERB_HOST=papertrail.ccsyacht.com
-ENV NEXT_PUBLIC_REVERB_PORT=443
-ENV NEXT_PUBLIC_REVERB_SCHEME=https
 
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs

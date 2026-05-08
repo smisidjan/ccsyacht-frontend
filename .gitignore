@@ -30,8 +30,9 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
+# env files (NEVER commit these!)
 .env*
+!.env.example
 
 # vercel
 .vercel
@@ -46,5 +47,8 @@ next-env.d.ts
 # deployment archives
 *.tar.gz
 *.zip
-deploy-*.sh
+deploy-docker.sh
+deploy-simple.sh
+deploy-fast.sh
 verify-*.sh
+# deploy-git.sh is committed for Git-based deployment
