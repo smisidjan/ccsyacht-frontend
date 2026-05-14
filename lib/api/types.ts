@@ -706,7 +706,6 @@ export type CreateAreaStageInput =
       type: "custom";
       name: string;
       description?: string;
-      requires_release_form?: boolean;
     };
 
 export interface CreateAreaRequest {
@@ -743,7 +742,6 @@ export interface StageTemplate {
   name: string;
   description?: string;
   position: number;
-  requiresReleaseForm: boolean;
   isActive: boolean;
   canDelete: boolean;
   dateCreated: string;
@@ -753,7 +751,6 @@ export interface StageTemplate {
 export interface CreateStageTemplateRequest {
   name: string;
   description?: string;
-  requires_release_form?: boolean;
   sort_order?: number;
   is_active?: boolean;
 }
@@ -761,7 +758,6 @@ export interface CreateStageTemplateRequest {
 export interface UpdateStageTemplateRequest {
   name?: string;
   description?: string;
-  requires_release_form?: boolean;
   sort_order?: number;
   is_active?: boolean;
 }
@@ -796,7 +792,6 @@ export interface Stage {
     "@type"?: string;
     name: StageStatus;
   };
-  requiresReleaseForm: boolean;
   area?: StageArea;
   deck?: StageDeck;
   template?: {
@@ -812,7 +807,6 @@ export interface CreateStageRequest {
   name: string;
   description?: string;
   status?: StageStatus;
-  requires_release_form?: boolean;
   sort_order?: number;
 }
 
@@ -820,7 +814,6 @@ export interface UpdateStageRequest {
   name?: string;
   description?: string;
   status?: StageStatus;
-  requires_release_form?: boolean;
   sort_order?: number;
 }
 
@@ -831,7 +824,6 @@ export interface UpdateStageStatusRequest {
 export interface BulkCreateStagesRequest {
   stages: {
     name: string;
-    requires_release_form: boolean;
     sort_order: number;
   }[];
 }

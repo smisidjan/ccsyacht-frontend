@@ -52,11 +52,6 @@ export default function StageListItem({
             >
               {t(`status.${stage.status.name}`)}
             </span>
-            {stage.requiresReleaseForm && (
-              <span className="text-xs text-blue-600 dark:text-blue-400">
-                📋
-              </span>
-            )}
           </div>
         </div>
       </div>

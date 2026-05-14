@@ -22,7 +22,7 @@ interface StageDetailPanelProps {
   stage: Stage;
   projectId: string;
   canEdit: boolean;
-  onUpdate: (data: { name?: string; requires_release_form?: boolean }) => Promise<void>;
+  onUpdate: (data: { name?: string }) => Promise<void>;
   onUpdateStatus: (status: "in_progress") => Promise<void>;
   onRefetch: () => Promise<void>;
 }
@@ -56,7 +56,6 @@ export default function StageDetailPanel({
 
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(stage.name);
-  const [editRequiresReleaseForm, setEditRequiresReleaseForm] = useState(stage.requiresReleaseForm);
   const [isSaving, setIsSaving] = useState(false);
   const [showSignModal, setShowSignModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
@@ -93,7 +92,6 @@ export default function StageDetailPanel({
     try {
       await onUpdate({
         name: editName,
-        requires_release_form: editRequiresReleaseForm,
       });
       setIsEditing(false);
     } catch (error) {
@@ -105,7 +103,6 @@ export default function StageDetailPanel({
 
   const handleCancel = () => {
     setEditName(stage.name);
-    setEditRequiresReleaseForm(stage.requiresReleaseForm);
     setIsEditing(false);
   };
 
@@ -251,38 +248,13 @@ export default function StageDetailPanel({
       {/* Content */}
       <div className="p-8 space-y-8">
         {/* Basic Info */}
-        <div className="grid grid-cols-2 gap-6">
-          <div>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">
-              {t("position")}
-            </p>
-            <p className="text-lg font-semibold text-gray-900 dark:text-white">
-              {stage.position}
-            </p>
-          </div>
-
-          <div>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">
-              {t("requiresReleaseForm")}
-            </p>
-            {isEditing ? (
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={editRequiresReleaseForm}
-                  onChange={(e) => setEditRequiresReleaseForm(e.target.checked)}
-                  className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
-                />
-                <span className="text-sm text-gray-700 dark:text-gray-300">
-                  {t("required")}
-                </span>
-              </label>
-            ) : (
-              <p className="text-lg font-semibold text-gray-900 dark:text-white">
-                {stage.requiresReleaseForm ? t("yes") : t("no")}
-              </p>
-            )}
-          </div>
+        <div>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">
+            {t("position")}
+          </p>
+          <p className="text-lg font-semibold text-gray-900 dark:text-white">
+            {stage.position}
+          </p>
         </div>
 
         {/* Signoffs Section */}

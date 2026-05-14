@@ -51,7 +51,6 @@ export default function TenantTemplatesTab({ tenantId }: TenantTemplatesTabProps
   const [stagesError, setStagesError] = useState<string | null>(null);
   const [stageName, setStageName] = useState("");
   const [stageDescription, setStageDescription] = useState("");
-  const [stageRequiresReleaseForm, setStageRequiresReleaseForm] = useState(false);
   const [stageIsActive, setStageIsActive] = useState(true);
 
   // Document Types state
@@ -185,7 +184,6 @@ export default function TenantTemplatesTab({ tenantId }: TenantTemplatesTabProps
       const data = {
         name: stageName,
         description: stageDescription || undefined,
-        requires_release_form: stageRequiresReleaseForm,
         is_active: stageIsActive,
       };
       if (template) {
@@ -198,13 +196,11 @@ export default function TenantTemplatesTab({ tenantId }: TenantTemplatesTabProps
     resetForm: () => {
       setStageName("");
       setStageDescription("");
-      setStageRequiresReleaseForm(false);
       setStageIsActive(true);
     },
     populateForm: (template) => {
       setStageName(template.name);
       setStageDescription(template.description || "");
-      setStageRequiresReleaseForm(template.requiresReleaseForm);
       setStageIsActive(template.isActive);
     },
     successMessages: {
@@ -345,15 +341,6 @@ export default function TenantTemplatesTab({ tenantId }: TenantTemplatesTabProps
       header: t("description"),
       cell: (stage: StageTemplate) => (
         <span className="text-gray-500 dark:text-gray-400">{stage.description || "-"}</span>
-      ),
-    },
-    {
-      key: "requiresReleaseForm",
-      header: t("requiresReleaseForm"),
-      cell: (stage: StageTemplate) => (
-        <span className="text-gray-500 dark:text-gray-400">
-          {stage.requiresReleaseForm ? "Yes" : "No"}
-        </span>
       ),
     },
     {
@@ -549,18 +536,15 @@ export default function TenantTemplatesTab({ tenantId }: TenantTemplatesTabProps
               <StageTemplateForm
                 name={stageName}
                 description={stageDescription}
-                requiresReleaseForm={stageRequiresReleaseForm}
                 isActive={stageIsActive}
                 onNameChange={setStageName}
                 onDescriptionChange={setStageDescription}
-                onRequiresReleaseFormChange={setStageRequiresReleaseForm}
                 onIsActiveChange={setStageIsActive}
                 translations={{
                   name: t("name"),
                   namePlaceholder: "Enter stage name",
                   description: t("description"),
                   descriptionPlaceholder: "Enter description (optional)",
-                  requiresReleaseForm: t("requiresReleaseForm"),
                   isActive: t("active"),
                 }}
               />

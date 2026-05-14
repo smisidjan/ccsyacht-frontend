@@ -27,7 +27,6 @@ export default function StageTemplatesTable({ tenantId }: StageTemplatesTablePro
   // Form state
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [requiresReleaseForm, setRequiresReleaseForm] = useState(false);
   const [isActive, setIsActive] = useState(true);
 
   const modal = useModalForm<StageTemplate>({
@@ -35,7 +34,6 @@ export default function StageTemplatesTable({ tenantId }: StageTemplatesTablePro
       const data = {
         name,
         description: description || undefined,
-        requires_release_form: requiresReleaseForm,
         is_active: isActive,
       };
 
@@ -49,13 +47,11 @@ export default function StageTemplatesTable({ tenantId }: StageTemplatesTablePro
     resetForm: () => {
       setName("");
       setDescription("");
-      setRequiresReleaseForm(false);
       setIsActive(true);
     },
     populateForm: (template) => {
       setName(template.name);
       setDescription(template.description || "");
-      setRequiresReleaseForm(template.requiresReleaseForm);
       setIsActive(template.isActive);
     },
     successMessages: {
@@ -121,9 +117,6 @@ export default function StageTemplatesTable({ tenantId }: StageTemplatesTablePro
                   {t("description")}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  {t("requiresReleaseForm")}
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   {t("active")}
                 </th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -139,9 +132,6 @@ export default function StageTemplatesTable({ tenantId }: StageTemplatesTablePro
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
                     {template.description || "-"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                    {template.requiresReleaseForm ? "Yes" : "No"}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                     {template.isActive ? "Yes" : "No"}
@@ -187,18 +177,15 @@ export default function StageTemplatesTable({ tenantId }: StageTemplatesTablePro
         <StageTemplateForm
           name={name}
           description={description}
-          requiresReleaseForm={requiresReleaseForm}
           isActive={isActive}
           onNameChange={setName}
           onDescriptionChange={setDescription}
-          onRequiresReleaseFormChange={setRequiresReleaseForm}
           onIsActiveChange={setIsActive}
           translations={{
             name: t("name"),
             namePlaceholder: "Enter stage name",
             description: t("description"),
             descriptionPlaceholder: "Enter description (optional)",
-            requiresReleaseForm: t("requiresReleaseForm"),
             isActive: t("active"),
           }}
         />

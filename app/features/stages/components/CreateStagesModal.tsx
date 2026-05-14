@@ -36,17 +36,14 @@ interface CreateStagesModalProps {
 interface StageRow {
   id: string; // temp UUID for drag & drop
   name: string;
-  requiresReleaseForm: boolean;
 }
 
 // Sortable row component
 function SortableStageRow({
   stage,
-  onToggle,
   onDelete,
 }: {
   stage: StageRow;
-  onToggle: (id: string) => void;
   onDelete: (id: string) => void;
 }) {
   const t = useTranslations("stages");
@@ -75,15 +72,6 @@ function SortableStageRow({
       </td>
       <td className="px-4 py-3">
         <span className="text-sm text-gray-900 dark:text-gray-100">{stage.name}</span>
-      </td>
-      <td className="px-4 py-3 text-center">
-        <input
-          type="checkbox"
-          checked={stage.requiresReleaseForm}
-          onChange={() => onToggle(stage.id)}
-          className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
-          aria-label={`${t("requiresReleaseForm")} - ${stage.name}`}
-        />
       </td>
       <td className="px-4 py-3 w-16 text-center">
         <button
@@ -135,7 +123,6 @@ export default function CreateStagesModal({
       const stageRows: StageRow[] = templates.map((template) => ({
         id: crypto.randomUUID(),
         name: template.name,
-        requiresReleaseForm: template.requiresReleaseForm,
       }));
 
       setStages(stageRows);
@@ -166,21 +153,10 @@ export default function CreateStagesModal({
     const newStage: StageRow = {
       id: crypto.randomUUID(),
       name: trimmedName,
-      requiresReleaseForm: false,
     };
 
     setStages([...stages, newStage]);
     setCustomStageName("");
-  };
-
-  const handleToggleReleaseForm = (id: string) => {
-    setStages((prev) =>
-      prev.map((stage) =>
-        stage.id === id
-          ? { ...stage, requiresReleaseForm: !stage.requiresReleaseForm }
-          : stage
-      )
-    );
   };
 
   const handleDeleteStage = (id: string) => {
@@ -192,7 +168,6 @@ export default function CreateStagesModal({
     const bulkCreateRequest = {
       stages: stages.map((stage, index) => ({
         name: stage.name,
-        requires_release_form: stage.requiresReleaseForm,
         sort_order: index,
       })),
     };
@@ -278,9 +253,6 @@ export default function CreateStagesModal({
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                       {t("name")}
                     </th>
-                    <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
-                      {t("requiresReleaseForm")}
-                    </th>
                     <th className="px-4 py-3 w-16"></th>
                   </tr>
                 </thead>
@@ -290,7 +262,6 @@ export default function CreateStagesModal({
                       <SortableStageRow
                         key={stage.id}
                         stage={stage}
-                        onToggle={handleToggleReleaseForm}
                         onDelete={handleDeleteStage}
                       />
                     ))}
