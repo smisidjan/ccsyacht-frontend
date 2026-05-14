@@ -2,7 +2,16 @@
 
 import dynamic from "next/dynamic";
 import LoadingSkeleton from "@/app/components/ui/LoadingSkeleton";
-import type { GAPin, Deck } from "@/lib/api/types";
+import type { GAPin, Deck, AreaPolygonPoint } from "@/lib/api/types";
+
+/** Read-only polygon to render on top of the GA. Points are normalized
+ *  0..1 of the GA image (same convention `AreaPolygonDrawer` writes). */
+export interface AreaPolygonOverlay {
+  id: string;
+  name: string;
+  polygon: AreaPolygonPoint[];
+  color: string;
+}
 
 // Dynamic import - Leaflet doesn't work with SSR
 const GALeafletContent = dynamic(() => import("./GALeafletContent"), {
@@ -25,6 +34,9 @@ export interface GALeafletViewerProps {
   onDeckClick?: (deck: Deck, x: number, y: number) => void;
   canEdit?: boolean;
   decks?: Deck[];
+  /** Area polygons to draw on top of the GA, each pre-colored. Empty / omitted
+   *  hides them entirely. */
+  areaPolygons?: AreaPolygonOverlay[];
   className?: string;
 }
 

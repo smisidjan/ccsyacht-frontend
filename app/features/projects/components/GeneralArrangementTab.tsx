@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
 import {
@@ -119,6 +119,9 @@ export default function GeneralArrangementTab({
 
   // Pin state
   const [isAddPinMode, setIsAddPinMode] = useState(false);
+  // When true, overlay each area's polygon on the GA, colored by its active
+  // stage. Off by default — opt-in visualization.
+  const [showActiveStages, setShowActiveStages] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isRemarkModalOpen, setIsRemarkModalOpen] = useState(false);
@@ -146,6 +149,61 @@ export default function GeneralArrangementTab({
   const loading = useMinimumLoadingTime(rawLoading);
 
   const canEdit = hasPermission(PERMISSIONS.EDIT_PROJECTS);
+
+  // Compute "active stage per area" overlays. We treat the active stage as
+  // the one the team is currently progressing through:
+  //   1. status === in_progress
+  //   2. else status === pending_signoff
+  //   3. else the first not_started (= next up)
+  // If none match, the area has nothing meaningful to show right now and is
+  // skipped. Empty array when the toggle is off so we don't churn render
+  // work when the user isn't looking.
+  const activeStagePolygons = useMemo(() => {
+    if (!showActiveStages) return [];
+    if (!areas || !stages) return [];
+    const stagesByArea = new Map<string, typeof stages>();
+    for (const s of stages) {
+      if (!s.area?.identifier) continue;
+      const list = stagesByArea.get(s.area.identifier) ?? [];
+      list.push(s);
+      stagesByArea.set(s.area.identifier, list);
+    }
+    return areas
+      .filter((a) => Array.isArray(a.polygon) && a.polygon.length >= 3)
+      .map((a) => {
+        const areaStages = (stagesByArea.get(a.identifier) ?? [])
+          .slice()
+          .sort((x, y) => x.position - y.position);
+        const active =
+          areaStages.find((s) => s.status.name === "in_progress") ??
+          areaStages.find((s) => s.status.name === "pending_signoff") ??
+          areaStages.find((s) => s.status.name === "not_started") ??
+          null;
+        if (!active?.color) return null;
+        return {
+          id: a.identifier,
+          name: `${a.name} — ${active.name}`,
+          polygon: a.polygon!,
+          color: active.color,
+          stageName: active.name,
+        };
+      })
+      .filter((p): p is NonNullable<typeof p> => p !== null);
+  }, [showActiveStages, areas, stages]);
+
+  // Legend: each distinct (stageName + color) combination currently coloring
+  // a polygon on the GA. Sorted alphabetically so the list reads stably.
+  const activeStageLegend = useMemo(() => {
+    const seen = new Set<string>();
+    const out: { name: string; color: string }[] = [];
+    for (const entry of activeStagePolygons) {
+      const key = `${entry.stageName}|${entry.color.toLowerCase()}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push({ name: entry.stageName, color: entry.color });
+    }
+    return out.sort((a, b) => a.name.localeCompare(b.name));
+  }, [activeStagePolygons]);
 
   // Filter pins based on selected filters
   const displayedPins = allPins.filter((pin) => {
@@ -332,9 +390,9 @@ export default function GeneralArrangementTab({
       <div className="flex flex-col lg:flex-row gap-6">
         {/* Left: GA Viewer */}
         <div className="flex-shrink-0">
-          {/* Edit Mode Toggle */}
-          {canEdit && (
-            <div className="mb-4 flex items-center gap-4">
+          {/* Edit Mode + Show active stages toggles */}
+          <div className="mb-4 flex flex-wrap items-center gap-x-6 gap-y-2">
+            {canEdit && (
               <label className="flex items-center gap-3 cursor-pointer">
                 <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                   {tPins("editMode") || "Edit mode"}
@@ -355,11 +413,62 @@ export default function GeneralArrangementTab({
                   </div>
                 </div>
               </label>
-              {isAddPinMode && (
-                <span className="text-sm text-blue-600 dark:text-blue-400">
-                  {tPins("hoverDeckToAdd") || "Hover over a deck to add a pin"}
+            )}
+
+            <label className="flex items-center gap-3 cursor-pointer">
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                {tPins("showActiveStages") || "Show active stages"}
+              </span>
+              <div className="relative">
+                <input
+                  type="checkbox"
+                  checked={showActiveStages}
+                  onChange={(e) => setShowActiveStages(e.target.checked)}
+                  className="sr-only"
+                />
+                <div className={`w-11 h-6 rounded-full transition-colors ${
+                  showActiveStages ? "bg-blue-600" : "bg-gray-300 dark:bg-gray-600"
+                }`}>
+                  <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                    showActiveStages ? "translate-x-5" : "translate-x-0"
+                  }`} />
+                </div>
+              </div>
+            </label>
+
+            {canEdit && isAddPinMode && (
+              <span className="text-sm text-blue-600 dark:text-blue-400">
+                {tPins("hoverDeckToAdd") || "Hover over a deck to add a pin"}
+              </span>
+            )}
+            {showActiveStages && activeStagePolygons.length === 0 && areas && stages && (
+              <span className="text-sm text-gray-500 dark:text-gray-400">
+                {tPins("noActiveStages") || "No areas with an active stage to show."}
+              </span>
+            )}
+          </div>
+
+          {/* Legend — one pill per distinct stage currently coloring an
+              area on the GA. Helps the viewer connect color → stage name
+              without hovering every polygon. */}
+          {showActiveStages && activeStageLegend.length > 0 && (
+            <div className="mb-4 flex flex-wrap items-center gap-2">
+              <span className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mr-1">
+                {tPins("legend") || "Legend"}
+              </span>
+              {activeStageLegend.map((entry) => (
+                <span
+                  key={`${entry.name}-${entry.color}`}
+                  className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs text-gray-700 dark:text-gray-200"
+                >
+                  <span
+                    className="w-3 h-3 rounded-sm border border-gray-300 dark:border-gray-600 flex-shrink-0"
+                    style={{ backgroundColor: entry.color }}
+                    aria-hidden="true"
+                  />
+                  {entry.name}
                 </span>
-              )}
+              ))}
             </div>
           )}
 
@@ -395,6 +504,7 @@ export default function GeneralArrangementTab({
                 }}
                 canEdit={canEdit && isAddPinMode}
                 decks={decks || []}
+                areaPolygons={activeStagePolygons}
               />
             ) : (
               <div className="flex items-center justify-center min-h-[600px]">

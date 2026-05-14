@@ -33,7 +33,16 @@ export default function StageListItem({
           : "hover:bg-gray-50 dark:hover:bg-gray-700/50 border-l-4 border-transparent"
       }`}
     >
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex items-start gap-3">
+        {/* Stage color swatch — hidden when the stage has no color set
+            (legacy data) so we don't show an empty box. */}
+        {stage.color && (
+          <span
+            className="inline-block w-3 h-3 rounded-sm mt-1 flex-shrink-0 border border-gray-200 dark:border-gray-600"
+            style={{ backgroundColor: stage.color }}
+            aria-hidden="true"
+          />
+        )}
         <div className="flex-1 min-w-0">
           <h3
             className={`text-sm font-semibold truncate ${

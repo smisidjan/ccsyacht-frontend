@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { MapContainer, ImageOverlay, Rectangle, useMap, useMapEvents } from "react-leaflet";
+import { MapContainer, ImageOverlay, Polygon, Rectangle, Tooltip, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import type { GAPin, Deck } from "@/lib/api/types";
+import type { AreaPolygonOverlay } from "./GALeafletViewer";
 import PinMarker from "./PinMarker";
 
 // Fix Leaflet default marker icon issue in Next.js
@@ -30,6 +31,7 @@ interface GALeafletContentProps {
   onDeckClick?: (deck: Deck, x: number, y: number) => void;
   canEdit?: boolean;
   decks?: Deck[];
+  areaPolygons?: AreaPolygonOverlay[];
   className?: string;
 }
 
@@ -109,6 +111,7 @@ export default function GALeafletContent({
   onDeckClick,
   canEdit = false,
   decks = [],
+  areaPolygons = [],
   className = "",
 }: GALeafletContentProps) {
   const mapRef = useRef<L.Map | null>(null);
@@ -203,6 +206,35 @@ export default function GALeafletContent({
           onImageClick={onImageClick}
           canEdit={canEdit}
         />
+
+        {/* Area polygon overlays — rendered below pins so markers stay on top.
+            Coords are 0..1 normalized → pixels for Leaflet's lat/lng. The
+            stroke + fill use the pre-computed color (typically the area's
+            active stage color). */}
+        {areaPolygons.map((area) => {
+          if (!area.polygon || area.polygon.length < 3) return null;
+          const positions: [number, number][] = area.polygon.map((p) => [
+            p.y * imageHeight,
+            p.x * imageWidth,
+          ]);
+          return (
+            <Polygon
+              key={`area-poly-${area.id}`}
+              positions={positions}
+              pathOptions={{
+                color: area.color,
+                weight: 2,
+                fillColor: area.color,
+                fillOpacity: 0.4,
+              }}
+              interactive
+            >
+              <Tooltip sticky direction="top">
+                {area.name}
+              </Tooltip>
+            </Polygon>
+          );
+        })}
 
         {/* Render pins */}
         {pins.map((pin) => (

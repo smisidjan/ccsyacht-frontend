@@ -137,9 +137,18 @@ export default function StageDetailPanel({
               />
             ) : (
               <div>
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-                  {stage.name}
-                </h2>
+                <div className="flex items-center gap-3 mb-2">
+                  {stage.color && (
+                    <span
+                      className="inline-block w-5 h-5 rounded-sm flex-shrink-0 border border-gray-200 dark:border-gray-600"
+                      style={{ backgroundColor: stage.color }}
+                      aria-hidden="true"
+                    />
+                  )}
+                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                    {stage.name}
+                  </h2>
+                </div>
                 <div className="flex items-center gap-3 flex-wrap">
                   <span className={`inline-block px-3 py-1 rounded text-sm font-medium ${
                     statusColors[stage.status.name as keyof typeof statusColors]
