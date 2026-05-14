@@ -11,6 +11,7 @@ import Button from "@/app/components/ui/Button";
 import Alert from "@/app/components/ui/Alert";
 import { areasApi, useAreas, useDecks } from "@/lib/api";
 import { stageTemplatesApi } from "@/lib/api/stageTemplates";
+import { usePolygonHistory } from "./usePolygonHistory";
 import { useGAImage } from "@/lib/hooks/useGAImage";
 import { handleError } from "@/lib/utils/errors";
 import { normalizeStageColor, pickFreshStageColor } from "@/lib/utils/colors";
@@ -188,8 +189,19 @@ export default function CreateAndDefineAreaModal({
   const { imageBlobUrl: gaBlobUrl } = useGAImage(gaImageUrl);
 
   const [selectedDeckId, setSelectedDeckId] = useState("");
-  const [polygon, setPolygon] = useState<AreaPolygonPoint[]>([]);
-  const [isClosed, setIsClosed] = useState(false);
+  // Polygon state lives in a history-aware reducer so the drawer's Undo /
+  // Redo buttons (and the keyboard shortcuts) have a proper stack to step
+  // through, not just a "drop the last vertex" stub.
+  const {
+    polygon,
+    isClosed,
+    set: setPolygonSnapshot,
+    undo: undoPolygon,
+    redo: redoPolygon,
+    reset: resetPolygon,
+    canUndo,
+    canRedo,
+  } = usePolygonHistory();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -247,22 +259,20 @@ export default function CreateAndDefineAreaModal({
   useEffect(() => {
     if (!isOpen) return;
     setSelectedDeckId("");
-    setPolygon([]);
-    setIsClosed(false);
+    resetPolygon();
     setName("");
     setDescription("");
     setError(null);
     setCreateStages(true);
     setStageRows([]);
     setNewCustomStageName("");
-  }, [isOpen]);
+  }, [isOpen, resetPolygon]);
 
   // Picking a different deck clears any in-progress polygon — the user is
   // starting over for that region.
   useEffect(() => {
-    setPolygon([]);
-    setIsClosed(false);
-  }, [selectedDeckId]);
+    resetPolygon();
+  }, [selectedDeckId, resetPolygon]);
 
   const selectedDeck = useMemo(
     () => decks?.find((d) => d.identifier === selectedDeckId),
@@ -329,8 +339,7 @@ export default function CreateAndDefineAreaModal({
     !hasDuplicateColors;
 
   const handleReset = () => {
-    setPolygon([]);
-    setIsClosed(false);
+    resetPolygon();
   };
 
   const handleSave = async () => {
@@ -400,9 +409,12 @@ export default function CreateAndDefineAreaModal({
               existingAreas={existingAreasForDrawer}
               polygon={polygon}
               isClosed={isClosed}
+              onUndo={undoPolygon}
+              onRedo={redoPolygon}
+              canUndo={canUndo}
+              canRedo={canRedo}
               onChange={(p, c) => {
-                setPolygon(p);
-                setIsClosed(c);
+                setPolygonSnapshot(p, c);
               }}
             />
           ) : (
