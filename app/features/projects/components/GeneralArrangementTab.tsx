@@ -205,47 +205,31 @@ export default function GeneralArrangementTab({
     return out.sort((a, b) => a.name.localeCompare(b.name));
   }, [activeStagePolygons]);
 
+  // The stages list contains one row per (area × stage-template) combo, so
+  // names repeat for every area. The filter is a stage-template picker:
+  // dedupe by name (first occurrence wins) and match pins by stage name —
+  // selecting "Substrate filler" then shows pins from every area's
+  // Substrate-filler stage.
+  const uniqueStageNames = useMemo(() => {
+    if (!stages) return [];
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const s of stages) {
+      if (seen.has(s.name)) continue;
+      seen.add(s.name);
+      out.push(s.name);
+    }
+    return out;
+  }, [stages]);
+
   // Filter pins based on selected filters
   const displayedPins = allPins.filter((pin) => {
     if (selectedDeckFilter && pin.deck.identifier !== selectedDeckFilter) return false;
     if (selectedAreaFilter && pin.area.identifier !== selectedAreaFilter) return false;
-    if (selectedStageFilter && pin.stage.identifier !== selectedStageFilter) return false;
+    if (selectedStageFilter && pin.stage.name !== selectedStageFilter) return false;
     if (selectedStatusFilter && pin.stage.status !== selectedStatusFilter) return false;
     return true;
   });
-
-  // Handle filter changes
-  const handleDeckFilterChange = (deckId: string | null) => {
-    setSelectedDeckFilter(deckId);
-    setSelectedAreaFilter(null);
-    setSelectedStageFilter(null);
-  };
-
-  const handleAreaFilterChange = (areaId: string | null) => {
-    setSelectedAreaFilter(areaId);
-    setSelectedStageFilter(null);
-    if (areaId && areas) {
-      const selectedArea = areas.find((area) => area.identifier === areaId);
-      if (selectedArea?.containedInPlace?.identifier) {
-        setSelectedDeckFilter(selectedArea.containedInPlace.identifier);
-      }
-    }
-  };
-
-  const handleStageFilterChange = (stageId: string | null) => {
-    setSelectedStageFilter(stageId);
-    if (stageId && stages) {
-      const selectedStage = stages.find((stage) => stage.identifier === stageId);
-      if (selectedStage) {
-        if (selectedStage.area?.identifier) {
-          setSelectedAreaFilter(selectedStage.area.identifier);
-        }
-        if (selectedStage.deck?.identifier) {
-          setSelectedDeckFilter(selectedStage.deck.identifier);
-        }
-      }
-    }
-  };
 
   // Handle pin deletion
   const handleDeletePin = useCallback((pinId: string) => {
@@ -323,7 +307,7 @@ export default function GeneralArrangementTab({
           {decks && decks.length > 0 && (
             <select
               value={selectedDeckFilter || "all"}
-              onChange={(e) => handleDeckFilterChange(e.target.value === "all" ? null : e.target.value)}
+              onChange={(e) => setSelectedDeckFilter(e.target.value === "all" ? null : e.target.value)}
               className="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg text-sm text-gray-700 dark:text-gray-300"
             >
               <option value="all">{tPins("allDecks") || "All Decks"}</option>
@@ -338,7 +322,7 @@ export default function GeneralArrangementTab({
           {areas && areas.length > 0 && (
             <select
               value={selectedAreaFilter || "all"}
-              onChange={(e) => handleAreaFilterChange(e.target.value === "all" ? null : e.target.value)}
+              onChange={(e) => setSelectedAreaFilter(e.target.value === "all" ? null : e.target.value)}
               className="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg text-sm text-gray-700 dark:text-gray-300"
             >
               <option value="all">{tPins("allAreas") || "All Areas"}</option>
@@ -350,16 +334,16 @@ export default function GeneralArrangementTab({
             </select>
           )}
 
-          {stages && stages.length > 0 && (
+          {uniqueStageNames.length > 0 && (
             <select
               value={selectedStageFilter || "all"}
-              onChange={(e) => handleStageFilterChange(e.target.value === "all" ? null : e.target.value)}
+              onChange={(e) => setSelectedStageFilter(e.target.value === "all" ? null : e.target.value)}
               className="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg text-sm text-gray-700 dark:text-gray-300"
             >
               <option value="all">{tPins("allStages") || "All Stages"}</option>
-              {stages.map((stage) => (
-                <option key={stage.identifier} value={stage.identifier}>
-                  {stage.name}
+              {uniqueStageNames.map((name) => (
+                <option key={name} value={name}>
+                  {name}
                 </option>
               ))}
             </select>
