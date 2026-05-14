@@ -26,6 +26,11 @@ import Alert from "@/app/components/ui/Alert";
 import DeleteConfirmModal from "@/app/components/modals/DeleteConfirmModal";
 import { systemStageTemplatesApi } from "@/lib/api/system";
 import { useToast } from "@/app/context/ToastContext";
+import {
+  isValidStageColor,
+  normalizeStageColor,
+  pickFreshStageColor,
+} from "@/lib/utils/colors";
 import type { ApiError, StageTemplate } from "@/lib/api/types";
 
 interface StageTemplatesBulkEditorProps {
@@ -39,6 +44,9 @@ interface StageRow {
   identifier: string | null;
   name: string;
   description: string;
+  /** Hex color (`#RRGGBB`) or null for "no color set" (legacy data). New rows
+   *  always default to a fresh palette color. */
+  color: string | null;
   isActive: boolean;
 }
 
@@ -49,6 +57,7 @@ function snapshot(rows: StageRow[]): string {
       id: r.identifier,
       name: r.name,
       description: r.description,
+      color: r.color,
       isActive: r.isActive,
     }))
   );
@@ -60,6 +69,7 @@ function rowsFromTemplates(templates: StageTemplate[]): StageRow[] {
     identifier: t.identifier,
     name: t.name,
     description: t.description ?? "",
+    color: t.color,
     isActive: t.isActive,
   }));
 }
@@ -67,6 +77,7 @@ function rowsFromTemplates(templates: StageTemplate[]): StageRow[] {
 function SortableRow({
   row,
   rowError,
+  colorError,
   isEditing,
   onChange,
   onDelete,
@@ -74,6 +85,7 @@ function SortableRow({
 }: {
   row: StageRow;
   rowError?: string;
+  colorError?: boolean;
   isEditing: boolean;
   onChange: (patch: Partial<StageRow>) => void;
   onDelete: () => void;
@@ -146,6 +158,32 @@ function SortableRow({
           tabIndex={isEditing ? 0 : -1}
           className={`${inputBase} ${inputMode} ${descBorder}`}
         />
+      </td>
+      <td className="px-3 py-2 w-24">
+        <div
+          className={`flex items-center gap-2 ${
+            colorError ? "ring-2 ring-red-500 dark:ring-red-400 rounded p-0.5" : ""
+          }`}
+        >
+          <span
+            className="inline-block w-6 h-6 rounded border border-gray-300 dark:border-gray-600 flex-shrink-0"
+            style={{ backgroundColor: row.color ?? "transparent" }}
+            aria-hidden="true"
+          />
+          {isEditing ? (
+            <input
+              type="color"
+              value={row.color ?? "#000000"}
+              onChange={(e) => onChange({ color: e.target.value })}
+              aria-label={t("color")}
+              className="w-8 h-6 p-0 border-0 bg-transparent cursor-pointer"
+            />
+          ) : (
+            <span className="text-xs text-gray-500 dark:text-gray-400 font-mono">
+              {row.color ?? "—"}
+            </span>
+          )}
+        </div>
       </td>
       <td className="px-3 py-2 text-center w-20">
         <input
@@ -244,7 +282,32 @@ export default function StageTemplatesBulkEditor({
 
   const hasDuplicateNames = duplicateNames.size > 0;
   const hasEmptyName = rows.some((r) => !r.name.trim());
-  const canSave = isDirty && !hasDuplicateNames && !hasEmptyName && !saving;
+
+  /** Hex colors that collide within the current rows (case-insensitive).
+   *  Mirrors the bulk endpoint's server-side uniqueness rule. */
+  const duplicateColors = useMemo(() => {
+    const seen = new Map<string, number>();
+    const dups = new Set<string>();
+    for (const r of rows) {
+      const key = normalizeStageColor(r.color);
+      if (!key) continue;
+      if (seen.has(key)) dups.add(key);
+      seen.set(key, (seen.get(key) ?? 0) + 1);
+    }
+    return dups;
+  }, [rows]);
+
+  const hasDuplicateColors = duplicateColors.size > 0;
+  const hasInvalidColor = rows.some(
+    (r) => r.color !== null && !isValidStageColor(r.color)
+  );
+  const canSave =
+    isDirty &&
+    !hasDuplicateNames &&
+    !hasDuplicateColors &&
+    !hasEmptyName &&
+    !hasInvalidColor &&
+    !saving;
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -259,16 +322,22 @@ export default function StageTemplatesBulkEditor({
   };
 
   const handleAddRow = () => {
-    setRows((prev) => [
-      ...prev,
-      {
-        rowId: crypto.randomUUID(),
-        identifier: null,
-        name: "",
-        description: "",
-        isActive: true,
-      },
-    ]);
+    setRows((prev) => {
+      // Suggest the first palette color not already used by another row in
+      // the current list, so the user rarely has to think about uniqueness.
+      const freshColor = pickFreshStageColor(prev.map((r) => r.color));
+      return [
+        ...prev,
+        {
+          rowId: crypto.randomUUID(),
+          identifier: null,
+          name: "",
+          description: "",
+          color: freshColor,
+          isActive: true,
+        },
+      ];
+    });
   };
 
   const handleRowChange = (rowId: string, patch: Partial<StageRow>) => {
@@ -293,11 +362,12 @@ export default function StageTemplatesBulkEditor({
   };
 
   const handleRevert = () => {
-    // Re-derive from baseline: snapshot is JSON of { id, name, description, isActive }
+    // Re-derive from baseline: snapshot is JSON of the persisted fields.
     const parsed = JSON.parse(baselineSnapshot) as Array<{
       id: string | null;
       name: string;
       description: string;
+      color: string | null;
       isActive: boolean;
     }>;
     setRows(
@@ -306,6 +376,7 @@ export default function StageTemplatesBulkEditor({
         identifier: p.id,
         name: p.name,
         description: p.description,
+        color: p.color,
         isActive: p.isActive,
       }))
     );
@@ -326,6 +397,7 @@ export default function StageTemplatesBulkEditor({
           identifier: r.identifier,
           name: r.name.trim(),
           description: r.description.trim() || undefined,
+          color: r.color ?? null,
           is_active: r.isActive,
         })),
       };
@@ -391,6 +463,9 @@ export default function StageTemplatesBulkEditor({
       {isEditing && hasDuplicateNames && (
         <Alert type="warning" message={t("duplicateNamesWarning")} />
       )}
+      {isEditing && hasDuplicateColors && (
+        <Alert type="warning" message={t("duplicateColorsWarning")} />
+      )}
 
       {!isEditing && (
         <div className="flex justify-end">
@@ -417,6 +492,9 @@ export default function StageTemplatesBulkEditor({
                 <th className="px-3 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                   {t("description")}
                 </th>
+                <th className="px-3 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider w-24">
+                  {t("color")}
+                </th>
                 <th className="px-3 py-3 text-center text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider w-20">
                   {t("active")}
                 </th>
@@ -427,7 +505,7 @@ export default function StageTemplatesBulkEditor({
               {rows.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={5}
+                    colSpan={6}
                     className="px-3 py-8 text-center text-sm text-gray-500 dark:text-gray-400"
                   >
                     {t("emptyState")}
@@ -438,17 +516,24 @@ export default function StageTemplatesBulkEditor({
                   items={rows.map((r) => r.rowId)}
                   strategy={verticalListSortingStrategy}
                 >
-                  {rows.map((row) => (
-                    <SortableRow
-                      key={row.rowId}
-                      row={row}
-                      rowError={rowErrors[row.rowId]}
-                      isEditing={isEditing}
-                      onChange={(patch) => handleRowChange(row.rowId, patch)}
-                      onDelete={() => handleDeleteRow(row.rowId)}
-                      t={t}
-                    />
-                  ))}
+                  {rows.map((row) => {
+                    const normalized = normalizeStageColor(row.color);
+                    const colorError = normalized
+                      ? duplicateColors.has(normalized)
+                      : false;
+                    return (
+                      <SortableRow
+                        key={row.rowId}
+                        row={row}
+                        rowError={rowErrors[row.rowId]}
+                        colorError={colorError}
+                        isEditing={isEditing}
+                        onChange={(patch) => handleRowChange(row.rowId, patch)}
+                        onDelete={() => handleDeleteRow(row.rowId)}
+                        t={t}
+                      />
+                    );
+                  })}
                 </SortableContext>
               )}
             </tbody>

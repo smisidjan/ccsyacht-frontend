@@ -709,6 +709,10 @@ export type CreateAreaStageInput =
       type: "custom";
       name: string;
       description?: string;
+      /** Hex color (`#RRGGBB`) for the new stage. Template entries inherit
+       *  their color from the referenced template — only custom entries need
+       *  to supply one. */
+      color?: string | null;
     };
 
 export interface CreateAreaRequest {
@@ -744,6 +748,9 @@ export interface StageTemplate {
   identifier: string;
   name: string;
   description?: string;
+  /** Hex color (`#RRGGBB`) used as the visual marker for this template and
+   *  for stages instantiated from it. May be null on legacy data. */
+  color: string | null;
   position: number;
   isActive: boolean;
   canDelete: boolean;
@@ -754,6 +761,7 @@ export interface StageTemplate {
 export interface CreateStageTemplateRequest {
   name: string;
   description?: string;
+  color?: string | null;
   sort_order?: number;
   is_active?: boolean;
 }
@@ -761,6 +769,7 @@ export interface CreateStageTemplateRequest {
 export interface UpdateStageTemplateRequest {
   name?: string;
   description?: string;
+  color?: string | null;
   sort_order?: number;
   is_active?: boolean;
 }
@@ -773,6 +782,7 @@ export interface BulkStageTemplateEntry {
   identifier?: string | null;
   name: string;
   description?: string;
+  color?: string | null;
   is_active?: boolean;
 }
 
@@ -805,6 +815,10 @@ export interface Stage {
   identifier: string;
   name: string;
   description?: string;
+  /** Hex color (`#RRGGBB`) — snapshot at stage-creation time from the
+   *  template (if any) or supplied for custom stages. May be null on
+   *  legacy data. */
+  color: string | null;
   position: number;
   status: {
     "@type"?: string;
@@ -824,6 +838,7 @@ export interface Stage {
 export interface CreateStageRequest {
   name: string;
   description?: string;
+  color?: string | null;
   status?: StageStatus;
   sort_order?: number;
 }
@@ -831,6 +846,7 @@ export interface CreateStageRequest {
 export interface UpdateStageRequest {
   name?: string;
   description?: string;
+  color?: string | null;
   status?: StageStatus;
   sort_order?: number;
 }
@@ -842,6 +858,7 @@ export interface UpdateStageStatusRequest {
 export interface BulkCreateStagesRequest {
   stages: {
     name: string;
+    color?: string | null;
     sort_order: number;
   }[];
 }

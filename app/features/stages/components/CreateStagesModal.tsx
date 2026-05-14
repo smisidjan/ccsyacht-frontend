@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import {
   DndContext,
@@ -20,9 +20,11 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import BaseModal from "@/app/components/modals/BaseModal";
+import Alert from "@/app/components/ui/Alert";
 import { stageTemplatesApi } from "@/lib/api/stageTemplates";
 import { stagesApi } from "@/lib/api/stages";
 import { handleError } from "@/lib/utils/errors";
+import { normalizeStageColor, pickFreshStageColor } from "@/lib/utils/colors";
 import { Bars3Icon, TrashIcon } from "@heroicons/react/24/outline";
 
 interface CreateStagesModalProps {
@@ -36,14 +38,26 @@ interface CreateStagesModalProps {
 interface StageRow {
   id: string; // temp UUID for drag & drop
   name: string;
+  /** Hex color sent to the backend. Seeded from the template's color when the
+   *  row comes from a template, or a fresh palette pick when the user adds a
+   *  custom row. */
+  color: string;
+  /** True for rows loaded from a tenant stage template — their color is
+   *  managed centrally by a system admin, so the picker is hidden here
+   *  (swatch stays visible). Custom rows added on-the-fly are editable. */
+  isFromTemplate: boolean;
 }
 
 // Sortable row component
 function SortableStageRow({
   stage,
+  colorClash,
+  onChangeColor,
   onDelete,
 }: {
   stage: StageRow;
+  colorClash: boolean;
+  onChangeColor: (id: string, color: string) => void;
   onDelete: (id: string) => void;
 }) {
   const t = useTranslations("stages");
@@ -69,6 +83,34 @@ function SortableStageRow({
         >
           <Bars3Icon className="w-5 h-5" />
         </button>
+      </td>
+      <td className="px-4 py-3 w-24">
+        <div
+          className={`flex items-center gap-2 ${
+            colorClash ? "ring-2 ring-red-500 dark:ring-red-400 rounded p-0.5" : ""
+          }`}
+        >
+          <span
+            className="inline-block w-5 h-5 rounded border border-gray-300 dark:border-gray-600 flex-shrink-0"
+            style={{ backgroundColor: stage.color }}
+            aria-hidden="true"
+          />
+          {stage.isFromTemplate ? (
+            // Template colors are owned by a system admin; show the value but
+            // don't let the host change it here.
+            <span className="text-xs text-gray-500 dark:text-gray-400 font-mono">
+              {stage.color}
+            </span>
+          ) : (
+            <input
+              type="color"
+              value={stage.color}
+              onChange={(e) => onChangeColor(stage.id, e.target.value)}
+              aria-label={t("color")}
+              className="w-7 h-6 p-0 border-0 bg-transparent cursor-pointer"
+            />
+          )}
+        </div>
       </td>
       <td className="px-4 py-3">
         <span className="text-sm text-gray-900 dark:text-gray-100">{stage.name}</span>
@@ -99,6 +141,21 @@ export default function CreateStagesModal({
   const [customStageName, setCustomStageName] = useState("");
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
 
+  /** Colors duplicated between rows (case-insensitive). Block Save until
+   *  fixed — mirrors the bulk-template editor and the area-create modal. */
+  const duplicateColors = useMemo(() => {
+    const seen = new Map<string, number>();
+    const dups = new Set<string>();
+    for (const row of stages) {
+      const key = normalizeStageColor(row.color);
+      if (!key) continue;
+      if (seen.has(key)) dups.add(key);
+      seen.set(key, (seen.get(key) ?? 0) + 1);
+    }
+    return dups;
+  }, [stages]);
+  const hasDuplicateColors = duplicateColors.size > 0;
+
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
@@ -119,11 +176,20 @@ export default function CreateStagesModal({
       const response = await stageTemplatesApi.getAll({ active_only: true });
       const templates = response.data || [];
 
-      // Convert templates to stage rows
-      const stageRows: StageRow[] = templates.map((template) => ({
-        id: crypto.randomUUID(),
-        name: template.name,
-      }));
+      // Convert templates to stage rows. Templates without a color (legacy
+      // data) fall back to a fresh palette pick computed against the rows
+      // already assigned — keeps the list duplicate-free out of the box.
+      const stageRows: StageRow[] = [];
+      for (const template of templates) {
+        const color =
+          template.color ?? pickFreshStageColor(stageRows.map((r) => r.color));
+        stageRows.push({
+          id: crypto.randomUUID(),
+          name: template.name,
+          color,
+          isFromTemplate: true,
+        });
+      }
 
       setStages(stageRows);
     } catch (error) {
@@ -150,13 +216,23 @@ export default function CreateStagesModal({
     const trimmedName = customStageName.trim();
     if (!trimmedName) return;
 
-    const newStage: StageRow = {
-      id: crypto.randomUUID(),
-      name: trimmedName,
-    };
-
-    setStages([...stages, newStage]);
+    setStages((prev) => {
+      const freshColor = pickFreshStageColor(prev.map((r) => r.color));
+      return [
+        ...prev,
+        {
+          id: crypto.randomUUID(),
+          name: trimmedName,
+          color: freshColor,
+          isFromTemplate: false,
+        },
+      ];
+    });
     setCustomStageName("");
+  };
+
+  const handleChangeColor = (id: string, color: string) => {
+    setStages((prev) => prev.map((s) => (s.id === id ? { ...s, color } : s)));
   };
 
   const handleDeleteStage = (id: string) => {
@@ -168,6 +244,7 @@ export default function CreateStagesModal({
     const bulkCreateRequest = {
       stages: stages.map((stage, index) => ({
         name: stage.name,
+        color: stage.color,
         sort_order: index,
       })),
     };
@@ -196,9 +273,13 @@ export default function CreateStagesModal({
       onSubmit={handleSubmit}
       successMessage={t("bulkCreateSuccess")}
       errorFallbackMessage={t("bulkCreateError")}
-      submitDisabled={stages.length === 0}
+      submitDisabled={stages.length === 0 || hasDuplicateColors}
     >
       <div className="space-y-4">
+        {hasDuplicateColors && (
+          <Alert type="warning" message={t("duplicateColorsWarning")} />
+        )}
+
         {/* Add custom stage input */}
         <div className="flex gap-2">
           <input
@@ -250,6 +331,9 @@ export default function CreateStagesModal({
                 <thead className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
                   <tr>
                     <th className="px-2 py-3 w-10"></th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider w-24">
+                      {t("color")}
+                    </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                       {t("name")}
                     </th>
@@ -258,13 +342,21 @@ export default function CreateStagesModal({
                 </thead>
                 <tbody>
                   <SortableContext items={stages} strategy={verticalListSortingStrategy}>
-                    {stages.map((stage) => (
-                      <SortableStageRow
-                        key={stage.id}
-                        stage={stage}
-                        onDelete={handleDeleteStage}
-                      />
-                    ))}
+                    {stages.map((stage) => {
+                      const normalized = normalizeStageColor(stage.color);
+                      const colorClash = normalized
+                        ? duplicateColors.has(normalized)
+                        : false;
+                      return (
+                        <SortableStageRow
+                          key={stage.id}
+                          stage={stage}
+                          colorClash={colorClash}
+                          onChangeColor={handleChangeColor}
+                          onDelete={handleDeleteStage}
+                        />
+                      );
+                    })}
                   </SortableContext>
                 </tbody>
               </table>

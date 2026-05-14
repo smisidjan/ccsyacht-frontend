@@ -1258,6 +1258,7 @@
         "namePlaceholder": "Stage name",
         "description": "Description",
         "descriptionPlaceholder": "Optional description",
+        "color": "Color",
         "active": "Active",
         "edit": "Edit",
         "addStage": "Add stage",
@@ -1266,6 +1267,7 @@
         "removeRow": "Remove stage",
         "emptyState": "No stage templates yet. Click \"Add stage\" to create one.",
         "duplicateNamesWarning": "Two or more stages share the same name. Names must be unique.",
+        "duplicateColorsWarning": "Two or more stages share the same color. Colors must be unique.",
         "saveSuccess": "Stage templates saved",
         "saveError": "Failed to save stage templates",
         "emptySaveTitle": "Delete all stage templates?",
@@ -1863,6 +1865,7 @@
     "customStages": "Custom stages",
     "customStagePlaceholder": "Custom stage name",
     "addCustomStage": "Add custom stage",
+    "duplicateColorsWarning": "Two or more stages share the same color. Pick a different color for each.",
     "remove": "Remove"
   },
   "decks": {
@@ -1962,6 +1965,7 @@
   },
   "stages": {
     "name": "Name",
+    "color": "Color",
     "bulkCreate": "Create Stages",
     "addCustomStage": "Add custom stage...",
     "addStage": "Add",
@@ -1970,6 +1974,7 @@
     "stagesConfigured": "{count} stages configured",
     "bulkCreateSuccess": "Stages created successfully",
     "bulkCreateError": "Failed to create stages",
+    "duplicateColorsWarning": "Two or more stages share the same color. Pick a different color for each.",
     "noTemplatesFound": "No stage templates found. Contact your administrator.",
     "loading": "Loading"
   },

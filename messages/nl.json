@@ -1288,6 +1288,7 @@
         "namePlaceholder": "Stage-naam",
         "description": "Beschrijving",
         "descriptionPlaceholder": "Optionele beschrijving",
+        "color": "Kleur",
         "active": "Actief",
         "edit": "Bewerken",
         "addStage": "Stage toevoegen",
@@ -1296,6 +1297,7 @@
         "removeRow": "Stage verwijderen",
         "emptyState": "Nog geen stage-templates. Klik \"Stage toevoegen\" om er een aan te maken.",
         "duplicateNamesWarning": "Twee of meer stages hebben dezelfde naam. Namen moeten uniek zijn.",
+        "duplicateColorsWarning": "Twee of meer stages hebben dezelfde kleur. Kleuren moeten uniek zijn.",
         "saveSuccess": "Stage-templates opgeslagen",
         "saveError": "Opslaan van stage-templates mislukt",
         "emptySaveTitle": "Alle stage-templates verwijderen?",
@@ -1893,6 +1895,7 @@
     "customStages": "Eigen stages",
     "customStagePlaceholder": "Naam eigen stage",
     "addCustomStage": "Eigen stage toevoegen",
+    "duplicateColorsWarning": "Twee of meer stages hebben dezelfde kleur. Kies een andere kleur per stage.",
     "remove": "Verwijderen"
   },
   "decks": {
@@ -1992,6 +1995,7 @@
   },
   "stages": {
     "name": "Naam",
+    "color": "Kleur",
     "bulkCreate": "Stages Aanmaken",
     "addCustomStage": "Voeg eigen stage toe...",
     "addStage": "Toevoegen",
@@ -2000,6 +2004,7 @@
     "stagesConfigured": "{count} stages geconfigureerd",
     "bulkCreateSuccess": "Stages succesvol aangemaakt",
     "bulkCreateError": "Kan stages niet aanmaken",
+    "duplicateColorsWarning": "Twee of meer stages hebben dezelfde kleur. Kies een andere kleur per stage.",
     "noTemplatesFound": "Geen stage templates gevonden. Neem contact op met je beheerder.",
     "loading": "Laden"
   },

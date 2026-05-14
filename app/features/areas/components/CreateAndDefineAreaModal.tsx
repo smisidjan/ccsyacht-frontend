@@ -13,6 +13,7 @@ import { areasApi, useAreas, useDecks } from "@/lib/api";
 import { stageTemplatesApi } from "@/lib/api/stageTemplates";
 import { useGAImage } from "@/lib/hooks/useGAImage";
 import { handleError } from "@/lib/utils/errors";
+import { normalizeStageColor, pickFreshStageColor } from "@/lib/utils/colors";
 import {
   XMarkIcon,
   PlusIcon,
@@ -47,18 +48,33 @@ import type {
  *  include checkbox) and custom rows (with a remove button), so the user can
  *  drag any row anywhere in the order. The list maps 1:1 to the backend
  *  `stages` array (a discriminated union of template/custom entries), so
- *  the visible order is exactly what gets persisted. */
+ *  the visible order is exactly what gets persisted.
+ *
+ *  `color` is shown on every row so the user can see what's already taken;
+ *  template rows display their inherited color read-only, custom rows let
+ *  the user pick (with a fresh-color suggestion when added). */
 type StageRow =
-  | { id: string; kind: "template"; templateId: string; name: string; included: boolean }
-  | { id: string; kind: "custom"; name: string };
+  | {
+      id: string;
+      kind: "template";
+      templateId: string;
+      name: string;
+      color: string | null;
+      included: boolean;
+    }
+  | { id: string; kind: "custom"; name: string; color: string };
 
 function SortableStageRow({
   row,
+  colorClash,
   onToggleInclude,
+  onChangeColor,
   onRemove,
 }: {
   row: StageRow;
+  colorClash: boolean;
   onToggleInclude: (id: string) => void;
+  onChangeColor: (id: string, color: string) => void;
   onRemove: (id: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
@@ -98,6 +114,28 @@ function SortableStageRow({
         // alignment consistent with template rows.
         <span className="w-4" aria-hidden="true" />
       )}
+      {/* Color swatch: read-only for template rows (inherits from template),
+          editable native picker for custom rows. */}
+      <span
+        className={`inline-flex items-center gap-1 flex-shrink-0 ${
+          colorClash ? "ring-2 ring-red-500 dark:ring-red-400 rounded p-0.5" : ""
+        }`}
+      >
+        <span
+          className="inline-block w-4 h-4 rounded border border-gray-300 dark:border-gray-600"
+          style={{ backgroundColor: row.color ?? "transparent" }}
+          aria-hidden="true"
+        />
+        {row.kind === "custom" && (
+          <input
+            type="color"
+            value={row.color}
+            onChange={(e) => onChangeColor(row.id, e.target.value)}
+            aria-label="Color"
+            className="w-5 h-5 p-0 border-0 bg-transparent cursor-pointer"
+          />
+        )}
+      </span>
       <span className="flex-1 truncate">{row.name}</span>
       {row.kind === "custom" && (
         <button
@@ -191,6 +229,7 @@ export default function CreateAndDefineAreaModal({
             kind: "template" as const,
             templateId: tpl.identifier,
             name: tpl.name,
+            color: tpl.color,
             included: true,
           }))
         );
@@ -264,8 +303,30 @@ export default function CreateAndDefineAreaModal({
     };
   }, [selectedDeck]);
 
+  /** Colors that collide between rows the user would actually create. Template
+   *  rows count only when included (excluded ones don't go to the server).
+   *  Custom rows always count. Detected case-insensitive. */
+  const duplicateColors = useMemo(() => {
+    if (!createStages) return new Set<string>();
+    const seen = new Map<string, number>();
+    const dups = new Set<string>();
+    for (const row of stageRows) {
+      if (row.kind === "template" && !row.included) continue;
+      const key = normalizeStageColor(row.color);
+      if (!key) continue;
+      if (seen.has(key)) dups.add(key);
+      seen.set(key, (seen.get(key) ?? 0) + 1);
+    }
+    return dups;
+  }, [stageRows, createStages]);
+  const hasDuplicateColors = duplicateColors.size > 0;
+
   const canSave =
-    !!selectedDeckId && isClosed && polygon.length >= 3 && name.trim().length > 0;
+    !!selectedDeckId &&
+    isClosed &&
+    polygon.length >= 3 &&
+    name.trim().length > 0 &&
+    !hasDuplicateColors;
 
   const handleReset = () => {
     setPolygon([]);
@@ -287,7 +348,7 @@ export default function CreateAndDefineAreaModal({
                 ? [{ type: "template", stage_template_id: row.templateId }]
                 : [];
             }
-            return [{ type: "custom", name: row.name }];
+            return [{ type: "custom", name: row.name, color: row.color }];
           })
         : [];
       await areasApi.create(projectId, selectedDeckId, {
@@ -424,24 +485,42 @@ export default function CreateAndDefineAreaModal({
                       strategy={verticalListSortingStrategy}
                     >
                       <ul className="space-y-0">
-                        {stageRows.map((row) => (
-                          <SortableStageRow
-                            key={row.id}
-                            row={row}
-                            onToggleInclude={(id) =>
-                              setStageRows((prev) =>
-                                prev.map((r) =>
-                                  r.id === id && r.kind === "template"
-                                    ? { ...r, included: !r.included }
-                                    : r
+                        {stageRows.map((row) => {
+                          const normalized = normalizeStageColor(row.color);
+                          const colorClash =
+                            normalized !== null &&
+                            duplicateColors.has(normalized) &&
+                            (row.kind === "custom" ||
+                              (row.kind === "template" && row.included));
+                          return (
+                            <SortableStageRow
+                              key={row.id}
+                              row={row}
+                              colorClash={colorClash}
+                              onToggleInclude={(id) =>
+                                setStageRows((prev) =>
+                                  prev.map((r) =>
+                                    r.id === id && r.kind === "template"
+                                      ? { ...r, included: !r.included }
+                                      : r
+                                  )
                                 )
-                              )
-                            }
-                            onRemove={(id) =>
-                              setStageRows((prev) => prev.filter((r) => r.id !== id))
-                            }
-                          />
-                        ))}
+                              }
+                              onChangeColor={(id, color) =>
+                                setStageRows((prev) =>
+                                  prev.map((r) =>
+                                    r.id === id && r.kind === "custom"
+                                      ? { ...r, color }
+                                      : r
+                                  )
+                                )
+                              }
+                              onRemove={(id) =>
+                                setStageRows((prev) => prev.filter((r) => r.id !== id))
+                              }
+                            />
+                          );
+                        })}
                       </ul>
                     </SortableContext>
                   </DndContext>
@@ -467,6 +546,17 @@ export default function CreateAndDefineAreaModal({
                               id: crypto.randomUUID(),
                               kind: "custom",
                               name: newCustomStageName.trim(),
+                              // Suggest a palette color not yet used by any
+                              // template (included) or other custom row.
+                              color: pickFreshStageColor(
+                                prev
+                                  .filter(
+                                    (r) =>
+                                      r.kind === "custom" ||
+                                      (r.kind === "template" && r.included)
+                                  )
+                                  .map((r) => r.color)
+                              ),
                             },
                           ]);
                           setNewCustomStageName("");
@@ -482,7 +572,20 @@ export default function CreateAndDefineAreaModal({
                         if (!v) return;
                         setStageRows((prev) => [
                           ...prev,
-                          { id: crypto.randomUUID(), kind: "custom", name: v },
+                          {
+                            id: crypto.randomUUID(),
+                            kind: "custom",
+                            name: v,
+                            color: pickFreshStageColor(
+                              prev
+                                .filter(
+                                  (r) =>
+                                    r.kind === "custom" ||
+                                    (r.kind === "template" && r.included)
+                                )
+                                .map((r) => r.color)
+                            ),
+                          },
                         ]);
                         setNewCustomStageName("");
                       }}
@@ -504,6 +607,10 @@ export default function CreateAndDefineAreaModal({
             <Button variant="ghost" size="sm" onClick={handleReset}>
               {t("resetPolygon")}
             </Button>
+          )}
+
+          {hasDuplicateColors && (
+            <Alert type="warning" message={t("duplicateColorsWarning")} />
           )}
 
           {error && <Alert type="error" message={error} />}

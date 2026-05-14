@@ -70,7 +70,7 @@ export default function AreaCard({ area, projectId }: AreaCardProps) {
         )}
       </div>
 
-      <div className="mt-auto">
+      <div className="mt-auto flex justify-end">
         <Link
           href={`/dashboard/projects/${projectId}/areas/${area.id}`}
           className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-all shadow-md hover:shadow-lg"
