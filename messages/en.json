@@ -1894,7 +1894,17 @@
     "createSuccess": "Deck created successfully",
     "updateSuccess": "Deck updated successfully",
     "createError": "Failed to create deck",
-    "updateError": "Failed to update deck"
+    "updateError": "Failed to update deck",
+    "sideProfiles": "Side profiles",
+    "sideProfilesHint": "Optional extra rectangles on the same GA — e.g. port or starboard view strips of this deck.",
+    "addSideProfile": "Add side profile",
+    "sideProfile": "Side profile",
+    "sideProfileNamePlaceholder": "e.g. SB",
+    "primaryDeckRectangle": "Deck rectangle",
+    "draw": "Draw",
+    "editDrawing": "Edit rectangle",
+    "rectangleDrawn": "Rectangle drawn",
+    "sideProfileCount": "{count, plural, one {# side profile} other {# side profiles}}"
   },
   "areaDetail": {
     "loading": "Loading...",

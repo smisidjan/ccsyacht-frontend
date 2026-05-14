@@ -1924,7 +1924,17 @@
     "createSuccess": "Dek succesvol aangemaakt",
     "updateSuccess": "Dek succesvol bijgewerkt",
     "createError": "Kan dek niet aanmaken",
-    "updateError": "Kan dek niet bijwerken"
+    "updateError": "Kan dek niet bijwerken",
+    "sideProfiles": "Side profiles",
+    "sideProfilesHint": "Optionele extra rechthoeken op dezelfde GA — bv. port- of starboard-strips van dit dek.",
+    "addSideProfile": "Side profile toevoegen",
+    "sideProfile": "Side profile",
+    "sideProfileNamePlaceholder": "bijv. SB",
+    "primaryDeckRectangle": "Dek-rechthoek",
+    "draw": "Tekenen",
+    "editDrawing": "Rechthoek aanpassen",
+    "rectangleDrawn": "Rechthoek getekend",
+    "sideProfileCount": "{count, plural, one {# side profile} other {# side profiles}}"
   },
   "areaDetail": {
     "loading": "Laden...",
