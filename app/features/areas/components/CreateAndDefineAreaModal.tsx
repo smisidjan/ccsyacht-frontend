@@ -293,13 +293,13 @@ export default function CreateAndDefineAreaModal({
   );
 
   const deckBounds = useMemo(() => {
-    const bb = selectedDeck?.boundingBox;
-    if (!bb) return null;
+    const placement = selectedDeck?.deckPlacement;
+    if (!placement) return null;
     return {
-      x1: bb.x,
-      y1: bb.y,
-      x2: bb.x + bb.width,
-      y2: bb.y + bb.height,
+      x1: placement.bbox_x,
+      y1: placement.bbox_y,
+      x2: placement.bbox_x + placement.bbox_width,
+      y2: placement.bbox_y + placement.bbox_height,
     };
   }, [selectedDeck]);
 

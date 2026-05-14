@@ -614,11 +614,50 @@ export interface DeckPlace {
   stageCount?: number;
 }
 
-export interface DeckBoundingBox {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
+/** Placement of the deck on the GA. Coordinates are percentages 0–100 of
+ *  the GA image. One placement per deck (the primary top-down marker). */
+export interface DeckPlacement {
+  identifier: string;
+  bbox_x: number;
+  bbox_y: number;
+  bbox_width: number;
+  bbox_height: number;
+  /** OCR meta from the backend's auto-extraction pass; only present when the
+   *  backend ran a detection step. */
+  ocrConfidence?: number;
+  ocrLabel?: string;
+}
+
+/** A side-view marker for the same deck. 0..N per deck, all placed on the
+ *  GA image as additional rectangles (typically thin horizontal strips of
+ *  the yacht's side profile). */
+export interface DeckSideProfilePlacement {
+  identifier: string;
+  name: string;
+  bbox_x: number;
+  bbox_y: number;
+  bbox_width: number;
+  bbox_height: number;
+}
+
+/** Write-side shape for the primary deck placement. */
+export interface DeckPlacementInput {
+  bbox_x: number;
+  bbox_y: number;
+  bbox_width: number;
+  bbox_height: number;
+}
+
+/** Write-side shape for a side profile. `identifier` lets the backend
+ *  reconcile updates vs creates within a `side_profiles` replace array;
+ *  omit it for a brand-new entry. */
+export interface DeckSideProfileInput {
+  identifier?: string;
+  name: string;
+  bbox_x: number;
+  bbox_y: number;
+  bbox_width: number;
+  bbox_height: number;
 }
 
 export interface Deck {
@@ -630,7 +669,10 @@ export interface Deck {
   position: number;
   areaCount: number;
   stageCount: number;
-  boundingBox?: DeckBoundingBox;
+  /** Primary marker on the GA. `null` for decks created without one. */
+  deckPlacement: DeckPlacement | null;
+  /** Extra markers on the same GA image — empty array means none. */
+  sideProfiles: DeckSideProfilePlacement[];
   containsPlace?: DeckPlace[];
   dateCreated: string;
   dateModified: string;
@@ -639,19 +681,21 @@ export interface Deck {
 export interface CreateDeckRequest {
   name: string;
   description?: string;
-  bbox_x?: number;
-  bbox_y?: number;
-  bbox_width?: number;
-  bbox_height?: number;
+  deck_placement?: DeckPlacementInput | null;
+  side_profiles?: DeckSideProfileInput[];
 }
 
+/** Mutation semantics for the placement fields:
+ *  - omitted          → unchanged
+ *  - `deck_placement: null` → clear the primary placement
+ *  - `side_profiles: []`    → wipe all side profiles
+ *  - `side_profiles: [...]` → full replacement (use `identifier` per entry to
+ *                              preserve existing rows; omit for new ones). */
 export interface UpdateDeckRequest {
   name?: string;
   description?: string;
-  bbox_x?: number;
-  bbox_y?: number;
-  bbox_width?: number;
-  bbox_height?: number;
+  deck_placement?: DeckPlacementInput | null;
+  side_profiles?: DeckSideProfileInput[];
 }
 
 // ============ Areas ============

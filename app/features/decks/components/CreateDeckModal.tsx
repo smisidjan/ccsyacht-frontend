@@ -40,12 +40,13 @@ interface CreateDeckModalProps {
 
 // Helper to convert API deck to internal PendingDeck format
 function apiDeckToPendingDeck(deck: Deck): PendingDeck {
-  const bounds: DeckBounds | null = deck.boundingBox
+  const placement = deck.deckPlacement;
+  const bounds: DeckBounds | null = placement
     ? {
-        x1: deck.boundingBox.x,
-        y1: deck.boundingBox.y,
-        x2: deck.boundingBox.x + deck.boundingBox.width,
-        y2: deck.boundingBox.y + deck.boundingBox.height,
+        x1: placement.bbox_x,
+        y1: placement.bbox_y,
+        x2: placement.bbox_x + placement.bbox_width,
+        y2: placement.bbox_y + placement.bbox_height,
       }
     : null;
 
@@ -195,29 +196,34 @@ export default function CreateDeckModal({
     try {
       // Process all decks sequentially
       for (const deck of pendingDecks) {
-        // Convert bounds from (x1,y1,x2,y2) to (bbox_x, bbox_y, bbox_width, bbox_height)
-        const bboxData = deck.bounds
+        // Convert bounds from (x1,y1,x2,y2) to the placement bbox shape the
+        // API expects. Omitting `deck_placement` on update keeps the existing
+        // one; we only send it when the user actually drew a rectangle.
+        const placement = deck.bounds
           ? {
               bbox_x: deck.bounds.x1,
               bbox_y: deck.bounds.y1,
               bbox_width: deck.bounds.x2 - deck.bounds.x1,
               bbox_height: deck.bounds.y2 - deck.bounds.y1,
             }
-          : {};
+          : null;
 
         if (deck.isExisting) {
-          // Update existing deck
+          // Update existing deck — omit `side_profiles` entirely so the
+          // backend leaves existing side profiles untouched (per the
+          // documented "weglaten = onveranderd" semantics).
           await decksApi.update(projectId, deck.id, {
             name: deck.name,
             description: deck.description || undefined,
-            ...bboxData,
+            ...(placement ? { deck_placement: placement } : {}),
           });
         } else {
-          // Create new deck
+          // Create new deck (no side profiles on initial create yet — that
+          // feature ships as a follow-up).
           await decksApi.create(projectId, {
             name: deck.name,
             description: deck.description || undefined,
-            ...bboxData,
+            ...(placement ? { deck_placement: placement } : {}),
           });
         }
       }

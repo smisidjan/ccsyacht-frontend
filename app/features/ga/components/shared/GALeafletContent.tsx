@@ -134,23 +134,24 @@ export default function GALeafletContent({
     return [leafletY, leafletX]; // [lat, lng] order
   };
 
-  // Convert deck bounding box (percentage) to Leaflet bounds
+  // Convert deck placement (percentage 0–100) to Leaflet bounds. Returns
+  // null for decks without a primary GA placement.
   const convertDeckToLeafletBounds = (deck: Deck): L.LatLngBoundsExpression | null => {
-    if (!deck.boundingBox) return null;
-    const { x, y, width, height } = deck.boundingBox;
+    if (!deck.deckPlacement) return null;
+    const { bbox_x, bbox_y, bbox_width, bbox_height } = deck.deckPlacement;
     // Convert percentage to pixel coordinates
-    const x1 = (x / 100) * imageWidth;
-    const y1 = (y / 100) * imageHeight;
-    const x2 = ((x + width) / 100) * imageWidth;
-    const y2 = ((y + height) / 100) * imageHeight;
+    const x1 = (bbox_x / 100) * imageWidth;
+    const y1 = (bbox_y / 100) * imageHeight;
+    const x2 = ((bbox_x + bbox_width) / 100) * imageWidth;
+    const y2 = ((bbox_y + bbox_height) / 100) * imageHeight;
     return [
       [y1, x1], // Southwest [lat, lng]
       [y2, x2], // Northeast [lat, lng]
     ];
   };
 
-  // Get decks with valid bounding boxes
-  const decksWithBounds = decks.filter((d) => d.boundingBox);
+  // Decks with a primary GA placement (skip ones still in setup with no bbox).
+  const decksWithBounds = decks.filter((d) => d.deckPlacement);
 
   return (
     <div

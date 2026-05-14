@@ -124,15 +124,15 @@ export default function GAPreviewMarker({
     return [leafletY, leafletX];
   }, [x, y, imageWidth, imageHeight]);
 
-  // Convert deck bounding box to Leaflet bounds (if provided)
+  // Convert deck placement (percentage 0–100) to Leaflet bounds (if any).
   const deckBounds = useMemo<L.LatLngBoundsExpression | null>(() => {
-    if (!initialDeck?.boundingBox) return null;
-    const { x: bx, y: by, width, height } = initialDeck.boundingBox;
+    if (!initialDeck?.deckPlacement) return null;
+    const { bbox_x, bbox_y, bbox_width, bbox_height } = initialDeck.deckPlacement;
     // Convert percentage to pixel coordinates
-    const x1 = (bx / 100) * imageWidth;
-    const y1 = (by / 100) * imageHeight;
-    const x2 = ((bx + width) / 100) * imageWidth;
-    const y2 = ((by + height) / 100) * imageHeight;
+    const x1 = (bbox_x / 100) * imageWidth;
+    const y1 = (bbox_y / 100) * imageHeight;
+    const x2 = ((bbox_x + bbox_width) / 100) * imageWidth;
+    const y2 = ((bbox_y + bbox_height) / 100) * imageHeight;
     return [
       [y1, x1], // Southwest [lat, lng]
       [y2, x2], // Northeast [lat, lng]
