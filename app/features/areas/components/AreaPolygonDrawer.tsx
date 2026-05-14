@@ -162,11 +162,19 @@ function FitToDeck({
     const isFirstFit = lastFitKey.current === "";
     lastFitKey.current = key;
 
+    // Relax the floor before the intermediate full-GA fit — a previous
+    // deck may have raised minZoom above the level needed to lay down
+    // fullBounds, which would silently clamp the fit.
+    map.setMinZoom(-5);
     const bounds = deckToLeafletBounds(deckBounds, imageWidth, imageHeight);
     map.fitBounds(fullBounds, { padding: [10, 10], animate: false });
     setTimeout(() => {
       map.invalidateSize();
       map.fitBounds(bounds, { padding: DECK_FIT_PADDING, animate: false });
+      // Pin the zoom-out floor to the deck-preview zoom. Leaflet then
+      // disables the minus button at exactly the preview level — the
+      // user can zoom in and back out, but never past the preview.
+      map.setMinZoom(map.getZoom());
     }, isFirstFit ? FIT_DELAY_MS_FAST : FIT_DELAY_MS_SLOW);
   }, [map, fullBounds, deckBounds, imageWidth, imageHeight]);
   return null;
