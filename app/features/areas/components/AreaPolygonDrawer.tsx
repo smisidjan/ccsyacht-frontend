@@ -15,7 +15,8 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import type { AreaPolygonPoint } from "@/lib/api/types";
 
-const FIT_DELAY_MS = 50;
+const FIT_DELAY_MS_FAST = 100;
+const FIT_DELAY_MS_SLOW = 300;
 /** Minimum vertices any polygon must have. Backend rejects fewer, and the
  *  Shift+click delete helper enforces it so the user can't accidentally
  *  break a closed polygon. */
@@ -58,6 +59,10 @@ interface AreaPolygonDrawerProps {
   onRedo: () => void;
   canUndo: boolean;
   canRedo: boolean;
+  /** Wipe the polygon and start over. Parent decides what "reset" means
+   *  (clearing history + present state). Button disabled when nothing to
+   *  reset. */
+  onReset: () => void;
 }
 
 // Normalized point → Leaflet [lat, lng] (lat = y, lng = x).
@@ -83,6 +88,35 @@ const isInsideDeck = (point: AreaPolygonPoint, deck: DeckBounds): boolean => {
   const y1 = deck.y1 / 100;
   const y2 = deck.y2 / 100;
   return point.x >= x1 && point.x <= x2 && point.y >= y1 && point.y <= y2;
+};
+
+// Standard ray-casting point-in-polygon. Works on normalized (0..1) coords;
+// units don't matter as long as point and polygon share them.
+const isInsidePolygon = (
+  point: AreaPolygonPoint,
+  polygon: AreaPolygonPoint[]
+): boolean => {
+  if (polygon.length < 3) return false;
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const xi = polygon[i].x;
+    const yi = polygon[i].y;
+    const xj = polygon[j].x;
+    const yj = polygon[j].y;
+    const intersect =
+      yi > point.y !== yj > point.y &&
+      point.x < ((xj - xi) * (point.y - yi)) / (yj - yi) + xi;
+    if (intersect) inside = !inside;
+  }
+  return inside;
+};
+
+const isInsideAnyArea = (
+  point: AreaPolygonPoint,
+  areas: ExistingArea[] | undefined
+): boolean => {
+  if (!areas || areas.length === 0) return false;
+  return areas.some((a) => isInsidePolygon(point, a.polygon));
 };
 
 // Convert a deck-bounds rectangle (0..100) to Leaflet bounds.
@@ -113,17 +147,27 @@ function FitToDeck({
   imageHeight: number;
 }) {
   const map = useMap();
-  const hasInitialized = useRef(false);
+  // Track the bbox values themselves rather than the object identity, since
+  // a fresh `DeckBounds` object is built every render. We re-fit only when
+  // the user actually switches to a different deck — not on every parent
+  // re-render (which would yank the map back and steal their pan/zoom).
+  const lastFitKey = useRef<string>("");
   useEffect(() => {
-    if (hasInitialized.current) return;
-    hasInitialized.current = true;
+    const key = `${deckBounds.x1},${deckBounds.y1},${deckBounds.x2},${deckBounds.y2}`;
+    if (lastFitKey.current === key) return;
+    // First fit on mount is fast — the container is already sized. A
+    // subsequent deck switch needs longer because Leaflet has to settle the
+    // viewport after the intermediate fullBounds fit before the deck fit
+    // lands cleanly; the shorter delay leaves the map zoomed out.
+    const isFirstFit = lastFitKey.current === "";
+    lastFitKey.current = key;
 
     const bounds = deckToLeafletBounds(deckBounds, imageWidth, imageHeight);
     map.fitBounds(fullBounds, { padding: [10, 10], animate: false });
     setTimeout(() => {
       map.invalidateSize();
       map.fitBounds(bounds, { padding: DECK_FIT_PADDING, animate: false });
-    }, FIT_DELAY_MS);
+    }, isFirstFit ? FIT_DELAY_MS_FAST : FIT_DELAY_MS_SLOW);
   }, [map, fullBounds, deckBounds, imageWidth, imageHeight]);
   return null;
 }
@@ -150,7 +194,6 @@ const FILL_OPACITY_OPEN = 0.15;
 const FILL_OPACITY_CLOSED = 0.25;
 const STROKE_COLOR = "#1d4ed8";
 const VERTEX_COLOR = "#1d4ed8";
-const FIRST_VERTEX_HINT_COLOR = "#16a34a";
 
 export default function AreaPolygonDrawer({
   imageUrl,
@@ -165,6 +208,7 @@ export default function AreaPolygonDrawer({
   onRedo,
   canUndo,
   canRedo,
+  onReset,
 }: AreaPolygonDrawerProps) {
   const fullBounds = useMemo<L.LatLngBoundsExpression>(
     () => [
@@ -174,14 +218,36 @@ export default function AreaPolygonDrawer({
     [imageWidth, imageHeight]
   );
 
+  // Live drag preview — while a vertex is being dragged we keep the new
+  // position in local state instead of calling `onChange` per mousemove.
+  // That prevents the history stack from being flooded with one entry per
+  // pixel of movement, which made Undo / Redo step through the drag frame
+  // by frame instead of treating the whole drag as a single action. The
+  // committed position lands in history once on mouseup.
+  const [dragPreview, setDragPreview] = useState<
+    { index: number; point: AreaPolygonPoint } | null
+  >(null);
+
+  // Polygon shown on the map = committed polygon, optionally with the
+  // dragged vertex overridden by its live preview position.
+  const displayedPolygon = useMemo(() => {
+    if (!dragPreview) return polygon;
+    return polygon.map((p, i) =>
+      i === dragPreview.index ? dragPreview.point : p
+    );
+  }, [polygon, dragPreview]);
+
   const polygonLatLngs = useMemo(
-    () => polygon.map((p) => normToLatLng(p, imageWidth, imageHeight)),
-    [polygon, imageWidth, imageHeight]
+    () => displayedPolygon.map((p) => normToLatLng(p, imageWidth, imageHeight)),
+    [displayedPolygon, imageWidth, imageHeight]
   );
 
   const handleAddVertex = (latlng: L.LatLng) => {
     const point = latLngToNorm(latlng, imageWidth, imageHeight);
     if (deckBounds && !isInsideDeck(point, deckBounds)) return;
+    // Areas can't overlap — silently reject vertices that would land inside
+    // an already-drawn area on the same deck.
+    if (isInsideAnyArea(point, existingAreas)) return;
     onChange([...polygon, point], false);
   };
 
@@ -195,18 +261,35 @@ export default function AreaPolygonDrawer({
       onChange(next, isClosed);
       return;
     }
-    if (isClosed) return;
-    if (index === 0 && polygon.length >= MIN_VERTICES) {
-      onChange(polygon, true);
-    }
+    // Closing the polygon is done from the toolbar's "Close polygon" CTA;
+    // a plain vertex click stays a no-op here so the user can drag without
+    // accidentally finishing the shape.
   };
 
   const handleVertexDrag = (index: number, latlng: L.LatLng) => {
     const point = latLngToNorm(latlng, imageWidth, imageHeight);
     if (deckBounds && !isInsideDeck(point, deckBounds)) return;
-    const next = [...polygon];
-    next[index] = point;
-    onChange(next, isClosed);
+    if (isInsideAnyArea(point, existingAreas)) return;
+    // Local preview only — history stays clean until mouseup.
+    setDragPreview({ index, point });
+  };
+
+  // Drag finished. Commit the preview as a single history entry, or bail
+  // out if nothing actually moved (e.g. the user just tapped the vertex).
+  const handleVertexDragEnd = () => {
+    if (!dragPreview) return;
+    const current = polygon[dragPreview.index];
+    const moved =
+      !current ||
+      current.x !== dragPreview.point.x ||
+      current.y !== dragPreview.point.y;
+    if (moved) {
+      const next = polygon.map((p, i) =>
+        i === dragPreview.index ? dragPreview.point : p
+      );
+      onChange(next, isClosed);
+    }
+    setDragPreview(null);
   };
 
   // Insert a vertex on an existing edge (clicked midpoint handle). The new
@@ -215,6 +298,7 @@ export default function AreaPolygonDrawer({
   const handleInsertVertex = (afterIndex: number, latlng: L.LatLng) => {
     const point = latLngToNorm(latlng, imageWidth, imageHeight);
     if (deckBounds && !isInsideDeck(point, deckBounds)) return;
+    if (isInsideAnyArea(point, existingAreas)) return;
     const next = [...polygon];
     next.splice(afterIndex + 1, 0, point);
     onChange(next, isClosed);
@@ -321,10 +405,11 @@ export default function AreaPolygonDrawer({
             normToLatLng(p, imageWidth, imageHeight)
           )}
           pathOptions={{
-            color: "#9ca3af",
-            weight: 1,
-            fillColor: "#9ca3af",
-            fillOpacity: 0.1,
+            color: "#374151",
+            weight: 2,
+            dashArray: "6 4",
+            fillColor: "#6b7280",
+            fillOpacity: 0.3,
             interactive: false,
           }}
         />
@@ -377,6 +462,7 @@ export default function AreaPolygonDrawer({
         isClosed={isClosed}
         onVertexClick={handleVertexClick}
         onVertexDrag={handleVertexDrag}
+        onVertexDragEnd={handleVertexDragEnd}
       />
     </MapContainer>
 
@@ -384,9 +470,11 @@ export default function AreaPolygonDrawer({
         canUndo={canUndo}
         canRedo={canRedo}
         canClose={canClose}
+        canReset={polygon.length > 0 || isClosed}
         onUndo={onUndo}
         onRedo={onRedo}
         onClose={handleClose}
+        onReset={onReset}
       />
     </div>
   );
@@ -400,16 +488,20 @@ function DrawerToolbar({
   canUndo,
   canRedo,
   canClose,
+  canReset,
   onUndo,
   onRedo,
   onClose,
+  onReset,
 }: {
   canUndo: boolean;
   canRedo: boolean;
   canClose: boolean;
+  canReset: boolean;
   onUndo: () => void;
   onRedo: () => void;
   onClose: () => void;
+  onReset: () => void;
 }) {
   const iconBtn =
     "inline-flex items-center justify-center w-9 h-9 rounded-md text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors";
@@ -458,6 +550,30 @@ function DrawerToolbar({
             strokeLinecap="round"
             strokeLinejoin="round"
             d="M15 14l5-5-5-5M20 9H9a5 5 0 000 10h3"
+          />
+        </svg>
+      </button>
+      <div className="w-px h-6 bg-gray-200 dark:bg-gray-700 mx-1" aria-hidden="true" />
+      <button
+        type="button"
+        onClick={onReset}
+        disabled={!canReset}
+        className={`${iconBtn} hover:text-red-600 dark:hover:text-red-400`}
+        title="Reset polygon"
+        aria-label="Reset polygon"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+          strokeWidth={2}
+          stroke="currentColor"
+          className="w-5 h-5"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"
           />
         </svg>
       </button>
@@ -573,35 +689,34 @@ function VertexHandles({
   isClosed,
   onVertexClick,
   onVertexDrag,
+  onVertexDragEnd,
 }: {
   polygonLatLngs: [number, number][];
   polygonLength: number;
   isClosed: boolean;
   onVertexClick: (index: number, shiftKey: boolean) => void;
   onVertexDrag: (index: number, latlng: L.LatLng) => void;
+  onVertexDragEnd: () => void;
 }) {
   const map = useMap();
   return (
     <>
       {polygonLatLngs.map((latlng, i) => {
-        const isFirstAndClosable = i === 0 && !isClosed && polygonLength >= 3;
         return (
           <CircleMarker
             key={i}
             center={latlng}
-            radius={isFirstAndClosable ? 8 : 6}
+            radius={6}
             pathOptions={{
-              color: isFirstAndClosable ? FIRST_VERTEX_HINT_COLOR : VERTEX_COLOR,
+              color: VERTEX_COLOR,
               fillColor: "#ffffff",
               fillOpacity: 1,
               weight: 2,
             }}
             eventHandlers={{
-              // Click only fires when there's no significant pointer movement
-              // between mousedown and mouseup, so this still triggers the
-              // close-polygon-by-clicking-first-vertex action when the user
-              // taps without dragging. Shift+click on any vertex deletes it
-              // instead (handled by the parent).
+              // Plain click is reserved for Shift+click delete; closing the
+              // polygon is the toolbar's job. Drag-to-move still works
+              // because the mousedown handler below intercepts movement.
               click: (e) =>
                 onVertexClick(
                   i,
@@ -615,6 +730,8 @@ function VertexHandles({
                   map.off("mousemove", onMove);
                   map.off("mouseup", onUp);
                   map.dragging.enable();
+                  // Commit the drag as a single history entry on release.
+                  onVertexDragEnd();
                 };
                 map.on("mousemove", onMove);
                 map.on("mouseup", onUp);

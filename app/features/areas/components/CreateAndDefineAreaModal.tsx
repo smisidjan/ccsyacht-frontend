@@ -413,6 +413,7 @@ export default function CreateAndDefineAreaModal({
               onRedo={redoPolygon}
               canUndo={canUndo}
               canRedo={canRedo}
+              onReset={handleReset}
               onChange={(p, c) => {
                 setPolygonSnapshot(p, c);
               }}
@@ -614,12 +615,6 @@ export default function CreateAndDefineAreaModal({
           </div>
 
           <p className="text-xs text-gray-500 dark:text-gray-400">{drawingHint}</p>
-
-          {polygon.length > 0 && (
-            <Button variant="ghost" size="sm" onClick={handleReset}>
-              {t("resetPolygon")}
-            </Button>
-          )}
 
           {hasDuplicateColors && (
             <Alert type="warning" message={t("duplicateColorsWarning")} />

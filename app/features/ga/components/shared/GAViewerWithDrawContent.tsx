@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
-import { MapContainer, ImageOverlay, Rectangle, CircleMarker, useMap, useMapEvents } from "react-leaflet";
+import { MapContainer, ImageOverlay, Rectangle, CircleMarker, Tooltip, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
@@ -485,7 +485,11 @@ export default function GAViewerWithDrawContent({
                 onDeckClick?.(deck.id);
               },
             }}
-          />
+          >
+            <Tooltip sticky direction="top">
+              {deck.name}
+            </Tooltip>
+          </Rectangle>
         ))}
 
         {/* Draw the current rectangle being edited */}

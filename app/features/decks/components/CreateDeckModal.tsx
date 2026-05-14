@@ -181,7 +181,7 @@ export default function CreateDeckModal({
   // LocalStorage key specific to this project
   const storageKey = `${STORAGE_KEY_PREFIX}${projectId}`;
 
-  // List of pending decks to be saved
+  // List of pending decks to be saved.
   const [pendingDecks, setPendingDecks] = useState<PendingDeck[]>([]);
 
   // Currently editing deck ID (null = adding new)
