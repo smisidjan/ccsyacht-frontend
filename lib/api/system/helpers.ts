@@ -62,6 +62,7 @@ export async function apiFetchSystem<T>(
       message: errorMessage,
       code: errorData.code,
       status: response.status,
+      errors: errorData.errors,
     };
     throw error;
   }
@@ -107,6 +108,7 @@ export async function apiFetchSystemTenant<T>(
       message: errorMessage,
       code: errorData.code,
       status: response.status,
+      errors: errorData.errors,
     };
     throw error;
   }
@@ -152,6 +154,7 @@ export async function apiFetchSystemTenantWithFile<T>(
       message: errorMessage,
       code: errorData.code,
       status: response.status,
+      errors: errorData.errors,
     };
     throw error;
   }

@@ -5,6 +5,7 @@ import type {
   CreateStageTemplateRequest,
   UpdateStageTemplateRequest,
   ReorderStageTemplatesRequest,
+  BulkReplaceStageTemplatesRequest,
   DocumentTypeTemplate,
   CreateDocumentTypeTemplateRequest,
   UpdateDocumentTypeTemplateRequest,
@@ -60,6 +61,17 @@ export const systemStageTemplatesApi = {
   ): Promise<void> =>
     apiFetchSystemTenant(tenantId, "/system/tenant/stage-templates/reorder", {
       method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  /** Replace the whole template list in one transactional call. Order of
+   *  `data.stages` becomes the persisted sort_order. */
+  bulkReplace: (
+    tenantId: string,
+    data: BulkReplaceStageTemplatesRequest
+  ): Promise<{ data: StageTemplate[] }> =>
+    apiFetchSystemTenant(tenantId, "/system/tenant/stage-templates/bulk", {
+      method: "PUT",
       body: JSON.stringify(data),
     }),
 };

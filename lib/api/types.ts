@@ -364,6 +364,9 @@ export interface ApiError {
   message: string;
   code?: string;
   status?: number;
+  /** Laravel-style validation errors (only on 422 responses). Keys are
+   *  dot-notation paths into the request body (e.g. `stages.0.name`). */
+  errors?: Record<string, string[]>;
 }
 
 // ============ Shipyards ============
@@ -760,6 +763,21 @@ export interface UpdateStageTemplateRequest {
   description?: string;
   sort_order?: number;
   is_active?: boolean;
+}
+
+/** One row in the bulk-replace payload. `identifier=null` (or omitted) means
+ *  create; a uuid means update the existing template at that id. Templates
+ *  currently in the DB but absent from the payload are deleted. The array
+ *  order becomes `sort_order` 0..n. */
+export interface BulkStageTemplateEntry {
+  identifier?: string | null;
+  name: string;
+  description?: string;
+  is_active?: boolean;
+}
+
+export interface BulkReplaceStageTemplatesRequest {
+  stages: BulkStageTemplateEntry[];
 }
 
 export interface ReorderStageTemplatesRequest {

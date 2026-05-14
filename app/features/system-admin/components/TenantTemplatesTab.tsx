@@ -9,8 +9,8 @@ import Table from "@/app/components/ui/Table";
 import Button from "@/app/components/ui/Button";
 import Modal from "@/app/components/ui/Modal";
 import {
-  StageTemplateForm,
   DocumentTypeTemplateForm,
+  StageTemplatesBulkEditor,
 } from "@/app/features/system-admin";
 
 // Lazy: pulls in TipTap. Keeps the system-admin route compile fast in dev.
@@ -23,12 +23,10 @@ import { useModalForm } from "@/lib/hooks/useModalForm";
 import { useToast } from "@/app/context/ToastContext";
 import { handleError } from "@/lib/utils/errors";
 import {
-  systemStageTemplatesApi,
   systemDocumentTypeTemplatesApi,
   systemKickoffDocumentTemplatesApi,
 } from "@/lib/api/system";
 import type {
-  StageTemplate,
   DocumentTypeTemplate,
   KickoffDocumentTemplate,
 } from "@/lib/api/types";
@@ -44,14 +42,6 @@ export default function TenantTemplatesTab({ tenantId }: TenantTemplatesTabProps
   const tCommon = useTranslations("common");
   const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState<TemplateTabType>("stages");
-
-  // Stages state
-  const [stages, setStages] = useState<StageTemplate[]>([]);
-  const [stagesLoading, setStagesLoading] = useState(true);
-  const [stagesError, setStagesError] = useState<string | null>(null);
-  const [stageName, setStageName] = useState("");
-  const [stageDescription, setStageDescription] = useState("");
-  const [stageIsActive, setStageIsActive] = useState(true);
 
   // Document Types state
   const [documentTypes, setDocumentTypes] = useState<DocumentTypeTemplate[]>([]);
@@ -79,11 +69,11 @@ export default function TenantTemplatesTab({ tenantId }: TenantTemplatesTabProps
   const [kickoffDocRemoveFile, setKickoffDocRemoveFile] = useState(false);
 
   // Delete modal state
-  type DeleteTemplate = StageTemplate | DocumentTypeTemplate | KickoffDocumentTemplate;
+  type DeleteTemplate = DocumentTypeTemplate | KickoffDocumentTemplate;
   const [deleteModal, setDeleteModal] = useState<{
     isOpen: boolean;
     template: DeleteTemplate | null;
-    type: "stage" | "documentType" | "kickoffDocument" | null;
+    type: "documentType" | "kickoffDocument" | null;
   }>({
     isOpen: false,
     template: null,
@@ -92,19 +82,6 @@ export default function TenantTemplatesTab({ tenantId }: TenantTemplatesTabProps
   const [isDeleting, setIsDeleting] = useState(false);
 
   // Fetch functions
-  const fetchStages = async () => {
-    try {
-      setStagesLoading(true);
-      const response = await systemStageTemplatesApi.getAll(tenantId);
-      setStages(response.data);
-      setStagesError(null);
-    } catch (err) {
-      setStagesError(err instanceof Error ? err.message : "Failed to load templates");
-    } finally {
-      setStagesLoading(false);
-    }
-  };
-
   const fetchDocumentTypes = async () => {
     try {
       setDocumentTypesLoading(true);
@@ -134,7 +111,7 @@ export default function TenantTemplatesTab({ tenantId }: TenantTemplatesTabProps
   // Delete handlers
   const openDeleteModal = (
     template: DeleteTemplate,
-    type: "stage" | "documentType" | "kickoffDocument"
+    type: "documentType" | "kickoffDocument"
   ) => {
     setDeleteModal({ isOpen: true, template, type });
   };
@@ -154,11 +131,6 @@ export default function TenantTemplatesTab({ tenantId }: TenantTemplatesTabProps
     setIsDeleting(true);
     try {
       switch (deleteModal.type) {
-        case "stage":
-          await systemStageTemplatesApi.delete(tenantId, deleteModal.template.identifier);
-          await fetchStages();
-          showToast("success", t("deleteSuccess"));
-          break;
         case "documentType":
           await systemDocumentTypeTemplatesApi.delete(tenantId, deleteModal.template.identifier);
           await fetchDocumentTypes();
@@ -179,35 +151,6 @@ export default function TenantTemplatesTab({ tenantId }: TenantTemplatesTabProps
   };
 
   // Modal hooks
-  const stageModal = useModalForm<StageTemplate>({
-    onSubmit: async (_, template) => {
-      const data = {
-        name: stageName,
-        description: stageDescription || undefined,
-        is_active: stageIsActive,
-      };
-      if (template) {
-        await systemStageTemplatesApi.update(tenantId, template.identifier, data);
-      } else {
-        await systemStageTemplatesApi.create(tenantId, data);
-      }
-      await fetchStages();
-    },
-    resetForm: () => {
-      setStageName("");
-      setStageDescription("");
-      setStageIsActive(true);
-    },
-    populateForm: (template) => {
-      setStageName(template.name);
-      setStageDescription(template.description || "");
-      setStageIsActive(template.isActive);
-    },
-    successMessages: {
-      create: "Stage template created successfully",
-      update: "Stage template updated successfully",
-    },
-  });
 
   const documentTypeModal = useModalForm<DocumentTypeTemplate>({
     onSubmit: async (_, template) => {
@@ -316,7 +259,6 @@ export default function TenantTemplatesTab({ tenantId }: TenantTemplatesTabProps
   });
 
   useEffect(() => {
-    fetchStages();
     fetchDocumentTypes();
     fetchKickoffDocuments();
   }, [tenantId]);
@@ -328,52 +270,6 @@ export default function TenantTemplatesTab({ tenantId }: TenantTemplatesTabProps
   ];
 
   // Column configurations
-  const stageColumns = [
-    {
-      key: "name",
-      header: t("name"),
-      cell: (stage: StageTemplate) => (
-        <span className="font-medium text-gray-900 dark:text-white">{stage.name}</span>
-      ),
-    },
-    {
-      key: "description",
-      header: t("description"),
-      cell: (stage: StageTemplate) => (
-        <span className="text-gray-500 dark:text-gray-400">{stage.description || "-"}</span>
-      ),
-    },
-    {
-      key: "active",
-      header: t("active"),
-      cell: (stage: StageTemplate) => (
-        <span className="text-gray-500 dark:text-gray-400">{stage.isActive ? "Yes" : "No"}</span>
-      ),
-    },
-    {
-      key: "actions",
-      header: t("actions"),
-      headerClassName: "text-center",
-      className: "text-right",
-      cell: (stage: StageTemplate) => (
-        <div className="space-x-2">
-          <Button variant="ghost" size="sm" onClick={() => stageModal.openEdit(stage)}>
-            {t("edit")}
-          </Button>
-          {stage.canDelete && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => openDeleteModal(stage, "stage")}
-            >
-              {t("delete")}
-            </Button>
-          )}
-        </div>
-      ),
-    },
-  ];
-
   const documentTypeColumns = [
     {
       key: "name",
@@ -494,61 +390,10 @@ export default function TenantTemplatesTab({ tenantId }: TenantTemplatesTabProps
       <div>
         {activeTab === "stages" && (
           <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                {t("stagesTab")}
-              </h2>
-              <Button variant="primary" onClick={stageModal.openCreate}>
-                <PlusIcon className="w-4 h-4" />
-                {t("create")}
-              </Button>
-            </div>
-            <Table
-              columns={stageColumns}
-              data={stages}
-              keyExtractor={(stage) => stage.identifier}
-              loading={stagesLoading}
-              error={stagesError}
-              emptyMessage={t("noTemplates")}
-            />
-            <Modal
-              isOpen={stageModal.isOpen}
-              onClose={stageModal.close}
-              title={stageModal.isEditMode ? t("edit") : t("create")}
-              size="md"
-              isForm={true}
-              formId="stage-template-form"
-              onSubmit={() => stageModal.submit({})}
-              error={stageModal.error}
-              actions={[
-                {
-                  label: tCommon("cancel"),
-                  onClick: stageModal.close,
-                  variant: "secondary",
-                },
-                {
-                  label: stageModal.isEditMode ? tCommon("save") : t("create"),
-                  type: "submit",
-                  variant: "primary",
-                },
-              ]}
-            >
-              <StageTemplateForm
-                name={stageName}
-                description={stageDescription}
-                isActive={stageIsActive}
-                onNameChange={setStageName}
-                onDescriptionChange={setStageDescription}
-                onIsActiveChange={setStageIsActive}
-                translations={{
-                  name: t("name"),
-                  namePlaceholder: "Enter stage name",
-                  description: t("description"),
-                  descriptionPlaceholder: "Enter description (optional)",
-                  isActive: t("active"),
-                }}
-              />
-            </Modal>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+              {t("stagesTab")}
+            </h2>
+            <StageTemplatesBulkEditor tenantId={tenantId} />
           </div>
         )}
 
@@ -717,9 +562,9 @@ export default function TenantTemplatesTab({ tenantId }: TenantTemplatesTabProps
             <div className="flex-1">
               <p className="text-sm text-gray-700 dark:text-gray-300">
                 {tCommon("deleteWarning", {
-                  type: deleteModal.type === "stage" ? t("stagesTab") :
-                        deleteModal.type === "documentType" ? t("documentTypesTab") :
-                        t("kickoffDocumentsTab"),
+                  type: deleteModal.type === "documentType"
+                    ? t("documentTypesTab")
+                    : t("kickoffDocumentsTab"),
                   name: getTemplateDisplayName(deleteModal.template),
                 })}
               </p>

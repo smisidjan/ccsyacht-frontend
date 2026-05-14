@@ -13,7 +13,6 @@ export { default as TenantUsersTable } from "./TenantUsersTable";
 export { default as TenantRolesTable } from "./TenantRolesTable";
 export { default as TenantProjectsTable } from "./TenantProjectsTable";
 export { default as TenantInvitationsTable } from "./TenantInvitationsTable";
-export { default as StageTemplatesTable } from "./StageTemplatesTable";
 export { default as DocumentTypeTemplatesTable } from "./DocumentTypeTemplatesTable";
 
 // Views
@@ -29,6 +28,6 @@ export { default as DeleteRoleModal } from "./DeleteRoleModal";
 export { default as SystemCreateProjectModal } from "./SystemCreateProjectModal";
 
 // Template Forms
-export { default as StageTemplateForm } from "./StageTemplateForm";
 export { default as DocumentTypeTemplateForm } from "./DocumentTypeTemplateForm";
 export { default as KickoffDocumentTemplateForm } from "./KickoffDocumentTemplateForm";
+export { default as StageTemplatesBulkEditor } from "./StageTemplatesBulkEditor";
