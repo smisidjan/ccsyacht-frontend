@@ -179,6 +179,11 @@ export default function GALeafletContent({
         doubleClickZoom={true}
         touchZoom={true}
         dragging={true}
+        // Off so Leaflet doesn't put tabindex=0 on the container. With the
+        // map sized at 100vh, the first click would otherwise focus the
+        // container and the browser would scroll it into view — swallowing
+        // the click and forcing the user to click a second time.
+        keyboard={false}
         attributionControl={false}
         className="w-full rounded-lg"
         style={{
