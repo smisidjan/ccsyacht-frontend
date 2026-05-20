@@ -11,3 +11,4 @@ export { default as GAViewer } from "./GAViewer";
 export { default as GAViewerWithDraw, type DeckBounds, type ExistingDeck } from "./GAViewerWithDraw";
 export { default as GALeafletViewer } from "./GALeafletViewer";
 export { default as GAPreview } from "./GAPreview";
+export { default as AreaGAPreview } from "./AreaGAPreview";

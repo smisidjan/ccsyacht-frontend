@@ -8,11 +8,11 @@ import {
   ArrowLeftIcon,
   PlusIcon,
   Square3Stack3DIcon,
-  MapPinIcon,
 } from "@heroicons/react/24/outline";
 import Button from "@/app/components/ui/Button";
 import Alert from "@/app/components/ui/Alert";
 import { CreateStagesModal, StageListItem, StageDetailPanel } from "@/app/features/stages";
+import { AreaGAPreview } from "@/app/features/ga/components/shared";
 import ProgressCircle from "@/app/components/ui/ProgressCircle";
 import { useArea, useStages, useProject } from "@/lib/api";
 import { usePermission } from "@/lib/hooks/usePermission";
@@ -46,6 +46,17 @@ export default function AreaDetailPage() {
   const completedStages = stages?.filter(s => s.status.name === "completed").length || 0;
   const totalStages = stages?.length || 0;
   const progress = totalStages > 0 ? Math.round((completedStages / totalStages) * 100) : 0;
+
+  // Active stage = first one the team is working on right now: in_progress
+  // beats pending_signoff beats first not_started. The mini GA fills the
+  // area polygon with this stage's color so the page-level color matches
+  // what the GA tab shows.
+  const activeStage =
+    stages?.find((s) => s.status.name === "in_progress") ??
+    stages?.find((s) => s.status.name === "pending_signoff") ??
+    stages?.find((s) => s.status.name === "not_started") ??
+    null;
+  const activeStageColor = activeStage?.color ?? null;
 
   // Auto-select stage from query param or first stage when stages load
   useEffect(() => {
@@ -107,11 +118,15 @@ export default function AreaDetailPage() {
       {/* Area Info Card */}
       {area && (
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-100 dark:border-gray-700 p-8">
-          <div className="flex items-center gap-8">
-            <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-              <MapPinIcon className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-8 items-center">
+            <div className="md:col-span-2">
+              <AreaGAPreview
+                projectId={projectId}
+                areaId={areaId}
+                activeStageColor={activeStageColor}
+              />
             </div>
-            <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
+            <div className="md:col-span-3 grid grid-cols-1 sm:grid-cols-3 gap-6 items-center">
               <div>
                 <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">{t("deck")}</p>
                 <p className="text-lg font-semibold text-gray-900 dark:text-white">
