@@ -6,7 +6,6 @@
 export { default as CreateStagesModal } from "./CreateStagesModal";
 export { default as RemarkCard } from "./RemarkCard";
 export { default as RemarksList } from "./RemarksList";
-export { default as StageListItem } from "./StageListItem";
 export { default as StageDetailPanel } from "./StageDetailPanel";
 export { default as StageTimeline } from "./StageTimeline";
 export { default as StageTimelineItem } from "./StageTimelineItem";
