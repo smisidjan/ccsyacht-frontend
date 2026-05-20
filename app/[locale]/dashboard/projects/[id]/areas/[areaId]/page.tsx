@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import { Link } from "@/i18n/navigation";
 import {
   ArrowLeftIcon,
+  PencilIcon,
   PlusIcon,
   Square3Stack3DIcon,
 } from "@heroicons/react/24/outline";
@@ -14,6 +15,7 @@ import Alert from "@/app/components/ui/Alert";
 import { CreateStagesModal, StageTimeline } from "@/app/features/stages";
 import { OpenPunchlistBadge } from "@/app/features/punchlist";
 import { AreaGAPreview } from "@/app/features/ga/components/shared";
+import CreateAndDefineAreaModal from "@/app/features/areas/components/CreateAndDefineAreaModal";
 import ProgressCircle from "@/app/components/ui/ProgressCircle";
 import { useArea, useStages, useProject } from "@/lib/api";
 import { usePermission } from "@/lib/hooks/usePermission";
@@ -35,13 +37,15 @@ export default function AreaDetailPage() {
   };
 
   const { data: project } = useProject(projectId);
-  const { data: area, loading: areaLoading, error: areaError } = useArea(projectId, areaId);
+  const { data: area, loading: areaLoading, error: areaError, refetch: refetchArea } = useArea(projectId, areaId);
   const { data: stages, loading: stagesLoading, error: stagesError, refetch: refetchStages, updateStage } = useStages(projectId, areaId);
   const { hasPermission } = usePermission();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isEditAreaOpen, setIsEditAreaOpen] = useState(false);
 
   const canCreateStages = hasPermission(PERMISSIONS.CREATE_STAGES);
   const canEditStages = hasPermission(PERMISSIONS.EDIT_STAGES);
+  const canEditAreas = hasPermission(PERMISSIONS.EDIT_AREAS);
 
   const loading = areaLoading || stagesLoading;
   const error = areaError || stagesError;
@@ -108,13 +112,25 @@ export default function AreaDetailPage() {
 
       {/* Area Info Card */}
       {area && (
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-100 dark:border-gray-700 p-4 sm:p-6 md:p-8">
+        <div className="relative bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-100 dark:border-gray-700 p-4 sm:p-6 md:p-8">
+          {canEditAreas && (
+            <button
+              type="button"
+              onClick={() => setIsEditAreaOpen(true)}
+              className="absolute top-3 right-3 p-2 rounded-lg text-gray-500 hover:text-blue-600 hover:bg-gray-100 dark:hover:bg-gray-700 dark:text-gray-400 dark:hover:text-blue-400 transition-colors"
+              aria-label={t("editArea")}
+              title={t("editArea")}
+            >
+              <PencilIcon className="w-4 h-4" />
+            </button>
+          )}
           <div className="grid grid-cols-1 md:grid-cols-5 gap-6 md:gap-8 items-center">
             <div className="md:col-span-2">
               <AreaGAPreview
                 projectId={projectId}
                 areaId={areaId}
                 activeStageColor={activeStageColor}
+                area={area}
               />
             </div>
             <div className="md:col-span-3 flex flex-col gap-4">
@@ -246,6 +262,27 @@ export default function AreaDetailPage() {
           refetchStages();
         }}
       />
+
+      {/* Edit Area Modal — reuses the create modal in edit mode. Only
+          rendered when the user opens it so the leaflet bundle stays
+          out of the critical path. */}
+      {isEditAreaOpen && (
+        <CreateAndDefineAreaModal
+          isOpen={isEditAreaOpen}
+          onClose={() => setIsEditAreaOpen(false)}
+          projectId={projectId}
+          generalArrangement={
+            project && typeof project.generalArrangement === "object"
+              ? project.generalArrangement
+              : undefined
+          }
+          area={area}
+          onSuccess={() => {
+            refetchArea();
+            setIsEditAreaOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 }

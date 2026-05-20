@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import type { Area } from "@/lib/api/types";
 
 interface AreaGAPreviewProps {
   projectId: string;
@@ -9,6 +10,8 @@ interface AreaGAPreviewProps {
    *  active stage's color. Null falls back to a neutral blue. */
   activeStageColor: string | null;
   heightClassName?: string;
+  /** Forwarded to the inner content — see its props doc. */
+  area?: Area | null;
 }
 
 // Dynamic import — Leaflet doesn't work with SSR.

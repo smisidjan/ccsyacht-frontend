@@ -775,6 +775,9 @@ export interface CreateAreaRequest {
 export interface UpdateAreaRequest {
   name?: string;
   description?: string;
+  /** Replacement polygon (0..1 normalized vertices). Omit when only
+   *  text fields are being edited. */
+  polygon?: AreaPolygonPoint[];
 }
 
 export interface BulkCreateAreasRequest {

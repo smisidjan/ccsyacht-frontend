@@ -10,6 +10,7 @@ import { useDecks } from "@/lib/api/decks";
 import { useAreas } from "@/lib/api/areas";
 import { useGAImage } from "@/lib/hooks/useGAImage";
 import { getFixedImageUrl, hasGAImageData } from "@/app/features/ga/utils/helpers";
+import type { Area } from "@/lib/api/types";
 
 interface AreaGAPreviewContentProps {
   projectId: string;
@@ -20,6 +21,11 @@ interface AreaGAPreviewContentProps {
   /** Tailwind height utility for the wrapper (e.g. "h-72"). Defaults
    *  to a reasonable embedded size. */
   heightClassName?: string;
+  /** The area being shown. When supplied the polygon comes directly
+   *  from this prop instead of the internal `useAreas` fetch — keeps
+   *  the highlighted outline in sync after the parent's refetch
+   *  (otherwise this component holds its own stale copy). */
+  area?: Area | null;
 }
 
 const FALLBACK_COLOR = "#3B82F6";
@@ -53,6 +59,7 @@ export default function AreaGAPreviewContent({
   areaId,
   activeStageColor,
   heightClassName = "h-72",
+  area: areaProp,
 }: AreaGAPreviewContentProps) {
   const { data: project } = useProject(projectId);
   const { data: decks } = useDecks(projectId);
@@ -70,9 +77,10 @@ export default function AreaGAPreviewContent({
       : undefined;
   const { imageBlobUrl, isLoading: isImageLoading } = useGAImage(gaImageUrl);
 
-  // Resolve the current area + its deck. Both come back from independent
-  // fetches so we tolerate the in-flight gap with a skeleton.
-  const currentArea = areas?.find((a) => a.identifier === areaId);
+  // Resolve the current area + its deck. Prefer the area prop (kept
+  // fresh by the parent) over the internal areas fetch — the fetch is
+  // cached and won't update when the parent refetches after an edit.
+  const currentArea = areaProp ?? areas?.find((a) => a.identifier === areaId);
   const deck = decks?.find(
     (d) => d.identifier === currentArea?.containedInPlace?.identifier
   );

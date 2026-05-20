@@ -38,6 +38,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type {
+  Area,
   AreaPolygonPoint,
   CreateAreaStageInput,
   GeneralArrangement,
@@ -164,6 +165,10 @@ interface CreateAndDefineAreaModalProps {
   projectId: string;
   generalArrangement: GeneralArrangement | undefined;
   onSuccess?: () => void;
+  /** When supplied the modal switches to edit mode: deck is locked,
+   *  name / description / polygon are pre-filled and the stages
+   *  configuration block is hidden (stages have their own editor). */
+  area?: Area | null;
 }
 
 export default function CreateAndDefineAreaModal({
@@ -172,7 +177,9 @@ export default function CreateAndDefineAreaModal({
   projectId,
   generalArrangement,
   onSuccess,
+  area,
 }: CreateAndDefineAreaModalProps) {
+  const isEditing = !!area;
   const t = useTranslations("areas");
   const { data: decks, loading: decksLoading } = useDecks(projectId);
 
@@ -254,25 +261,43 @@ export default function CreateAndDefineAreaModal({
       );
   }, [isOpen]);
 
-  // Reset everything when the modal opens. Avoids leftover state from a
-  // previous create.
+  // Seed (or reset) form state when the modal opens. In edit mode we
+  // pre-fill from the supplied area; in create mode we start blank.
+  // Polygon reset on subsequent deck changes is handled by the
+  // FormSelect's onChange so it doesn't fire on the initial mount and
+  // wipe the just-loaded polygon.
   useEffect(() => {
     if (!isOpen) return;
-    setSelectedDeckId("");
-    resetPolygon();
-    setName("");
-    setDescription("");
+    if (area) {
+      setSelectedDeckId(area.containedInPlace?.identifier ?? "");
+      if (area.polygon && area.polygon.length >= 3) {
+        setPolygonSnapshot(area.polygon, true);
+      } else {
+        resetPolygon();
+      }
+      setName(area.name);
+      setDescription(area.description ?? "");
+    } else {
+      setSelectedDeckId("");
+      resetPolygon();
+      setName("");
+      setDescription("");
+    }
     setError(null);
     setCreateStages(true);
     setStageRows([]);
     setNewCustomStageName("");
-  }, [isOpen, resetPolygon]);
+  }, [isOpen, area, resetPolygon, setPolygonSnapshot]);
 
-  // Picking a different deck clears any in-progress polygon — the user is
-  // starting over for that region.
-  useEffect(() => {
+  // Switching deck mid-create wipes the polygon — the user is moving to
+  // a different region, the old polygon doesn't apply. Triggered only by
+  // user action; the initialisation effect above sets the deck without
+  // going through this path.
+  const handleDeckChange = (deckId: string) => {
+    if (deckId === selectedDeckId) return;
+    setSelectedDeckId(deckId);
     resetPolygon();
-  }, [selectedDeckId, resetPolygon]);
+  };
 
   const selectedDeck = useMemo(
     () => decks?.find((d) => d.identifier === selectedDeckId),
@@ -289,17 +314,25 @@ export default function CreateAndDefineAreaModal({
     [decks, t]
   );
 
-  // Map existing areas (with polygons) to the drawer format.
+  // Map existing areas (with polygons) to the drawer format. In edit
+  // mode skip the area currently being edited — the drawer treats
+  // existing-area polygons as obstacles (rejects vertex drops inside
+  // them) and the user's whole working region IS that area.
   const existingAreasForDrawer = useMemo(
     () =>
       (existingAreasInDeck ?? [])
-        .filter((a) => Array.isArray(a.polygon) && a.polygon.length >= 3)
+        .filter(
+          (a) =>
+            Array.isArray(a.polygon) &&
+            a.polygon.length >= 3 &&
+            a.identifier !== area?.identifier
+        )
         .map((a) => ({
           id: a.identifier,
           name: a.name,
           polygon: a.polygon!,
         })),
-    [existingAreasInDeck]
+    [existingAreasInDeck, area?.identifier]
   );
 
   const deckBounds = useMemo(() => {
@@ -347,26 +380,34 @@ export default function CreateAndDefineAreaModal({
     setError(null);
     setSubmitting(true);
     try {
-      // Walk the unified list in its current order. Each row maps to one
-      // entry in the backend's discriminated `stages` array — interleaved
-      // template/custom order is preserved end-to-end.
-      const stagesPayload: CreateAreaStageInput[] = createStages
-        ? stageRows.flatMap<CreateAreaStageInput>((row) => {
-            if (row.kind === "template") {
-              return row.included
-                ? [{ type: "template", stage_template_id: row.templateId }]
-                : [];
-            }
-            return [{ type: "custom", name: row.name, color: row.color }];
-          })
-        : [];
-      await areasApi.create(projectId, selectedDeckId, {
-        name: name.trim(),
-        description: description.trim() || undefined,
-        polygon,
-        create_stages: createStages,
-        ...(stagesPayload.length > 0 ? { stages: stagesPayload } : {}),
-      });
+      if (isEditing && area) {
+        await areasApi.update(projectId, area.identifier, {
+          name: name.trim(),
+          description: description.trim() || undefined,
+          polygon,
+        });
+      } else {
+        // Walk the unified list in its current order. Each row maps to one
+        // entry in the backend's discriminated `stages` array — interleaved
+        // template/custom order is preserved end-to-end.
+        const stagesPayload: CreateAreaStageInput[] = createStages
+          ? stageRows.flatMap<CreateAreaStageInput>((row) => {
+              if (row.kind === "template") {
+                return row.included
+                  ? [{ type: "template", stage_template_id: row.templateId }]
+                  : [];
+              }
+              return [{ type: "custom", name: row.name, color: row.color }];
+            })
+          : [];
+        await areasApi.create(projectId, selectedDeckId, {
+          name: name.trim(),
+          description: description.trim() || undefined,
+          polygon,
+          create_stages: createStages,
+          ...(stagesPayload.length > 0 ? { stages: stagesPayload } : {}),
+        });
+      }
       onSuccess?.();
       onClose();
     } catch (e) {
@@ -393,7 +434,7 @@ export default function CreateAndDefineAreaModal({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={t("createAndDefineAreaTitle")}
+      title={isEditing ? t("editAreaTitle") : t("createAndDefineAreaTitle")}
       size="2xl"
       disableBackdropClick
     >
@@ -427,15 +468,30 @@ export default function CreateAndDefineAreaModal({
 
         {/* Right: form */}
         <div className="md:w-80 flex flex-col gap-4 md:border-l md:pl-4 md:border-gray-200 md:dark:border-gray-700 overflow-y-auto">
-          <FormSelect
-            id="area-deck"
-            label={t("deck")}
-            options={deckOptions}
-            value={selectedDeckId}
-            onChange={(e) => setSelectedDeckId(e.target.value)}
-            required
-            disabled={decksLoading}
-          />
+          {isEditing ? (
+            // Deck is locked once an area exists — moving an area to a
+            // different deck would also invalidate the polygon (coords
+            // are relative to the GA, not the deck, but the user mental
+            // model treats them as deck-scoped).
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                {t("deck")}
+              </label>
+              <p className="text-gray-900 dark:text-gray-100 py-2">
+                {selectedDeck?.name ?? "-"}
+              </p>
+            </div>
+          ) : (
+            <FormSelect
+              id="area-deck"
+              label={t("deck")}
+              options={deckOptions}
+              value={selectedDeckId}
+              onChange={(e) => handleDeckChange(e.target.value)}
+              required
+              disabled={decksLoading}
+            />
+          )}
 
           <FormInput
             id="area-name"
@@ -457,7 +513,9 @@ export default function CreateAndDefineAreaModal({
             placeholder={t("areaDescriptionPlaceholder")}
           />
 
-          {/* Stages config */}
+          {/* Stages config — hidden when editing an existing area;
+              stages have their own editor on the area detail page. */}
+          {!isEditing && (
           <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
             <label className="flex items-start gap-2 cursor-pointer">
               <input
@@ -613,6 +671,7 @@ export default function CreateAndDefineAreaModal({
               </div>
             )}
           </div>
+          )}
 
           <p className="text-xs text-gray-500 dark:text-gray-400">{drawingHint}</p>
 

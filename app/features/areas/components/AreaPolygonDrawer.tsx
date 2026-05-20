@@ -262,20 +262,38 @@ export default function AreaPolygonDrawer({
     setDragPreview({ index, point });
   };
 
+  // The vertex-drag-end handler is wired into Leaflet via map.on(...)
+  // inside the CircleMarker's mousedown handler. That mousedown closure
+  // captures `handleVertexDragEnd` once, when the drag starts — by the
+  // time mouseup fires, the React state (`dragPreview`, `polygon`) it
+  // closed over is already stale, so the commit silently no-ops. Keep
+  // the live values in refs and read from them in the handler so it
+  // always sees the latest snapshot.
+  const polygonRef = useRef(polygon);
+  const isClosedRef = useRef(isClosed);
+  const dragPreviewRef = useRef(dragPreview);
+  useEffect(() => {
+    polygonRef.current = polygon;
+    isClosedRef.current = isClosed;
+    dragPreviewRef.current = dragPreview;
+  });
+
   // Drag finished. Commit the preview as a single history entry, or bail
   // out if nothing actually moved (e.g. the user just tapped the vertex).
   const handleVertexDragEnd = () => {
-    if (!dragPreview) return;
-    const current = polygon[dragPreview.index];
+    const preview = dragPreviewRef.current;
+    if (!preview) return;
+    const currentPolygon = polygonRef.current;
+    const current = currentPolygon[preview.index];
     const moved =
       !current ||
-      current.x !== dragPreview.point.x ||
-      current.y !== dragPreview.point.y;
+      current.x !== preview.point.x ||
+      current.y !== preview.point.y;
     if (moved) {
-      const next = polygon.map((p, i) =>
-        i === dragPreview.index ? dragPreview.point : p
+      const next = currentPolygon.map((p, i) =>
+        i === preview.index ? preview.point : p
       );
-      onChange(next, isClosed);
+      onChange(next, isClosedRef.current);
     }
     setDragPreview(null);
   };
