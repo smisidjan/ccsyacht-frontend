@@ -223,6 +223,7 @@ export default function AreaDetailPage() {
               <StageTimeline
                 stages={stages}
                 projectId={projectId}
+                areaId={areaId}
                 canEdit={canEditStages}
                 onUpdate={async (stageId, data) => {
                   await updateStage(stageId, data);

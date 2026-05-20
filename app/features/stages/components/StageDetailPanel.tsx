@@ -21,6 +21,9 @@ import type { Stage } from "@/lib/api/types";
 interface StageDetailPanelProps {
   stage: Stage;
   projectId: string;
+  /** Area the stage lives under — forwarded to PunchlistList so the
+   *  create-pin modal can lock the area and constrain the marker. */
+  areaId: string;
   canEdit: boolean;
   onUpdate: (data: { name?: string }) => Promise<void>;
   onRefetch: () => Promise<void>;
@@ -37,6 +40,7 @@ const statusColors = {
 export default function StageDetailPanel({
   stage,
   projectId,
+  areaId,
   canEdit,
   onUpdate,
   onRefetch,
@@ -429,8 +433,8 @@ export default function StageDetailPanel({
             {activeTab === "punchlist" && (
               <PunchlistList
                 projectId={projectId}
-                stageId={stage.identifier}
-                stageStatus={stage.status.name}
+                areaId={areaId}
+                stage={stage}
               />
             )}
           </div>

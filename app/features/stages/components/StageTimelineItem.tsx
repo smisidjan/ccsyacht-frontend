@@ -14,6 +14,7 @@ interface StageTimelineItemProps {
   isLast?: boolean;
   // Props forwarded to StageDetailPanel when the row is expanded
   projectId: string;
+  areaId: string;
   canEdit: boolean;
   onUpdate: (data: { name?: string }) => Promise<void>;
   onRefetch: () => Promise<void>;
@@ -32,6 +33,7 @@ export default function StageTimelineItem({
   mode,
   isLast,
   projectId,
+  areaId,
   canEdit,
   onUpdate,
   onRefetch,
@@ -49,6 +51,7 @@ export default function StageTimelineItem({
   const detailProps = {
     stage,
     projectId,
+    areaId,
     canEdit,
     onUpdate,
     onRefetch,

@@ -20,3 +20,20 @@ export const isInsidePolygon = (
   }
   return inside;
 };
+
+/** Plain average of polygon vertices — close enough to a centroid for
+ *  picking a sensible "drop the pin somewhere inside this area" default.
+ *  Not the geometric centroid (would need the area-weighted formula) but
+ *  cheap and good for convex-ish shapes typical on a GA. */
+export const polygonCentroid = (
+  polygon: AreaPolygonPoint[]
+): AreaPolygonPoint | null => {
+  if (polygon.length === 0) return null;
+  let sumX = 0;
+  let sumY = 0;
+  for (const p of polygon) {
+    sumX += p.x;
+    sumY += p.y;
+  }
+  return { x: sumX / polygon.length, y: sumY / polygon.length };
+};

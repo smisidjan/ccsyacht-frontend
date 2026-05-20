@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import LoadingSkeleton from "@/app/components/ui/LoadingSkeleton";
-import type { Deck, Area } from "@/lib/api/types";
+import type { Deck, Area, AreaPolygonPoint } from "@/lib/api/types";
 
 // Dynamic import - Leaflet doesn't work with SSR
 const GAPreviewMarker = dynamic(() => import("./GAPreviewMarker"), {
@@ -29,6 +29,8 @@ export interface GAPreviewProps {
   /** Which area is currently selected in the form — highlighted on the
    *  preview so it's obvious which outline matches the form value. */
   selectedAreaId?: string;
+  /** Constrain marker drops to this polygon (0..1 normalized). */
+  constrainPolygon?: AreaPolygonPoint[];
 }
 
 export default function GAPreview(props: GAPreviewProps) {

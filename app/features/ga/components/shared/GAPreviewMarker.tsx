@@ -5,7 +5,8 @@ import { MapContainer, ImageOverlay, Marker, Polygon, useMap, useMapEvents } fro
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "./ga-smooth-zoom.css";
-import type { Deck, Area } from "@/lib/api/types";
+import type { Deck, Area, AreaPolygonPoint } from "@/lib/api/types";
+import { isInsidePolygon } from "@/lib/utils/geometry";
 
 interface GAPreviewMarkerProps {
   imageUrl: string;
@@ -24,6 +25,10 @@ interface GAPreviewMarkerProps {
   /** Identifier of the area the form currently has selected — drawn with
    *  a solid blue outline to mark "this is the one you picked". */
   selectedAreaId?: string;
+  /** When supplied, the marker may only land inside this polygon — drops
+   *  outside snap back to the previous valid position. Coords are 0..1
+   *  normalized. */
+  constrainPolygon?: AreaPolygonPoint[];
 }
 
 // Create a custom colored marker icon
@@ -114,6 +119,7 @@ export default function GAPreviewMarker({
   initialDeck,
   areas,
   selectedAreaId,
+  constrainPolygon,
 }: GAPreviewMarkerProps) {
   const mapRef = useRef<L.Map | null>(null);
 
@@ -163,6 +169,18 @@ export default function GAPreviewMarker({
     // Clamp to valid range
     const clampedX = Math.max(0, Math.min(100, newX));
     const clampedY = Math.max(0, Math.min(100, newY));
+
+    // When a constraint polygon is supplied, the drop must land inside
+    // it. React's `position` prop alone won't snap the marker back
+    // (parent state didn't change), so reset the Leaflet marker
+    // imperatively to the last committed position.
+    if (constrainPolygon) {
+      const normalized = { x: clampedX / 100, y: clampedY / 100 };
+      if (!isInsidePolygon(normalized, constrainPolygon)) {
+        marker.setLatLng(markerPosition);
+        return;
+      }
+    }
 
     onPositionChange(clampedX, clampedY);
   };

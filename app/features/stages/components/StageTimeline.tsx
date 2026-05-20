@@ -7,6 +7,7 @@ import type { Stage } from "@/lib/api/types";
 interface StageTimelineProps {
   stages: Stage[];
   projectId: string;
+  areaId: string;
   canEdit: boolean;
   onUpdate: (stageId: string, data: { name?: string }) => Promise<void>;
   onRefetch: () => Promise<void>;
@@ -23,6 +24,7 @@ function pickActiveIndex(stages: Stage[]): number {
 export default function StageTimeline({
   stages,
   projectId,
+  areaId,
   canEdit,
   onUpdate,
   onRefetch,
@@ -48,6 +50,7 @@ export default function StageTimeline({
             mode={mode}
             isLast={i === stages.length - 1}
             projectId={projectId}
+            areaId={areaId}
             canEdit={canEdit}
             onUpdate={(data) => onUpdate(stage.identifier, data)}
             onRefetch={onRefetch}

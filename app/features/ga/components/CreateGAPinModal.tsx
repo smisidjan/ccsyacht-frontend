@@ -13,7 +13,7 @@ import { useAreas } from "@/lib/api/areas";
 import { useStages } from "@/lib/api/stages";
 import { useProjectMembersFromContext } from "@/app/context/ProjectContext";
 import { MAX_GA_FILE_SIZE, FILE_SIZE_LABELS } from "@/lib/constants/fileUpload";
-import type { GAPin, CreateGAPinRequest, UpdateGAPinRequest, PunchlistItemPriority, Deck, Area } from "@/lib/api/types";
+import type { GAPin, CreateGAPinRequest, UpdateGAPinRequest, PunchlistItemPriority, Deck, Area, Stage } from "@/lib/api/types";
 
 interface CreateGAPinModalProps {
   isOpen: boolean;
@@ -32,6 +32,16 @@ interface CreateGAPinModalProps {
    *  the GA. Independent from `initialDeck` — the area's own
    *  `containedInPlace` already implies the deck. */
   initialArea?: Area | null;
+  /** Pre-selects the stage. Used by the area-detail page where the
+   *  active stage is already known when the user clicks "Add punchlist
+   *  item". The whole object (not just the id) lets the modal display
+   *  the stage name immediately without waiting for the stages fetch. */
+  initialStage?: Stage | null;
+  /** When set, the marker can only be dropped inside the supplied
+   *  area's polygon, and the deck/area/stage selectors collapse into
+   *  a compact read-only summary line (caller already knows all three
+   *  — no point repeating the labelled blocks). */
+  constrainToArea?: boolean;
 }
 
 const DEFAULT_COLORS = [
@@ -57,6 +67,8 @@ export default function CreateGAPinModal({
   gaImageHeight,
   initialDeck,
   initialArea,
+  initialStage,
+  constrainToArea = false,
 }: CreateGAPinModalProps) {
   const t = useTranslations("gaViewer");
   const isEditing = !!initialData;
@@ -101,7 +113,14 @@ export default function CreateGAPinModal({
       setX(initialPosition.x);
       setY(initialPosition.y);
       setLabel("");
-      setColor(DEFAULT_COLORS[0]);
+      // In constrain-to-area mode the pin's identity matches the stage
+      // it belongs to — adopt the stage's color so the pin reads as
+      // "this stage" on the GA. Caller without a stage colour falls
+      // back to the default palette.
+      setColor(
+        (constrainToArea && initialStage?.color) ||
+          DEFAULT_COLORS[0]
+      );
       // Pre-select deck if provided (from clicking on deck bounding box).
       // Prefer the area's own deck when an area was clicked — keeps the
       // two selectors consistent even if the caller forgot to pass both.
@@ -111,7 +130,7 @@ export default function CreateGAPinModal({
           ""
       );
       setSelectedAreaId(initialArea?.identifier || "");
-      setSelectedStageId("");
+      setSelectedStageId(initialStage?.identifier || "");
       // Reset punchlist fields
       setPunchlistDescription("");
       setPunchlistPriority("medium");
@@ -125,7 +144,7 @@ export default function CreateGAPinModal({
       setSelectedAreaId("");
       setSelectedStageId("");
     }
-  }, [initialData, initialPosition, initialDeck, initialArea]);
+  }, [initialData, initialPosition, initialDeck, initialArea, initialStage, constrainToArea]);
 
   // Auto-select if only one deck available
   useEffect(() => {
@@ -276,6 +295,9 @@ export default function CreateGAPinModal({
                 initialDeck={initialDeck}
                 areas={areas ?? undefined}
                 selectedAreaId={selectedAreaId || undefined}
+                constrainPolygon={
+                  constrainToArea ? initialArea?.polygon : undefined
+                }
               />
             </div>
           </div>
@@ -283,6 +305,27 @@ export default function CreateGAPinModal({
 
         {/* Right: Form fields */}
         <div className={showGAPreview ? "w-1/2 space-y-5" : "space-y-5"}>
+        {constrainToArea && initialDeck && initialArea && initialStage ? (
+          // Compact location summary — caller already locked all three
+          // levels so the user just needs to fill in the punchlist body.
+          <div className="flex items-center flex-wrap gap-2 px-4 py-3 rounded-lg bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-700 text-sm">
+            <span className="text-gray-900 dark:text-gray-100">{initialDeck.name}</span>
+            <span className="text-gray-400 dark:text-gray-500">/</span>
+            <span className="text-gray-900 dark:text-gray-100">{initialArea.name}</span>
+            <span className="text-gray-400 dark:text-gray-500">/</span>
+            {initialStage.color && (
+              <span
+                className="inline-block w-3 h-3 rounded-sm border border-gray-200 dark:border-gray-600 flex-shrink-0"
+                style={{ backgroundColor: initialStage.color }}
+                aria-hidden="true"
+              />
+            )}
+            <span className="text-gray-900 dark:text-gray-100 font-medium">
+              {initialStage.name}
+            </span>
+          </div>
+        ) : (
+          <>
         {/* Deck and Area Selection (side by side) */}
         <div className="grid grid-cols-2 gap-4">
           {/* Deck Selection */}
@@ -418,7 +461,9 @@ export default function CreateGAPinModal({
         {selectedAreaId && (
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              {stages && stages.length === 1 ? t("stage") : t("selectStage")}
+              {(stages && stages.length === 1) || initialStage
+                ? t("stage")
+                : t("selectStage")}
             </label>
             {isEditing ? (
               // Edit mode: show text with optional edit icon
@@ -454,10 +499,13 @@ export default function CreateGAPinModal({
                 </div>
               )
             ) : (
-              // Create mode: show text for 1 option, dropdown for multiple
-              stages && stages.length === 1 ? (
+              // Create mode: show text for 1 option or when the stage was
+              // pre-selected from caller context; dropdown otherwise.
+              (stages && stages.length === 1) || initialStage ? (
                 <p className="text-gray-900 dark:text-gray-100 py-2">
-                  {stages[0].name}
+                  {(initialStage
+                    ? initialStage.name
+                    : stages?.[0]?.name) || "-"}
                 </p>
               ) : (
                 <select
@@ -478,9 +526,19 @@ export default function CreateGAPinModal({
             )}
           </div>
         )}
+          </>
+        )}
 
-        {/* Label and Color Picker (side by side) */}
-        <div className="grid grid-cols-[1fr_auto] gap-4 items-start">
+        {/* Label and Color Picker — in constrain-to-area mode the pin
+            color is locked to the stage's color, so the picker is
+            hidden and Label spans the full row. */}
+        <div
+          className={
+            constrainToArea
+              ? ""
+              : "grid grid-cols-[1fr_auto] gap-4 items-start"
+          }
+        >
           {/* Label */}
           <FormInput
             id="label"
@@ -492,31 +550,17 @@ export default function CreateGAPinModal({
           />
 
           {/* Color Picker */}
-          <div className="pt-7">
-            <input
-              type="color"
-              value={color}
-              onChange={(e) => setColor(e.target.value)}
-              className="w-16 h-10 rounded-lg border border-gray-300 dark:border-gray-600 cursor-pointer"
-              title={t("pinColor")}
-            />
-          </div>
-        </div>
-
-        {/* Preview */}
-        <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-          <p className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-            {t("preview")}
-          </p>
-          <div className="flex items-center gap-3">
-            <div
-              className="w-8 h-8 rounded-full border-4 border-white dark:border-gray-800 shadow-lg"
-              style={{ backgroundColor: color }}
-            />
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              {label || t("unnamedPin")}
-            </p>
-          </div>
+          {!constrainToArea && (
+            <div className="pt-7">
+              <input
+                type="color"
+                value={color}
+                onChange={(e) => setColor(e.target.value)}
+                className="w-16 h-10 rounded-lg border border-gray-300 dark:border-gray-600 cursor-pointer"
+                title={t("pinColor")}
+              />
+            </div>
+          )}
         </div>
 
         {/* Punchlist Item Fields (Create mode only, when stage is NOT completed) */}

@@ -6,20 +6,37 @@ import { PlusIcon, CheckCircleIcon, ClockIcon, ExclamationTriangleIcon, XCircleI
 import Alert from "@/app/components/ui/Alert";
 import Tooltip from "@/app/components/ui/Tooltip";
 import LoadingSkeleton from "@/app/components/ui/LoadingSkeleton";
-import { CreatePunchlistItemModal } from "@/app/features/punchlist";
+import CreateGAPinModal from "@/app/features/ga/components/CreateGAPinModal";
 import PunchlistItemCard from "./PunchlistItemCard";
 import { usePunchlistItems } from "@/lib/api/punchlist-items";
+import { useArea } from "@/lib/api/areas";
+import { useDecks } from "@/lib/api/decks";
+import { useProject } from "@/lib/api/hooks";
+import { useGAImage } from "@/lib/hooks/useGAImage";
+import { polygonCentroid } from "@/lib/utils/geometry";
+import {
+  hasGAImageData,
+  getFixedImageUrl,
+} from "@/app/features/ga/utils/helpers";
 import { usePermission } from "@/lib/hooks/usePermission";
 import { PERMISSIONS } from "@/lib/constants/permissions";
-import type { PunchlistItemStatus, StageStatus } from "@/lib/api/types";
+import type { PunchlistItemStatus, Stage } from "@/lib/api/types";
 
 interface PunchlistListProps {
   projectId: string;
-  stageId: string;
-  stageStatus: StageStatus;
+  /** Area the stage belongs to — required so the create-pin modal can
+   *  pre-lock the area selector and constrain the marker to its
+   *  polygon. */
+  areaId: string;
+  /** Active stage object — name + color are part of the stage's
+   *  identity (shown in the compact location summary), so we pass the
+   *  whole object instead of just the id. */
+  stage: Stage;
 }
 
-export default function PunchlistList({ projectId, stageId, stageStatus }: PunchlistListProps) {
+export default function PunchlistList({ projectId, areaId, stage }: PunchlistListProps) {
+  const stageId = stage.identifier;
+  const stageStatus = stage.status.name;
   const t = useTranslations("punchlist");
   const { hasPermission } = usePermission();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -35,6 +52,34 @@ export default function PunchlistList({ projectId, stageId, stageStatus }: Punch
       ...(statusFilter !== "all" ? { status: statusFilter } : {}),
     }
   );
+
+  // GA context for the create-pin modal. We open this lazily — only the
+  // GA-image fetch is deferred to when the user actually clicks "+ Add"
+  // (via the conditional render below), the rest is cheap.
+  const { data: project } = useProject(projectId);
+  const { data: area } = useArea(projectId, areaId);
+  const { data: decks } = useDecks(projectId);
+  const deck = decks?.find(
+    (d) => d.identifier === area?.containedInPlace?.identifier
+  );
+  const ga =
+    project && typeof project.generalArrangement === "object"
+      ? project.generalArrangement
+      : null;
+  const gaImageRawUrl =
+    ga && hasGAImageData(ga) && ga.imageUrl
+      ? getFixedImageUrl(ga.imageUrl)
+      : undefined;
+  const { imageBlobUrl } = useGAImage(gaImageRawUrl);
+  // Centroid of the area's polygon — used as the marker's drop point so
+  // the user starts inside the area. Falls back to the image centre when
+  // the area has no polygon (legacy data).
+  const initialPinPosition = area?.polygon
+    ? (() => {
+        const c = polygonCentroid(area.polygon);
+        return c ? { x: c.x * 100, y: c.y * 100 } : { x: 50, y: 50 };
+      })()
+    : { x: 50, y: 50 };
 
   const canCreate = hasPermission(PERMISSIONS.CREATE_PUNCHLIST_ITEMS);
   const canView = hasPermission(PERMISSIONS.VIEW_PUNCHLIST_ITEMS);
@@ -196,13 +241,22 @@ export default function PunchlistList({ projectId, stageId, stageStatus }: Punch
         </>
       )}
 
-      {/* Create Modal */}
+      {/* Create Modal — opens the GA pin modal pre-locked to this
+          area's deck/area/stage. The marker is constrained to the
+          area's polygon so the pin can't land outside it. */}
       {isCreateModalOpen && (
-        <CreatePunchlistItemModal
+        <CreateGAPinModal
           isOpen={isCreateModalOpen}
           onClose={() => setIsCreateModalOpen(false)}
           projectId={projectId}
-          stageId={stageId}
+          initialPosition={initialPinPosition}
+          initialDeck={deck || null}
+          initialArea={area || null}
+          initialStage={stage}
+          constrainToArea
+          gaImageUrl={imageBlobUrl || undefined}
+          gaImageWidth={ga?.imageWidth}
+          gaImageHeight={ga?.imageHeight}
           onSuccess={() => {
             setIsCreateModalOpen(false);
             refetch();
