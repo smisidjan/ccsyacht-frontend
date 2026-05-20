@@ -2,13 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
-import {
-  PencilIcon,
-  CheckIcon,
-  XMarkIcon,
-} from "@heroicons/react/24/outline";
 import Button from "@/app/components/ui/Button";
-import FormInput from "@/app/components/ui/FormInput";
 import { SignatureModal, RejectSignoffModal, RemarksList } from "@/app/features/stages";
 import { PunchlistList } from "@/app/features/punchlist";
 import { useStageSignoffs, useProjectSigners } from "@/lib/api";
@@ -25,8 +19,11 @@ interface StageDetailPanelProps {
    *  create-pin modal can lock the area and constrain the marker. */
   areaId: string;
   canEdit: boolean;
-  onUpdate: (data: { name?: string }) => Promise<void>;
   onRefetch: () => Promise<void>;
+  /** Bubble up to the area page so the open-punchlist badge can
+   *  refetch its count when the user mutates the list inside this
+   *  panel. */
+  onPunchlistChange?: () => void;
 }
 
 const statusColors = {
@@ -42,8 +39,8 @@ export default function StageDetailPanel({
   projectId,
   areaId,
   canEdit,
-  onUpdate,
   onRefetch,
+  onPunchlistChange,
 }: StageDetailPanelProps) {
   const t = useTranslations("areaDetail");
   const tSignoffs = useTranslations("signoffs");
@@ -56,9 +53,6 @@ export default function StageDetailPanel({
   const { data: remarks } = useStageRemarks(projectId, stage.identifier, { include_replies: true });
   const { data: punchlistItems } = usePunchlistItems(projectId, stage.identifier, { per_page: 1 });
 
-  const [isEditing, setIsEditing] = useState(false);
-  const [editName, setEditName] = useState(stage.name);
-  const [isSaving, setIsSaving] = useState(false);
   const [showSignModal, setShowSignModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [selectedSignoffId, setSelectedSignoffId] = useState<string | null>(null);
@@ -89,25 +83,6 @@ export default function StageDetailPanel({
     }
   }, [availableTabs.join(","), activeTab]); // Use join for dependency array
 
-  const handleSave = async () => {
-    setIsSaving(true);
-    try {
-      await onUpdate({
-        name: editName,
-      });
-      setIsEditing(false);
-    } catch (error) {
-      console.error("Failed to update stage:", error);
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleCancel = () => {
-    setEditName(stage.name);
-    setIsEditing(false);
-  };
-
   const handleSubmitForSignoff = async () => {
     setIsSubmitting(true);
     try {
@@ -129,106 +104,64 @@ export default function StageDetailPanel({
       <div className="p-4 sm:p-6 md:p-8 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-start justify-between gap-6">
           <div className="flex-1">
-            {isEditing ? (
-              <FormInput
-                id="stage-name"
-                label={t("name")}
-                value={editName}
-                onChange={(e) => setEditName(e.target.value)}
-                required
-              />
-            ) : (
-              <div>
-                <div className="flex items-center gap-3 mb-2">
-                  {stage.color && (
-                    <span
-                      className="inline-block w-5 h-5 rounded-sm flex-shrink-0 border border-gray-200 dark:border-gray-600"
-                      style={{ backgroundColor: stage.color }}
-                      aria-hidden="true"
-                    />
-                  )}
-                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-                    {stage.name}
-                  </h2>
-                </div>
-                <div className="flex items-center gap-3 flex-wrap">
-                  <span className={`inline-block px-3 py-1 rounded text-sm font-medium ${
-                    statusColors[stage.status.name as keyof typeof statusColors]
-                  }`}>
-                    {t(`status.${stage.status.name}`)}
-                  </span>
+            <div className="flex items-center gap-3 mb-2">
+              {stage.color && (
+                <span
+                  className="inline-block w-5 h-5 rounded-sm flex-shrink-0 border border-gray-200 dark:border-gray-600"
+                  style={{ backgroundColor: stage.color }}
+                  aria-hidden="true"
+                />
+              )}
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                {stage.name}
+              </h2>
+            </div>
+            <div className="flex items-center gap-3 flex-wrap">
+              <span className={`inline-block px-3 py-1 rounded text-sm font-medium ${
+                statusColors[stage.status.name as keyof typeof statusColors]
+              }`}>
+                {t(`status.${stage.status.name}`)}
+              </span>
 
-                  {/* Status Flow Hints */}
-                  {canEdit && stage.status.name === "not_started" && (
-                    <p className="text-sm text-blue-700 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30 px-3 py-1 rounded">
-                      {t("autoStartsAfterPrevious")}
-                    </p>
-                  )}
+              {/* Status Flow Hints */}
+              {canEdit && stage.status.name === "not_started" && (
+                <p className="text-sm text-blue-700 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30 px-3 py-1 rounded">
+                  {t("autoStartsAfterPrevious")}
+                </p>
+              )}
 
-                  {canEdit && stage.status.name === "in_progress" && (
+              {canEdit && stage.status.name === "in_progress" && (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={handleSubmitForSignoff}
+                  disabled={isSubmitting}
+                >
+                  {tSignoffs("submitForSignoff")}
+                </Button>
+              )}
+
+              {canEdit && stage.status.name === "rejected" && !signoffsLoading && (
+                <>
+                  {/* Only show Resubmit if there are no pending signoffs */}
+                  {(!signoffs || signoffs.length === 0 || !signoffs.some(s => s.status === "pending")) ? (
                     <Button
                       variant="primary"
                       size="sm"
                       onClick={handleSubmitForSignoff}
                       disabled={isSubmitting}
                     >
-                      {tSignoffs("submitForSignoff")}
+                      {tSignoffs("resubmit")}
                     </Button>
+                  ) : (
+                    <p className="text-sm text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/30 px-3 py-1 rounded">
+                      {tSignoffs("waitingForSignoffs")}
+                    </p>
                   )}
-
-                  {canEdit && stage.status.name === "rejected" && !signoffsLoading && (
-                    <>
-                      {/* Only show Resubmit if there are no pending signoffs */}
-                      {(!signoffs || signoffs.length === 0 || !signoffs.some(s => s.status === "pending")) ? (
-                        <Button
-                          variant="primary"
-                          size="sm"
-                          onClick={handleSubmitForSignoff}
-                          disabled={isSubmitting}
-                        >
-                          {tSignoffs("resubmit")}
-                        </Button>
-                      ) : (
-                        <p className="text-sm text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/30 px-3 py-1 rounded">
-                          {tSignoffs("waitingForSignoffs")}
-                        </p>
-                      )}
-                    </>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {canEdit && (
-            <div className="flex gap-2">
-              {isEditing ? (
-                <>
-                  <button
-                    onClick={handleCancel}
-                    disabled={isSaving}
-                    className="p-2 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 disabled:opacity-50"
-                  >
-                    <XMarkIcon className="w-5 h-5" />
-                  </button>
-                  <button
-                    onClick={handleSave}
-                    disabled={isSaving || !editName.trim()}
-                    className="p-2 text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 disabled:opacity-50"
-                  >
-                    <CheckIcon className="w-5 h-5" />
-                  </button>
                 </>
-              ) : (
-                <button
-                  onClick={() => setIsEditing(true)}
-                  className="p-2 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
-                >
-                  <PencilIcon className="w-5 h-5" />
-                </button>
               )}
             </div>
-          )}
+          </div>
         </div>
       </div>
 
@@ -435,6 +368,7 @@ export default function StageDetailPanel({
                 projectId={projectId}
                 areaId={areaId}
                 stage={stage}
+                onPunchlistChange={onPunchlistChange}
               />
             )}
           </div>

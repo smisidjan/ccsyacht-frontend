@@ -7,7 +7,7 @@ import BaseModal from "@/app/components/modals/BaseModal";
 import FormInput from "@/app/components/ui/FormInput";
 import PunchlistItemForm from "@/app/features/punchlist/components/PunchlistItemForm";
 import GAPreview from "@/app/features/ga/components/shared/GAPreview";
-import { gaPinsApi } from "@/lib/api/ga-pins";
+import { gaPinsApi, useGAPins } from "@/lib/api/ga-pins";
 import { useDecks } from "@/lib/api/decks";
 import { useAreas } from "@/lib/api/areas";
 import { useStages } from "@/lib/api/stages";
@@ -98,6 +98,13 @@ export default function CreateGAPinModal({
   const { data: areas } = useAreas(projectId, selectedDeckId || undefined);
   const { data: stages } = useStages(projectId, selectedAreaId);
   const { data: projectMembers } = useProjectMembersFromContext();
+  // Existing pins shown as read-only reference markers on the preview.
+  // Drop the pin we're editing so the live draggable marker isn't
+  // duplicated by its own stored coordinates.
+  const { data: allPins } = useGAPins(projectId);
+  const existingPins = allPins.filter(
+    (p) => !initialData || p.identifier !== initialData.identifier
+  );
 
   // Initialize form with data
   useEffect(() => {
@@ -298,6 +305,7 @@ export default function CreateGAPinModal({
                 constrainPolygon={
                   constrainToArea ? initialArea?.polygon : undefined
                 }
+                existingPins={existingPins}
               />
             </div>
           </div>

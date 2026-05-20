@@ -16,8 +16,8 @@ interface StageTimelineItemProps {
   projectId: string;
   areaId: string;
   canEdit: boolean;
-  onUpdate: (data: { name?: string }) => Promise<void>;
   onRefetch: () => Promise<void>;
+  onPunchlistChange?: () => void;
 }
 
 const statusBadgeColors = {
@@ -35,8 +35,8 @@ export default function StageTimelineItem({
   projectId,
   areaId,
   canEdit,
-  onUpdate,
   onRefetch,
+  onPunchlistChange,
 }: StageTimelineItemProps) {
   const t = useTranslations("areaDetail");
   const [isExpanded, setIsExpanded] = useState(false);
@@ -53,8 +53,8 @@ export default function StageTimelineItem({
     projectId,
     areaId,
     canEdit,
-    onUpdate,
     onRefetch,
+    onPunchlistChange,
   };
 
   const compactHeader = (

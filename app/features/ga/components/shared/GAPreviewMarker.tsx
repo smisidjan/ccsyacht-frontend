@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useRef } from "react";
-import { MapContainer, ImageOverlay, Marker, Polygon, useMap, useMapEvents } from "react-leaflet";
+import { MapContainer, ImageOverlay, Marker, Polygon, Tooltip, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "./ga-smooth-zoom.css";
-import type { Deck, Area, AreaPolygonPoint } from "@/lib/api/types";
+import type { Deck, Area, AreaPolygonPoint, GAPin } from "@/lib/api/types";
 import { isInsidePolygon } from "@/lib/utils/geometry";
 
 interface GAPreviewMarkerProps {
@@ -29,6 +29,11 @@ interface GAPreviewMarkerProps {
    *  outside snap back to the previous valid position. Coords are 0..1
    *  normalized. */
   constrainPolygon?: AreaPolygonPoint[];
+  /** Existing pins to render as non-draggable reference markers, with
+   *  the label exposed as a hover tooltip. Used by the create/edit
+   *  modal so the user can see neighbouring pins while dropping a new
+   *  one. */
+  existingPins?: GAPin[];
 }
 
 // Create a custom colored marker icon
@@ -48,6 +53,28 @@ function createColoredIcon(color: string): L.DivIcon {
     `,
     iconSize: [32, 32],
     iconAnchor: [16, 16],
+  });
+}
+
+// Smaller, semi-transparent dot used for existing pins on the same GA
+// — keeps them visible as spatial context without competing with the
+// active draggable marker.
+function createExistingPinIcon(color: string): L.DivIcon {
+  return L.divIcon({
+    className: "custom-pin-marker existing-pin-marker",
+    html: `
+      <div style="
+        width: 18px;
+        height: 18px;
+        background-color: ${color};
+        border: 2px solid white;
+        border-radius: 50%;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+        opacity: 0.75;
+      "></div>
+    `,
+    iconSize: [18, 18],
+    iconAnchor: [9, 9],
   });
 }
 
@@ -120,6 +147,7 @@ export default function GAPreviewMarker({
   areas,
   selectedAreaId,
   constrainPolygon,
+  existingPins,
 }: GAPreviewMarkerProps) {
   const mapRef = useRef<L.Map | null>(null);
 
@@ -246,6 +274,31 @@ export default function GAPreviewMarker({
                 interactive: false,
               }}
             />
+          );
+        })}
+
+        {/* Existing pins — rendered before the active marker so the
+            draggable one stays on top, with the punchlist label shown
+            on hover so the user can tell what's already there. */}
+        {existingPins?.map((pin) => {
+          const pinPosition: [number, number] = [
+            (pin.y / 100) * imageHeight,
+            (pin.x / 100) * imageWidth,
+          ];
+          return (
+            <Marker
+              key={pin.identifier}
+              position={pinPosition}
+              icon={createExistingPinIcon(pin.color || "#6B7280")}
+              interactive={true}
+              draggable={false}
+            >
+              {pin.label && (
+                <Tooltip direction="top" offset={[0, -8]} opacity={0.95}>
+                  {pin.label}
+                </Tooltip>
+              )}
+            </Marker>
           );
         })}
 

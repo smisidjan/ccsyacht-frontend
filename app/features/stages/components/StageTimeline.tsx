@@ -9,8 +9,8 @@ interface StageTimelineProps {
   projectId: string;
   areaId: string;
   canEdit: boolean;
-  onUpdate: (stageId: string, data: { name?: string }) => Promise<void>;
   onRefetch: () => Promise<void>;
+  onPunchlistChange?: () => void;
 }
 
 /** The "active" stage is the first one the team is currently working on:
@@ -26,8 +26,8 @@ export default function StageTimeline({
   projectId,
   areaId,
   canEdit,
-  onUpdate,
   onRefetch,
+  onPunchlistChange,
 }: StageTimelineProps) {
   const activeIndex = useMemo(() => pickActiveIndex(stages), [stages]);
 
@@ -52,8 +52,8 @@ export default function StageTimeline({
             projectId={projectId}
             areaId={areaId}
             canEdit={canEdit}
-            onUpdate={(data) => onUpdate(stage.identifier, data)}
             onRefetch={onRefetch}
+            onPunchlistChange={onPunchlistChange}
           />
         );
       })}

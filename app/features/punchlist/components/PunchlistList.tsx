@@ -32,9 +32,13 @@ interface PunchlistListProps {
    *  identity (shown in the compact location summary), so we pass the
    *  whole object instead of just the id. */
   stage: Stage;
+  /** Fired after any local mutation (create / update / delete) so
+   *  ancestors that show derived punchlist stats (e.g. the open-count
+   *  badge on the area detail page) can refresh in lockstep. */
+  onPunchlistChange?: () => void;
 }
 
-export default function PunchlistList({ projectId, areaId, stage }: PunchlistListProps) {
+export default function PunchlistList({ projectId, areaId, stage, onPunchlistChange }: PunchlistListProps) {
   const stageId = stage.identifier;
   const stageStatus = stage.status.name;
   const t = useTranslations("punchlist");
@@ -52,6 +56,13 @@ export default function PunchlistList({ projectId, areaId, stage }: PunchlistLis
       ...(statusFilter !== "all" ? { status: statusFilter } : {}),
     }
   );
+
+  // Refetch the local list AND ping ancestors so derived stats (e.g.
+  // the area page's open-count badge) stay in sync with our mutations.
+  const handleChange = () => {
+    refetch();
+    onPunchlistChange?.();
+  };
 
   // GA context for the create-pin modal. We open this lazily — only the
   // GA-image fetch is deferred to when the user actually clicks "+ Add"
@@ -205,7 +216,7 @@ export default function PunchlistList({ projectId, areaId, stage }: PunchlistLis
                   item={item}
                   projectId={projectId}
                   stageStatus={stageStatus}
-                  onUpdate={refetch}
+                  onUpdate={handleChange}
                 />
               ))}
             </div>
@@ -259,7 +270,7 @@ export default function PunchlistList({ projectId, areaId, stage }: PunchlistLis
           gaImageHeight={ga?.imageHeight}
           onSuccess={() => {
             setIsCreateModalOpen(false);
-            refetch();
+            handleChange();
           }}
         />
       )}

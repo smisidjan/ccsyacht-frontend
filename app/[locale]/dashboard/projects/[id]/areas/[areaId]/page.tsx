@@ -38,10 +38,13 @@ export default function AreaDetailPage() {
 
   const { data: project } = useProject(projectId);
   const { data: area, loading: areaLoading, error: areaError, refetch: refetchArea } = useArea(projectId, areaId);
-  const { data: stages, loading: stagesLoading, error: stagesError, refetch: refetchStages, updateStage } = useStages(projectId, areaId);
+  const { data: stages, loading: stagesLoading, error: stagesError, refetch: refetchStages } = useStages(projectId, areaId);
   const { hasPermission } = usePermission();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditAreaOpen, setIsEditAreaOpen] = useState(false);
+  // Bumped whenever the punchlist inside an expanded stage mutates,
+  // so the open-count badge in the header can refetch in lockstep.
+  const [punchlistVersion, setPunchlistVersion] = useState(0);
 
   const canCreateStages = hasPermission(PERMISSIONS.CREATE_STAGES);
   const canEditStages = hasPermission(PERMISSIONS.EDIT_STAGES);
@@ -131,6 +134,8 @@ export default function AreaDetailPage() {
                 areaId={areaId}
                 activeStageColor={activeStageColor}
                 area={area}
+                activeStageId={activeStage?.identifier}
+                refreshTrigger={punchlistVersion}
               />
             </div>
             <div className="md:col-span-3 flex flex-col gap-4">
@@ -179,6 +184,7 @@ export default function AreaDetailPage() {
                   <OpenPunchlistBadge
                     projectId={projectId}
                     stageId={activeStage.identifier}
+                    refreshTrigger={punchlistVersion}
                   />
                 )}
               </div>
@@ -241,11 +247,8 @@ export default function AreaDetailPage() {
                 projectId={projectId}
                 areaId={areaId}
                 canEdit={canEditStages}
-                onUpdate={async (stageId, data) => {
-                  await updateStage(stageId, data);
-                  refetchStages();
-                }}
                 onRefetch={refetchStages}
+                onPunchlistChange={() => setPunchlistVersion((v) => v + 1)}
               />
             </div>
           )}

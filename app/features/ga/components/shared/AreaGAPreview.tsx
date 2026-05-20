@@ -12,6 +12,13 @@ interface AreaGAPreviewProps {
   heightClassName?: string;
   /** Forwarded to the inner content — see its props doc. */
   area?: Area | null;
+  /** When supplied, GA pins linked to this stage are rendered on the
+   *  preview as hover-labelled dots. */
+  activeStageId?: string;
+  /** Bumped by the parent when a punchlist item / pin is created or
+   *  deleted somewhere down the tree, so the preview refetches its
+   *  pins in lockstep. */
+  refreshTrigger?: number;
 }
 
 // Dynamic import — Leaflet doesn't work with SSR.

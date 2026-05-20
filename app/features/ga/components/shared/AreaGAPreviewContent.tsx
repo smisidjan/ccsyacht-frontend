@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useRef } from "react";
-import { MapContainer, ImageOverlay, Polygon, useMap } from "react-leaflet";
+import { MapContainer, ImageOverlay, Marker, Polygon, Tooltip, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "./ga-smooth-zoom.css";
 import { useProject } from "@/lib/api";
 import { useDecks } from "@/lib/api/decks";
 import { useAreas } from "@/lib/api/areas";
+import { useGAPins } from "@/lib/api/ga-pins";
 import { useGAImage } from "@/lib/hooks/useGAImage";
 import { getFixedImageUrl, hasGAImageData } from "@/app/features/ga/utils/helpers";
 import type { Area } from "@/lib/api/types";
@@ -26,6 +27,33 @@ interface AreaGAPreviewContentProps {
    *  the highlighted outline in sync after the parent's refetch
    *  (otherwise this component holds its own stale copy). */
   area?: Area | null;
+  /** When supplied, GA pins linked to this stage are rendered on the
+   *  preview as hover-labelled dots. */
+  activeStageId?: string;
+  /** Re-fetch the pins when this value changes (parent bumps it on
+   *  punchlist mutations). */
+  refreshTrigger?: number;
+}
+
+// Smaller, semi-transparent dot for read-only pin overlays — matches
+// the styling used in CreateGAPinModal's GAPreview so the visual
+// language is consistent across the two surfaces.
+function createPinIcon(color: string): L.DivIcon {
+  return L.divIcon({
+    className: "custom-pin-marker existing-pin-marker",
+    html: `
+      <div style="
+        width: 14px;
+        height: 14px;
+        background-color: ${color};
+        border: 2px solid white;
+        border-radius: 50%;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+      "></div>
+    `,
+    iconSize: [14, 14],
+    iconAnchor: [7, 7],
+  });
 }
 
 const FALLBACK_COLOR = "#3B82F6";
@@ -60,10 +88,26 @@ export default function AreaGAPreviewContent({
   activeStageColor,
   heightClassName = "h-72",
   area: areaProp,
+  activeStageId,
+  refreshTrigger,
 }: AreaGAPreviewContentProps) {
   const { data: project } = useProject(projectId);
   const { data: decks } = useDecks(projectId);
   const { data: areas } = useAreas(projectId, undefined);
+  const { data: allPins, refetch: refetchPins } = useGAPins(projectId);
+
+  // Refetch when the parent signals a punchlist mutation. Skip the
+  // initial render — the hook already fetches on mount.
+  useEffect(() => {
+    if (refreshTrigger === undefined || refreshTrigger === 0) return;
+    refetchPins();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshTrigger]);
+
+  const stagePins = useMemo(() => {
+    if (!activeStageId) return [];
+    return allPins.filter((p) => p.stage.identifier === activeStageId);
+  }, [allPins, activeStageId]);
 
   // Resolve the GA image — `generalArrangement` is either a string (legacy)
   // or an object on the project. We need the object form for dimensions.
@@ -200,6 +244,31 @@ export default function AreaGAPreviewContent({
             }}
           />
         )}
+
+        {/* Pins on the active stage — small dots with hover labels so
+            the user gets a one-glance overview of outstanding work
+            inside this area's currently-active stage. */}
+        {stagePins.map((pin) => {
+          const position: [number, number] = [
+            (pin.y / 100) * ga.imageHeight!,
+            (pin.x / 100) * ga.imageWidth!,
+          ];
+          return (
+            <Marker
+              key={pin.identifier}
+              position={position}
+              icon={createPinIcon(pin.color || highlightColor)}
+              interactive={true}
+              draggable={false}
+            >
+              {pin.label && (
+                <Tooltip direction="top" offset={[0, -6]} opacity={0.95}>
+                  {pin.label}
+                </Tooltip>
+              )}
+            </Marker>
+          );
+        })}
       </MapContainer>
     </div>
   );

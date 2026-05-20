@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import LoadingSkeleton from "@/app/components/ui/LoadingSkeleton";
-import type { Deck, Area, AreaPolygonPoint } from "@/lib/api/types";
+import type { Deck, Area, AreaPolygonPoint, GAPin } from "@/lib/api/types";
 
 // Dynamic import - Leaflet doesn't work with SSR
 const GAPreviewMarker = dynamic(() => import("./GAPreviewMarker"), {
@@ -31,6 +31,9 @@ export interface GAPreviewProps {
   selectedAreaId?: string;
   /** Constrain marker drops to this polygon (0..1 normalized). */
   constrainPolygon?: AreaPolygonPoint[];
+  /** Other pins to show as non-draggable reference markers with hover
+   *  labels. */
+  existingPins?: GAPin[];
 }
 
 export default function GAPreview(props: GAPreviewProps) {
