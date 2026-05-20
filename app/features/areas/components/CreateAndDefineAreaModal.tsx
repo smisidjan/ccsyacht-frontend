@@ -9,9 +9,10 @@ import FormInput from "@/app/components/ui/FormInput";
 import FormTextarea from "@/app/components/ui/FormTextarea";
 import Button from "@/app/components/ui/Button";
 import Alert from "@/app/components/ui/Alert";
-import { areasApi, useAreas, useDecks } from "@/lib/api";
+import { areasApi, stagesApi, useAreas, useDecks, useStages } from "@/lib/api";
 import { stageTemplatesApi } from "@/lib/api/stageTemplates";
 import { usePolygonHistory } from "./usePolygonHistory";
+import StageEditList, { type LocalStage } from "./StageEditList";
 import { useGAImage } from "@/lib/hooks/useGAImage";
 import { handleError } from "@/lib/utils/errors";
 import { normalizeStageColor, pickFreshStageColor } from "@/lib/utils/colors";
@@ -182,6 +183,20 @@ export default function CreateAndDefineAreaModal({
   const isEditing = !!area;
   const t = useTranslations("areas");
   const { data: decks, loading: decksLoading } = useDecks(projectId);
+  // Stages of the area being edited. Hook is always called (no
+  // conditional hooks); the empty-areaId fetch fails harmlessly when
+  // we're in create mode and the result is unused there anyway.
+  const {
+    data: areaStages,
+    loading: stagesLoading,
+    refetch: refetchStages,
+  } = useStages(projectId, area?.identifier ?? "");
+  // Local working copy of stages. Edits (add, delete, reorder) only
+  // mutate this list; the API is hit once when the user saves. Reset
+  // back to the server snapshot when the user cancels or the modal
+  // reopens.
+  const [localStages, setLocalStages] = useState<LocalStage[]>([]);
+  const [editTab, setEditTab] = useState<"details" | "stages">("details");
 
   // The GA image is auth-gated, so we fetch it through the same flow that
   // OverviewTab + the deck-define modal already use: rewrite the URL to a
@@ -287,7 +302,33 @@ export default function CreateAndDefineAreaModal({
     setCreateStages(true);
     setStageRows([]);
     setNewCustomStageName("");
+    setEditTab("details");
+    setLocalStages([]);
   }, [isOpen, area, resetPolygon, setPolygonSnapshot]);
+
+  // Seed the local stage list from the server snapshot once stages
+  // arrive. Stays in sync only on the first arrival per modal open —
+  // after that the user's in-progress edits own the list until they
+  // hit Save (which refetches + reseeds via the isOpen reset above).
+  useEffect(() => {
+    if (!isOpen || !area || !areaStages) return;
+    setLocalStages((prev) => {
+      if (prev.length > 0) return prev;
+      return areaStages
+        .slice()
+        .sort((a, b) => a.position - b.position)
+        .map((s) => ({
+          key: s.identifier,
+          identifier: s.identifier,
+          name: s.name,
+          color: s.color,
+          position: s.position,
+          status: { name: s.status.name },
+          isNew: false,
+          isExcluded: false,
+        }));
+    });
+  }, [isOpen, area, areaStages]);
 
   // Switching deck mid-create wipes the polygon — the user is moving to
   // a different region, the old polygon doesn't apply. Triggered only by
@@ -386,6 +427,56 @@ export default function CreateAndDefineAreaModal({
           description: description.trim() || undefined,
           polygon,
         });
+
+        // Diff localStages against the server snapshot and apply the
+        // pending stage changes in a single batch. Direct API calls so
+        // we don't fire a fetchStages between each one.
+        const original = areaStages ?? [];
+        const serverIds = new Set(original.map((s) => s.identifier));
+        const keptLocalIds = new Set(
+          localStages
+            .filter((s) => !s.isNew && !s.isExcluded && s.identifier)
+            .map((s) => s.identifier as string)
+        );
+        const ops: Promise<unknown>[] = [];
+        // Deletes: server stages the user excluded (or that vanished
+        // from the local list entirely — same end result).
+        for (const s of original) {
+          if (!keptLocalIds.has(s.identifier)) {
+            ops.push(stagesApi.delete(projectId, s.identifier));
+          }
+        }
+        // Creates: brand-new entries the user added in this session.
+        for (const s of localStages) {
+          if (!s.isNew) continue;
+          ops.push(
+            stagesApi.create(projectId, area.identifier, {
+              name: s.name,
+              color: s.color ?? undefined,
+              sort_order: s.position,
+            })
+          );
+        }
+        // Sort_order updates: kept existing stages whose position
+        // shifted. Excluded ones are about to be deleted, no point.
+        for (const s of localStages) {
+          if (s.isNew || s.isExcluded || !s.identifier) continue;
+          if (!serverIds.has(s.identifier)) continue;
+          const serverStage = original.find(
+            (o) => o.identifier === s.identifier
+          );
+          if (serverStage && serverStage.position !== s.position) {
+            ops.push(
+              stagesApi.update(projectId, s.identifier, {
+                sort_order: s.position,
+              })
+            );
+          }
+        }
+        if (ops.length > 0) {
+          await Promise.all(ops);
+          await refetchStages();
+        }
       } else {
         // Walk the unified list in its current order. Each row maps to one
         // entry in the backend's discriminated `stages` array — interleaved
@@ -438,9 +529,13 @@ export default function CreateAndDefineAreaModal({
       size="2xl"
       disableBackdropClick
     >
-      <div className="flex flex-col md:flex-row gap-0 md:gap-4 h-[70vh]">
+      {/* Fixed height only on md+ — at narrow widths the columns stack
+          and we let the Modal's own scroller handle overflow instead of
+          forcing a 70vh box that pushes inputs off-screen when the user
+          focuses one. */}
+      <div className="flex flex-col md:flex-row gap-4 md:gap-4 md:h-[70vh]">
         {/* Left: GA viewer */}
-        <div className="relative flex-1 min-h-[300px] bg-gray-50 dark:bg-gray-900 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+        <div className="relative flex-1 h-[300px] md:h-auto md:min-h-[300px] bg-gray-50 dark:bg-gray-900 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
           {hasGA && selectedDeckId ? (
             <AreaPolygonDrawer
               imageUrl={gaBlobUrl!}
@@ -466,8 +561,37 @@ export default function CreateAndDefineAreaModal({
           )}
         </div>
 
-        {/* Right: form */}
-        <div className="md:w-80 flex flex-col gap-4 md:border-l md:pl-4 md:border-gray-200 md:dark:border-gray-700 overflow-y-auto">
+        {/* Right: form. Scrollable only on md+ where the column is
+            height-bounded; on mobile the modal itself scrolls so the
+            focused input stays in view. */}
+        <div className="md:w-80 md:flex-shrink-0 flex flex-col gap-4 md:border-l md:pl-4 md:border-gray-200 md:dark:border-gray-700 md:overflow-y-auto">
+          {isEditing && (
+            <div className="flex border-b border-gray-200 dark:border-gray-700">
+              {(["details", "stages"] as const).map((tab) => (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => setEditTab(tab)}
+                  className={`flex-1 px-3 py-2 text-sm font-medium border-b-2 transition-colors ${
+                    editTab === tab
+                      ? "border-blue-600 text-blue-600 dark:text-blue-400"
+                      : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+                  }`}
+                >
+                  {t(tab === "details" ? "tabDetails" : "tabStages")}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {isEditing && editTab === "stages" ? (
+            <StageEditList
+              stages={localStages}
+              loading={stagesLoading && localStages.length === 0}
+              onChange={setLocalStages}
+            />
+          ) : (
+          <>
           {isEditing ? (
             // Deck is locked once an area exists — moving an area to a
             // different deck would also invalidate the polygon (coords
@@ -680,6 +804,8 @@ export default function CreateAndDefineAreaModal({
           )}
 
           {error && <Alert type="error" message={error} />}
+          </>
+          )}
 
           <div className="mt-auto flex justify-end gap-2 pt-4 border-t border-gray-200 dark:border-gray-700">
             <Button variant="secondary" onClick={onClose} disabled={submitting}>

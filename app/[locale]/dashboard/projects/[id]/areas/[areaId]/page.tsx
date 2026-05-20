@@ -279,6 +279,7 @@ export default function AreaDetailPage() {
           area={area}
           onSuccess={() => {
             refetchArea();
+            refetchStages();
             setIsEditAreaOpen(false);
           }}
         />
