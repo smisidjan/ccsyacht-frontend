@@ -2044,7 +2044,22 @@
     "signedAt": "Signed on {date}",
     "signedBy": "Signed by {name} on {date} at {time}",
     "rejectedBy": "Rejected by {name} on {date} at {time}",
-    "rejectionHistory": "Previous rejections"
+    "rejectionHistory": "Previous rejections",
+    "customSignerLabel": "Custom",
+    "defaultSignerLabel": "Default",
+    "addCustomSigner": "Add signer",
+    "addCustomSignerTitle": "Add custom signer",
+    "addCustomSignerHint": "Pick a project member to also sign off this stage.",
+    "noMembersAvailable": "All project members are already signers.",
+    "removeCustomSigner": "Remove signer",
+    "addedByCustomSigner": "Added by {name}",
+    "addedByOn": "Added by {name} on {date}",
+    "removeCustomSignerTitle": "Remove custom signer",
+    "removeCustomSignerMessage": "Remove {name} as a signer for this stage? Any pending sign-off they have here will be withdrawn.",
+    "addCustomSignerSuccess": "Custom signer added",
+    "addCustomSignerError": "Failed to add custom signer",
+    "removeCustomSignerSuccess": "Custom signer removed",
+    "removeCustomSignerError": "Failed to remove custom signer"
   },
   "punchlist": {
     "title": "Punchlist Items",

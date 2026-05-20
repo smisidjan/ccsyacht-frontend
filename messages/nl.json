@@ -2074,7 +2074,22 @@
     "signedAt": "Ondertekend op {date}",
     "signedBy": "Ondertekend door {name} op {date} om {time}",
     "rejectedBy": "Afgewezen door {name} op {date} om {time}",
-    "rejectionHistory": "Eerdere afwijzingen"
+    "rejectionHistory": "Eerdere afwijzingen",
+    "customSignerLabel": "Custom",
+    "defaultSignerLabel": "Default",
+    "addCustomSigner": "Ondertekenaar toevoegen",
+    "addCustomSignerTitle": "Custom ondertekenaar toevoegen",
+    "addCustomSignerHint": "Kies een projectlid dat ook moet aftekenen voor deze stage.",
+    "noMembersAvailable": "Alle projectleden zijn al ondertekenaar.",
+    "removeCustomSigner": "Ondertekenaar verwijderen",
+    "addedByCustomSigner": "Toegevoegd door {name}",
+    "addedByOn": "Toegevoegd door {name} op {date}",
+    "removeCustomSignerTitle": "Custom ondertekenaar verwijderen",
+    "removeCustomSignerMessage": "{name} verwijderen als ondertekenaar van deze stage? Een eventueel openstaand sign-off-verzoek wordt ingetrokken.",
+    "addCustomSignerSuccess": "Custom ondertekenaar toegevoegd",
+    "addCustomSignerError": "Kan custom ondertekenaar niet toevoegen",
+    "removeCustomSignerSuccess": "Custom ondertekenaar verwijderd",
+    "removeCustomSignerError": "Kan custom ondertekenaar niet verwijderen"
   },
   "punchlist": {
     "title": "Punchlist Items",

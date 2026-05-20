@@ -1094,6 +1094,32 @@ export interface AddMemberRequest {
 export type ProjectSigner = ProjectMember;
 export type AddSignerRequest = AddMemberRequest;
 
+/** A custom (stage-scoped) signer. Separate from `ProjectSigner` —
+ *  these only exist on the stage they're added to and don't show up
+ *  on every stage by default. Identifier is the stage_signer record,
+ *  not the user; use it for DELETE. */
+export interface StageCustomSigner {
+  "@context"?: string;
+  "@type"?: string;
+  identifier: string;
+  user: {
+    "@type"?: string;
+    identifier: string;
+    name: string;
+    email: string;
+  };
+  addedBy: {
+    "@type"?: string;
+    identifier: string;
+    name: string;
+  } | null;
+  addedAt: string;
+}
+
+export interface AddCustomSignerRequest {
+  user_id: string;
+}
+
 // ============ Punchlist Items ============
 export type PunchlistItemStatus = "open" | "in_progress" | "done" | "cancelled";
 export type PunchlistItemPriority = "low" | "medium" | "high";

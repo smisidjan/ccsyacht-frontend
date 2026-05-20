@@ -37,6 +37,12 @@ export { stagesApi, useStages, useProjectStages } from "./stages";
 // Stage Signoffs
 export { stageSignoffsApi, useStageSignoffs } from "./stageSignoffs";
 
+// Stage Custom Signers
+export {
+  stageCustomSignersApi,
+  useStageCustomSigners,
+} from "./stage-custom-signers";
+
 // Logbook
 export { logbookApi, useLogbook } from "./logbook";
 
