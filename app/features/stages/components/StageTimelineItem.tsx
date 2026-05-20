@@ -63,7 +63,7 @@ export default function StageTimelineItem({
       onClick={canToggle ? () => setIsExpanded((x) => !x) : undefined}
       disabled={!canToggle}
       aria-expanded={canToggle ? isExpanded : undefined}
-      className={`w-full flex items-center gap-3 px-5 py-4 text-left bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 ${
+      className={`w-full flex items-center gap-3 px-4 sm:px-5 py-4 text-left bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 ${
         canToggle
           ? "hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer shadow-sm"
           : "cursor-default opacity-75"
@@ -84,7 +84,7 @@ export default function StageTimelineItem({
         {stage.name}
       </h3>
       <span
-        className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${
+        className={`inline-block px-2 py-0.5 rounded text-xs font-medium flex-shrink-0 ${
           statusBadgeColors[stage.status.name as keyof typeof statusBadgeColors]
         }`}
       >
@@ -92,7 +92,7 @@ export default function StageTimelineItem({
       </span>
       {canToggle && (
         <ChevronDownIcon
-          className={`w-4 h-4 text-gray-400 transition-transform ${
+          className={`w-4 h-4 text-gray-400 transition-transform flex-shrink-0 ${
             isExpanded ? "rotate-180" : ""
           }`}
         />

@@ -124,7 +124,7 @@ export default function StageDetailPanel({
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-100 dark:border-gray-700">
       {/* Header */}
-      <div className="p-8 border-b border-gray-200 dark:border-gray-700">
+      <div className="p-4 sm:p-6 md:p-8 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-start justify-between gap-6">
           <div className="flex-1">
             {isEditing ? (
@@ -255,7 +255,7 @@ export default function StageDetailPanel({
       </div>
 
       {/* Content */}
-      <div className="p-8 space-y-8">
+      <div className="p-4 sm:p-6 md:p-8 space-y-6 md:space-y-8">
         {/* Signoffs Section */}
         <div>
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">

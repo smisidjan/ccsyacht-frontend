@@ -65,23 +65,23 @@ export default function AreaDetailPage() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex items-start gap-3 min-w-0">
           <Link
             href={`/dashboard/projects/${projectId}`}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors flex-shrink-0 mt-0.5"
           >
             <ArrowLeftIcon className="w-5 h-5 text-gray-600 dark:text-gray-400" />
           </Link>
-          <div>
+          <div className="min-w-0">
             {(project || area?.containedInPlace) && (
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-1 flex items-center gap-1.5">
-                {project && <span>{project.name}</span>}
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-1 flex items-center gap-1.5 flex-wrap">
+                {project && <span className="break-words">{project.name}</span>}
                 {project && area?.containedInPlace?.name && (
                   <span className="text-gray-400 dark:text-gray-600">/</span>
                 )}
                 {area?.containedInPlace?.name && (
-                  <span>{area.containedInPlace.name}</span>
+                  <span className="break-words">{area.containedInPlace.name}</span>
                 )}
               </p>
             )}
@@ -108,8 +108,8 @@ export default function AreaDetailPage() {
 
       {/* Area Info Card */}
       {area && (
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-100 dark:border-gray-700 p-8">
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-8 items-center">
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-100 dark:border-gray-700 p-4 sm:p-6 md:p-8">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-6 md:gap-8 items-center">
             <div className="md:col-span-2">
               <AreaGAPreview
                 projectId={projectId}
