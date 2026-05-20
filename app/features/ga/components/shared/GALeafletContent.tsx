@@ -4,8 +4,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { MapContainer, ImageOverlay, Polygon, Rectangle, Tooltip, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import type { GAPin, Deck } from "@/lib/api/types";
+import type { GAPin, Deck, Area } from "@/lib/api/types";
 import type { AreaPolygonOverlay } from "./GALeafletViewer";
+import { isInsidePolygon } from "@/lib/utils/geometry";
 import PinMarker from "./PinMarker";
 
 // Fix Leaflet default marker icon issue in Next.js
@@ -28,9 +29,16 @@ interface GALeafletContentProps {
   selectedPinId?: string | null;
   onPinClick?: (pin: GAPin) => void;
   onImageClick?: (x: number, y: number) => void;
-  onDeckClick?: (deck: Deck, x: number, y: number) => void;
+  /** Fires when the user clicks inside a deck rectangle in edit mode. The
+   *  `area` is set when the click landed inside one of that deck's area
+   *  polygons (used to pre-select the area in the create-pin modal). */
+  onDeckClick?: (deck: Deck, x: number, y: number, area?: Area | null) => void;
   canEdit?: boolean;
   decks?: Deck[];
+  /** All areas in the project. Used for point-in-polygon hit-testing in
+   *  the deck-rectangle click handler — independent from `areaPolygons`,
+   *  which is just the active-stages visualization overlay. */
+  areas?: Area[];
   areaPolygons?: AreaPolygonOverlay[];
   className?: string;
 }
@@ -111,6 +119,7 @@ export default function GALeafletContent({
   onDeckClick,
   canEdit = false,
   decks = [],
+  areas = [],
   areaPolygons = [],
   className = "",
 }: GALeafletContentProps) {
@@ -232,11 +241,17 @@ export default function GALeafletContent({
                 fillColor: area.color,
                 fillOpacity: 0.4,
               }}
-              interactive
+              // In edit mode the deck rectangle owns the click — the
+              // hit-test below resolves which area was clicked. Letting
+              // the overlay capture clicks would swallow them and break
+              // pin placement when the active-stages overlay is on.
+              interactive={!canEdit}
             >
-              <Tooltip sticky direction="top">
-                {area.name}
-              </Tooltip>
+              {!canEdit && (
+                <Tooltip sticky direction="top">
+                  {area.name}
+                </Tooltip>
+              )}
             </Polygon>
           );
         })}
@@ -274,12 +289,21 @@ export default function GALeafletContent({
                 mouseout: () => setHoveredDeckId(null),
                 click: (e) => {
                   L.DomEvent.stopPropagation(e.originalEvent);
-                  if (onDeckClick) {
-                    // Convert click position to percentage
-                    const x = (e.latlng.lng / imageWidth) * 100;
-                    const y = (e.latlng.lat / imageHeight) * 100;
-                    onDeckClick(deck, x, y);
-                  }
+                  if (!onDeckClick) return;
+                  // Convert click position to percentage
+                  const x = (e.latlng.lng / imageWidth) * 100;
+                  const y = (e.latlng.lat / imageHeight) * 100;
+                  // Polygon coords are normalized 0..1 — use the same scale
+                  // for the hit-test point. Only this deck's areas can match.
+                  const normalized = { x: x / 100, y: y / 100 };
+                  const hitArea =
+                    areas.find(
+                      (a) =>
+                        a.containedInPlace?.identifier === deck.identifier &&
+                        a.polygon &&
+                        isInsidePolygon(normalized, a.polygon)
+                    ) ?? null;
+                  onDeckClick(deck, x, y, hitArea);
                 },
               }}
             />

@@ -14,6 +14,7 @@ import {
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import type { AreaPolygonPoint } from "@/lib/api/types";
+import { isInsidePolygon } from "@/lib/utils/geometry";
 
 const FIT_DELAY_MS_FAST = 100;
 const FIT_DELAY_MS_SLOW = 300;
@@ -88,27 +89,6 @@ const isInsideDeck = (point: AreaPolygonPoint, deck: DeckBounds): boolean => {
   const y1 = deck.y1 / 100;
   const y2 = deck.y2 / 100;
   return point.x >= x1 && point.x <= x2 && point.y >= y1 && point.y <= y2;
-};
-
-// Standard ray-casting point-in-polygon. Works on normalized (0..1) coords;
-// units don't matter as long as point and polygon share them.
-const isInsidePolygon = (
-  point: AreaPolygonPoint,
-  polygon: AreaPolygonPoint[]
-): boolean => {
-  if (polygon.length < 3) return false;
-  let inside = false;
-  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-    const xi = polygon[i].x;
-    const yi = polygon[i].y;
-    const xj = polygon[j].x;
-    const yj = polygon[j].y;
-    const intersect =
-      yi > point.y !== yj > point.y &&
-      point.x < ((xj - xi) * (point.y - yi)) / (yj - yi) + xi;
-    if (intersect) inside = !inside;
-  }
-  return inside;
 };
 
 const isInsideAnyArea = (

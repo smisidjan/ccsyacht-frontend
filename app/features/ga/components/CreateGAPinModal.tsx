@@ -13,7 +13,7 @@ import { useAreas } from "@/lib/api/areas";
 import { useStages } from "@/lib/api/stages";
 import { useProjectMembersFromContext } from "@/app/context/ProjectContext";
 import { MAX_GA_FILE_SIZE, FILE_SIZE_LABELS } from "@/lib/constants/fileUpload";
-import type { GAPin, CreateGAPinRequest, UpdateGAPinRequest, PunchlistItemPriority, Deck } from "@/lib/api/types";
+import type { GAPin, CreateGAPinRequest, UpdateGAPinRequest, PunchlistItemPriority, Deck, Area } from "@/lib/api/types";
 
 interface CreateGAPinModalProps {
   isOpen: boolean;
@@ -28,6 +28,10 @@ interface CreateGAPinModalProps {
   gaImageHeight?: number;
   // Optional: deck that was clicked to add pin (for zoom-to-deck feature)
   initialDeck?: Deck | null;
+  /** Pre-selects the area when the user clicked inside an area polygon on
+   *  the GA. Independent from `initialDeck` — the area's own
+   *  `containedInPlace` already implies the deck. */
+  initialArea?: Area | null;
 }
 
 const DEFAULT_COLORS = [
@@ -52,6 +56,7 @@ export default function CreateGAPinModal({
   gaImageWidth,
   gaImageHeight,
   initialDeck,
+  initialArea,
 }: CreateGAPinModalProps) {
   const t = useTranslations("gaViewer");
   const isEditing = !!initialData;
@@ -97,9 +102,15 @@ export default function CreateGAPinModal({
       setY(initialPosition.y);
       setLabel("");
       setColor(DEFAULT_COLORS[0]);
-      // Pre-select deck if provided (from clicking on deck bounding box)
-      setSelectedDeckId(initialDeck?.identifier || "");
-      setSelectedAreaId("");
+      // Pre-select deck if provided (from clicking on deck bounding box).
+      // Prefer the area's own deck when an area was clicked — keeps the
+      // two selectors consistent even if the caller forgot to pass both.
+      setSelectedDeckId(
+        initialArea?.containedInPlace?.identifier ||
+          initialDeck?.identifier ||
+          ""
+      );
+      setSelectedAreaId(initialArea?.identifier || "");
       setSelectedStageId("");
       // Reset punchlist fields
       setPunchlistDescription("");
@@ -114,7 +125,7 @@ export default function CreateGAPinModal({
       setSelectedAreaId("");
       setSelectedStageId("");
     }
-  }, [initialData, initialPosition, initialDeck]);
+  }, [initialData, initialPosition, initialDeck, initialArea]);
 
   // Auto-select if only one deck available
   useEffect(() => {
@@ -263,6 +274,8 @@ export default function CreateGAPinModal({
                 color={color}
                 onPositionChange={handlePositionChange}
                 initialDeck={initialDeck}
+                areas={areas ?? undefined}
+                selectedAreaId={selectedAreaId || undefined}
               />
             </div>
           </div>

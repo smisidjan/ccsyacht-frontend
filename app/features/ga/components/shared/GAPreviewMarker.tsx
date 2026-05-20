@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useRef } from "react";
-import { MapContainer, ImageOverlay, Marker, useMap, useMapEvents } from "react-leaflet";
+import { MapContainer, ImageOverlay, Marker, Polygon, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "./ga-smooth-zoom.css";
-import type { Deck } from "@/lib/api/types";
+import type { Deck, Area } from "@/lib/api/types";
 
 interface GAPreviewMarkerProps {
   imageUrl: string;
@@ -17,6 +17,13 @@ interface GAPreviewMarkerProps {
   onPositionChange: (x: number, y: number) => void;
   // Optional: deck to zoom to initially (for zoom-to-deck feature)
   initialDeck?: Deck | null;
+  /** Areas to outline on the preview so the user can see where they're
+   *  dropping the pin relative to existing areas. Each area's `polygon`
+   *  is 0..1 normalized; entries without a polygon are skipped. */
+  areas?: Area[];
+  /** Identifier of the area the form currently has selected — drawn with
+   *  a solid blue outline to mark "this is the one you picked". */
+  selectedAreaId?: string;
 }
 
 // Create a custom colored marker icon
@@ -105,6 +112,8 @@ export default function GAPreviewMarker({
   color,
   onPositionChange,
   initialDeck,
+  areas,
+  selectedAreaId,
 }: GAPreviewMarkerProps) {
   const mapRef = useRef<L.Map | null>(null);
 
@@ -194,6 +203,33 @@ export default function GAPreviewMarker({
         <KeepPinInView markerPosition={markerPosition} />
 
         <ImageOverlay url={imageUrl} bounds={bounds} />
+
+        {/* Area outlines for context. Selected area gets a solid blue
+            stroke so the user can spot which one they've picked; the rest
+            stay dashed gray. Non-interactive so they never steal events
+            from the draggable marker. */}
+        {areas?.map((area) => {
+          if (!area.polygon || area.polygon.length < 3) return null;
+          const positions: [number, number][] = area.polygon.map((p) => [
+            p.y * imageHeight,
+            p.x * imageWidth,
+          ]);
+          const isSelected = area.identifier === selectedAreaId;
+          return (
+            <Polygon
+              key={area.identifier}
+              positions={positions}
+              pathOptions={{
+                color: isSelected ? "#2563eb" : "#374151",
+                weight: 2,
+                dashArray: isSelected ? undefined : "6 4",
+                fillColor: isSelected ? "#2563eb" : "#6b7280",
+                fillOpacity: isSelected ? 0.2 : 0.15,
+                interactive: false,
+              }}
+            />
+          );
+        })}
 
         <Marker
           position={markerPosition}

@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import LoadingSkeleton from "@/app/components/ui/LoadingSkeleton";
-import type { GAPin, Deck, AreaPolygonPoint } from "@/lib/api/types";
+import type { GAPin, Deck, Area, AreaPolygonPoint } from "@/lib/api/types";
 
 /** Read-only polygon to render on top of the GA. Points are normalized
  *  0..1 of the GA image (same convention `AreaPolygonDrawer` writes). */
@@ -31,9 +31,16 @@ export interface GALeafletViewerProps {
   selectedPinId?: string | null;
   onPinClick?: (pin: GAPin) => void;
   onImageClick?: (x: number, y: number) => void;
-  onDeckClick?: (deck: Deck, x: number, y: number) => void;
+  /** Fires when the user clicks inside a deck rectangle in edit mode. The
+   *  `area` is set when the click landed inside one of that deck's area
+   *  polygons (used to pre-select the area in the create-pin modal). */
+  onDeckClick?: (deck: Deck, x: number, y: number, area?: Area | null) => void;
   canEdit?: boolean;
   decks?: Deck[];
+  /** All areas in the project — used for point-in-polygon hit-testing so a
+   *  click can pre-select the area, even when the active-stages overlay
+   *  isn't on. */
+  areas?: Area[];
   /** Area polygons to draw on top of the GA, each pre-colored. Empty / omitted
    *  hides them entirely. */
   areaPolygons?: AreaPolygonOverlay[];

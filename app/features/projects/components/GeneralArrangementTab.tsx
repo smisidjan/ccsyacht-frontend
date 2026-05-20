@@ -28,7 +28,7 @@ import Tooltip from "@/app/components/ui/Tooltip";
 import { CreateGAPinModal, GALeafletViewer } from "@/app/features/ga";
 import ConfirmModal from "@/app/components/modals/ConfirmModal";
 import { CreateRemarkModal } from "@/app/features/remarks";
-import type { GAPin, StageStatus, GeneralArrangement, Deck } from "@/lib/api/types";
+import type { GAPin, StageStatus, GeneralArrangement, Deck, Area } from "@/lib/api/types";
 
 interface GeneralArrangementTabProps {
   projectId: string;
@@ -130,6 +130,7 @@ export default function GeneralArrangementTab({
   const [pinForRemark, setPinForRemark] = useState<GAPin | null>(null);
   const [newPinPosition, setNewPinPosition] = useState<{ x: number; y: number } | null>(null);
   const [clickedDeck, setClickedDeck] = useState<Deck | null>(null);
+  const [clickedArea, setClickedArea] = useState<Area | null>(null);
   const [hoveredPinId, setHoveredPinId] = useState<string | null>(null);
   const [selectedPinDetail, setSelectedPinDetail] = useState<GAPin | null>(null);
 
@@ -478,16 +479,18 @@ export default function GeneralArrangementTab({
                 pins={displayedPins}
                 selectedPinId={selectedPinDetail?.identifier}
                 onPinClick={(pin) => setSelectedPinDetail(pin)}
-                onDeckClick={(deck, x, y) => {
+                onDeckClick={(deck, x, y, area) => {
                   if (canEdit && isAddPinMode) {
                     setNewPinPosition({ x, y });
                     setClickedDeck(deck);
+                    setClickedArea(area ?? null);
                     setSelectedPin(null);
                     setIsCreateModalOpen(true);
                   }
                 }}
                 canEdit={canEdit && isAddPinMode}
                 decks={decks || []}
+                areas={areas || []}
                 areaPolygons={activeStagePolygons}
               />
             ) : (
@@ -679,6 +682,7 @@ export default function GeneralArrangementTab({
           setSelectedPin(null);
           setNewPinPosition(null);
           setClickedDeck(null);
+          setClickedArea(null);
         }}
         projectId={projectId}
         initialPosition={selectedPin ? { x: selectedPin.x, y: selectedPin.y } : newPinPosition}
@@ -688,6 +692,7 @@ export default function GeneralArrangementTab({
         gaImageWidth={generalArrangement?.imageWidth}
         gaImageHeight={generalArrangement?.imageHeight}
         initialDeck={clickedDeck}
+        initialArea={clickedArea}
       />
 
       {/* Delete Confirmation Modal */}
