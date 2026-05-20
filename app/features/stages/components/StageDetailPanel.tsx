@@ -67,7 +67,12 @@ export default function StageDetailPanel({
   } = useStageCustomSigners(projectId, stage.identifier);
   const { data: projectMembers } = useProjectMembersFromContext();
   const { hasPermission } = usePermission();
-  const canManageCustomSigners = hasPermission(PERMISSIONS.EDIT_STAGES);
+  // Locked once the stage is completed — signer history becomes
+  // read-only there. Pre-completion the user can still add or remove
+  // custom signers if they have the right.
+  const canManageCustomSigners =
+    hasPermission(PERMISSIONS.EDIT_STAGES) &&
+    stage.status.name !== "completed";
 
   // Combine default + custom signers into one rendering list, deduped
   // by user. A user who happens to be both a project signer and a

@@ -108,6 +108,8 @@ const getStageStatusBadge = (status: StageStatus) => {
 const punchlistStatusBadgeStyles: Record<PunchlistItemStatus, string> = {
   open: "bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300",
   in_progress: "bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300",
+  next_step_release:
+    "bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300",
   done: "bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300",
   cancelled: "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300",
 };
@@ -148,6 +150,8 @@ export default function GeneralArrangementTab({
         return tPunchlist("statusOpen");
       case "in_progress":
         return tPunchlist("statusInProgress");
+      case "next_step_release":
+        return tPunchlist("statusNextStepRelease");
       case "done":
         return tPunchlist("statusDone");
       case "cancelled":
@@ -403,6 +407,7 @@ export default function GeneralArrangementTab({
             <option value="all">{tPins("allStatuses")}</option>
             <option value="open">{punchlistStatusLabel("open")}</option>
             <option value="in_progress">{punchlistStatusLabel("in_progress")}</option>
+            <option value="next_step_release">{punchlistStatusLabel("next_step_release")}</option>
             <option value="done">{punchlistStatusLabel("done")}</option>
             <option value="cancelled">{punchlistStatusLabel("cancelled")}</option>
           </select>

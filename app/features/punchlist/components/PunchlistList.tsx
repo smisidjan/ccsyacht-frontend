@@ -124,6 +124,7 @@ export default function PunchlistList({ projectId, areaId, stage, onPunchlistCha
   // This is a limitation of the current pagination implementation
   const openCount = items?.filter((i) => i.status === "open").length || 0;
   const inProgressCount = items?.filter((i) => i.status === "in_progress").length || 0;
+  const nextStepReleaseCount = items?.filter((i) => i.status === "next_step_release").length || 0;
   const doneCount = items?.filter((i) => i.status === "done").length || 0;
   const cancelledCount = items?.filter((i) => i.status === "cancelled").length || 0;
 
@@ -143,6 +144,10 @@ export default function PunchlistList({ projectId, areaId, stage, onPunchlistCha
             <span className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
               <ExclamationTriangleIcon className="w-4 h-4" />
               {inProgressCount} {t("statusInProgress").toLowerCase()}
+            </span>
+            <span className="flex items-center gap-2 text-purple-600 dark:text-purple-400">
+              <ExclamationTriangleIcon className="w-4 h-4" />
+              {nextStepReleaseCount} {t("statusNextStepRelease").toLowerCase()}
             </span>
             <span className="flex items-center gap-2 text-green-600 dark:text-green-400">
               <CheckCircleIcon className="w-4 h-4" />
@@ -172,6 +177,7 @@ export default function PunchlistList({ projectId, areaId, stage, onPunchlistCha
           { key: "all" as const, label: t("filterAll") },
           { key: "open" as const, label: t("filterOpen") },
           { key: "in_progress" as const, label: t("filterInProgress") },
+          { key: "next_step_release" as const, label: t("filterNextStepRelease") },
           { key: "done" as const, label: t("filterDone") },
           { key: "cancelled" as const, label: t("filterCancelled") },
         ].map((filter) => (

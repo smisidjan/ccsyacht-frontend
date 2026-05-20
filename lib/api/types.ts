@@ -1121,7 +1121,12 @@ export interface AddCustomSignerRequest {
 }
 
 // ============ Punchlist Items ============
-export type PunchlistItemStatus = "open" | "in_progress" | "done" | "cancelled";
+export type PunchlistItemStatus =
+  | "open"
+  | "in_progress"
+  | "next_step_release"
+  | "done"
+  | "cancelled";
 export type PunchlistItemPriority = "low" | "medium" | "high";
 
 export interface PunchlistItemAssignee {

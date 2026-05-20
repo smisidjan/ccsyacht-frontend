@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import type {
   PunchlistItem,
+  PunchlistItemStatus,
   CreatePunchlistItemRequest,
   UpdatePunchlistItemRequest,
   UpdatePunchlistItemStatusRequest,
@@ -16,7 +17,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
 
 // Query parameters for project-level punchlist items
 export interface PunchlistItemsQueryParams {
-  status?: "open" | "in_progress" | "done" | "cancelled";
+  status?: PunchlistItemStatus;
   priority?: "low" | "medium" | "high";
   incomplete?: boolean;
   overdue?: boolean;
@@ -192,7 +193,7 @@ export function usePunchlistItems(
   params?: {
     page?: number;
     per_page?: number;
-    status?: "open" | "in_progress" | "done" | "cancelled";
+    status?: PunchlistItemStatus;
   }
 ) {
   const [state, setState] = useState<UseApiState<PunchlistItem[]>>({

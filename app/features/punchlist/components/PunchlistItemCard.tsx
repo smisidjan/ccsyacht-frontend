@@ -11,6 +11,7 @@ import {
   UserCircleIcon,
   MapPinIcon,
   PlayIcon,
+  PauseIcon,
   XMarkIcon,
   CheckIcon,
 } from "@heroicons/react/24/outline";
@@ -68,9 +69,11 @@ export default function PunchlistItemCard({
     high: "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400",
   };
 
-  const statusColors = {
+  const statusColors: Record<PunchlistItemStatus, string> = {
     open: "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400",
     in_progress: "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400",
+    next_step_release:
+      "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400",
     done: "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400",
     cancelled: "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300",
   };
@@ -267,13 +270,35 @@ export default function PunchlistItemCard({
                 </Tooltip>
               )}
               {item.status === "in_progress" && (
-                <Tooltip content={t("markAsDone")} position="left">
+                <>
+                  <Tooltip content={t("markAsNextStepRelease")} position="left">
+                    <button
+                      onClick={() => handleStatusChange("next_step_release")}
+                      disabled={isUpdating}
+                      className="p-2 text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <PauseIcon className="w-5 h-5" />
+                    </button>
+                  </Tooltip>
+                  <Tooltip content={t("markAsDone")} position="left">
+                    <button
+                      onClick={() => handleStatusChange("done")}
+                      disabled={isUpdating}
+                      className="p-2 text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 rounded-lg hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <CheckIcon className="w-5 h-5" />
+                    </button>
+                  </Tooltip>
+                </>
+              )}
+              {item.status === "next_step_release" && (
+                <Tooltip content={t("resumeWork")} position="left">
                   <button
-                    onClick={() => handleStatusChange("done")}
+                    onClick={() => handleStatusChange("in_progress")}
                     disabled={isUpdating}
-                    className="p-2 text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 rounded-lg hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="p-2 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <CheckIcon className="w-5 h-5" />
+                    <PlayIcon className="w-5 h-5" />
                   </button>
                 </Tooltip>
               )}

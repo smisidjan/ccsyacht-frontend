@@ -94,6 +94,7 @@ export default function PunchlistTab({ projectId }: PunchlistTabProps) {
   // Calculate counts (from all items, not filtered)
   const openCount = allItems?.filter((i) => i.status === "open").length || 0;
   const inProgressCount = allItems?.filter((i) => i.status === "in_progress").length || 0;
+  const nextStepReleaseCount = allItems?.filter((i) => i.status === "next_step_release").length || 0;
   const doneCount = allItems?.filter((i) => i.status === "done").length || 0;
   const cancelledCount = allItems?.filter((i) => i.status === "cancelled").length || 0;
 
@@ -116,6 +117,8 @@ export default function PunchlistTab({ projectId }: PunchlistTabProps) {
         return "text-amber-800 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800/50 shadow-sm";
       case "in_progress":
         return "text-blue-800 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800/50 shadow-sm";
+      case "next_step_release":
+        return "text-purple-800 dark:text-purple-300 bg-purple-100 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-800/50 shadow-sm";
       case "done":
         return "text-green-800 dark:text-green-300 bg-green-100 dark:bg-green-900/30 border border-green-200 dark:border-green-800/50 shadow-sm";
       case "cancelled":
@@ -178,6 +181,10 @@ export default function PunchlistTab({ projectId }: PunchlistTabProps) {
             <ExclamationTriangleIcon className="w-4 h-4" />
             {inProgressCount} {tPunchlist("statusInProgress").toLowerCase()}
           </span>
+          <span className="flex items-center gap-1.5 text-purple-600 dark:text-purple-400">
+            <ExclamationTriangleIcon className="w-4 h-4" />
+            {nextStepReleaseCount} {tPunchlist("statusNextStepRelease").toLowerCase()}
+          </span>
           <span className="flex items-center gap-1.5 text-green-600 dark:text-green-400">
             <CheckCircleIcon className="w-4 h-4" />
             {tPunchlist("completedItems", { count: doneCount })}
@@ -195,6 +202,7 @@ export default function PunchlistTab({ projectId }: PunchlistTabProps) {
           { key: "all" as const, label: tPunchlist("filterAll") },
           { key: "open" as const, label: tPunchlist("filterOpen") },
           { key: "in_progress" as const, label: tPunchlist("filterInProgress") },
+          { key: "next_step_release" as const, label: tPunchlist("filterNextStepRelease") },
           { key: "done" as const, label: tPunchlist("filterDone") },
           { key: "cancelled" as const, label: tPunchlist("filterCancelled") },
         ].map((filter) => (
