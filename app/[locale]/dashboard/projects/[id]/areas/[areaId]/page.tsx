@@ -36,7 +36,7 @@ export default function AreaDetailPage() {
 
   const { data: project } = useProject(projectId);
   const { data: area, loading: areaLoading, error: areaError } = useArea(projectId, areaId);
-  const { data: stages, loading: stagesLoading, error: stagesError, refetch: refetchStages, updateStage, updateStageStatus } = useStages(projectId, areaId);
+  const { data: stages, loading: stagesLoading, error: stagesError, refetch: refetchStages, updateStage } = useStages(projectId, areaId);
   const { hasPermission } = usePermission();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
@@ -227,10 +227,6 @@ export default function AreaDetailPage() {
                 onUpdate={async (stageId, data) => {
                   await updateStage(stageId, data);
                   refetchStages();
-                }}
-                onUpdateStatus={async (stageId, status) => {
-                  await updateStageStatus(stageId, { status });
-                  await refetchStages();
                 }}
                 onRefetch={refetchStages}
               />

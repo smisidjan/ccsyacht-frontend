@@ -9,7 +9,6 @@ interface StageTimelineProps {
   projectId: string;
   canEdit: boolean;
   onUpdate: (stageId: string, data: { name?: string }) => Promise<void>;
-  onUpdateStatus: (stageId: string, status: "in_progress") => Promise<void>;
   onRefetch: () => Promise<void>;
 }
 
@@ -26,7 +25,6 @@ export default function StageTimeline({
   projectId,
   canEdit,
   onUpdate,
-  onUpdateStatus,
   onRefetch,
 }: StageTimelineProps) {
   const activeIndex = useMemo(() => pickActiveIndex(stages), [stages]);
@@ -52,7 +50,6 @@ export default function StageTimeline({
             projectId={projectId}
             canEdit={canEdit}
             onUpdate={(data) => onUpdate(stage.identifier, data)}
-            onUpdateStatus={(status) => onUpdateStatus(stage.identifier, status)}
             onRefetch={onRefetch}
           />
         );

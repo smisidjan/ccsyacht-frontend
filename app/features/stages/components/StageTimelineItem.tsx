@@ -16,7 +16,6 @@ interface StageTimelineItemProps {
   projectId: string;
   canEdit: boolean;
   onUpdate: (data: { name?: string }) => Promise<void>;
-  onUpdateStatus: (status: "in_progress") => Promise<void>;
   onRefetch: () => Promise<void>;
 }
 
@@ -35,7 +34,6 @@ export default function StageTimelineItem({
   projectId,
   canEdit,
   onUpdate,
-  onUpdateStatus,
   onRefetch,
 }: StageTimelineItemProps) {
   const t = useTranslations("areaDetail");
@@ -53,7 +51,6 @@ export default function StageTimelineItem({
     projectId,
     canEdit,
     onUpdate,
-    onUpdateStatus,
     onRefetch,
   };
 

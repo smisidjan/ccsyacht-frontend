@@ -23,7 +23,6 @@ interface StageDetailPanelProps {
   projectId: string;
   canEdit: boolean;
   onUpdate: (data: { name?: string }) => Promise<void>;
-  onUpdateStatus: (status: "in_progress") => Promise<void>;
   onRefetch: () => Promise<void>;
 }
 
@@ -40,7 +39,6 @@ export default function StageDetailPanel({
   projectId,
   canEdit,
   onUpdate,
-  onUpdateStatus,
   onRefetch,
 }: StageDetailPanelProps) {
   const t = useTranslations("areaDetail");
@@ -156,35 +154,11 @@ export default function StageDetailPanel({
                     {t(`status.${stage.status.name}`)}
                   </span>
 
-                  {/* Status Flow Buttons */}
+                  {/* Status Flow Hints */}
                   {canEdit && stage.status.name === "not_started" && (
-                    <>
-                      {stage.position === 0 ? (
-                        <Button
-                          variant="success"
-                          size="sm"
-                          onClick={async () => {
-                            setIsSubmitting(true);
-                            try {
-                              await onUpdateStatus("in_progress");
-                              showToast("success", t("stageStarted"));
-                            } catch (error) {
-                              console.error("Failed to start stage:", error);
-                              showToast("error", t("stageStartError"));
-                            } finally {
-                              setIsSubmitting(false);
-                            }
-                          }}
-                          disabled={isSubmitting}
-                        >
-                          {t("startStage")}
-                        </Button>
-                      ) : (
-                        <p className="text-sm text-blue-700 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30 px-3 py-1 rounded">
-                          {t("autoStartsAfterPrevious")}
-                        </p>
-                      )}
-                    </>
+                    <p className="text-sm text-blue-700 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30 px-3 py-1 rounded">
+                      {t("autoStartsAfterPrevious")}
+                    </p>
                   )}
 
                   {canEdit && stage.status.name === "in_progress" && (
