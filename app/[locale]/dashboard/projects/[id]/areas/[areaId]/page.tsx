@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { useParams } from "next/navigation";
 import { Link } from "@/i18n/navigation";
@@ -11,7 +11,8 @@ import {
 } from "@heroicons/react/24/outline";
 import Button from "@/app/components/ui/Button";
 import Alert from "@/app/components/ui/Alert";
-import { CreateStagesModal, StageListItem, StageDetailPanel } from "@/app/features/stages";
+import { CreateStagesModal, StageTimeline } from "@/app/features/stages";
+import { OpenPunchlistBadge } from "@/app/features/punchlist";
 import { AreaGAPreview } from "@/app/features/ga/components/shared";
 import ProgressCircle from "@/app/components/ui/ProgressCircle";
 import { useArea, useStages, useProject } from "@/lib/api";
@@ -25,16 +26,19 @@ export default function AreaDetailPage() {
   const projectId = params.id as string;
   const areaId = params.areaId as string;
 
-  // Get query params for pre-selecting stage
-  const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
-  const stageIdFromQuery = searchParams?.get('stage');
+  const statusBadgeColors = {
+    not_started: "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300",
+    in_progress: "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400",
+    pending_signoff: "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400",
+    completed: "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400",
+    rejected: "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400",
+  };
 
   const { data: project } = useProject(projectId);
   const { data: area, loading: areaLoading, error: areaError } = useArea(projectId, areaId);
   const { data: stages, loading: stagesLoading, error: stagesError, refetch: refetchStages, updateStage, updateStageStatus } = useStages(projectId, areaId);
   const { hasPermission } = usePermission();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [selectedStageId, setSelectedStageId] = useState<string | null>(null);
 
   const canCreateStages = hasPermission(PERMISSIONS.CREATE_STAGES);
   const canEditStages = hasPermission(PERMISSIONS.EDIT_STAGES);
@@ -58,25 +62,6 @@ export default function AreaDetailPage() {
     null;
   const activeStageColor = activeStage?.color ?? null;
 
-  // Auto-select stage from query param or first stage when stages load
-  useEffect(() => {
-    if (stages && stages.length > 0 && !selectedStageId) {
-      // If stage ID is in query params, try to select it
-      if (stageIdFromQuery) {
-        const stageExists = stages.find(s => s.identifier === stageIdFromQuery);
-        if (stageExists) {
-          setSelectedStageId(stageIdFromQuery);
-          return;
-        }
-      }
-      // Otherwise select first stage
-      setSelectedStageId(stages[0].identifier);
-    }
-  }, [stages, selectedStageId, stageIdFromQuery]);
-
-  // Get selected stage
-  const selectedStage = stages?.find(s => s.identifier === selectedStageId);
-
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -89,9 +74,15 @@ export default function AreaDetailPage() {
             <ArrowLeftIcon className="w-5 h-5 text-gray-600 dark:text-gray-400" />
           </Link>
           <div>
-            {project && (
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">
-                {project.name}
+            {(project || area?.containedInPlace) && (
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-1 flex items-center gap-1.5">
+                {project && <span>{project.name}</span>}
+                {project && area?.containedInPlace?.name && (
+                  <span className="text-gray-400 dark:text-gray-600">/</span>
+                )}
+                {area?.containedInPlace?.name && (
+                  <span>{area.containedInPlace.name}</span>
+                )}
               </p>
             )}
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
@@ -126,32 +117,54 @@ export default function AreaDetailPage() {
                 activeStageColor={activeStageColor}
               />
             </div>
-            <div className="md:col-span-3 grid grid-cols-1 sm:grid-cols-3 gap-6 items-center">
-              <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">{t("deck")}</p>
-                <p className="text-lg font-semibold text-gray-900 dark:text-white">
-                  {area.containedInPlace?.name || "-"}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">{t("totalStages")}</p>
-                <p className="text-lg font-semibold text-gray-900 dark:text-white">
-                  {area.stageCount}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">{t("progress")}</p>
-                <div className="flex items-center gap-3">
-                  <ProgressCircle percentage={progress} size={64} strokeWidth={6} />
+            <div className="md:col-span-3 flex flex-col gap-4">
+              {activeStage && (
+                <div className="flex items-center gap-4 px-5 py-4 rounded-lg bg-gray-50 dark:bg-gray-900/40 border border-gray-200 dark:border-gray-700">
+                  <span
+                    className="inline-block w-5 h-5 rounded flex-shrink-0 border border-gray-200 dark:border-gray-600"
+                    style={{ backgroundColor: activeStage.color || "#9ca3af" }}
+                    aria-hidden="true"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">
+                      {t("activeStage")}
+                    </p>
+                    <p className="text-lg font-semibold text-gray-900 dark:text-white truncate">
+                      {activeStage.name}
+                    </p>
+                  </div>
+                  <span
+                    className={`inline-block px-2.5 py-1 rounded text-xs font-medium flex-shrink-0 ${
+                      statusBadgeColors[
+                        activeStage.status.name as keyof typeof statusBadgeColors
+                      ]
+                    }`}
+                  >
+                    {t(`status.${activeStage.status.name}`)}
+                  </span>
+                </div>
+              )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="flex items-center gap-4 px-5 py-4 rounded-lg bg-gray-50 dark:bg-gray-900/40 border border-gray-200 dark:border-gray-700">
+                  <ProgressCircle percentage={progress} size={88} strokeWidth={8} />
                   <div>
-                    <p className="text-lg font-semibold text-gray-900 dark:text-white">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">
+                      {t("progress")}
+                    </p>
+                    <p className="text-2xl font-bold text-gray-900 dark:text-white leading-none">
                       {completedStages}/{totalStages}
                     </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                       {t("completed")}
                     </p>
                   </div>
                 </div>
+                {activeStage && (
+                  <OpenPunchlistBadge
+                    projectId={projectId}
+                    stageId={activeStage.identifier}
+                  />
+                )}
               </div>
             </div>
           </div>
@@ -203,53 +216,24 @@ export default function AreaDetailPage() {
               )}
             </div>
           ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              {/* Left: Stages List */}
-              <div className="lg:col-span-1">
-                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-100 dark:border-gray-700 overflow-hidden">
-                  <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-                    <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                      {t("stages")} ({stages.length})
-                    </h2>
-                  </div>
-                  <div className="divide-y divide-gray-200 dark:divide-gray-700">
-                    {stages.map((stage) => (
-                      <StageListItem
-                        key={stage.identifier}
-                        stage={stage}
-                        isSelected={selectedStageId === stage.identifier}
-                        onClick={() => setSelectedStageId(stage.identifier)}
-                      />
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Right: Stage Detail Panel */}
-              <div className="lg:col-span-2">
-                {selectedStage ? (
-                  <StageDetailPanel
-                    stage={selectedStage}
-                    projectId={projectId}
-                    canEdit={canEditStages}
-                    onUpdate={async (data) => {
-                      await updateStage(selectedStage.identifier, data);
-                      refetchStages();
-                    }}
-                    onUpdateStatus={async (status) => {
-                      await updateStageStatus(selectedStage.identifier, { status });
-                      await refetchStages();
-                    }}
-                    onRefetch={refetchStages}
-                  />
-                ) : (
-                  <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-100 dark:border-gray-700 p-12 text-center">
-                    <p className="text-gray-500 dark:text-gray-400">
-                      {t("selectStage")}
-                    </p>
-                  </div>
-                )}
-              </div>
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">
+                {t("stages")} ({stages.length})
+              </h2>
+              <StageTimeline
+                stages={stages}
+                projectId={projectId}
+                canEdit={canEditStages}
+                onUpdate={async (stageId, data) => {
+                  await updateStage(stageId, data);
+                  refetchStages();
+                }}
+                onUpdateStatus={async (stageId, status) => {
+                  await updateStageStatus(stageId, { status });
+                  await refetchStages();
+                }}
+                onRefetch={refetchStages}
+              />
             </div>
           )}
         </>

@@ -189,7 +189,11 @@ interface UseApiState<T> {
 export function usePunchlistItems(
   projectId: string,
   stageId: string,
-  params?: { page?: number; per_page?: number }
+  params?: {
+    page?: number;
+    per_page?: number;
+    status?: "open" | "in_progress" | "done" | "cancelled";
+  }
 ) {
   const [state, setState] = useState<UseApiState<PunchlistItem[]>>({
     data: null,

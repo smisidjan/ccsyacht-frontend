@@ -256,18 +256,8 @@ export default function StageDetailPanel({
 
       {/* Content */}
       <div className="p-8 space-y-8">
-        {/* Basic Info */}
-        <div>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">
-            {t("position")}
-          </p>
-          <p className="text-lg font-semibold text-gray-900 dark:text-white">
-            {stage.position}
-          </p>
-        </div>
-
         {/* Signoffs Section */}
-        <div className="pt-8 border-t border-gray-200 dark:border-gray-700">
+        <div>
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">
             {t("signoffs")}
           </h3>

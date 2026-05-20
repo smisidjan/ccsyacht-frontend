@@ -1941,6 +1941,8 @@
   "areaDetail": {
     "loading": "Laden...",
     "loadError": "Kan gebied details niet laden",
+    "openPunchlist": "Open punchlist",
+    "activeStage": "Actieve stage",
     "createStage": "Stage Aanmaken",
     "createFirstStage": "Eerste Stage Aanmaken",
     "startStage": "Stage Starten",

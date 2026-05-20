@@ -1911,6 +1911,8 @@
   "areaDetail": {
     "loading": "Loading...",
     "loadError": "Failed to load area details",
+    "openPunchlist": "Open punchlist",
+    "activeStage": "Active stage",
     "createStage": "Create Stage",
     "createFirstStage": "Create First Stage",
     "startStage": "Start Stage",
