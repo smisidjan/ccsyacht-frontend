@@ -2031,13 +2031,47 @@ export interface MyTaskDocumentAcknowledgement {
   acknowledgedAt: string | null;
 }
 
-export type MyTask = MyTaskDocumentRequest | MyTaskPunchlistItem | MyTaskSetupTask | MyTaskDocumentAcknowledgement;
+export interface MyTaskStageSignoff {
+  type: "stage_signoff";
+  identifier: string;
+  /** "pending" while waiting on the current user, "signed" once they
+   *  put their signature on it. Mirrors the per-stage signoff status. */
+  status: "pending" | "signed";
+  hasSigned: boolean;
+  signedAt: string | null;
+  stage: {
+    identifier: string;
+    name: string;
+    color: string | null;
+    status: StageStatus;
+  };
+  area: {
+    identifier: string;
+    name: string;
+  };
+  deck: {
+    identifier: string;
+    name: string;
+  };
+  project: MyTaskProject;
+  requestedAt: string;
+}
+
+export type MyTask =
+  | MyTaskDocumentRequest
+  | MyTaskPunchlistItem
+  | MyTaskSetupTask
+  | MyTaskDocumentAcknowledgement
+  | MyTaskStageSignoff;
 
 export interface MyTasksResponse {
   documentRequests: MyTaskDocumentRequest[];
   punchlistItems: MyTaskPunchlistItem[];
   setupTasks: MyTaskSetupTask[];
   documentAcknowledgements: MyTaskDocumentAcknowledgement[];
+  /** Stage signoffs the user has been asked to provide. Optional so the
+   *  type tolerates older backend versions that don't include the field. */
+  stageSignoffs?: MyTaskStageSignoff[];
   counts: {
     total: number;
     pending: number;

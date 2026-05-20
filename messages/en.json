@@ -131,7 +131,8 @@
       "documentRequest": "Document",
       "punchlistItem": "Punchlist",
       "meeting": "Meeting",
-      "documentAcknowledgement": "Review"
+      "documentAcknowledgement": "Review",
+      "stageSignoff": "Signoff"
     },
     "status": {
       "pending": "Pending",
@@ -156,6 +157,7 @@
       "punchlist": "Punch",
       "meetings": "Meet",
       "acknowledgements": "Review",
+      "signoffs": "Signoffs",
       "allStatus": "All statuses",
       "pending": "Pending",
       "overdue": "Overdue",
@@ -174,16 +176,19 @@
       "resolve": "Resolve",
       "attend": "Attend",
       "acknowledge": "Review",
+      "sign": "Sign",
       "remind": "Send reminder",
       "openProject": "Open Project",
       "openInProject": "Open in project"
     },
     "uploadDocument": "Upload {type}",
     "acknowledgeDocument": "Review: {title}",
+    "signoffStage": "Sign off: {stage}",
     "forMeeting": "for {meeting}",
     "dueBy": "Due {date}",
     "scheduledFor": "Scheduled for {date}",
     "requestedBy": "by {name}",
+    "requestedOn": "Requested {date}",
     "empty": {
       "title": "All caught up!",
       "description": "You don't have any tasks assigned to you at the moment.",

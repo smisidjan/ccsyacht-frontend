@@ -131,7 +131,8 @@
       "documentRequest": "Document",
       "punchlistItem": "Punchlist",
       "meeting": "Meeting",
-      "documentAcknowledgement": "Review"
+      "documentAcknowledgement": "Review",
+      "stageSignoff": "Signoff"
     },
     "status": {
       "pending": "In afwachting",
@@ -156,6 +157,7 @@
       "punchlist": "Punch",
       "meetings": "Meet",
       "acknowledgements": "Review",
+      "signoffs": "Signoffs",
       "allStatus": "Alle statussen",
       "pending": "Open",
       "overdue": "Te laat",
@@ -174,16 +176,19 @@
       "resolve": "Oplossen",
       "attend": "Bijwonen",
       "acknowledge": "Bekijk",
+      "sign": "Tekenen",
       "remind": "Stuur herinnering",
       "openProject": "Open Project",
       "openInProject": "Bekijk in project"
     },
     "uploadDocument": "Upload {type}",
     "acknowledgeDocument": "Review: {title}",
+    "signoffStage": "Teken af: {stage}",
     "forMeeting": "voor {meeting}",
     "dueBy": "Deadline {date}",
     "scheduledFor": "Gepland op {date}",
     "requestedBy": "door {name}",
+    "requestedOn": "Aangevraagd {date}",
     "empty": {
       "title": "Helemaal bij!",
       "description": "Je hebt momenteel geen taken toegewezen.",

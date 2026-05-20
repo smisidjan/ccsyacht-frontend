@@ -16,12 +16,14 @@ import {
   ComputerDesktopIcon,
   UserIcon,
   LinkIcon,
+  PencilSquareIcon,
 } from "@heroicons/react/24/outline";
 import type {
   MyTaskDocumentRequest,
   MyTaskPunchlistItem,
   MyTaskSetupTask,
   MyTaskDocumentAcknowledgement,
+  MyTaskStageSignoff,
   PunchlistItemPriority,
 } from "@/lib/api/types";
 
@@ -29,7 +31,8 @@ export type TaskItem =
   | MyTaskDocumentRequest
   | MyTaskPunchlistItem
   | MyTaskSetupTask
-  | MyTaskDocumentAcknowledgement;
+  | MyTaskDocumentAcknowledgement
+  | MyTaskStageSignoff;
 
 interface TaskCardProps {
   task: TaskItem;
@@ -42,7 +45,8 @@ export default function TaskCard({ task }: TaskCardProps) {
     (task.type === "document_request" && task.isCompleted) ||
     (task.type === "punchlist_item" && task.status === "done") ||
     (task.type === "setup_task" && task.hasSigned) ||
-    (task.type === "document_acknowledgement" && task.isAcknowledged);
+    (task.type === "document_acknowledgement" && task.isAcknowledged) ||
+    (task.type === "stage_signoff" && task.hasSigned);
 
   const isOverdue =
     (task.type === "document_request" && task.isOverdue && !task.isCompleted) ||
@@ -83,6 +87,9 @@ export default function TaskCard({ task }: TaskCardProps) {
     if (task.type === "punchlist_item") {
       return `/dashboard/projects/${task.project.identifier}/areas/${task.area.identifier}?stage=${task.stage.identifier}`;
     }
+    if (task.type === "stage_signoff") {
+      return `/dashboard/projects/${task.project.identifier}/areas/${task.area.identifier}`;
+    }
     if (task.type === "document_acknowledgement") {
       return `/dashboard/projects/${task.project.identifier}#overview`;
     }
@@ -104,6 +111,8 @@ export default function TaskCard({ task }: TaskCardProps) {
           ? "border-l-amber-500"
           : task.type === "document_acknowledgement"
           ? "border-l-teal-500"
+          : task.type === "stage_signoff"
+          ? "border-l-indigo-500"
           : "border-l-purple-500"
       }`}
     >
@@ -120,6 +129,8 @@ export default function TaskCard({ task }: TaskCardProps) {
                   ? "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400"
                   : task.type === "document_acknowledgement"
                   ? "bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-400"
+                  : task.type === "stage_signoff"
+                  ? "bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400"
                   : "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400"
               }`}
             >
@@ -135,6 +146,9 @@ export default function TaskCard({ task }: TaskCardProps) {
               {task.type === "document_acknowledgement" && (
                 <DocumentCheckIcon className="w-3 h-3" />
               )}
+              {task.type === "stage_signoff" && (
+                <PencilSquareIcon className="w-3 h-3" />
+              )}
               <span className="hidden sm:inline">
                 {t(
                   `types.${
@@ -144,6 +158,8 @@ export default function TaskCard({ task }: TaskCardProps) {
                       ? "punchlistItem"
                       : task.type === "document_acknowledgement"
                       ? "documentAcknowledgement"
+                      : task.type === "stage_signoff"
+                      ? "stageSignoff"
                       : "meeting"
                   }`
                 )}
@@ -208,6 +224,8 @@ export default function TaskCard({ task }: TaskCardProps) {
           {task.type === "setup_task" && task.name}
           {task.type === "document_acknowledgement" &&
             t("acknowledgeDocument", { title: task.document.title })}
+          {task.type === "stage_signoff" &&
+            t("signoffStage", { stage: task.stage.name })}
         </h3>
 
         {/* Description/Message - hidden on small mobile */}
@@ -241,6 +259,27 @@ export default function TaskCard({ task }: TaskCardProps) {
             <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-[10px] sm:text-xs font-medium truncate max-w-[80px] sm:max-w-none">
               {task.stage.name}
             </span>
+          </div>
+        )}
+        {task.type === "stage_signoff" && (
+          <div className="flex items-center gap-1.5 sm:gap-2 mb-2 sm:mb-3 text-xs sm:text-sm">
+            <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-[10px] sm:text-xs font-medium truncate max-w-[80px] sm:max-w-none">
+              {task.deck.name}
+            </span>
+            <ChevronRightIcon className="w-3 h-3 text-gray-400 flex-shrink-0" />
+            <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-[10px] sm:text-xs font-medium truncate max-w-[80px] sm:max-w-none">
+              {task.area.name}
+            </span>
+            {task.stage.color && (
+              <>
+                <ChevronRightIcon className="w-3 h-3 text-gray-400 flex-shrink-0" />
+                <span
+                  className="inline-block w-3 h-3 rounded-sm flex-shrink-0 border border-gray-200 dark:border-gray-600"
+                  style={{ backgroundColor: task.stage.color }}
+                  aria-hidden="true"
+                />
+              </>
+            )}
           </div>
         )}
 
@@ -329,6 +368,12 @@ export default function TaskCard({ task }: TaskCardProps) {
                 {t("requestedBy", { name: task.assignedBy.name })}
               </span>
             )}
+            {task.type === "stage_signoff" && task.requestedAt && (
+              <span className="flex items-center gap-1">
+                <ClockIcon className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                {t("requestedOn", { date: formatDate(task.requestedAt) })}
+              </span>
+            )}
           </div>
 
           {/* Action button */}
@@ -343,6 +388,8 @@ export default function TaskCard({ task }: TaskCardProps) {
                 ? "bg-amber-600 hover:bg-amber-700 text-white"
                 : task.type === "document_acknowledgement"
                 ? "bg-teal-600 hover:bg-teal-700 text-white"
+                : task.type === "stage_signoff"
+                ? "bg-indigo-600 hover:bg-indigo-700 text-white"
                 : "bg-purple-600 hover:bg-purple-700 text-white"
             }`}
           >
@@ -354,6 +401,8 @@ export default function TaskCard({ task }: TaskCardProps) {
               (isCompleted ? t("actions.view") : t("actions.attend"))}
             {task.type === "document_acknowledgement" &&
               (isCompleted ? t("actions.view") : t("actions.acknowledge"))}
+            {task.type === "stage_signoff" &&
+              (isCompleted ? t("actions.view") : t("actions.sign"))}
             <ChevronRightIcon className="w-3 h-3" />
           </Link>
         </div>

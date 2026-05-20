@@ -18,7 +18,7 @@ import TaskCardGroup from "./TaskCardGroup";
 import type { ProjectGroup } from "./ProjectTasksList";
 import type { MyTaskSetupTask, MyTaskDocumentAcknowledgement, MyTaskDocumentRequest } from "@/lib/api/types";
 
-type FilterType = "all" | "documents" | "punchlist" | "meetings" | "acknowledgements";
+type FilterType = "all" | "documents" | "punchlist" | "meetings" | "acknowledgements" | "signoffs";
 type FilterStatus = "all" | "pending" | "overdue" | "completed";
 
 interface TaskDetailsPanelProps {
@@ -50,6 +50,8 @@ export default function TaskDetailsPanel({
           task.type !== "document_acknowledgement"
         )
           return false;
+        if (filterType === "signoffs" && task.type !== "stage_signoff")
+          return false;
 
         // Status filter
         if (filterStatus === "pending") {
@@ -66,12 +68,14 @@ export default function TaskDetailsPanel({
           if (task.type === "setup_task" && task.hasSigned) return false;
           if (task.type === "document_acknowledgement" && task.isAcknowledged)
             return false;
+          if (task.type === "stage_signoff" && task.hasSigned) return false;
         }
         if (filterStatus === "overdue") {
           if (task.type === "document_request" && !task.isOverdue) return false;
           if (task.type === "punchlist_item" && !task.isOverdue) return false;
           if (task.type === "setup_task") return false;
           if (task.type === "document_acknowledgement") return false; // No overdue for acknowledgements
+          if (task.type === "stage_signoff") return false; // No overdue for signoffs
         }
         if (filterStatus === "completed") {
           if (task.type === "document_request" && !task.isCompleted) return false;
@@ -80,6 +84,7 @@ export default function TaskDetailsPanel({
           if (task.type === "setup_task" && !task.hasSigned) return false;
           if (task.type === "document_acknowledgement" && !task.isAcknowledged)
             return false;
+          if (task.type === "stage_signoff" && !task.hasSigned) return false;
         }
 
         // Search filter
@@ -101,6 +106,13 @@ export default function TaskDetailsPanel({
             return (
               task.document.title.toLowerCase().includes(query) ||
               task.documentType.name.toLowerCase().includes(query)
+            );
+          }
+          if (task.type === "stage_signoff") {
+            return (
+              task.stage.name.toLowerCase().includes(query) ||
+              task.area.name.toLowerCase().includes(query) ||
+              task.deck.name.toLowerCase().includes(query)
             );
           }
         }
@@ -272,6 +284,7 @@ export default function TaskDetailsPanel({
                 "punchlist",
                 "meetings",
                 "acknowledgements",
+                "signoffs",
               ] as FilterType[]
             ).map((type) => (
               <button

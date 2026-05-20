@@ -56,6 +56,9 @@ export default function MyTasksPage() {
       } else if (task.type === "document_acknowledgement") {
         if (task.isAcknowledged) group.completedCount++;
         else group.pendingCount++;
+      } else if (task.type === "stage_signoff") {
+        if (task.hasSigned) group.completedCount++;
+        else group.pendingCount++;
       }
     };
 
@@ -63,6 +66,7 @@ export default function MyTasksPage() {
     tasks.punchlistItems.forEach(addToGroup);
     tasks.setupTasks.forEach(addToGroup);
     tasks.documentAcknowledgements?.forEach(addToGroup);
+    tasks.stageSignoffs?.forEach(addToGroup);
 
     // Sort groups by overdue count, then pending count
     return Array.from(groupMap.values()).sort((a, b) => {
