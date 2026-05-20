@@ -27,7 +27,9 @@ interface GALeafletContentProps {
   imageHeight: number;
   pins: GAPin[];
   selectedPinId?: string | null;
+  hoveredPinId?: string | null;
   onPinClick?: (pin: GAPin) => void;
+  onPinHover?: (pin: GAPin | null) => void;
   onImageClick?: (x: number, y: number) => void;
   /** Fires when the user clicks inside a deck rectangle in edit mode. The
    *  `area` is set when the click landed inside one of that deck's area
@@ -114,7 +116,9 @@ export default function GALeafletContent({
   imageHeight,
   pins,
   selectedPinId,
+  hoveredPinId,
   onPinClick,
+  onPinHover,
   onImageClick,
   onDeckClick,
   canEdit = false,
@@ -263,7 +267,9 @@ export default function GALeafletContent({
             pin={pin}
             position={convertPinToLeaflet(pin)}
             isSelected={selectedPinId === pin.identifier}
+            isHovered={hoveredPinId === pin.identifier}
             onClick={onPinClick}
+            onHover={onPinHover}
           />
         ))}
 

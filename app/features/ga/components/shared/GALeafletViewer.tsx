@@ -29,7 +29,13 @@ export interface GALeafletViewerProps {
   imageHeight: number;
   pins: GAPin[];
   selectedPinId?: string | null;
+  /** Pin id that the matching table row is being hovered for — the
+   *  marker for this pin scales up to mirror the row highlight. */
+  hoveredPinId?: string | null;
   onPinClick?: (pin: GAPin) => void;
+  /** Fired when the user hovers a pin on the GA so the matching table
+   *  row can be highlighted in lockstep. */
+  onPinHover?: (pin: GAPin | null) => void;
   onImageClick?: (x: number, y: number) => void;
   /** Fires when the user clicks inside a deck rectangle in edit mode. The
    *  `area` is set when the click landed inside one of that deck's area

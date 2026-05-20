@@ -7,6 +7,7 @@ import "leaflet/dist/leaflet.css";
 import "./ga-smooth-zoom.css";
 import type { Deck, Area, AreaPolygonPoint, GAPin } from "@/lib/api/types";
 import { isInsidePolygon } from "@/lib/utils/geometry";
+import { createDonePinIcon } from "./pinIcons";
 
 interface GAPreviewMarkerProps {
   imageUrl: string;
@@ -285,11 +286,16 @@ export default function GAPreviewMarker({
             (pin.y / 100) * imageHeight,
             (pin.x / 100) * imageWidth,
           ];
+          const isDone = pin.punchlistItem?.status === "done";
           return (
             <Marker
               key={pin.identifier}
               position={pinPosition}
-              icon={createExistingPinIcon(pin.color || "#6B7280")}
+              icon={
+                isDone
+                  ? createDonePinIcon(18)
+                  : createExistingPinIcon(pin.color || "#6B7280")
+              }
               interactive={true}
               draggable={false}
             >

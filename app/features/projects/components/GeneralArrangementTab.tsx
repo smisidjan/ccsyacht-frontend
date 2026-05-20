@@ -7,8 +7,8 @@ import {
   DocumentTextIcon,
   PencilIcon,
   TrashIcon,
-  ChatBubbleLeftIcon,
-  ClipboardDocumentListIcon,
+  PaperClipIcon,
+  UserCircleIcon,
   ArrowTopRightOnSquareIcon,
   ArrowLeftIcon,
 } from "@heroicons/react/24/outline";
@@ -16,6 +16,11 @@ import { useGAPins } from "@/lib/api/ga-pins";
 import { useDecks } from "@/lib/api/decks";
 import { useAreas } from "@/lib/api/areas";
 import { useProjectStages } from "@/lib/api/stages";
+import {
+  punchlistItemsApi,
+  usePunchlistItemAttachments,
+} from "@/lib/api/punchlist-items";
+import { isImageAttachment } from "@/lib/utils/attachmentUtils";
 import { usePermission } from "@/lib/hooks/usePermission";
 import { useMinimumLoadingTime } from "@/lib/hooks/useMinimumLoadingTime";
 import { useGAImage } from "@/lib/hooks/useGAImage";
@@ -25,10 +30,10 @@ import { handleError } from "@/lib/utils/errors";
 import LoadingSkeleton from "@/app/components/ui/LoadingSkeleton";
 import Alert from "@/app/components/ui/Alert";
 import Tooltip from "@/app/components/ui/Tooltip";
+import AuthenticatedImage from "@/app/components/ui/AuthenticatedImage";
 import { CreateGAPinModal, GALeafletViewer } from "@/app/features/ga";
 import ConfirmModal from "@/app/components/modals/ConfirmModal";
-import { CreateRemarkModal } from "@/app/features/remarks";
-import type { GAPin, StageStatus, GeneralArrangement, Deck, Area } from "@/lib/api/types";
+import type { GAPin, StageStatus, PunchlistItemStatus, GeneralArrangement, Deck, Area } from "@/lib/api/types";
 
 interface GeneralArrangementTabProps {
   projectId: string;
@@ -96,6 +101,36 @@ const getStageStatusBadge = (status: StageStatus) => {
   );
 };
 
+// Pin status badge — reflects the linked punchlist item's status
+// (open / in_progress / done / cancelled), which is what the user
+// actually wants to triage from this view. Stage status lives one
+// level up and is shown separately in the detail panel.
+const punchlistStatusBadgeStyles: Record<PunchlistItemStatus, string> = {
+  open: "bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300",
+  in_progress: "bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300",
+  done: "bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300",
+  cancelled: "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300",
+};
+const getPunchlistStatusBadge = (
+  status: PunchlistItemStatus | undefined,
+  label: string
+) => {
+  if (!status) {
+    return (
+      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400">
+        —
+      </span>
+    );
+  }
+  return (
+    <span
+      className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${punchlistStatusBadgeStyles[status]}`}
+    >
+      {label}
+    </span>
+  );
+};
+
 export default function GeneralArrangementTab({
   projectId,
   generalArrangement,
@@ -103,6 +138,22 @@ export default function GeneralArrangementTab({
   const t = useTranslations("projectDetail.generalArrangement");
   const tPins = useTranslations("gaViewer");
   const tCommon = useTranslations("common");
+  const tPunchlist = useTranslations("punchlist");
+
+  // Localized labels for the punchlist status badge / filter — kept
+  // inline so the badge helper stays a pure renderer.
+  const punchlistStatusLabel = (s: PunchlistItemStatus): string => {
+    switch (s) {
+      case "open":
+        return tPunchlist("statusOpen");
+      case "in_progress":
+        return tPunchlist("statusInProgress");
+      case "done":
+        return tPunchlist("statusDone");
+      case "cancelled":
+        return tPunchlist("statusCancelled");
+    }
+  };
   const { hasPermission } = usePermission();
   const router = useRouter();
   const { showToast } = useToast();
@@ -124,10 +175,8 @@ export default function GeneralArrangementTab({
   const [showActiveStages, setShowActiveStages] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [isRemarkModalOpen, setIsRemarkModalOpen] = useState(false);
   const [selectedPin, setSelectedPin] = useState<GAPin | null>(null);
   const [pinToDelete, setPinToDelete] = useState<string | null>(null);
-  const [pinForRemark, setPinForRemark] = useState<GAPin | null>(null);
   const [newPinPosition, setNewPinPosition] = useState<{ x: number; y: number } | null>(null);
   const [clickedDeck, setClickedDeck] = useState<Deck | null>(null);
   const [clickedArea, setClickedArea] = useState<Area | null>(null);
@@ -223,12 +272,14 @@ export default function GeneralArrangementTab({
     return out;
   }, [stages]);
 
-  // Filter pins based on selected filters
+  // Filter pins based on selected filters. The status filter targets
+  // the linked punchlist item's status (what the user is actually
+  // triaging), not the parent stage's status.
   const displayedPins = allPins.filter((pin) => {
     if (selectedDeckFilter && pin.deck.identifier !== selectedDeckFilter) return false;
     if (selectedAreaFilter && pin.area.identifier !== selectedAreaFilter) return false;
     if (selectedStageFilter && pin.stage.name !== selectedStageFilter) return false;
-    if (selectedStatusFilter && pin.stage.status !== selectedStatusFilter) return false;
+    if (selectedStatusFilter && pin.punchlistItem?.status !== selectedStatusFilter) return false;
     return true;
   });
 
@@ -256,12 +307,6 @@ export default function GeneralArrangementTab({
     setSelectedPin(pin);
     setNewPinPosition(null);
     setIsCreateModalOpen(true);
-  }, []);
-
-  // Handle add remark
-  const handleAddRemark = useCallback((pin: GAPin) => {
-    setPinForRemark(pin);
-    setIsRemarkModalOpen(true);
   }, []);
 
   // Loading state
@@ -356,11 +401,10 @@ export default function GeneralArrangementTab({
             className="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg text-sm text-gray-700 dark:text-gray-300"
           >
             <option value="all">{tPins("allStatuses")}</option>
-            <option value="not_started">{tPins("statusNotStarted")}</option>
-            <option value="in_progress">{tPins("statusInProgress")}</option>
-            <option value="pending_signoff">{tPins("statusPendingSignoff")}</option>
-            <option value="completed">{tPins("statusCompleted")}</option>
-            <option value="rejected">{tPins("statusRejected")}</option>
+            <option value="open">{punchlistStatusLabel("open")}</option>
+            <option value="in_progress">{punchlistStatusLabel("in_progress")}</option>
+            <option value="done">{punchlistStatusLabel("done")}</option>
+            <option value="cancelled">{punchlistStatusLabel("cancelled")}</option>
           </select>
 
           {displayedPins.length > 0 && (
@@ -478,7 +522,9 @@ export default function GeneralArrangementTab({
                 imageHeight={generalArrangement.imageHeight!}
                 pins={displayedPins}
                 selectedPinId={selectedPinDetail?.identifier}
+                hoveredPinId={hoveredPinId}
                 onPinClick={(pin) => setSelectedPinDetail(pin)}
+                onPinHover={(pin) => setHoveredPinId(pin?.identifier ?? null)}
                 onDeckClick={(deck, x, y, area) => {
                   if (canEdit && isAddPinMode) {
                     setNewPinPosition({ x, y });
@@ -543,7 +589,12 @@ export default function GeneralArrangementTab({
                             />
                           </td>
                           <td className="py-3 px-2">
-                            {getStageStatusBadge(pin.stage.status)}
+                            {getPunchlistStatusBadge(
+                              pin.punchlistItem?.status,
+                              pin.punchlistItem
+                                ? punchlistStatusLabel(pin.punchlistItem.status)
+                                : ""
+                            )}
                           </td>
                           <td className="py-3 px-2 font-medium text-gray-900 dark:text-white">
                             {pin.label || tPins("unnamedPin")}
@@ -589,7 +640,14 @@ export default function GeneralArrangementTab({
                         {selectedPinDetail.label || tPins("unnamedPin")}
                       </h4>
                       <div className="mt-1">
-                        {getStageStatusBadge(selectedPinDetail.stage.status)}
+                        {getPunchlistStatusBadge(
+                          selectedPinDetail.punchlistItem?.status,
+                          selectedPinDetail.punchlistItem
+                            ? punchlistStatusLabel(
+                                selectedPinDetail.punchlistItem.status
+                              )
+                            : ""
+                        )}
                       </div>
                     </div>
                   </div>
@@ -603,9 +661,10 @@ export default function GeneralArrangementTab({
                       <span className="text-gray-500 dark:text-gray-400">Area: </span>
                       <span className="text-gray-900 dark:text-white font-medium">{selectedPinDetail.area.name}</span>
                     </div>
-                    <div>
+                    <div className="flex flex-wrap items-center gap-2">
                       <span className="text-gray-500 dark:text-gray-400">Stage: </span>
                       <span className="text-gray-900 dark:text-white font-medium">{selectedPinDetail.stage.name}</span>
+                      {getStageStatusBadge(selectedPinDetail.stage.status)}
                     </div>
                   </div>
 
@@ -622,16 +681,11 @@ export default function GeneralArrangementTab({
                     </div>
                   </div>
 
-                  <div className="flex gap-4 text-sm border-t border-gray-200 dark:border-gray-700 pt-4">
-                    <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
-                      <ChatBubbleLeftIcon className="w-4 h-4" />
-                      <span>{selectedPinDetail.stage.remarksCount} {tPins("remarks")}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-purple-600 dark:text-purple-400">
-                      <ClipboardDocumentListIcon className="w-4 h-4" />
-                      <span>{selectedPinDetail.stage.punchlistItemsCount} {tPins("punchlistItems")}</span>
-                    </div>
-                  </div>
+                  <PinDetailExtras
+                    pin={selectedPinDetail}
+                    projectId={projectId}
+                    tPunchlist={tPunchlist}
+                  />
 
                   <div className="flex flex-wrap gap-2 border-t border-gray-200 dark:border-gray-700 pt-4">
                     <button
@@ -643,13 +697,6 @@ export default function GeneralArrangementTab({
                     </button>
                     {canEdit && (
                       <>
-                        <button
-                          onClick={() => handleAddRemark(selectedPinDetail)}
-                          className="flex items-center gap-2 px-3 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-                        >
-                          <ChatBubbleLeftIcon className="w-4 h-4" />
-                          {tPins("addRemark")}
-                        </button>
                         <button
                           onClick={() => handleEditPin(selectedPinDetail)}
                           className="flex items-center gap-2 px-3 py-2 text-sm bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
@@ -710,19 +757,127 @@ export default function GeneralArrangementTab({
         confirmVariant="danger"
       />
 
-      {/* Create Remark Modal */}
-      {pinForRemark && (
-        <CreateRemarkModal
-          isOpen={isRemarkModalOpen}
-          onClose={() => {
-            setIsRemarkModalOpen(false);
-            setPinForRemark(null);
-          }}
-          projectId={projectId}
-          stageId={pinForRemark.stage.identifier}
-          onSuccess={refetch}
-        />
-      )}
+    </div>
+  );
+}
+
+/** Assignees + attachments block for the selected pin's detail panel.
+ *  Extracted so the attachments hook only fires while a pin is selected
+ *  (the parent only mounts this when `selectedPinDetail` exists). */
+function PinDetailExtras({
+  pin,
+  projectId,
+  tPunchlist,
+}: {
+  pin: GAPin;
+  projectId: string;
+  tPunchlist: ReturnType<typeof useTranslations>;
+}) {
+  const punchlistItem = pin.punchlistItem;
+  const { data: attachments, loading: attachmentsLoading } =
+    usePunchlistItemAttachments(
+      projectId,
+      punchlistItem?.identifier ?? "",
+      !!punchlistItem
+    );
+
+  // Nothing meaningful to show without a linked punchlist item.
+  if (!punchlistItem) return null;
+
+  const images = (attachments ?? []).filter((a) => isImageAttachment(a));
+  const files = (attachments ?? []).filter((a) => !isImageAttachment(a));
+
+  return (
+    <div className="space-y-4 text-sm border-t border-gray-200 dark:border-gray-700 pt-4">
+      {/* Assignees */}
+      <div>
+        <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400 mb-2">
+          <UserCircleIcon className="w-4 h-4" />
+          <span className="text-xs font-medium uppercase tracking-wide">
+            {tPunchlist("assignees")}
+          </span>
+        </div>
+        {punchlistItem.assignees.length === 0 ? (
+          <p className="text-gray-500 dark:text-gray-400 italic">
+            {tPunchlist("noAssignees")}
+          </p>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {punchlistItem.assignees.map((a) => (
+              <span
+                key={a.identifier}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 text-xs"
+              >
+                <UserCircleIcon className="w-3.5 h-3.5" />
+                {a.name}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Attachments — images render as thumbnails (auth-fetched blob),
+          other file types show as a name + size row. We don't wire up
+          click-to-view here; the user can open the item on the stage
+          page for the full editor. */}
+      <div>
+        <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400 mb-2">
+          <PaperClipIcon className="w-4 h-4" />
+          <span className="text-xs font-medium uppercase tracking-wide">
+            {tPunchlist("attachments")}
+          </span>
+        </div>
+        {attachmentsLoading ? (
+          <div className="h-20 w-full rounded-lg bg-gray-100 dark:bg-gray-800 animate-pulse" />
+        ) : (attachments ?? []).length === 0 ? (
+          <p className="text-gray-500 dark:text-gray-400 italic">
+            {tPunchlist("attachmentsCount", { count: 0 })}
+          </p>
+        ) : (
+          <div className="space-y-3">
+            {images.length > 0 && (
+              <div className="grid grid-cols-3 gap-2">
+                {images.map((img) => {
+                  const imgUrl = punchlistItemsApi.getDownloadUrl(
+                    projectId,
+                    punchlistItem.identifier,
+                    img.identifier
+                  );
+                  return (
+                    <div
+                      key={img.identifier}
+                      className="aspect-square rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700"
+                      title={img.name}
+                    >
+                      <AuthenticatedImage
+                        src={imgUrl}
+                        alt={img.name}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            {files.length > 0 && (
+              <ul className="space-y-1">
+                {files.map((f) => (
+                  <li
+                    key={f.identifier}
+                    className="flex items-center gap-2 text-xs text-gray-700 dark:text-gray-300"
+                  >
+                    <PaperClipIcon className="w-3.5 h-3.5 flex-shrink-0 text-gray-400" />
+                    <span className="truncate flex-1">{f.name}</span>
+                    <span className="text-gray-500 dark:text-gray-400 flex-shrink-0">
+                      {f.contentSizeHuman}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

@@ -10,6 +10,7 @@ import { useDecks } from "@/lib/api/decks";
 import { useAreas } from "@/lib/api/areas";
 import { useGAPins } from "@/lib/api/ga-pins";
 import { useGAImage } from "@/lib/hooks/useGAImage";
+import { createDonePinIcon } from "./pinIcons";
 import { getFixedImageUrl, hasGAImageData } from "@/app/features/ga/utils/helpers";
 import type { Area } from "@/lib/api/types";
 
@@ -253,11 +254,16 @@ export default function AreaGAPreviewContent({
             (pin.y / 100) * ga.imageHeight!,
             (pin.x / 100) * ga.imageWidth!,
           ];
+          const isDone = pin.punchlistItem?.status === "done";
           return (
             <Marker
               key={pin.identifier}
               position={position}
-              icon={createPinIcon(pin.color || highlightColor)}
+              icon={
+                isDone
+                  ? createDonePinIcon(14)
+                  : createPinIcon(pin.color || highlightColor)
+              }
               interactive={true}
               draggable={false}
             >
