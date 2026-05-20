@@ -92,15 +92,17 @@ function SortableStageRow({
     <li
       ref={setNodeRef}
       style={style}
-      className={`flex items-center gap-2 py-1 text-sm ${
-        muted ? "text-gray-400 dark:text-gray-500" : "text-gray-800 dark:text-gray-200"
+      className={`flex items-center gap-3 px-3 py-2.5 rounded-lg border transition-colors ${
+        muted
+          ? "border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/40 opacity-60"
+          : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
       }`}
     >
       <button
         type="button"
-        className="cursor-grab active:cursor-grabbing p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
         {...attributes}
         {...listeners}
+        className="cursor-grab active:cursor-grabbing p-0.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 flex-shrink-0 touch-none"
         aria-label="Drag to reorder"
       >
         <Bars3Icon className="w-4 h-4" />
@@ -110,15 +112,13 @@ function SortableStageRow({
           type="checkbox"
           checked={row.included}
           onChange={() => onToggleInclude(row.id)}
+          className="flex-shrink-0"
         />
       ) : (
-        // Custom rows don't have an include toggle — they exist only when the
-        // user added them, removing is the way to opt out. Spacer keeps row
-        // alignment consistent with template rows.
-        <span className="w-4" aria-hidden="true" />
+        // Custom rows don't have an include toggle — removing is the way
+        // to opt out. Spacer keeps row alignment with template rows.
+        <span className="w-4 flex-shrink-0" aria-hidden="true" />
       )}
-      {/* Color swatch: read-only for template rows (inherits from template),
-          editable native picker for custom rows. */}
       <span
         className={`inline-flex items-center gap-1 flex-shrink-0 ${
           colorClash ? "ring-2 ring-red-500 dark:ring-red-400 rounded p-0.5" : ""
@@ -139,12 +139,20 @@ function SortableStageRow({
           />
         )}
       </span>
-      <span className="flex-1 truncate">{row.name}</span>
+      <span
+        className={`flex-1 truncate text-sm font-medium ${
+          muted
+            ? "text-gray-500 dark:text-gray-500"
+            : "text-gray-900 dark:text-white"
+        }`}
+      >
+        {row.name}
+      </span>
       {row.kind === "custom" && (
         <button
           type="button"
           onClick={() => onRemove(row.id)}
-          className="p-1 text-gray-400 hover:text-red-500"
+          className="p-1 text-gray-400 hover:text-red-600 dark:hover:text-red-400 flex-shrink-0"
           aria-label="Remove"
         >
           <XMarkIcon className="w-4 h-4" />
@@ -565,184 +573,212 @@ export default function CreateAndDefineAreaModal({
             height-bounded; on mobile the modal itself scrolls so the
             focused input stays in view. */}
         <div className="md:w-80 md:flex-shrink-0 flex flex-col gap-4 md:border-l md:pl-4 md:border-gray-200 md:dark:border-gray-700 md:overflow-y-auto">
-          {isEditing && (
-            <div className="flex border-b border-gray-200 dark:border-gray-700">
-              {(["details", "stages"] as const).map((tab) => (
-                <button
-                  key={tab}
-                  type="button"
-                  onClick={() => setEditTab(tab)}
-                  className={`flex-1 px-3 py-2 text-sm font-medium border-b-2 transition-colors ${
-                    editTab === tab
-                      ? "border-blue-600 text-blue-600 dark:text-blue-400"
-                      : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
-                  }`}
-                >
-                  {t(tab === "details" ? "tabDetails" : "tabStages")}
-                </button>
-              ))}
-            </div>
-          )}
+          <div className="flex border-b border-gray-200 dark:border-gray-700">
+            {(["details", "stages"] as const).map((tab) => (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => setEditTab(tab)}
+                className={`flex-1 px-3 py-2 text-sm font-medium border-b-2 transition-colors ${
+                  editTab === tab
+                    ? "border-blue-600 text-blue-600 dark:text-blue-400"
+                    : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+                }`}
+              >
+                {t(tab === "details" ? "tabDetails" : "tabStages")}
+              </button>
+            ))}
+          </div>
 
-          {isEditing && editTab === "stages" ? (
+          {editTab === "details" ? (
+            <>
+              {isEditing ? (
+                // Deck is locked once an area exists — moving an area to a
+                // different deck would also invalidate the polygon (coords
+                // are relative to the GA, not the deck, but the user mental
+                // model treats them as deck-scoped).
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    {t("deck")}
+                  </label>
+                  <p className="text-gray-900 dark:text-gray-100 py-2">
+                    {selectedDeck?.name ?? "-"}
+                  </p>
+                </div>
+              ) : (
+                <FormSelect
+                  id="area-deck"
+                  label={t("deck")}
+                  options={deckOptions}
+                  value={selectedDeckId}
+                  onChange={(e) => handleDeckChange(e.target.value)}
+                  required
+                  disabled={decksLoading}
+                />
+              )}
+
+              <FormInput
+                id="area-name"
+                label={t("areaName")}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+                disabled={!isClosed}
+                placeholder={t("areaNamePlaceholder")}
+              />
+
+              <FormTextarea
+                id="area-description"
+                label={t("areaDescription")}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={3}
+                disabled={!isClosed}
+                placeholder={t("areaDescriptionPlaceholder")}
+              />
+
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                {drawingHint}
+              </p>
+            </>
+          ) : isEditing ? (
             <StageEditList
               stages={localStages}
               loading={stagesLoading && localStages.length === 0}
               onChange={setLocalStages}
             />
           ) : (
-          <>
-          {isEditing ? (
-            // Deck is locked once an area exists — moving an area to a
-            // different deck would also invalidate the polygon (coords
-            // are relative to the GA, not the deck, but the user mental
-            // model treats them as deck-scoped).
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                {t("deck")}
+            <div className="space-y-3">
+              <label className="flex items-start gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="mt-0.5"
+                  checked={createStages}
+                  onChange={(e) => setCreateStages(e.target.checked)}
+                />
+                <span className="text-sm">
+                  <span className="font-medium text-gray-900 dark:text-white">
+                    {t("createStagesNow")}
+                  </span>
+                  <span className="block text-xs text-gray-500 dark:text-gray-400">
+                    {t("createStagesHint")}
+                  </span>
+                </span>
               </label>
-              <p className="text-gray-900 dark:text-gray-100 py-2">
-                {selectedDeck?.name ?? "-"}
-              </p>
-            </div>
-          ) : (
-            <FormSelect
-              id="area-deck"
-              label={t("deck")}
-              options={deckOptions}
-              value={selectedDeckId}
-              onChange={(e) => handleDeckChange(e.target.value)}
-              required
-              disabled={decksLoading}
-            />
-          )}
 
-          <FormInput
-            id="area-name"
-            label={t("areaName")}
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required
-            disabled={!isClosed}
-            placeholder={t("areaNamePlaceholder")}
-          />
-
-          <FormTextarea
-            id="area-description"
-            label={t("areaDescription")}
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            rows={3}
-            disabled={!isClosed}
-            placeholder={t("areaDescriptionPlaceholder")}
-          />
-
-          {/* Stages config — hidden when editing an existing area;
-              stages have their own editor on the area detail page. */}
-          {!isEditing && (
-          <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
-            <label className="flex items-start gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                className="mt-0.5"
-                checked={createStages}
-                onChange={(e) => setCreateStages(e.target.checked)}
-              />
-              <span className="text-sm">
-                <span className="font-medium text-gray-900 dark:text-white">
-                  {t("createStagesNow")}
-                </span>
-                <span className="block text-xs text-gray-500 dark:text-gray-400">
-                  {t("createStagesHint")}
-                </span>
-              </span>
-            </label>
-
-            {createStages && (
-              <div className="mt-3 space-y-3">
-                {stageRows.length > 0 && (
-                  <DndContext
-                    sensors={dndSensors}
-                    collisionDetection={closestCenter}
-                    onDragEnd={(event: DragEndEvent) => {
-                      const { active, over } = event;
-                      if (!over || active.id === over.id) return;
-                      setStageRows((prev) => {
-                        const oldIndex = prev.findIndex((r) => r.id === active.id);
-                        const newIndex = prev.findIndex((r) => r.id === over.id);
-                        if (oldIndex < 0 || newIndex < 0) return prev;
-                        return arrayMove(prev, oldIndex, newIndex);
-                      });
-                    }}
-                  >
-                    <SortableContext
-                      items={stageRows.map((r) => r.id)}
-                      strategy={verticalListSortingStrategy}
+              {createStages && (
+                <div className="space-y-3">
+                  {stageRows.length > 0 && (
+                    <DndContext
+                      sensors={dndSensors}
+                      collisionDetection={closestCenter}
+                      onDragEnd={(event: DragEndEvent) => {
+                        const { active, over } = event;
+                        if (!over || active.id === over.id) return;
+                        setStageRows((prev) => {
+                          const oldIndex = prev.findIndex((r) => r.id === active.id);
+                          const newIndex = prev.findIndex((r) => r.id === over.id);
+                          if (oldIndex < 0 || newIndex < 0) return prev;
+                          return arrayMove(prev, oldIndex, newIndex);
+                        });
+                      }}
                     >
-                      <ul className="space-y-0">
-                        {stageRows.map((row) => {
-                          const normalized = normalizeStageColor(row.color);
-                          const colorClash =
-                            normalized !== null &&
-                            duplicateColors.has(normalized) &&
-                            (row.kind === "custom" ||
-                              (row.kind === "template" && row.included));
-                          return (
-                            <SortableStageRow
-                              key={row.id}
-                              row={row}
-                              colorClash={colorClash}
-                              onToggleInclude={(id) =>
-                                setStageRows((prev) =>
-                                  prev.map((r) =>
-                                    r.id === id && r.kind === "template"
-                                      ? { ...r, included: !r.included }
-                                      : r
+                      <SortableContext
+                        items={stageRows.map((r) => r.id)}
+                        strategy={verticalListSortingStrategy}
+                      >
+                        <ul className="space-y-2">
+                          {stageRows.map((row) => {
+                            const normalized = normalizeStageColor(row.color);
+                            const colorClash =
+                              normalized !== null &&
+                              duplicateColors.has(normalized) &&
+                              (row.kind === "custom" ||
+                                (row.kind === "template" && row.included));
+                            return (
+                              <SortableStageRow
+                                key={row.id}
+                                row={row}
+                                colorClash={colorClash}
+                                onToggleInclude={(id) =>
+                                  setStageRows((prev) =>
+                                    prev.map((r) =>
+                                      r.id === id && r.kind === "template"
+                                        ? { ...r, included: !r.included }
+                                        : r
+                                    )
                                   )
-                                )
-                              }
-                              onChangeColor={(id, color) =>
-                                setStageRows((prev) =>
-                                  prev.map((r) =>
-                                    r.id === id && r.kind === "custom"
-                                      ? { ...r, color }
-                                      : r
+                                }
+                                onChangeColor={(id, color) =>
+                                  setStageRows((prev) =>
+                                    prev.map((r) =>
+                                      r.id === id && r.kind === "custom"
+                                        ? { ...r, color }
+                                        : r
+                                    )
                                   )
-                                )
-                              }
-                              onRemove={(id) =>
-                                setStageRows((prev) => prev.filter((r) => r.id !== id))
-                              }
-                            />
-                          );
-                        })}
-                      </ul>
-                    </SortableContext>
-                  </DndContext>
-                )}
+                                }
+                                onRemove={(id) =>
+                                  setStageRows((prev) => prev.filter((r) => r.id !== id))
+                                }
+                              />
+                            );
+                          })}
+                        </ul>
+                      </SortableContext>
+                    </DndContext>
+                  )}
 
-                {/* Add a custom stage to the bottom of the list. User can
-                    drag it elsewhere afterwards. */}
-                <div>
-                  <p className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    {t("addCustomStage")}
-                  </p>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={newCustomStageName}
-                      onChange={(e) => setNewCustomStageName(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && newCustomStageName.trim()) {
-                          e.preventDefault();
+                  {/* Add a custom stage to the bottom of the list. User can
+                      drag it elsewhere afterwards. */}
+                  <div>
+                    <p className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      {t("addCustomStage")}
+                    </p>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={newCustomStageName}
+                        onChange={(e) => setNewCustomStageName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && newCustomStageName.trim()) {
+                            e.preventDefault();
+                            setStageRows((prev) => [
+                              ...prev,
+                              {
+                                id: crypto.randomUUID(),
+                                kind: "custom",
+                                name: newCustomStageName.trim(),
+                                // Suggest a palette color not yet used by any
+                                // template (included) or other custom row.
+                                color: pickFreshStageColor(
+                                  prev
+                                    .filter(
+                                      (r) =>
+                                        r.kind === "custom" ||
+                                        (r.kind === "template" && r.included)
+                                    )
+                                    .map((r) => r.color)
+                                ),
+                              },
+                            ]);
+                            setNewCustomStageName("");
+                          }
+                        }}
+                        placeholder={t("customStagePlaceholder")}
+                        className="flex-1 px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const v = newCustomStageName.trim();
+                          if (!v) return;
                           setStageRows((prev) => [
                             ...prev,
                             {
                               id: crypto.randomUUID(),
                               kind: "custom",
-                              name: newCustomStageName.trim(),
-                              // Suggest a palette color not yet used by any
-                              // template (included) or other custom row.
+                              name: v,
                               color: pickFreshStageColor(
                                 prev
                                   .filter(
@@ -755,57 +791,25 @@ export default function CreateAndDefineAreaModal({
                             },
                           ]);
                           setNewCustomStageName("");
-                        }
-                      }}
-                      placeholder={t("customStagePlaceholder")}
-                      className="flex-1 px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const v = newCustomStageName.trim();
-                        if (!v) return;
-                        setStageRows((prev) => [
-                          ...prev,
-                          {
-                            id: crypto.randomUUID(),
-                            kind: "custom",
-                            name: v,
-                            color: pickFreshStageColor(
-                              prev
-                                .filter(
-                                  (r) =>
-                                    r.kind === "custom" ||
-                                    (r.kind === "template" && r.included)
-                                )
-                                .map((r) => r.color)
-                            ),
-                          },
-                        ]);
-                        setNewCustomStageName("");
-                      }}
-                      disabled={!newCustomStageName.trim()}
-                      className="px-2 py-1.5 rounded bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50"
-                      aria-label={t("addCustomStage")}
-                    >
-                      <PlusIcon className="w-4 h-4" />
-                    </button>
+                        }}
+                        disabled={!newCustomStageName.trim()}
+                        className="px-2 py-1.5 rounded bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50"
+                        aria-label={t("addCustomStage")}
+                      >
+                        <PlusIcon className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
-          </div>
-          )}
+              )}
 
-          <p className="text-xs text-gray-500 dark:text-gray-400">{drawingHint}</p>
-
-          {hasDuplicateColors && (
-            <Alert type="warning" message={t("duplicateColorsWarning")} />
+              {hasDuplicateColors && (
+                <Alert type="warning" message={t("duplicateColorsWarning")} />
+              )}
+            </div>
           )}
 
           {error && <Alert type="error" message={error} />}
-          </>
-          )}
 
           <div className="mt-auto flex justify-end gap-2 pt-4 border-t border-gray-200 dark:border-gray-700">
             <Button variant="secondary" onClick={onClose} disabled={submitting}>
