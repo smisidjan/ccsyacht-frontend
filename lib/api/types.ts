@@ -896,7 +896,17 @@ export interface Stage {
     "@type"?: string;
     identifier: string;
     name: string;
-  };
+    /** Marker that this stage's template links to a release form
+     *  template. The actual content is fetched on demand via the
+     *  dedicated endpoint — only `identifier`, `name`, `hasFile`
+     *  ship on the stage response. */
+    releaseFormTemplate?: {
+      "@type"?: string;
+      identifier: string;
+      name: string;
+      hasFile: boolean;
+    } | null;
+  } | null;
   dateCreated: string;
   dateModified: string;
 }
@@ -1938,6 +1948,43 @@ export interface UpdateReleaseFormTemplateRequest {
 
 export interface ReorderReleaseFormTemplatesRequest {
   order: string[];
+}
+
+// ============ Stage Release Forms (per-stage instances) ============
+export interface StageReleaseFormFile {
+  fileName: string;
+  encodingFormat: string;
+  contentSize: string;
+  contentSizeBytes: number;
+}
+
+/** A release form instance attached to a single stage. Multiple per
+ *  stage are allowed; sorted newest-first by the backend. */
+export interface StageReleaseForm {
+  "@context"?: "https://schema.org";
+  "@type": "DigitalDocument";
+  identifier: string;
+  stageId: string;
+  title: string;
+  description: string | null;
+  /** TipTap JSON — may be null if the user only uploaded a file. */
+  content: Record<string, unknown> | null;
+  hasFile: boolean;
+  file: StageReleaseFormFile | null;
+  /** The template this instance was started from. `null` when the
+   *  origin template has been deleted (nullOnDelete). */
+  originTemplate: {
+    "@type"?: string;
+    identifier: string;
+    name: string;
+  } | null;
+  createdBy: {
+    "@type"?: string;
+    identifier: string;
+    name: string;
+  };
+  dateCreated: string;
+  dateModified: string;
 }
 
 // ============ Kickoff Document (Per Project) ============

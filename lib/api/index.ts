@@ -43,6 +43,12 @@ export {
   useStageCustomSigners,
 } from "./stage-custom-signers";
 
+// Stage Release Forms (per-stage instances)
+export {
+  stageReleaseFormsApi,
+  useStageReleaseForms,
+} from "./stage-release-forms";
+
 // Logbook
 export { logbookApi, useLogbook } from "./logbook";
 
