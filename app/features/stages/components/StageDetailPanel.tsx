@@ -6,12 +6,13 @@ import { PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import Button from "@/app/components/ui/Button";
 import Modal from "@/app/components/ui/Modal";
 import DeleteConfirmModal from "@/app/components/modals/DeleteConfirmModal";
-import { SignatureModal, RejectSignoffModal, RemarksList } from "@/app/features/stages";
+import { SignatureModal, RejectSignoffModal, RemarksList, ReleaseFormsList } from "@/app/features/stages";
 import { PunchlistList } from "@/app/features/punchlist";
 import {
   useStageSignoffs,
   useProjectSigners,
   useStageCustomSigners,
+  useStageReleaseForms,
 } from "@/lib/api";
 import { useStageRemarks } from "@/lib/api/stage-remarks";
 import { usePunchlistItems } from "@/lib/api/punchlist-items";
@@ -59,6 +60,15 @@ export default function StageDetailPanel({
   const { currentUser } = useCurrentUserContext();
   const { data: signoffs, loading: signoffsLoading, sign, reject, submitForSignoff, refetch: refetchSignoffs } = useStageSignoffs(projectId, stage.identifier);
   const { data: projectSigners, loading: signersLoading } = useProjectSigners(projectId);
+  // Mirror the release-forms list at the panel level so the submit /
+  // resubmit buttons can gate on count without waiting for the user
+  // to open the Release Forms tab. The list component does its own
+  // fetch for rendering; refetching here on its `onChange` keeps both
+  // in sync after create / delete.
+  const { data: releaseForms, refetch: refetchReleaseForms } =
+    useStageReleaseForms(projectId, stage.identifier);
+  const releaseFormCount = releaseForms?.length ?? 0;
+  const hasReleaseForm = releaseFormCount > 0;
   const {
     data: customSigners,
     loading: customSignersLoading,
@@ -162,9 +172,10 @@ export default function StageDetailPanel({
   const hasRemarks = remarks && remarks.length > 0;
   const hasPunchlist = punchlistItems && punchlistItems.length > 0;
 
-  // When completed, only show tabs with content. Otherwise show all tabs.
-  // Release Forms tab is always hidden when completed since it only shows "coming soon" placeholder
-  const showReleaseFormsTab = !isCompleted;
+  // When completed, only show tabs with content. The Release Forms
+  // tab keeps showing post-completion when entries exist so the user
+  // can still review the uploaded forms.
+  const showReleaseFormsTab = !isCompleted || hasReleaseForm;
   const showRemarksTab = !isCompleted || hasRemarks;
   const showPunchlistTab = !isCompleted || hasPunchlist;
 
@@ -233,7 +244,12 @@ export default function StageDetailPanel({
                   variant="primary"
                   size="sm"
                   onClick={handleSubmitForSignoff}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || !hasReleaseForm}
+                  title={
+                    !hasReleaseForm
+                      ? t("releaseFormsRequiredForSignoff")
+                      : undefined
+                  }
                 >
                   {tSignoffs("submitForSignoff")}
                 </Button>
@@ -247,7 +263,12 @@ export default function StageDetailPanel({
                       variant="primary"
                       size="sm"
                       onClick={handleSubmitForSignoff}
-                      disabled={isSubmitting}
+                      disabled={isSubmitting || !hasReleaseForm}
+                      title={
+                        !hasReleaseForm
+                          ? t("releaseFormsRequiredForSignoff")
+                          : undefined
+                      }
                     >
                       {tSignoffs("resubmit")}
                     </Button>
@@ -258,6 +279,18 @@ export default function StageDetailPanel({
                   )}
                 </>
               )}
+              {/* Inline hint near the submit buttons when the user
+                  has no release form yet — the button itself is
+                  disabled with a tooltip but the secondary hint
+                  surfaces the requirement more visibly. */}
+              {canEdit &&
+                (stage.status.name === "in_progress" ||
+                  stage.status.name === "rejected") &&
+                !hasReleaseForm && (
+                  <p className="text-xs text-amber-700 dark:text-amber-400">
+                    {t("releaseFormsRequiredForSignoff")}
+                  </p>
+                )}
             </div>
           </div>
         </div>
@@ -506,11 +539,11 @@ export default function StageDetailPanel({
           {/* Tab Content */}
           <div className="py-6">
             {activeTab === "releaseForms" && (
-              <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  {t("releaseFormsComingSoon")}
-                </p>
-              </div>
+              <ReleaseFormsList
+                projectId={projectId}
+                stage={stage}
+                onChange={refetchReleaseForms}
+              />
             )}
 
             {activeTab === "remarks" && (
