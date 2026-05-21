@@ -9,13 +9,14 @@ import FormInput from "@/app/components/ui/FormInput";
 import FormTextarea from "@/app/components/ui/FormTextarea";
 import Button from "@/app/components/ui/Button";
 import Alert from "@/app/components/ui/Alert";
-import { areasApi, stagesApi, useAreas, useDecks, useStages } from "@/lib/api";
+import { areasApi, stagesApi, useAreas, useDecks, useStages, useGAPins } from "@/lib/api";
 import { stageTemplatesApi } from "@/lib/api/stageTemplates";
 import { usePolygonHistory } from "./usePolygonHistory";
 import StageEditList, { type LocalStage } from "./StageEditList";
 import { useGAImage } from "@/lib/hooks/useGAImage";
 import { handleError } from "@/lib/utils/errors";
 import { normalizeStageColor, pickFreshStageColor } from "@/lib/utils/colors";
+import { isInsidePolygon, polygonsOverlap } from "@/lib/utils/geometry";
 import {
   XMarkIcon,
   PlusIcon,
@@ -168,7 +169,7 @@ const AreaPolygonDrawer = dynamic(() => import("./AreaPolygonDrawer"), {
   ssr: false,
 });
 
-interface CreateAndDefineAreaModalProps {
+interface DefineAreaModalProps {
   isOpen: boolean;
   onClose: () => void;
   projectId: string;
@@ -180,14 +181,14 @@ interface CreateAndDefineAreaModalProps {
   area?: Area | null;
 }
 
-export default function CreateAndDefineAreaModal({
+export default function DefineAreaModal({
   isOpen,
   onClose,
   projectId,
   generalArrangement,
   onSuccess,
   area,
-}: CreateAndDefineAreaModalProps) {
+}: DefineAreaModalProps) {
   const isEditing = !!area;
   const t = useTranslations("areas");
   const { data: decks, loading: decksLoading } = useDecks(projectId);
@@ -332,6 +333,9 @@ export default function CreateAndDefineAreaModal({
           color: s.color,
           position: s.position,
           status: { name: s.status.name },
+          punchlistItemsCount: s.punchlistItemsCount,
+          remarksCount: s.remarksCount,
+          releaseFormsCount: s.releaseFormsCount,
           isNew: false,
           isExcluded: false,
         }));
@@ -354,6 +358,24 @@ export default function CreateAndDefineAreaModal({
   );
 
   const { data: existingAreasInDeck } = useAreas(projectId, selectedDeckId);
+
+  // GA pins for the project — only used in edit mode to keep the
+  // polygon from leaving a pin orphaned outside the new outline. In
+  // create mode the area doesn't exist yet, so no pins can belong to
+  // it. The hook always fires (no conditional hooks); the filter is
+  // what trims it to the relevant set.
+  const { data: allGAPins } = useGAPins(projectId);
+  const existingPinsForDrawer = useMemo(() => {
+    if (!area) return [];
+    return (allGAPins ?? [])
+      .filter((pin) => pin.area?.identifier === area.identifier)
+      .map((pin) => ({
+        id: pin.identifier,
+        label: pin.label,
+        // GAPin coordinates are 0..100 percentages; drawer wants 0..1.
+        point: { x: pin.x / 100, y: pin.y / 100 },
+      }));
+  }, [allGAPins, area]);
 
   const deckOptions = useMemo(
     () => [
@@ -413,12 +435,42 @@ export default function CreateAndDefineAreaModal({
   }, [stageRows, createStages]);
   const hasDuplicateColors = duplicateColors.size > 0;
 
+  // Count pins that would end up outside the new polygon. Once the
+  // polygon is closed we hard-block save until each pin is back inside;
+  // before that the user is still placing vertices and the count is
+  // meaningless. Empty pin list short-circuits to 0.
+  const pinsOutsideCount = useMemo(() => {
+    if (existingPinsForDrawer.length === 0) return 0;
+    if (polygon.length < 3) return 0;
+    return existingPinsForDrawer.reduce(
+      (count, pin) => (isInsidePolygon(pin.point, polygon) ? count : count + 1),
+      0
+    );
+  }, [existingPinsForDrawer, polygon]);
+  const hasPinsOutside = pinsOutsideCount > 0;
+
+  // Catch overlap with neighbour areas. The drawer already rejects
+  // individual vertex drops inside another area, but that doesn't stop
+  // an edge from sweeping across one — a polygon-polygon check covers
+  // both. Same drawer-format list we render as faded outlines.
+  const overlappingAreasCount = useMemo(() => {
+    if (polygon.length < 3) return 0;
+    return existingAreasForDrawer.reduce(
+      (count, other) =>
+        polygonsOverlap(polygon, other.polygon) ? count + 1 : count,
+      0
+    );
+  }, [existingAreasForDrawer, polygon]);
+  const hasOverlap = overlappingAreasCount > 0;
+
   const canSave =
     !!selectedDeckId &&
     isClosed &&
     polygon.length >= 3 &&
     name.trim().length > 0 &&
-    !hasDuplicateColors;
+    !hasDuplicateColors &&
+    !hasPinsOutside &&
+    !hasOverlap;
 
   const handleReset = () => {
     resetPolygon();
@@ -446,24 +498,36 @@ export default function CreateAndDefineAreaModal({
             .filter((s) => !s.isNew && !s.isExcluded && s.identifier)
             .map((s) => s.identifier as string)
         );
-        const ops: Promise<unknown>[] = [];
+        // Track each op's intent + stage name so we can surface
+        // per-stage error messages from Promise.allSettled below.
+        type StageOp =
+          | { kind: "delete"; stageName: string; promise: Promise<unknown> }
+          | { kind: "create"; stageName: string; promise: Promise<unknown> }
+          | { kind: "update"; stageName: string; promise: Promise<unknown> };
+        const ops: StageOp[] = [];
         // Deletes: server stages the user excluded (or that vanished
         // from the local list entirely — same end result).
         for (const s of original) {
           if (!keptLocalIds.has(s.identifier)) {
-            ops.push(stagesApi.delete(projectId, s.identifier));
+            ops.push({
+              kind: "delete",
+              stageName: s.name,
+              promise: stagesApi.delete(projectId, s.identifier),
+            });
           }
         }
         // Creates: brand-new entries the user added in this session.
         for (const s of localStages) {
           if (!s.isNew) continue;
-          ops.push(
-            stagesApi.create(projectId, area.identifier, {
+          ops.push({
+            kind: "create",
+            stageName: s.name,
+            promise: stagesApi.create(projectId, area.identifier, {
               name: s.name,
               color: s.color ?? undefined,
               sort_order: s.position,
-            })
-          );
+            }),
+          });
         }
         // Sort_order updates: kept existing stages whose position
         // shifted. Excluded ones are about to be deleted, no point.
@@ -474,16 +538,50 @@ export default function CreateAndDefineAreaModal({
             (o) => o.identifier === s.identifier
           );
           if (serverStage && serverStage.position !== s.position) {
-            ops.push(
-              stagesApi.update(projectId, s.identifier, {
+            ops.push({
+              kind: "update",
+              stageName: s.name,
+              promise: stagesApi.update(projectId, s.identifier, {
                 sort_order: s.position,
-              })
-            );
+              }),
+            });
           }
         }
         if (ops.length > 0) {
-          await Promise.all(ops);
+          // Promise.allSettled — DELETE on a stage now returns 422 if it
+          // still has punchlist items / remarks / release forms attached,
+          // and we want to surface every blocked stage instead of bailing
+          // on the first one. Backend message already names the stage and
+          // lists the blocking categories.
+          const results = await Promise.allSettled(ops.map((o) => o.promise));
+          const failures: string[] = [];
+          let hadDeleteFailure = false;
+          results.forEach((r, i) => {
+            if (r.status !== "rejected") return;
+            const op = ops[i];
+            const err = r.reason as ApiError | undefined;
+            const msg = err?.message;
+            if (op.kind === "delete") {
+              hadDeleteFailure = true;
+              failures.push(
+                msg ?? `Could not remove stage '${op.stageName}'.`
+              );
+            } else if (msg) {
+              failures.push(msg);
+            }
+          });
+          // Refetch + clear localStages so the user sees the post-save
+          // server state next time the stages tab re-renders, instead of
+          // a stale view that still includes deletes the server rejected.
           await refetchStages();
+          if (failures.length > 0) {
+            setLocalStages([]);
+            const header = hadDeleteFailure
+              ? t("stageDeleteBlockedTitle")
+              : t("areaCreatedError");
+            setError(`${header}: ${failures.join(" ")}`);
+            return;
+          }
         }
       } else {
         // Walk the unified list in its current order. Each row maps to one
@@ -551,6 +649,7 @@ export default function CreateAndDefineAreaModal({
               imageHeight={ga!.imageHeight!}
               deckBounds={deckBounds ?? undefined}
               existingAreas={existingAreasForDrawer}
+              existingPins={existingPinsForDrawer}
               polygon={polygon}
               isClosed={isClosed}
               onUndo={undoPolygon}
@@ -640,6 +739,24 @@ export default function CreateAndDefineAreaModal({
               <p className="text-xs text-gray-500 dark:text-gray-400">
                 {drawingHint}
               </p>
+
+              {hasPinsOutside && (
+                <Alert
+                  type="warning"
+                  message={t("pinsOutsidePolygonWarning", {
+                    count: pinsOutsideCount,
+                  })}
+                />
+              )}
+
+              {hasOverlap && (
+                <Alert
+                  type="warning"
+                  message={t("polygonOverlapWarning", {
+                    count: overlappingAreasCount,
+                  })}
+                />
+              )}
             </>
           ) : isEditing ? (
             <StageEditList

@@ -15,7 +15,7 @@ import Alert from "@/app/components/ui/Alert";
 import { CreateStagesModal, StageTimeline } from "@/app/features/stages";
 import { OpenPunchlistBadge } from "@/app/features/punchlist";
 import { AreaGAPreview } from "@/app/features/ga/components/shared";
-import CreateAndDefineAreaModal from "@/app/features/areas/components/CreateAndDefineAreaModal";
+import DefineAreaModal from "@/app/features/areas/components/DefineAreaModal";
 import ProgressCircle from "@/app/components/ui/ProgressCircle";
 import { useArea, useStages, useProject } from "@/lib/api";
 import { usePermission } from "@/lib/hooks/usePermission";
@@ -270,7 +270,7 @@ export default function AreaDetailPage() {
           rendered when the user opens it so the leaflet bundle stays
           out of the critical path. */}
       {isEditAreaOpen && (
-        <CreateAndDefineAreaModal
+        <DefineAreaModal
           isOpen={isEditAreaOpen}
           onClose={() => setIsEditAreaOpen(false)}
           projectId={projectId}

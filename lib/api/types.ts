@@ -907,6 +907,13 @@ export interface Stage {
       hasFile: boolean;
     } | null;
   } | null;
+  /** Counts of attached records that block deletion. Mirror the
+   *  categories the DELETE 422 reports on, so a non-zero value on any
+   *  of these means the backend will reject a delete with a clear
+   *  message. UI uses them to lock the row up front. */
+  punchlistItemsCount: number;
+  remarksCount: number;
+  releaseFormsCount: number;
   dateCreated: string;
   dateModified: string;
 }
@@ -1926,6 +1933,11 @@ export interface ReleaseFormTemplate {
   /** `false` once at least one stage template links to this release
    *  form template. Backend rejects DELETE in that case with a 422. */
   canDelete: boolean;
+  /** Present on the per-stage template list response only — marks the
+   *  template the stage's `template.releaseFormTemplate` points at so
+   *  the picker can preselect it. Absent in the system-admin CRUD
+   *  responses (no stage context there). */
+  isDefaultForStage?: boolean;
   dateCreated: string;
   dateModified: string;
 }
@@ -1951,6 +1963,17 @@ export interface ReorderReleaseFormTemplatesRequest {
 }
 
 // ============ Stage Release Forms (per-stage instances) ============
+export interface CreateStageReleaseFormRequest {
+  /** TipTap JSON document. Title is generated server-side from
+   *  project / deck / area / stage names; no file upload — the
+   *  backend renders the PDF from this content. */
+  content: Record<string, unknown>;
+  description?: string;
+  /** Which template the user started from. When omitted the backend
+   *  falls back to the stage's default. */
+  release_form_template_id?: string;
+}
+
 export interface StageReleaseFormFile {
   fileName: string;
   encodingFormat: string;

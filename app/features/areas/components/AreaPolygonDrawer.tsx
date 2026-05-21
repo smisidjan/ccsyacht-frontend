@@ -39,6 +39,18 @@ interface ExistingArea {
   polygon: AreaPolygonPoint[];
 }
 
+/** A GA pin already placed inside the area being edited. The polygon
+ *  must keep containing every one of these — moving an edge past a pin
+ *  would orphan it (the pin still belongs to this area on the server,
+ *  but visually lives outside the new outline). */
+interface ExistingPin {
+  id: string;
+  label: string | null;
+  /** Normalized 0..1 coordinates — parent converts from the GAPin
+   *  percentage convention before passing in. */
+  point: AreaPolygonPoint;
+}
+
 interface AreaPolygonDrawerProps {
   imageUrl: string;
   imageWidth: number;
@@ -49,6 +61,9 @@ interface AreaPolygonDrawerProps {
   deckBounds?: DeckBounds | null;
   /** Other areas in the same deck — rendered as faded outlines for context. */
   existingAreas?: ExistingArea[];
+  /** GA pins already placed inside the area being edited. Rendered on
+   *  the canvas; the polygon must keep enclosing each of them. */
+  existingPins?: ExistingPin[];
   /** Current polygon being drawn (normalized 0..1 coords). */
   polygon: AreaPolygonPoint[];
   /** Whether the polygon has been closed (>= 3 vertices, user finished). */
@@ -189,6 +204,7 @@ export default function AreaPolygonDrawer({
   imageHeight,
   deckBounds,
   existingAreas,
+  existingPins,
   polygon,
   isClosed,
   onChange,
@@ -420,6 +436,27 @@ export default function AreaPolygonDrawer({
           }}
         />
       ))}
+
+      {existingPins?.map((pin) => {
+        const outside =
+          displayedPolygon.length >= MIN_VERTICES &&
+          !isInsidePolygon(pin.point, displayedPolygon);
+        const fill = outside ? "#dc2626" : "#1d4ed8";
+        return (
+          <CircleMarker
+            key={pin.id}
+            center={normToLatLng(pin.point, imageWidth, imageHeight)}
+            radius={6}
+            pathOptions={{
+              color: "#ffffff",
+              weight: 2,
+              fillColor: fill,
+              fillOpacity: 1,
+              interactive: false,
+            }}
+          />
+        );
+      })}
 
       <ClickToAddVertex isClosed={isClosed} onAddVertex={handleAddVertex} />
 

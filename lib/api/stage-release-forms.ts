@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import type {
   StageReleaseForm,
+  CreateStageReleaseFormRequest,
   ReleaseFormTemplate,
   ApiError,
 } from "./types";
@@ -27,22 +28,18 @@ export const stageReleaseFormsApi = {
       `/projects/${projectId}/stages/${stageId}/release-forms/${formId}`
     ),
 
-  /** Multipart create — at least one of `file` or `content` must be
-   *  provided. Caller builds the FormData so the same shape works for
-   *  TipTap-only, file-only, or both. */
+  /** JSON create. Backend generates the title (from project / deck /
+   *  area / stage names) and renders the persisted PDF from the
+   *  TipTap content itself — no file upload involved. */
   create: (
     projectId: string,
     stageId: string,
-    formData: FormData
+    data: CreateStageReleaseFormRequest
   ): Promise<StageReleaseForm> =>
-    apiFetch(
-      `/projects/${projectId}/stages/${stageId}/release-forms`,
-      {
-        method: "POST",
-        body: formData,
-        skipContentType: true,
-      }
-    ),
+    apiFetch(`/projects/${projectId}/stages/${stageId}/release-forms`, {
+      method: "POST",
+      body: data,
+    }),
 
   delete: (
     projectId: string,
@@ -55,13 +52,32 @@ export const stageReleaseFormsApi = {
     ),
 
   /** Tenant-side fetch of the release form template content for this
-   *  stage. Returns 404 if the stage's template doesn't link to one. */
+   *  stage. Without `templateId`, returns the stage's default
+   *  template; with one, returns the given template resolved against
+   *  this stage's context. Returns 404 if the stage has no default
+   *  and no `templateId` was supplied. */
   getTemplate: (
     projectId: string,
-    stageId: string
+    stageId: string,
+    templateId?: string
   ): Promise<{ data: ReleaseFormTemplate }> =>
     apiFetch(
-      `/projects/${projectId}/stages/${stageId}/release-form-template`
+      `/projects/${projectId}/stages/${stageId}/release-form-template${
+        templateId ? `?template_id=${encodeURIComponent(templateId)}` : ""
+      }`
+    ),
+
+  /** All active release form templates available for this stage, each
+   *  rendered against the stage's context (project/area/deck/date
+   *  markers + `{punchlistitems}` resolved). The entry the stage
+   *  template currently points at is marked with
+   *  `isDefaultForStage: true`. */
+  getTemplates: (
+    projectId: string,
+    stageId: string
+  ): Promise<{ data: ReleaseFormTemplate[] }> =>
+    apiFetch(
+      `/projects/${projectId}/stages/${stageId}/release-form-templates`
     ),
 
   /** Plain URL constructor — caller handles auth-aware blob fetch. */
@@ -101,8 +117,8 @@ export function useStageReleaseForms(projectId: string, stageId: string) {
     fetchForms();
   }, [fetchForms]);
 
-  const createForm = async (formData: FormData) => {
-    await stageReleaseFormsApi.create(projectId, stageId, formData);
+  const createForm = async (data: CreateStageReleaseFormRequest) => {
+    await stageReleaseFormsApi.create(projectId, stageId, data);
     await fetchForms();
   };
 

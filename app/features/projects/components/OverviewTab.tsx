@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { PlusIcon, ChevronDownIcon } from "@heroicons/react/24/outline";
-import { AreaCard, CreateAndDefineAreaModal, type Area as AreaCardData } from "@/app/features/areas";
+import { AreaCard, DefineAreaModal, type Area as AreaCardData } from "@/app/features/areas";
 import SetupTaskCard from "./SetupTaskCard";
 import type { ProjectStatus } from "@/app/components/ui/StatusBadge";
 import Button from "@/app/components/ui/Button";
@@ -468,7 +468,7 @@ export default function OverviewTab({
 
       {/* Create + Define Area Modal — split-view with GA polygon drawing. */}
       {isCreateModalOpen && (
-        <CreateAndDefineAreaModal
+        <DefineAreaModal
           isOpen={isCreateModalOpen}
           onClose={() => setIsCreateModalOpen(false)}
           projectId={projectId}

@@ -47,6 +47,12 @@ export interface LocalStage {
   position: number;
   /** Backend status — undefined for new stages (treated as not_started). */
   status?: { name: StageStatus };
+  /** Dependent-record counts from the backend. Any non-zero count
+   *  means the DELETE endpoint will 422, so the row is locked. Undefined
+   *  for brand-new (unsaved) entries — nothing can be attached yet. */
+  punchlistItemsCount?: number;
+  remarksCount?: number;
+  releaseFormsCount?: number;
   isNew: boolean;
   /** User toggled this existing stage off — render it struck-through
    *  and apply a delete on save. Brand-new entries skip this flag and
@@ -62,12 +68,22 @@ interface StageEditListProps {
   onChange: (stages: LocalStage[]) => void;
 }
 
-/** Stages with these statuses are locked: the team has already signed
- *  them off (or is awaiting sign-off). The user can't delete, reorder
- *  past them or insert a new stage before them. */
+/** Stages with these statuses are locked outright: the team has already
+ *  signed them off (or is awaiting sign-off). */
 const LOCKED_STATUSES: StageStatus[] = ["pending_signoff", "completed"];
+
+/** Any stage carrying attached records (punchlist items / remarks /
+ *  release forms) is also locked — the backend's DELETE returns 422 for
+ *  those, so the UI shouldn't pretend otherwise. */
+const hasDependents = (s: LocalStage) =>
+  (s.punchlistItemsCount ?? 0) +
+    (s.remarksCount ?? 0) +
+    (s.releaseFormsCount ?? 0) >
+  0;
+
 const isLocked = (s: LocalStage) =>
-  s.status ? LOCKED_STATUSES.includes(s.status.name) : false;
+  (s.status ? LOCKED_STATUSES.includes(s.status.name) : false) ||
+  hasDependents(s);
 
 const statusBadgeColors: Record<StageStatus, string> = {
   not_started: "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300",
@@ -220,7 +236,11 @@ export default function StageEditList({
                       ? tStatus(`status.${stage.status.name}`)
                       : tStatus("status.not_started")
                   }
-                  lockedTitle={t("stageLocked")}
+                  lockedTitle={
+                    hasDependents(stage)
+                      ? t("stageLockedByDependents")
+                      : t("stageLocked")
+                  }
                 />
               ))}
             </ul>
