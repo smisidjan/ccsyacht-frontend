@@ -19,10 +19,10 @@ import {
   ListBulletIcon,
   NumberedListIcon,
 } from "@heroicons/react/24/outline";
-import CommentMark from "./CommentMark";
-import CommentSidebar from "./CommentSidebar";
-import CommentInputPanel from "./CommentInputPanel";
-import EditorToolbar from "./EditorToolbar";
+import CommentMark from "@/app/components/ui/RichTextEditor/comments/CommentMark";
+import CommentSidebar from "@/app/components/ui/RichTextEditor/comments/CommentSidebar";
+import CommentInputPanel from "@/app/components/ui/RichTextEditor/comments/CommentInputPanel";
+import { RichTextToolbar } from "@/app/components/ui/RichTextEditor";
 import { setupTasksApi } from "@/lib/api";
 import { useToast } from "@/app/context/ToastContext";
 import type { DocumentComment as ApiDocumentComment, ApiError } from "@/lib/api/types";
@@ -612,7 +612,7 @@ export default function CollaborativeDocument({
         <div className="relative">
           {/* Fixed toolbar — only visible during the editing phase. Comments
               don't need it (they go through the BubbleMenu instead). */}
-          {editor && editable && <EditorToolbar editor={editor} />}
+          {editor && editable && <RichTextToolbar editor={editor} />}
           <div
             className={`border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-900 ${
               editable ? "rounded-b-lg" : "rounded-lg"

@@ -1,49 +1,33 @@
 /**
- * Types for the Collaborative Document with Comments
- * Note: These types are used internally in the component.
- * The API types are in lib/api/types.ts
+ * Kickoff-specific adapters around the shared comment types. The
+ * generic comment internals live in
+ * `app/components/ui/RichTextEditor/comments/types.ts`; this file
+ * keeps the API ↔ internal-format converters next to the consumer
+ * that needs them (the kickoff document).
  */
 
 import type {
   DocumentComment as ApiDocumentComment,
   DocumentCommentReply as ApiDocumentCommentReply,
 } from "@/lib/api/types";
+import type {
+  InternalComment,
+  InternalCommentReply,
+  CommentThreadProps,
+  CommentSidebarProps,
+  CommentInputPanelProps,
+} from "@/app/components/ui/RichTextEditor/comments/types";
 
-// Re-export API types for external use
+// Re-export so consumers in this folder keep working off `./types`.
 export type { ApiDocumentComment, ApiDocumentCommentReply };
+export type {
+  InternalComment,
+  InternalCommentReply,
+  CommentThreadProps,
+  CommentSidebarProps,
+  CommentInputPanelProps,
+};
 
-// Internal comment format (normalized for component use)
-export interface InternalComment {
-  id: string;
-  text: string;
-  author: {
-    identifier: string;
-    name: string;
-  };
-  createdAt: string;
-  updatedAt?: string;
-  /** The selected text this comment refers to */
-  selectedText?: string;
-  /** Position in the document (for highlighting) */
-  from: number;
-  to: number;
-  /** Replies to this comment */
-  replies?: InternalCommentReply[];
-  /** Whether this comment is resolved */
-  isResolved?: boolean;
-}
-
-export interface InternalCommentReply {
-  id: string;
-  text: string;
-  author: {
-    identifier: string;
-    name: string;
-  };
-  createdAt: string;
-}
-
-// Helper to convert API comment to internal format
 export function normalizeComment(apiComment: ApiDocumentComment): InternalComment {
   return {
     id: apiComment.identifier,
@@ -70,8 +54,9 @@ export function normalizeComment(apiComment: ApiDocumentComment): InternalCommen
   };
 }
 
-// Helper to convert array of API comments
-export function normalizeComments(apiComments: ApiDocumentComment[]): InternalComment[] {
+export function normalizeComments(
+  apiComments: ApiDocumentComment[]
+): InternalComment[] {
   return apiComments.map(normalizeComment);
 }
 
@@ -108,45 +93,4 @@ export interface CollaborativeDocumentProps {
    * next save is not rejected with 409 for sending a stale version.
    */
   onSaved?: (response: unknown) => void;
-}
-
-export interface CommentThreadProps {
-  comment: InternalComment;
-  currentUserId?: string;
-  isActive?: boolean;
-  onReply?: (commentId: string, text: string) => void;
-  onDelete?: (commentId: string) => void;
-  onResolve?: (commentId: string) => void;
-  onClick?: () => void;
-}
-
-export interface CommentSidebarProps {
-  comments: InternalComment[];
-  currentUserId?: string;
-  activeCommentId?: string | null;
-  onCommentClick?: (commentId: string) => void;
-  onReply?: (commentId: string, text: string) => void;
-  onDelete?: (commentId: string) => void;
-  onResolve?: (commentId: string) => void;
-}
-
-export interface AddCommentPopoverProps {
-  position: { top: number; left: number } | null;
-  onOpenCommentPanel: () => void;
-}
-
-export interface CommentInputPanelProps {
-  isOpen: boolean;
-  currentUser: {
-    identifier: string;
-    name: string;
-  } | null;
-  /** The text that is being commented on */
-  selectedText?: string;
-  /** Comments already attached to (or overlapping) the current selection */
-  existingComments?: InternalComment[];
-  onSubmit: (text: string) => void;
-  onCancel: () => void;
-  /** Reply to one of the existing comments shown in the panel */
-  onReply?: (commentId: string, text: string) => void | Promise<void>;
 }

@@ -1,16 +1,10 @@
 "use client";
 
-import { useRef, useEffect } from "react";
-import { useEditor, EditorContent } from "@tiptap/react";
-import StarterKit from "@tiptap/starter-kit";
-import Placeholder from "@tiptap/extension-placeholder";
-import { Table } from "@tiptap/extension-table";
-import { TableRow } from "@tiptap/extension-table-row";
-import { TableCell } from "@tiptap/extension-table-cell";
-import { TableHeader } from "@tiptap/extension-table-header";
+import { useRef } from "react";
 import FormInput from "@/app/components/ui/FormInput";
 import FormTextarea from "@/app/components/ui/FormTextarea";
 import Button from "@/app/components/ui/Button";
+import { RichTextEditor } from "@/app/components/ui/RichTextEditor";
 import {
   DocumentIcon,
   ArrowUpTrayIcon,
@@ -73,53 +67,6 @@ export default function KickoffDocumentTemplateForm({
   translations: t,
 }: KickoffDocumentTemplateFormProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // Store content in ref to access in onCreate
-  const contentRef = useRef(content);
-  contentRef.current = content;
-
-  const editor = useEditor({
-    immediatelyRender: false,
-    extensions: [
-      // Match the schema the backend whitelist accepts — drop link + underline
-      // which StarterKit v3 ships by default but aren't in the whitelist.
-      StarterKit.configure({
-        link: false,
-        underline: false,
-      }),
-      Placeholder.configure({
-        placeholder: t.contentPlaceholder,
-      }),
-      Table.configure({
-        resizable: true,
-      }),
-      TableRow,
-      TableCell,
-      TableHeader,
-    ],
-    content: content,
-    onCreate: ({ editor }) => {
-      // Ensure content is set when editor is created
-      const initialContent = contentRef.current;
-      if (initialContent && Object.keys(initialContent).length > 0) {
-        editor.commands.setContent(initialContent);
-      }
-    },
-    onUpdate: ({ editor }) => {
-      onContentChange(editor.getJSON());
-    },
-  });
-
-  // Update editor content when prop changes (e.g., when editing existing template)
-  useEffect(() => {
-    if (editor && content && Object.keys(content).length > 0) {
-      const currentContent = JSON.stringify(editor.getJSON());
-      const newContent = JSON.stringify(content);
-      if (currentContent !== newContent) {
-        editor.commands.setContent(content);
-      }
-    }
-  }, [editor, content]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -290,20 +237,17 @@ export default function KickoffDocumentTemplateForm({
         </div>
       </div>
 
-      {/* Content Editor */}
+      {/* Content Editor — shared rich text component handles
+          toolbar + TipTap setup + sanitisation. */}
       <div>
-        <label
-          htmlFor="kickoff-document-template-content"
-          className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-        >
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
           {t.content}
         </label>
-        <div className="border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden bg-white dark:bg-gray-900">
-          <EditorContent
-            editor={editor}
-            className="prose prose-sm dark:prose-invert max-w-none p-4 min-h-[200px] focus:outline-none [&_.ProseMirror]:outline-none [&_.ProseMirror]:min-h-[180px] [&_.ProseMirror_p.is-editor-empty:first-child::before]:content-[attr(data-placeholder)] [&_.ProseMirror_p.is-editor-empty:first-child::before]:text-gray-400 [&_.ProseMirror_p.is-editor-empty:first-child::before]:float-left [&_.ProseMirror_p.is-editor-empty:first-child::before]:pointer-events-none [&_.ProseMirror_p.is-editor-empty:first-child::before]:h-0 [&_.ProseMirror_table]:border-collapse [&_.ProseMirror_table]:w-full [&_.ProseMirror_table]:my-4 [&_.ProseMirror_td]:border [&_.ProseMirror_td]:border-gray-300 [&_.ProseMirror_td]:dark:border-gray-600 [&_.ProseMirror_td]:p-2 [&_.ProseMirror_th]:border [&_.ProseMirror_th]:border-gray-300 [&_.ProseMirror_th]:dark:border-gray-600 [&_.ProseMirror_th]:p-2 [&_.ProseMirror_th]:bg-gray-100 [&_.ProseMirror_th]:dark:bg-gray-800 [&_.ProseMirror_th]:font-semibold"
-          />
-        </div>
+        <RichTextEditor
+          content={content}
+          onChange={onContentChange}
+          placeholder={t.contentPlaceholder}
+        />
       </div>
 
       {/* Is Active */}
