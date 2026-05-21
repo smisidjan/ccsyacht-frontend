@@ -25,17 +25,23 @@ import { handleError } from "@/lib/utils/errors";
 import {
   systemDocumentTypeTemplatesApi,
   systemKickoffDocumentTemplatesApi,
+  systemReleaseFormTemplatesApi,
 } from "@/lib/api/system";
 import type {
   DocumentTypeTemplate,
   KickoffDocumentTemplate,
+  ReleaseFormTemplate,
 } from "@/lib/api/types";
 
 interface TenantTemplatesTabProps {
   tenantId: string;
 }
 
-type TemplateTabType = "stages" | "documentTypes" | "kickoffDocuments";
+type TemplateTabType =
+  | "stages"
+  | "documentTypes"
+  | "kickoffDocuments"
+  | "releaseFormDocuments";
 
 export default function TenantTemplatesTab({ tenantId }: TenantTemplatesTabProps) {
   const t = useTranslations("systemSettings.templates");
@@ -68,12 +74,33 @@ export default function TenantTemplatesTab({ tenantId }: TenantTemplatesTabProps
   } | null>(null);
   const [kickoffDocRemoveFile, setKickoffDocRemoveFile] = useState(false);
 
+  // Release Form Documents state — mirrors the kickoff state. Same
+  // form shape (name + description + content + file + active), so it
+  // reuses KickoffDocumentTemplateForm via translated labels.
+  const [releaseForms, setReleaseForms] = useState<ReleaseFormTemplate[]>([]);
+  const [releaseFormsLoading, setReleaseFormsLoading] = useState(true);
+  const [releaseFormsError, setReleaseFormsError] = useState<string | null>(null);
+  const [releaseFormName, setReleaseFormName] = useState("");
+  const [releaseFormDescription, setReleaseFormDescription] = useState("");
+  const [releaseFormContent, setReleaseFormContent] = useState<Record<string, unknown>>({});
+  const [releaseFormIsActive, setReleaseFormIsActive] = useState(true);
+  const [releaseFormFile, setReleaseFormFile] = useState<File | null>(null);
+  const [releaseFormExistingFile, setReleaseFormExistingFile] = useState<{
+    fileName: string;
+    contentSize: string;
+    encodingFormat: string;
+  } | null>(null);
+  const [releaseFormRemoveFile, setReleaseFormRemoveFile] = useState(false);
+
   // Delete modal state
-  type DeleteTemplate = DocumentTypeTemplate | KickoffDocumentTemplate;
+  type DeleteTemplate =
+    | DocumentTypeTemplate
+    | KickoffDocumentTemplate
+    | ReleaseFormTemplate;
   const [deleteModal, setDeleteModal] = useState<{
     isOpen: boolean;
     template: DeleteTemplate | null;
-    type: "documentType" | "kickoffDocument" | null;
+    type: "documentType" | "kickoffDocument" | "releaseForm" | null;
   }>({
     isOpen: false,
     template: null,
@@ -108,10 +135,23 @@ export default function TenantTemplatesTab({ tenantId }: TenantTemplatesTabProps
     }
   };
 
+  const fetchReleaseForms = async () => {
+    try {
+      setReleaseFormsLoading(true);
+      const response = await systemReleaseFormTemplatesApi.getAll(tenantId);
+      setReleaseForms(response.data);
+      setReleaseFormsError(null);
+    } catch (err) {
+      setReleaseFormsError(err instanceof Error ? err.message : "Failed to load templates");
+    } finally {
+      setReleaseFormsLoading(false);
+    }
+  };
+
   // Delete handlers
   const openDeleteModal = (
     template: DeleteTemplate,
-    type: "documentType" | "kickoffDocument"
+    type: "documentType" | "kickoffDocument" | "releaseForm"
   ) => {
     setDeleteModal({ isOpen: true, template, type });
   };
@@ -139,6 +179,11 @@ export default function TenantTemplatesTab({ tenantId }: TenantTemplatesTabProps
         case "kickoffDocument":
           await systemKickoffDocumentTemplatesApi.delete(tenantId, deleteModal.template.identifier);
           await fetchKickoffDocuments();
+          showToast("success", t("deleteSuccess"));
+          break;
+        case "releaseForm":
+          await systemReleaseFormTemplatesApi.delete(tenantId, deleteModal.template.identifier);
+          await fetchReleaseForms();
           showToast("success", t("deleteSuccess"));
           break;
       }
@@ -258,15 +303,99 @@ export default function TenantTemplatesTab({ tenantId }: TenantTemplatesTabProps
     },
   });
 
+  // Release form template modal — same submit shape as kickoff docs;
+  // we just point it at the release-form API. Reuses the kickoff form
+  // component (identical fields).
+  const releaseFormModal = useModalForm<ReleaseFormTemplate>({
+    onSubmit: async (_, template) => {
+      if (releaseFormFile || releaseFormRemoveFile) {
+        const formData = new FormData();
+        formData.append("name", releaseFormName);
+        if (releaseFormDescription) {
+          formData.append("description", releaseFormDescription);
+        }
+        if (releaseFormContent && Object.keys(releaseFormContent).length > 0) {
+          formData.append("content", JSON.stringify(releaseFormContent));
+        }
+        formData.append("is_active", releaseFormIsActive ? "1" : "0");
+        if (releaseFormFile) {
+          formData.append("file", releaseFormFile);
+        }
+        if (releaseFormRemoveFile && !releaseFormFile) {
+          formData.append("remove_file", "1");
+        }
+
+        if (template) {
+          await systemReleaseFormTemplatesApi.updateWithFile(
+            tenantId,
+            template.identifier,
+            formData
+          );
+        } else {
+          await systemReleaseFormTemplatesApi.createWithFile(tenantId, formData);
+        }
+      } else {
+        const data = {
+          name: releaseFormName,
+          description: releaseFormDescription || undefined,
+          content: releaseFormContent,
+          is_active: releaseFormIsActive,
+        };
+        if (template) {
+          await systemReleaseFormTemplatesApi.update(
+            tenantId,
+            template.identifier,
+            data
+          );
+        } else {
+          await systemReleaseFormTemplatesApi.create(tenantId, data);
+        }
+      }
+      await fetchReleaseForms();
+    },
+    resetForm: () => {
+      setReleaseFormName("");
+      setReleaseFormDescription("");
+      setReleaseFormContent({});
+      setReleaseFormIsActive(true);
+      setReleaseFormFile(null);
+      setReleaseFormExistingFile(null);
+      setReleaseFormRemoveFile(false);
+    },
+    populateForm: (template) => {
+      setReleaseFormName(template.name);
+      setReleaseFormDescription(template.description || "");
+      setReleaseFormContent(template.content || {});
+      setReleaseFormIsActive(template.isActive);
+      setReleaseFormFile(null);
+      setReleaseFormRemoveFile(false);
+      if (template.hasFile && template.file) {
+        setReleaseFormExistingFile({
+          fileName: template.file.fileName,
+          contentSize: template.file.contentSize,
+          encodingFormat: template.file.encodingFormat,
+        });
+      } else {
+        setReleaseFormExistingFile(null);
+      }
+    },
+    successMessages: {
+      create: t("releaseFormCreateSuccess"),
+      update: t("releaseFormUpdateSuccess"),
+    },
+  });
+
   useEffect(() => {
     fetchDocumentTypes();
     fetchKickoffDocuments();
+    fetchReleaseForms();
   }, [tenantId]);
 
   const tabs: StateTab[] = [
     { key: "stages", label: t("stagesTab") },
     { key: "documentTypes", label: t("documentTypesTab") },
     { key: "kickoffDocuments", label: t("kickoffDocumentsTab") },
+    { key: "releaseFormDocuments", label: t("releaseFormDocumentsTab") },
   ];
 
   // Column configurations
@@ -368,6 +497,57 @@ export default function TenantTemplatesTab({ tenantId }: TenantTemplatesTabProps
               variant="ghost"
               size="sm"
               onClick={() => openDeleteModal(doc, "kickoffDocument")}
+            >
+              {t("delete")}
+            </Button>
+          )}
+        </div>
+      ),
+    },
+  ];
+
+  // Release form templates use the same columns as kickoff documents.
+  // Delete is disabled when canDelete is false (linked to one or more
+  // stage templates) — backend would 422 otherwise.
+  const releaseFormColumns = [
+    {
+      key: "name",
+      header: t("name"),
+      cell: (doc: ReleaseFormTemplate) => (
+        <span className="font-medium text-gray-900 dark:text-white">{doc.name}</span>
+      ),
+    },
+    {
+      key: "active",
+      header: t("active"),
+      cell: (doc: ReleaseFormTemplate) => (
+        <span className="text-gray-500 dark:text-gray-400">{doc.isActive ? "Yes" : "No"}</span>
+      ),
+    },
+    {
+      key: "dateModified",
+      header: t("lastModified"),
+      cell: (doc: ReleaseFormTemplate) => (
+        <span className="text-gray-500 dark:text-gray-400">
+          {new Date(doc.dateModified).toLocaleDateString()}
+        </span>
+      ),
+    },
+    {
+      key: "actions",
+      header: t("actions"),
+      headerClassName: "text-center",
+      className: "text-right",
+      cell: (doc: ReleaseFormTemplate) => (
+        <div className="space-x-2">
+          <Button variant="ghost" size="sm" onClick={() => releaseFormModal.openEdit(doc)}>
+            {t("edit")}
+          </Button>
+          {doc.canDelete && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => openDeleteModal(doc, "releaseForm")}
             >
               {t("delete")}
             </Button>
@@ -532,6 +712,80 @@ export default function TenantTemplatesTab({ tenantId }: TenantTemplatesTabProps
             </Modal>
           </div>
         )}
+
+        {activeTab === "releaseFormDocuments" && (
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                {t("releaseFormDocumentsTab")}
+              </h2>
+              <Button variant="primary" onClick={releaseFormModal.openCreate}>
+                <PlusIcon className="w-4 h-4" />
+                {t("create")}
+              </Button>
+            </div>
+            <Table
+              columns={releaseFormColumns}
+              data={releaseForms}
+              keyExtractor={(doc) => doc.identifier}
+              loading={releaseFormsLoading}
+              error={releaseFormsError}
+              emptyMessage={t("noTemplates")}
+            />
+            <Modal
+              isOpen={releaseFormModal.isOpen}
+              onClose={releaseFormModal.close}
+              title={releaseFormModal.isEditMode ? t("edit") : t("create")}
+              size="lg"
+              isForm={true}
+              formId="release-form-template-form"
+              onSubmit={() => releaseFormModal.submit({})}
+              error={releaseFormModal.error}
+              actions={[
+                {
+                  label: tCommon("cancel"),
+                  onClick: releaseFormModal.close,
+                  variant: "secondary",
+                },
+                {
+                  label: releaseFormModal.isEditMode ? tCommon("save") : t("create"),
+                  type: "submit",
+                  variant: "primary",
+                },
+              ]}
+            >
+              <KickoffDocumentTemplateForm
+                name={releaseFormName}
+                description={releaseFormDescription}
+                content={releaseFormContent}
+                isActive={releaseFormIsActive}
+                file={releaseFormFile}
+                existingFile={releaseFormExistingFile}
+                removeExistingFile={releaseFormRemoveFile}
+                onNameChange={setReleaseFormName}
+                onDescriptionChange={setReleaseFormDescription}
+                onContentChange={setReleaseFormContent}
+                onIsActiveChange={setReleaseFormIsActive}
+                onFileChange={setReleaseFormFile}
+                onRemoveExistingFile={setReleaseFormRemoveFile}
+                translations={{
+                  name: t("name"),
+                  namePlaceholder: t("releaseFormNamePlaceholder"),
+                  description: t("description"),
+                  descriptionPlaceholder: t("releaseFormDescriptionPlaceholder"),
+                  content: t("content"),
+                  contentPlaceholder: t("releaseFormContentPlaceholder"),
+                  isActive: t("active"),
+                  file: t("file"),
+                  fileHint: t("fileHint"),
+                  uploadFile: t("uploadFile"),
+                  removeFile: t("removeFile"),
+                  currentFile: t("currentFile"),
+                }}
+              />
+            </Modal>
+          </div>
+        )}
       </div>
 
       {/* Delete Confirmation Modal */}
@@ -564,7 +818,9 @@ export default function TenantTemplatesTab({ tenantId }: TenantTemplatesTabProps
                 {tCommon("deleteWarning", {
                   type: deleteModal.type === "documentType"
                     ? t("documentTypesTab")
-                    : t("kickoffDocumentsTab"),
+                    : deleteModal.type === "kickoffDocument"
+                      ? t("kickoffDocumentsTab")
+                      : t("releaseFormDocumentsTab"),
                   name: getTemplateDisplayName(deleteModal.template),
                 })}
               </p>

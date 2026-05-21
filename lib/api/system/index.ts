@@ -16,6 +16,7 @@ export {
   systemStageTemplatesApi,
   systemDocumentTypeTemplatesApi,
   systemKickoffDocumentTemplatesApi,
+  systemReleaseFormTemplatesApi,
 } from "./templates";
 
 // Combined systemApi object for backwards compatibility and convenience
@@ -29,6 +30,7 @@ import {
   systemStageTemplatesApi,
   systemDocumentTypeTemplatesApi,
   systemKickoffDocumentTemplatesApi,
+  systemReleaseFormTemplatesApi,
 } from "./templates";
 
 export const systemApi = {
@@ -41,4 +43,5 @@ export const systemApi = {
   stageTemplates: systemStageTemplatesApi,
   documentTypeTemplates: systemDocumentTypeTemplatesApi,
   kickoffDocumentTemplates: systemKickoffDocumentTemplatesApi,
+  releaseFormTemplates: systemReleaseFormTemplatesApi,
 };

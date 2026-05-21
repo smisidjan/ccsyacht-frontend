@@ -801,6 +801,16 @@ export interface StageTemplate {
   position: number;
   isActive: boolean;
   canDelete: boolean;
+  /** Required link to the release form template that gates every stage
+   *  spawned from this template. Backend guarantees it's set (non-null
+   *  FK), but kept optional in the type for defensive reads. `name`
+   *  may be absent depending on the endpoint (e.g. the bulk-replace
+   *  response ships only the identifier). */
+  releaseFormTemplate?: {
+    "@type"?: string;
+    identifier: string;
+    name?: string;
+  };
   dateCreated: string;
   dateModified: string;
 }
@@ -811,6 +821,9 @@ export interface CreateStageTemplateRequest {
   color?: string | null;
   sort_order?: number;
   is_active?: boolean;
+  /** Required — every stage template must point at a release form
+   *  template. Picker is mandatory in the UI. */
+  release_form_template_id: string;
 }
 
 export interface UpdateStageTemplateRequest {
@@ -819,6 +832,9 @@ export interface UpdateStageTemplateRequest {
   color?: string | null;
   sort_order?: number;
   is_active?: boolean;
+  /** Optional on update — omitting keeps the existing link. Sending
+   *  null is rejected by the backend. */
+  release_form_template_id?: string;
 }
 
 /** One row in the bulk-replace payload. `identifier=null` (or omitted) means
@@ -831,6 +847,9 @@ export interface BulkStageTemplateEntry {
   description?: string;
   color?: string | null;
   is_active?: boolean;
+  /** Required per row — bulk-replace rejects entries without a release
+   *  form template link. */
+  release_form_template_id: string;
 }
 
 export interface BulkReplaceStageTemplatesRequest {
@@ -1870,6 +1889,54 @@ export interface UpdateKickoffDocumentTemplateRequest {
 }
 
 export interface ReorderKickoffDocumentTemplatesRequest {
+  order: string[];
+}
+
+// ============ Release Form Templates ============
+/** Same file metadata shape as the kickoff template's. Kept as a
+ *  separate type so each surface can evolve independently. */
+export interface ReleaseFormTemplateFile {
+  fileName: string;
+  encodingFormat: string;
+  contentSize: string;
+  contentSizeBytes: number;
+}
+
+export interface ReleaseFormTemplate {
+  "@context"?: "https://schema.org";
+  "@type": "DigitalDocument";
+  identifier: string;
+  name: string;
+  description: string | null;
+  content: Record<string, unknown> | null; // TipTap JSON
+  hasFile: boolean;
+  file?: ReleaseFormTemplateFile;
+  sortOrder: number;
+  isActive: boolean;
+  /** `false` once at least one stage template links to this release
+   *  form template. Backend rejects DELETE in that case with a 422. */
+  canDelete: boolean;
+  dateCreated: string;
+  dateModified: string;
+}
+
+export interface CreateReleaseFormTemplateRequest {
+  name: string;
+  description?: string;
+  content?: Record<string, unknown>;
+  is_active?: boolean;
+  sort_order?: number;
+}
+
+export interface UpdateReleaseFormTemplateRequest {
+  name?: string;
+  description?: string;
+  content?: Record<string, unknown>;
+  is_active?: boolean;
+  remove_file?: boolean;
+}
+
+export interface ReorderReleaseFormTemplatesRequest {
   order: string[];
 }
 

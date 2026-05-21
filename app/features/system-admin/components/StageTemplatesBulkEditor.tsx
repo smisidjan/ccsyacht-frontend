@@ -24,14 +24,21 @@ import Button from "@/app/components/ui/Button";
 import Spinner from "@/app/components/ui/Spinner";
 import Alert from "@/app/components/ui/Alert";
 import DeleteConfirmModal from "@/app/components/modals/DeleteConfirmModal";
-import { systemStageTemplatesApi } from "@/lib/api/system";
+import {
+  systemStageTemplatesApi,
+  systemReleaseFormTemplatesApi,
+} from "@/lib/api/system";
 import { useToast } from "@/app/context/ToastContext";
 import {
   isValidStageColor,
   normalizeStageColor,
   pickFreshStageColor,
 } from "@/lib/utils/colors";
-import type { ApiError, StageTemplate } from "@/lib/api/types";
+import type {
+  ApiError,
+  StageTemplate,
+  ReleaseFormTemplate,
+} from "@/lib/api/types";
 
 interface StageTemplatesBulkEditorProps {
   tenantId: string;
@@ -48,6 +55,9 @@ interface StageRow {
    *  always default to a fresh palette color. */
   color: string | null;
   isActive: boolean;
+  /** Required by the backend on save. Empty string = "user hasn't
+   *  picked one yet" — surfaced as a per-row error. */
+  releaseFormTemplateId: string;
 }
 
 /** Snapshot the rows for a dirty check (rowId excluded since it's UI-only). */
@@ -59,6 +69,7 @@ function snapshot(rows: StageRow[]): string {
       description: r.description,
       color: r.color,
       isActive: r.isActive,
+      releaseFormTemplateId: r.releaseFormTemplateId,
     }))
   );
 }
@@ -71,6 +82,7 @@ function rowsFromTemplates(templates: StageTemplate[]): StageRow[] {
     description: t.description ?? "",
     color: t.color,
     isActive: t.isActive,
+    releaseFormTemplateId: t.releaseFormTemplate?.identifier ?? "",
   }));
 }
 
@@ -78,6 +90,8 @@ function SortableRow({
   row,
   rowError,
   colorError,
+  releaseFormError,
+  releaseFormTemplates,
   isEditing,
   onChange,
   onDelete,
@@ -86,6 +100,8 @@ function SortableRow({
   row: StageRow;
   rowError?: string;
   colorError?: boolean;
+  releaseFormError?: boolean;
+  releaseFormTemplates: ReleaseFormTemplate[];
   isEditing: boolean;
   onChange: (patch: Partial<StageRow>) => void;
   onDelete: () => void;
@@ -185,6 +201,38 @@ function SortableRow({
           )}
         </div>
       </td>
+      <td className="px-3 py-2 w-56">
+        {/* Required release form picker. Backend rejects rows without
+            one — surfaced via per-row error highlighting. In view mode
+            we render a plain label so row heights stay stable. */}
+        {isEditing ? (
+          <select
+            value={row.releaseFormTemplateId}
+            onChange={(e) =>
+              onChange({ releaseFormTemplateId: e.target.value })
+            }
+            aria-label={t("releaseFormTemplate")}
+            className={`${inputBase} ${
+              releaseFormError
+                ? "border-red-500 dark:border-red-400"
+                : "border-gray-300 dark:border-gray-600"
+            } bg-white dark:bg-gray-800 text-gray-900 dark:text-white`}
+          >
+            <option value="">{t("releaseFormTemplatePlaceholder")}</option>
+            {releaseFormTemplates.map((tpl) => (
+              <option key={tpl.identifier} value={tpl.identifier}>
+                {tpl.name}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <span className="text-sm text-gray-700 dark:text-gray-300">
+            {releaseFormTemplates.find(
+              (tpl) => tpl.identifier === row.releaseFormTemplateId
+            )?.name ?? "—"}
+          </span>
+        )}
+      </td>
       <td className="px-3 py-2 text-center w-20">
         <input
           type="checkbox"
@@ -220,6 +268,12 @@ export default function StageTemplatesBulkEditor({
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [rows, setRows] = useState<StageRow[]>([]);
+  /** All active release form templates available to pick from. Fetched
+   *  alongside the stage templates so the per-row select dropdown can
+   *  populate itself. */
+  const [releaseFormTemplates, setReleaseFormTemplates] = useState<
+    ReleaseFormTemplate[]
+  >([]);
   /** Snapshot of the last server-known state; used for dirty check + revert. */
   const [baselineSnapshot, setBaselineSnapshot] = useState<string>("");
   /** Per-row error map keyed by rowId. Cleared as the user edits. */
@@ -237,17 +291,25 @@ export default function StageTemplatesBulkEditor({
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
-  // Initial fetch
+  // Initial fetch — stage templates + release form templates run in
+  // parallel since the row dropdown needs the latter before it can
+  // render meaningful options.
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
         setLoading(true);
-        const response = await systemStageTemplatesApi.getAll(tenantId);
+        const [stagesResponse, releaseFormsResponse] = await Promise.all([
+          systemStageTemplatesApi.getAll(tenantId),
+          systemReleaseFormTemplatesApi.getAll(tenantId, {
+            active_only: true,
+          }),
+        ]);
         if (cancelled) return;
-        const initialRows = rowsFromTemplates(response.data);
+        const initialRows = rowsFromTemplates(stagesResponse.data);
         setRows(initialRows);
         setBaselineSnapshot(snapshot(initialRows));
+        setReleaseFormTemplates(releaseFormsResponse.data);
         setLoadError(null);
       } catch (err) {
         if (cancelled) return;
@@ -301,12 +363,17 @@ export default function StageTemplatesBulkEditor({
   const hasInvalidColor = rows.some(
     (r) => r.color !== null && !isValidStageColor(r.color)
   );
+  /** Backend requires every row to point at a release form template.
+   *  Surface this as a save-blocker so the user fixes it in-form
+   *  instead of hitting a 422 on submit. */
+  const hasMissingReleaseForm = rows.some((r) => !r.releaseFormTemplateId);
   const canSave =
     isDirty &&
     !hasDuplicateNames &&
     !hasDuplicateColors &&
     !hasEmptyName &&
     !hasInvalidColor &&
+    !hasMissingReleaseForm &&
     !saving;
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -326,6 +393,13 @@ export default function StageTemplatesBulkEditor({
       // Suggest the first palette color not already used by another row in
       // the current list, so the user rarely has to think about uniqueness.
       const freshColor = pickFreshStageColor(prev.map((r) => r.color));
+      // Default the new row to the first available release form so the
+      // common case (one template, every stage uses it) is zero-click.
+      // When multiple templates exist the user picks explicitly.
+      const defaultReleaseFormId =
+        releaseFormTemplates.length === 1
+          ? releaseFormTemplates[0].identifier
+          : "";
       return [
         ...prev,
         {
@@ -335,6 +409,7 @@ export default function StageTemplatesBulkEditor({
           description: "",
           color: freshColor,
           isActive: true,
+          releaseFormTemplateId: defaultReleaseFormId,
         },
       ];
     });
@@ -369,6 +444,7 @@ export default function StageTemplatesBulkEditor({
       description: string;
       color: string | null;
       isActive: boolean;
+      releaseFormTemplateId: string;
     }>;
     setRows(
       parsed.map((p) => ({
@@ -378,6 +454,7 @@ export default function StageTemplatesBulkEditor({
         description: p.description,
         color: p.color,
         isActive: p.isActive,
+        releaseFormTemplateId: p.releaseFormTemplateId,
       }))
     );
     setRowErrors({});
@@ -399,10 +476,11 @@ export default function StageTemplatesBulkEditor({
           description: r.description.trim() || undefined,
           color: r.color ?? null,
           is_active: r.isActive,
+          release_form_template_id: r.releaseFormTemplateId,
         })),
       };
       const response = await systemStageTemplatesApi.bulkReplace(tenantId, payload);
-      const nextRows = rowsFromTemplates(response.data);
+      const nextRows = rowsFromTemplates(response);
       setRows(nextRows);
       setBaselineSnapshot(snapshot(nextRows));
       setIsEditing(false);
@@ -466,6 +544,12 @@ export default function StageTemplatesBulkEditor({
       {isEditing && hasDuplicateColors && (
         <Alert type="warning" message={t("duplicateColorsWarning")} />
       )}
+      {isEditing && hasMissingReleaseForm && (
+        <Alert type="warning" message={t("releaseFormTemplateRequired")} />
+      )}
+      {isEditing && releaseFormTemplates.length === 0 && (
+        <Alert type="error" message={t("noReleaseFormTemplates")} />
+      )}
 
       {!isEditing && (
         <div className="flex justify-end">
@@ -495,6 +579,9 @@ export default function StageTemplatesBulkEditor({
                 <th className="px-3 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider w-24">
                   {t("color")}
                 </th>
+                <th className="px-3 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider w-56">
+                  {t("releaseFormTemplate")}
+                </th>
                 <th className="px-3 py-3 text-center text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider w-20">
                   {t("active")}
                 </th>
@@ -505,7 +592,7 @@ export default function StageTemplatesBulkEditor({
               {rows.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={6}
+                    colSpan={7}
                     className="px-3 py-8 text-center text-sm text-gray-500 dark:text-gray-400"
                   >
                     {t("emptyState")}
@@ -521,12 +608,15 @@ export default function StageTemplatesBulkEditor({
                     const colorError = normalized
                       ? duplicateColors.has(normalized)
                       : false;
+                    const releaseFormError = !row.releaseFormTemplateId;
                     return (
                       <SortableRow
                         key={row.rowId}
                         row={row}
                         rowError={rowErrors[row.rowId]}
                         colorError={colorError}
+                        releaseFormError={releaseFormError}
+                        releaseFormTemplates={releaseFormTemplates}
                         isEditing={isEditing}
                         onChange={(patch) => handleRowChange(row.rowId, patch)}
                         onDelete={() => handleDeleteRow(row.rowId)}

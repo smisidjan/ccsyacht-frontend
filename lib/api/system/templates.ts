@@ -15,6 +15,10 @@ import type {
   CreateKickoffDocumentTemplateRequest,
   UpdateKickoffDocumentTemplateRequest,
   ReorderKickoffDocumentTemplatesRequest,
+  ReleaseFormTemplate,
+  CreateReleaseFormTemplateRequest,
+  UpdateReleaseFormTemplateRequest,
+  ReorderReleaseFormTemplatesRequest,
 } from "../types";
 import { apiFetchSystemTenant, apiFetchSystemTenantWithFile } from "./helpers";
 
@@ -65,11 +69,12 @@ export const systemStageTemplatesApi = {
     }),
 
   /** Replace the whole template list in one transactional call. Order of
-   *  `data.stages` becomes the persisted sort_order. */
+   *  `data.stages` becomes the persisted sort_order. Returns the fresh
+   *  list as a bare array (no `{ data: ... }` wrapper). */
   bulkReplace: (
     tenantId: string,
     data: BulkReplaceStageTemplatesRequest
-  ): Promise<{ data: StageTemplate[] }> =>
+  ): Promise<StageTemplate[]> =>
     apiFetchSystemTenant(tenantId, "/system/tenant/stage-templates/bulk", {
       method: "PUT",
       body: JSON.stringify(data),
@@ -188,6 +193,79 @@ export const systemKickoffDocumentTemplatesApi = {
     apiFetchSystemTenantWithFile(
       tenantId,
       `/system/tenant/kickoff-document-templates/${id}`,
+      formData,
+      "PUT"
+    ),
+};
+
+// ============ Release Form Templates ============
+// Mirrors the kickoff-document-templates surface: same JSON + multipart
+// CRUD, plus reorder. Stage templates carry a required FK to one of
+// these (the gate for the `next_step_release` review flow).
+export const systemReleaseFormTemplatesApi = {
+  getAll: (
+    tenantId: string,
+    params?: { active_only?: boolean }
+  ): Promise<{ data: ReleaseFormTemplate[] }> => {
+    const queryParams = params?.active_only ? `?active_only=${params.active_only}` : "";
+    return apiFetchSystemTenant(tenantId, `/system/tenant/release-form-templates${queryParams}`);
+  },
+
+  getById: (tenantId: string, id: string): Promise<ReleaseFormTemplate> =>
+    apiFetchSystemTenant(tenantId, `/system/tenant/release-form-templates/${id}`),
+
+  create: (
+    tenantId: string,
+    data: CreateReleaseFormTemplateRequest
+  ): Promise<ReleaseFormTemplate> =>
+    apiFetchSystemTenant(tenantId, "/system/tenant/release-form-templates", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  update: (
+    tenantId: string,
+    id: string,
+    data: UpdateReleaseFormTemplateRequest
+  ): Promise<ReleaseFormTemplate> =>
+    apiFetchSystemTenant(tenantId, `/system/tenant/release-form-templates/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
+  delete: (tenantId: string, id: string): Promise<void> =>
+    apiFetchSystemTenant(tenantId, `/system/tenant/release-form-templates/${id}`, {
+      method: "DELETE",
+    }),
+
+  reorder: (
+    tenantId: string,
+    data: ReorderReleaseFormTemplatesRequest
+  ): Promise<void> =>
+    apiFetchSystemTenant(tenantId, "/system/tenant/release-form-templates/reorder", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  createWithFile: (
+    tenantId: string,
+    formData: FormData
+  ): Promise<ReleaseFormTemplate> =>
+    apiFetchSystemTenantWithFile(
+      tenantId,
+      "/system/tenant/release-form-templates",
+      formData,
+      "POST"
+    ),
+
+  updateWithFile: (
+    tenantId: string,
+    id: string,
+    formData: FormData
+  ): Promise<ReleaseFormTemplate> =>
+    apiFetchSystemTenantWithFile(
+      tenantId,
+      `/system/tenant/release-form-templates/${id}`,
       formData,
       "PUT"
     ),
