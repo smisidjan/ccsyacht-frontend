@@ -62,13 +62,8 @@ if [ ! -f .env ]; then
     exit 1
 fi
 
-# Install dependencies if package.json changed
-echo -e "${YELLOW}📦 Installing dependencies...${NC}"
-npm ci --production=false --force
-
-# Build the application
-echo -e "${YELLOW}🔨 Building application...${NC}"
-npm run build
+# Skip host dependencies - will be handled in Docker
+echo -e "${YELLOW}📦 Dependencies will be installed in Docker...${NC}"
 
 # Build Docker image
 echo -e "${YELLOW}🐳 Building Docker image...${NC}"
