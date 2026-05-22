@@ -513,32 +513,79 @@ export default function CollaborativeDocumentSection({
             activeTab={activeTab}
             onChange={(key) => setActiveTab(key as "document" | "comments")}
           />
-          {/* Host toolbar — sits inside the Document tab so it's contextual to
-              what the user is looking at. Buttons follow the backend phase:
-              commenting → "Start Meeting", editing → "Send for Signing". */}
-          {activeTab === "document" && canFinalize && (
-            <div className="flex items-center justify-end gap-2">
-              {phase === "commenting" && (
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={handleStartEditing}
-                  disabled={isStartingEditing}
-                >
-                  <PencilIcon className="w-4 h-4" />
-                  {t("document.startEditing")}
-                </Button>
-              )}
-              {phase === "editing" && (
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={() => setShowFinalizeModal(true)}
-                  disabled={isFinalizing}
-                >
-                  <LockClosedIcon className="w-4 h-4" />
-                  {t("document.finalize")}
-                </Button>
+          {/* Phase banner — spells out what the user can do right
+              now so they're not staring at a read-only document
+              wondering where the editor went. Sits above the host
+              toolbar; the host's primary action button stays where
+              it was, but tucked into the same row. */}
+          {activeTab === "document" && (
+            <div
+              className={`flex items-center justify-between gap-3 px-4 py-3 rounded-lg border ${
+                phase === "commenting"
+                  ? "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800"
+                  : "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800"
+              }`}
+            >
+              <div className="flex items-start gap-2 min-w-0">
+                {phase === "commenting" ? (
+                  <LockClosedIcon className="w-4 h-4 mt-0.5 flex-shrink-0 text-blue-600 dark:text-blue-400" />
+                ) : (
+                  <PencilIcon className="w-4 h-4 mt-0.5 flex-shrink-0 text-amber-600 dark:text-amber-400" />
+                )}
+                <div className="min-w-0">
+                  <p
+                    className={`text-sm font-medium ${
+                      phase === "commenting"
+                        ? "text-blue-900 dark:text-blue-100"
+                        : "text-amber-900 dark:text-amber-100"
+                    }`}
+                  >
+                    {phase === "commenting"
+                      ? t("document.phaseCommentingTitle")
+                      : t("document.phaseEditingTitle")}
+                  </p>
+                  <p
+                    className={`text-xs ${
+                      phase === "commenting"
+                        ? "text-blue-700 dark:text-blue-300"
+                        : "text-amber-700 dark:text-amber-300"
+                    }`}
+                  >
+                    {phase === "commenting"
+                      ? canComment
+                        ? t("document.phaseCommentingHintAttendee")
+                        : t("document.phaseCommentingHintReadOnly")
+                      : canFinalize
+                        ? t("document.phaseEditingHintHost")
+                        : t("document.phaseEditingHintAttendee")}
+                  </p>
+                </div>
+              </div>
+              {canFinalize && (
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  {phase === "commenting" && (
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={handleStartEditing}
+                      disabled={isStartingEditing}
+                    >
+                      <PencilIcon className="w-4 h-4" />
+                      {t("document.startEditing")}
+                    </Button>
+                  )}
+                  {phase === "editing" && (
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => setShowFinalizeModal(true)}
+                      disabled={isFinalizing}
+                    >
+                      <LockClosedIcon className="w-4 h-4" />
+                      {t("document.finalize")}
+                    </Button>
+                  )}
+                </div>
               )}
             </div>
           )}
