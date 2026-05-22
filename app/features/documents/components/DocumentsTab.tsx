@@ -20,10 +20,13 @@ import { UploadDocumentModal, AssignDocumentModal } from "@/app/features/documen
 import DocumentTypeModal from "./DocumentTypeModal";
 import DocumentTypeSidebar from "./DocumentTypeSidebar";
 import DocumentsPanel from "./DocumentsPanel";
+import DocumentViewerModal from "./DocumentViewerModal";
 import BaseModal from "@/app/components/modals/BaseModal";
 import DeleteConfirmModal from "@/app/components/modals/DeleteConfirmModal";
 import { handleError } from "@/lib/utils/errors";
+import { documentsApi } from "@/lib/api/documents";
 import type {
+  Document,
   UploadDocumentRequest,
   DocumentType,
   DocumentTypeAssignee,
@@ -79,6 +82,9 @@ export default function DocumentsTab({ projectId, projectStatus }: DocumentsTabP
   const [selectedTypeId, setSelectedTypeId] = useState<string | null>(null);
   const [showMobileDetail, setShowMobileDetail] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  // Document currently being viewed inline via the eye-icon button.
+  // Cleared when the modal closes.
+  const [viewingDocument, setViewingDocument] = useState<Document | null>(null);
   const [isCreateTypeModalOpen, setIsCreateTypeModalOpen] = useState(false);
   const [isEditTypeModalOpen, setIsEditTypeModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -302,6 +308,7 @@ export default function DocumentsTab({ projectId, projectStatus }: DocumentsTabP
         onUpload={() => setIsUploadModalOpen(true)}
         onAssign={() => setIsAssignModalOpen(true)}
         onDownload={handleDownload}
+        onView={setViewingDocument}
         onNotifyAssignee={handleNotifyAssignee}
         onRemoveAssignee={handleRemoveAssignee}
         canUploadDocuments={canUploadDocuments}
@@ -392,6 +399,18 @@ export default function DocumentsTab({ projectId, projectStatus }: DocumentsTabP
         errorMessage={tDocTypes("assignees.removeError")}
         confirmLabel={tDocTypes("assignees.removeModal.confirm")}
       />
+
+      {/* Inline document viewer — driven by the eye-icon button on
+          the documents panel. Document shape is structurally a
+          superset of SetupTaskDocument; cast keeps TS happy. */}
+      {viewingDocument && (
+        <DocumentViewerModal
+          isOpen={!!viewingDocument}
+          onClose={() => setViewingDocument(null)}
+          attachment={viewingDocument as unknown as Parameters<typeof DocumentViewerModal>[0]["attachment"]}
+          downloadUrl={documentsApi.getDownloadUrl(projectId, viewingDocument.identifier)}
+        />
+      )}
     </div>
   );
 }

@@ -647,6 +647,14 @@ export default function CollaborativeDocument({
             <BubbleMenu
               editor={editor}
               shouldShow={() => bubbleOpen}
+              // Anchor the menu inline at the right edge of the
+              // selection (with a small offset) instead of floating
+              // above. Keeps the menu out of the way of surrounding
+              // content and reads as an in-place action.
+              options={{
+                placement: "right",
+                offset: 8,
+              }}
             >
               <div data-bubble-menu="kickoff" className="flex items-center gap-1 rounded-lg bg-gray-900 px-1 py-1 shadow-lg">
                 {editable && (

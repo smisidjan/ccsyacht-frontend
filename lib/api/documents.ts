@@ -75,6 +75,12 @@ export const documentsApi = {
     });
   },
 
+  /** Plain URL builder for the auth-aware download endpoint —
+   *  reused by `download()` and by the inline viewer modal which
+   *  fetches the blob through its own pipeline. */
+  getDownloadUrl: (projectId: string, docId: string): string =>
+    `${API_BASE_URL}/projects/${projectId}/documents/${docId}/download`,
+
   download: async (projectId: string, docId: string): Promise<Blob> => {
     const token = getAuthToken();
     const tenantUrl = getTenantUrl();

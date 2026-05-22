@@ -5,6 +5,7 @@ import {
   DocumentTextIcon,
   ArrowUpTrayIcon,
   ArrowDownTrayIcon,
+  EyeIcon,
   UserPlusIcon,
   ChevronLeftIcon,
 } from "@heroicons/react/24/outline";
@@ -28,6 +29,8 @@ interface DocumentsPanelProps {
   onUpload: () => void;
   onAssign: () => void;
   onDownload: (docId: string, fileName: string) => void;
+  /** Opens the inline document viewer (eye icon) for the row. */
+  onView: (doc: Document) => void;
   onNotifyAssignee: (assignee: DocumentTypeAssignee) => void;
   onRemoveAssignee: (assignee: DocumentTypeAssignee) => void;
   canUploadDocuments: boolean;
@@ -47,6 +50,7 @@ export default function DocumentsPanel({
   onUpload,
   onAssign,
   onDownload,
+  onView,
   onNotifyAssignee,
   onRemoveAssignee,
   canUploadDocuments,
@@ -145,8 +149,10 @@ export default function DocumentsPanel({
                     key={doc.identifier}
                     document={doc}
                     onDownload={onDownload}
+                    onView={onView}
                     canDownload={canDownloadDocuments}
                     downloadLabel={t("download")}
+                    viewLabel={t("view")}
                     hideStatus={!!selectedType?.isSystemManaged}
                   />
                 ))}
@@ -157,6 +163,7 @@ export default function DocumentsPanel({
                 <DocumentsTable
                   documents={documents}
                   onDownload={onDownload}
+                  onView={onView}
                   canDownload={canDownloadDocuments}
                   t={t}
                   hideStatus={!!selectedType?.isSystemManaged}
@@ -184,14 +191,16 @@ function EmptyDocumentsState({ message }: { message: string }) {
 interface DocumentMobileCardProps {
   document: Document;
   onDownload: (docId: string, fileName: string) => void;
+  onView: (doc: Document) => void;
   canDownload: boolean;
   downloadLabel: string;
+  viewLabel: string;
   /** Status badge is hidden for system-managed types — the
    *  ack/assign flow doesn't apply there. */
   hideStatus?: boolean;
 }
 
-function DocumentMobileCard({ document, onDownload, canDownload, downloadLabel, hideStatus }: DocumentMobileCardProps) {
+function DocumentMobileCard({ document, onDownload, onView, canDownload, downloadLabel, viewLabel, hideStatus }: DocumentMobileCardProps) {
   const acks = normalizeAcknowledgements(document.acknowledgements);
   const totalRequired = document.totalAssignees || document.totalRequiredAcknowledgers || 0;
   const status = (!totalRequired && acks.length === 0)
@@ -221,15 +230,24 @@ function DocumentMobileCard({ document, onDownload, canDownload, downloadLabel, 
           </div>
         )}
       </div>
-      {canDownload && (
+      <div className="flex items-center gap-1 flex-shrink-0">
         <button
-          onClick={() => onDownload(document.identifier, document.fileName)}
-          className="p-2 text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors flex-shrink-0"
-          title={downloadLabel}
+          onClick={() => onView(document)}
+          className="p-2 text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+          title={viewLabel}
         >
-          <ArrowDownTrayIcon className="w-5 h-5" />
+          <EyeIcon className="w-5 h-5" />
         </button>
-      )}
+        {canDownload && (
+          <button
+            onClick={() => onDownload(document.identifier, document.fileName)}
+            className="p-2 text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+            title={downloadLabel}
+          >
+            <ArrowDownTrayIcon className="w-5 h-5" />
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -238,6 +256,7 @@ function DocumentMobileCard({ document, onDownload, canDownload, downloadLabel, 
 interface DocumentsTableProps {
   documents: Document[];
   onDownload: (docId: string, fileName: string) => void;
+  onView: (doc: Document) => void;
   canDownload: boolean;
   t: (key: string) => string;
   /** Status column is hidden for system-managed types — the
@@ -245,7 +264,7 @@ interface DocumentsTableProps {
   hideStatus?: boolean;
 }
 
-function DocumentsTable({ documents, onDownload, canDownload, t, hideStatus }: DocumentsTableProps) {
+function DocumentsTable({ documents, onDownload, onView, canDownload, t, hideStatus }: DocumentsTableProps) {
   return (
     <Table
       columns={[
@@ -321,7 +340,14 @@ function DocumentsTable({ documents, onDownload, canDownload, t, hideStatus }: D
           headerClassName: "text-right",
           className: "text-right",
           cell: (doc: Document) => (
-            <div className="flex items-center justify-end gap-2">
+            <div className="flex items-center justify-end gap-1">
+              <button
+                onClick={() => onView(doc)}
+                className="p-2 text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+                title={t("view")}
+              >
+                <EyeIcon className="w-4 h-4" />
+              </button>
               {canDownload && (
                 <button
                   onClick={() => onDownload(doc.identifier, doc.fileName)}

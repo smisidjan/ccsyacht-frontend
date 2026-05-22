@@ -896,6 +896,7 @@
       "uploaded": "Uploaded",
       "pending": "Pending",
       "upload": "Upload",
+      "view": "View",
       "download": "Download",
       "delete": "Delete",
       "confirmDelete": "Are you sure you want to delete this document?",

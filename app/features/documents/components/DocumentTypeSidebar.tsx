@@ -73,8 +73,13 @@ export default function DocumentTypeSidebar({
   };
 
   return (
-    <div className={`${showMobileDetail ? "hidden" : "block"} lg:block w-full lg:w-64 xl:w-72 flex-shrink-0`}>
-      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-lg flex flex-col max-h-[60vh] lg:max-h-[calc(100vh-240px)]">
+    // `self-stretch` on lg+ — paired with the parent row's default
+    // `items-stretch` — lets the sidebar grow to the same height as
+    // the documents panel. Items render unscrolled until they exceed
+    // that height; only then does the inner list scroll. The mobile
+    // 60vh cap stays so a long type list doesn't take over the screen.
+    <div className={`${showMobileDetail ? "hidden" : "block"} lg:block w-full lg:w-64 xl:w-72 flex-shrink-0 lg:self-stretch`}>
+      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-lg flex flex-col max-h-[60vh] lg:max-h-none lg:h-full">
         {/* Header */}
         <div className="p-3 lg:p-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
           <div className="flex items-center justify-between">
