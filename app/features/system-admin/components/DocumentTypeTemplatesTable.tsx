@@ -28,6 +28,7 @@ export default function DocumentTypeTemplatesTable({ tenantId }: DocumentTypeTem
   const [name, setName] = useState("");
   const [isRequired, setIsRequired] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
+  const [isSystemManaged, setIsSystemManaged] = useState(false);
   const [isActive, setIsActive] = useState(true);
 
   const modal = useModalForm<DocumentTypeTemplate>({
@@ -36,6 +37,7 @@ export default function DocumentTypeTemplatesTable({ tenantId }: DocumentTypeTem
         name,
         is_required: isRequired,
         is_locked: isLocked,
+        is_system_managed: isSystemManaged,
         is_active: isActive,
       };
 
@@ -50,12 +52,14 @@ export default function DocumentTypeTemplatesTable({ tenantId }: DocumentTypeTem
       setName("");
       setIsRequired(false);
       setIsLocked(false);
+      setIsSystemManaged(false);
       setIsActive(true);
     },
     populateForm: (template) => {
       setName(template.name);
       setIsRequired(template.isRequired);
       setIsLocked(template.isLocked);
+      setIsSystemManaged(template.isSystemManaged ?? false);
       setIsActive(template.isActive);
     },
     successMessages: {
@@ -188,16 +192,19 @@ export default function DocumentTypeTemplatesTable({ tenantId }: DocumentTypeTem
           name={name}
           isRequired={isRequired}
           isLocked={isLocked}
+          isSystemManaged={isSystemManaged}
           isActive={isActive}
           onNameChange={setName}
           onIsRequiredChange={setIsRequired}
           onIsLockedChange={setIsLocked}
+          onIsSystemManagedChange={setIsSystemManaged}
           onIsActiveChange={setIsActive}
           translations={{
             name: t("name"),
             namePlaceholder: "Enter document type name",
             required: t("required"),
             locked: t("locked"),
+            systemManaged: t("systemManaged"),
             active: t("active"),
           }}
         />

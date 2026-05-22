@@ -6,16 +6,19 @@ interface DocumentTypeTemplateFormProps {
   name: string;
   isRequired: boolean;
   isLocked: boolean;
+  isSystemManaged: boolean;
   isActive: boolean;
   onNameChange: (value: string) => void;
   onIsRequiredChange: (value: boolean) => void;
   onIsLockedChange: (value: boolean) => void;
+  onIsSystemManagedChange: (value: boolean) => void;
   onIsActiveChange: (value: boolean) => void;
   translations: {
     name: string;
     namePlaceholder: string;
     required: string;
     locked: string;
+    systemManaged: string;
     active: string;
   };
 }
@@ -24,10 +27,12 @@ export default function DocumentTypeTemplateForm({
   name,
   isRequired,
   isLocked,
+  isSystemManaged,
   isActive,
   onNameChange,
   onIsRequiredChange,
   onIsLockedChange,
+  onIsSystemManagedChange,
   onIsActiveChange,
   translations: t,
 }: DocumentTypeTemplateFormProps) {
@@ -74,6 +79,23 @@ export default function DocumentTypeTemplateForm({
           className="ml-2 block text-sm text-gray-700 dark:text-gray-300"
         >
           {t.locked}
+        </label>
+      </div>
+
+      {/* Is System Managed */}
+      <div className="flex items-center">
+        <input
+          id="document-type-template-system-managed"
+          type="checkbox"
+          checked={isSystemManaged}
+          onChange={(e) => onIsSystemManagedChange(e.target.checked)}
+          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+        />
+        <label
+          htmlFor="document-type-template-system-managed"
+          className="ml-2 block text-sm text-gray-700 dark:text-gray-300"
+        >
+          {t.systemManaged}
         </label>
       </div>
 

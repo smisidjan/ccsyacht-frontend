@@ -106,7 +106,15 @@ export default function KickoffMeetingModal({
   const pendingDocuments = useMemo((): PendingDocument[] => {
     if (!documentTypes) return [];
     return documentTypes
-      .filter((dt) => dt.isRequired && dt.documentCount === 0)
+      .filter(
+        (dt) =>
+          dt.isRequired &&
+          dt.documentCount === 0 &&
+          // System-managed types (e.g. Release forms) are populated
+          // by another flow — they're not something the kick-off
+          // meeting needs to request from anyone.
+          !dt.isSystemManaged
+      )
       .map((dt) => ({
         ...dt,
         isRequested: !!(dt.assignees && dt.assignees.length > 0),

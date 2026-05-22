@@ -77,35 +77,51 @@ export default function DocumentsPanel({
               </h3>
             </div>
             <div className="flex items-center gap-2">
-              {canEditDocumentTypes && !isReadOnly && (
-                <Button variant="secondary" size="sm" onClick={onAssign}>
-                  <UserPlusIcon className="w-4 h-4" />
-                  <span className="hidden sm:inline">{tDocTypes("assignees.assign")}</span>
-                </Button>
-              )}
-              {(canUploadDocuments || isCurrentUserAssigneeWithPendingTask) && !isReadOnly && (
-                <Button size="sm" onClick={onUpload}>
-                  <ArrowUpTrayIcon className="w-4 h-4" />
-                  <span className="hidden sm:inline">{t("upload")}</span>
-                </Button>
-              )}
+              {/* System-managed types (e.g. Release forms) are populated
+                  by another part of the product; manual uploads and
+                  request flows don't apply. The type itself stays
+                  visible in the sidebar so the user can read the
+                  documents inside it. */}
+              {canEditDocumentTypes &&
+                !isReadOnly &&
+                !selectedType?.isSystemManaged && (
+                  <Button variant="secondary" size="sm" onClick={onAssign}>
+                    <UserPlusIcon className="w-4 h-4" />
+                    <span className="hidden sm:inline">{tDocTypes("assignees.assign")}</span>
+                  </Button>
+                )}
+              {(canUploadDocuments || isCurrentUserAssigneeWithPendingTask) &&
+                !isReadOnly &&
+                !selectedType?.isSystemManaged && (
+                  <Button size="sm" onClick={onUpload}>
+                    <ArrowUpTrayIcon className="w-4 h-4" />
+                    <span className="hidden sm:inline">{t("upload")}</span>
+                  </Button>
+                )}
             </div>
           </div>
 
-          {/* Assignees row */}
-          {selectedType && canEditDocumentTypes && (
-            <AssigneesList
-              assignees={selectedType.assignees}
-              onNotify={onNotifyAssignee}
-              onRemove={onRemoveAssignee}
-              isReadOnly={isReadOnly}
-            />
-          )}
+          {/* Assignees row — also hidden for system-managed types
+              since there's nothing for an assignee to action. */}
+          {selectedType &&
+            canEditDocumentTypes &&
+            !selectedType.isSystemManaged && (
+              <AssigneesList
+                assignees={selectedType.assignees}
+                onNotify={onNotifyAssignee}
+                onRemove={onRemoveAssignee}
+                isReadOnly={isReadOnly}
+              />
+            )}
 
-          {/* Document Acknowledgements Summary */}
-          {documents && documents.length > 0 && (
-            <DocumentAcknowledgementsSummary documents={documents} />
-          )}
+          {/* Document Acknowledgements Summary — only relevant for
+              types where users actively acknowledge documents.
+              System-managed types skip the whole assign/ack flow. */}
+          {documents &&
+            documents.length > 0 &&
+            !selectedType?.isSystemManaged && (
+              <DocumentAcknowledgementsSummary documents={documents} />
+            )}
         </div>
 
         {/* Content */}
@@ -131,6 +147,7 @@ export default function DocumentsPanel({
                     onDownload={onDownload}
                     canDownload={canDownloadDocuments}
                     downloadLabel={t("download")}
+                    hideStatus={!!selectedType?.isSystemManaged}
                   />
                 ))}
               </div>
@@ -142,6 +159,7 @@ export default function DocumentsPanel({
                   onDownload={onDownload}
                   canDownload={canDownloadDocuments}
                   t={t}
+                  hideStatus={!!selectedType?.isSystemManaged}
                 />
               </div>
             </>
@@ -168,9 +186,12 @@ interface DocumentMobileCardProps {
   onDownload: (docId: string, fileName: string) => void;
   canDownload: boolean;
   downloadLabel: string;
+  /** Status badge is hidden for system-managed types — the
+   *  ack/assign flow doesn't apply there. */
+  hideStatus?: boolean;
 }
 
-function DocumentMobileCard({ document, onDownload, canDownload, downloadLabel }: DocumentMobileCardProps) {
+function DocumentMobileCard({ document, onDownload, canDownload, downloadLabel, hideStatus }: DocumentMobileCardProps) {
   const acks = normalizeAcknowledgements(document.acknowledgements);
   const totalRequired = document.totalAssignees || document.totalRequiredAcknowledgers || 0;
   const status = (!totalRequired && acks.length === 0)
@@ -194,9 +215,11 @@ function DocumentMobileCard({ document, onDownload, canDownload, downloadLabel }
             {document.description}
           </p>
         )}
-        <div className="mt-2">
-          <DocumentStatusBadge status={status} />
-        </div>
+        {!hideStatus && (
+          <div className="mt-2">
+            <DocumentStatusBadge status={status} />
+          </div>
+        )}
       </div>
       {canDownload && (
         <button
@@ -217,9 +240,12 @@ interface DocumentsTableProps {
   onDownload: (docId: string, fileName: string) => void;
   canDownload: boolean;
   t: (key: string) => string;
+  /** Status column is hidden for system-managed types — the
+   *  ack/assign flow doesn't apply there. */
+  hideStatus?: boolean;
 }
 
-function DocumentsTable({ documents, onDownload, canDownload, t }: DocumentsTableProps) {
+function DocumentsTable({ documents, onDownload, canDownload, t, hideStatus }: DocumentsTableProps) {
   return (
     <Table
       columns={[
@@ -269,21 +295,26 @@ function DocumentsTable({ documents, onDownload, canDownload, t }: DocumentsTabl
             </span>
           ),
         },
-        {
-          key: "status",
-          header: t("status"),
-          cell: (doc: Document) => {
-            const acks = normalizeAcknowledgements(doc.acknowledgements);
-            const totalRequired = doc.totalAssignees || doc.totalRequiredAcknowledgers || 0;
+        ...(hideStatus
+          ? []
+          : [
+              {
+                key: "status",
+                header: t("status"),
+                cell: (doc: Document) => {
+                  const acks = normalizeAcknowledgements(doc.acknowledgements);
+                  const totalRequired =
+                    doc.totalAssignees || doc.totalRequiredAcknowledgers || 0;
 
-            if (!totalRequired && acks.length === 0) {
-              return <DocumentStatusBadge status="pending_review" />;
-            }
+                  if (!totalRequired && acks.length === 0) {
+                    return <DocumentStatusBadge status="pending_review" />;
+                  }
 
-            const status = calculateDocumentStatus(acks, totalRequired);
-            return <DocumentStatusBadge status={status} />;
-          },
-        },
+                  const status = calculateDocumentStatus(acks, totalRequired);
+                  return <DocumentStatusBadge status={status} />;
+                },
+              },
+            ]),
         {
           key: "actions",
           header: t("actions"),

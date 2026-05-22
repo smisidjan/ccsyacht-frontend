@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
-import { PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { PlusIcon, XMarkIcon, ChevronDownIcon } from "@heroicons/react/24/outline";
 import Button from "@/app/components/ui/Button";
 import Modal from "@/app/components/ui/Modal";
 import DeleteConfirmModal from "@/app/components/modals/DeleteConfirmModal";
@@ -129,6 +129,31 @@ export default function StageDetailPanel({
     id: string;
     name: string;
   } | null>(null);
+  const [isSignoffsExpanded, setIsSignoffsExpanded] = useState(false);
+
+  // Roll up the signoff list into a single chip-friendly summary. The
+  // chip is the user's at-a-glance view; the full list lives behind
+  // the toggle. Priority is rejected > pending > all-signed > default
+  // so the most actionable state always wins the colour.
+  const signoffSummary = useMemo(() => {
+    const total = combinedSigners.length;
+    let pending = 0;
+    let signed = 0;
+    let rejected = 0;
+    for (const signer of combinedSigners) {
+      const so = signoffs?.find(
+        (s) => s.recipient.identifier === signer.member.identifier
+      );
+      if (so?.status === "pending") pending += 1;
+      else if (so?.status === "signed") signed += 1;
+      else if (so?.status === "rejected") rejected += 1;
+    }
+    let tone: "rejected" | "pending" | "signed" | "neutral" = "neutral";
+    if (rejected > 0) tone = "rejected";
+    else if (pending > 0) tone = "pending";
+    else if (signed > 0 && signed === total) tone = "signed";
+    return { total, pending, signed, rejected, tone };
+  }, [combinedSigners, signoffs]);
 
   const handleAddCustomSigner = async (userId: string) => {
     setAddingMemberId(userId);
@@ -213,17 +238,28 @@ export default function StageDetailPanel({
       <div className="p-4 sm:p-6 md:p-8 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-start justify-between gap-6">
           <div className="flex-1">
-            <div className="flex items-center gap-3 mb-2">
-              {stage.color && (
-                <span
-                  className="inline-block w-5 h-5 rounded-sm flex-shrink-0 border border-gray-200 dark:border-gray-600"
-                  style={{ backgroundColor: stage.color }}
-                  aria-hidden="true"
-                />
-              )}
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-                {stage.name}
-              </h2>
+            <div className="flex items-center justify-between gap-3 mb-2">
+              <div className="flex items-center gap-3 min-w-0">
+                {stage.color && (
+                  <span
+                    className="inline-block w-5 h-5 rounded-sm flex-shrink-0 border border-gray-200 dark:border-gray-600"
+                    style={{ backgroundColor: stage.color }}
+                    aria-hidden="true"
+                  />
+                )}
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white truncate">
+                  {stage.name}
+                </h2>
+              </div>
+              <SignoffSummaryChip
+                summary={signoffSummary}
+                expanded={isSignoffsExpanded}
+                onToggle={() => setIsSignoffsExpanded((v) => !v)}
+                t={tSignoffs}
+                loading={
+                  signoffsLoading || signersLoading || customSignersLoading
+                }
+              />
             </div>
             <div className="flex items-center gap-3 flex-wrap">
               <span className={`inline-block px-3 py-1 rounded text-sm font-medium ${
@@ -298,7 +334,10 @@ export default function StageDetailPanel({
 
       {/* Content */}
       <div className="p-4 sm:p-6 md:p-8 space-y-6 md:space-y-8">
-        {/* Signoffs Section */}
+        {/* Signoffs Section — collapsed by default to keep the panel
+            scannable. The header chip mirrors the state and toggles
+            this block open. */}
+        {isSignoffsExpanded && (
         <div>
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
@@ -324,172 +363,199 @@ export default function StageDetailPanel({
                   {tSignoffs("noSigners")}
                 </p>
               ) : (
-                <div className="space-y-4">
+                <ul className="divide-y divide-gray-200 dark:divide-gray-700 border-y border-gray-200 dark:border-gray-700">
                   {combinedSigners.map((signer) => {
-                    // Find corresponding signoff for this signer
-                    const signoff = signoffs?.find(s => s.recipient.identifier === signer.member.identifier);
-                    const isCurrentUser = currentUser?.identifier === signer.member.identifier;
-                    const canSign = isCurrentUser && signoff?.status === "pending";
-                    const canReject = isCurrentUser && signoff?.status === "pending";
+                    const signoff = signoffs?.find(
+                      (s) => s.recipient.identifier === signer.member.identifier
+                    );
+                    const isCurrentUser =
+                      currentUser?.identifier === signer.member.identifier;
+                    const canSign =
+                      isCurrentUser && signoff?.status === "pending";
+                    const canReject =
+                      isCurrentUser && signoff?.status === "pending";
                     const isCustom = signer.kind === "custom";
 
+                    // Subtle row label that lives directly under the
+                    // name — combines kind ("Custom" / "Default") with
+                    // the "added by …" provenance for custom rows.
+                    const subtitleParts: string[] = [
+                      isCustom
+                        ? tSignoffs("customSignerLabel")
+                        : tSignoffs("defaultSignerLabel"),
+                    ];
+                    if (isCustom && signer.addedBy) {
+                      subtitleParts.push(
+                        signer.addedAt
+                          ? tSignoffs("addedByOn", {
+                              name: signer.addedBy.name,
+                              date: new Date(
+                                signer.addedAt
+                              ).toLocaleDateString(),
+                            })
+                          : tSignoffs("addedByCustomSigner", {
+                              name: signer.addedBy.name,
+                            })
+                      );
+                    }
+                    const subtitle = subtitleParts.join(" · ");
+
                     return (
-                      <div
+                      <li
                         key={`${signer.kind}-${signer.member.identifier}`}
-                        className="flex items-start justify-between p-5 bg-gray-50 dark:bg-gray-700/50 rounded-lg"
+                        className="py-3 flex items-start gap-3"
                       >
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2 flex-wrap">
-                            <p className="font-medium text-gray-900 dark:text-white">
-                              {signer.member.name}
-                            </p>
-                            {isCustom ? (
-                              <span className="inline-block px-2 py-0.5 rounded text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400">
-                                {tSignoffs("customSignerLabel")}
-                              </span>
-                            ) : (
-                              <span className="inline-block px-2 py-0.5 rounded text-xs font-medium bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
-                                {tSignoffs("defaultSignerLabel")}
-                              </span>
-                            )}
-                            <span
-                              className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${
-                                signoff?.status === "signed"
-                                  ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400"
-                                  : signoff?.status === "rejected"
-                                  ? "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400"
-                                  : signoff?.status === "pending"
-                                  ? "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400"
-                                  : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300"
-                              }`}
-                            >
-                              {signoff
-                                ? tSignoffs(`signoffStatus.${signoff.status}`)
-                                : tSignoffs("notSubmitted")}
-                            </span>
+                        <SignerAvatar name={signer.member.name} />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-4">
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                                {signer.member.name}
+                              </p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                                {subtitle}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-3 flex-shrink-0">
+                              <SignoffStatusIndicator
+                                status={signoff?.status}
+                                t={tSignoffs}
+                              />
+                              {(canSign || canReject) && signoff && (
+                                <div className="flex items-center gap-1.5">
+                                  <Button
+                                    variant="success"
+                                    size="sm"
+                                    onClick={() => {
+                                      setSelectedSignoffId(signoff.identifier);
+                                      setShowSignModal(true);
+                                    }}
+                                  >
+                                    {tSignoffs("sign")}
+                                  </Button>
+                                  <Button
+                                    variant="danger"
+                                    size="sm"
+                                    onClick={() => {
+                                      setSelectedSignoffId(signoff.identifier);
+                                      setShowRejectModal(true);
+                                    }}
+                                  >
+                                    {tSignoffs("reject")}
+                                  </Button>
+                                </div>
+                              )}
+                              {isCustom &&
+                                signer.customSignerId &&
+                                canManageCustomSigners && (
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setSignerToRemove({
+                                        id: signer.customSignerId!,
+                                        name: signer.member.name,
+                                      })
+                                    }
+                                    className="p-1 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                                    aria-label={tSignoffs(
+                                      "removeCustomSigner"
+                                    )}
+                                    title={tSignoffs("removeCustomSigner")}
+                                  >
+                                    <XMarkIcon className="w-4 h-4" />
+                                  </button>
+                                )}
+                            </div>
                           </div>
-                          {isCustom && signer.addedBy && (
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                              {signer.addedAt
-                                ? tSignoffs("addedByOn", {
-                                    name: signer.addedBy.name,
+
+                          {/* Inline detail block — only the recorded
+                              decision/notes for this signoff. Keeps
+                              the row compact by default; the detail
+                              only renders when there's actually
+                              something to show. */}
+                          {(signoff?.status === "signed" ||
+                            signoff?.status === "rejected") &&
+                            signoff.agent &&
+                            signoff.signedAt && (
+                              <p
+                                className={`text-xs mt-1.5 ${
+                                  signoff.status === "signed"
+                                    ? "text-green-700 dark:text-green-400"
+                                    : "text-red-700 dark:text-red-400"
+                                }`}
+                              >
+                                {tSignoffs(
+                                  signoff.status === "signed"
+                                    ? "signedBy"
+                                    : "rejectedBy",
+                                  {
+                                    name: signoff.agent.name,
                                     date: new Date(
-                                      signer.addedAt
+                                      signoff.signedAt
                                     ).toLocaleDateString(),
-                                  })
-                                : tSignoffs("addedByCustomSigner", {
-                                    name: signer.addedBy.name,
-                                  })}
-                            </p>
-                          )}
-
-                          {/* Show who signed/rejected and when */}
-                          {signoff?.status === "signed" && signoff.agent && signoff.signedAt && (
-                            <p className="text-xs text-green-700 dark:text-green-400 mt-1">
-                              {tSignoffs("signedBy", {
-                                name: signoff.agent.name,
-                                date: new Date(signoff.signedAt).toLocaleDateString(),
-                                time: new Date(signoff.signedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                              })}
-                            </p>
-                          )}
-
-                          {signoff?.status === "rejected" && signoff.agent && signoff.signedAt && (
-                            <p className="text-xs text-red-700 dark:text-red-400 mt-1">
-                              {tSignoffs("rejectedBy", {
-                                name: signoff.agent.name,
-                                date: new Date(signoff.signedAt).toLocaleDateString(),
-                                time: new Date(signoff.signedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                              })}
-                            </p>
-                          )}
+                                    time: new Date(
+                                      signoff.signedAt
+                                    ).toLocaleTimeString([], {
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                    }),
+                                  }
+                                )}
+                              </p>
+                            )}
 
                           {signoff?.notes && (
-                            <p className="text-sm text-gray-600 dark:text-gray-400 mt-2 italic">
-                              "{signoff.notes}"
+                            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 italic">
+                              &ldquo;{signoff.notes}&rdquo;
                             </p>
                           )}
 
-                          {/* Show rejection history */}
-                          {signoff?.rejectionHistory && signoff.rejectionHistory.length > 0 && (
-                            <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600">
-                              <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                                {tSignoffs("rejectionHistory")}:
-                              </p>
-                              <div className="space-y-2">
-                                {signoff.rejectionHistory.map((rejection, index) => (
-                                  <div key={index} className="text-xs text-gray-600 dark:text-gray-400">
-                                    <p className="font-medium text-red-600 dark:text-red-400">
-                                      {tSignoffs("rejectedBy", {
-                                        name: rejection.rejected_by_name,
-                                        date: new Date(rejection.rejected_at).toLocaleDateString(),
-                                        time: new Date(rejection.rejected_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                                      })}
-                                    </p>
-                                    {rejection.notes && (
-                                      <p className="italic mt-1">"{rejection.notes}"</p>
-                                    )}
-                                  </div>
-                                ))}
+                          {signoff?.rejectionHistory &&
+                            signoff.rejectionHistory.length > 0 && (
+                              <div className="mt-2 pt-2 border-t border-gray-100 dark:border-gray-700/60">
+                                <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">
+                                  {tSignoffs("rejectionHistory")}
+                                </p>
+                                <div className="space-y-1.5">
+                                  {signoff.rejectionHistory.map(
+                                    (rejection, index) => (
+                                      <div
+                                        key={index}
+                                        className="text-xs text-gray-600 dark:text-gray-400"
+                                      >
+                                        <p className="text-red-600 dark:text-red-400">
+                                          {tSignoffs("rejectedBy", {
+                                            name: rejection.rejected_by_name,
+                                            date: new Date(
+                                              rejection.rejected_at
+                                            ).toLocaleDateString(),
+                                            time: new Date(
+                                              rejection.rejected_at
+                                            ).toLocaleTimeString([], {
+                                              hour: "2-digit",
+                                              minute: "2-digit",
+                                            }),
+                                          })}
+                                        </p>
+                                        {rejection.notes && (
+                                          <p className="italic mt-0.5">
+                                            &ldquo;{rejection.notes}&rdquo;
+                                          </p>
+                                        )}
+                                      </div>
+                                    )
+                                  )}
+                                </div>
                               </div>
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="flex items-start gap-2 ml-4">
-                          {(canSign || canReject) && signoff && (
-                            <>
-                              <Button
-                                variant="success"
-                                size="sm"
-                                onClick={() => {
-                                  setSelectedSignoffId(signoff.identifier);
-                                  setShowSignModal(true);
-                                }}
-                              >
-                                {tSignoffs("sign")}
-                              </Button>
-                              <Button
-                                variant="danger"
-                                size="sm"
-                                onClick={() => {
-                                  setSelectedSignoffId(signoff.identifier);
-                                  setShowRejectModal(true);
-                                }}
-                              >
-                                {tSignoffs("reject")}
-                              </Button>
-                            </>
-                          )}
-                          {/* Custom signers can be unassigned at any
-                              time by anyone with edit_stages. Their
-                              pending signoff (if any) goes away when
-                              the row is removed. */}
-                          {isCustom &&
-                            signer.customSignerId &&
-                            canManageCustomSigners && (
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setSignerToRemove({
-                                    id: signer.customSignerId!,
-                                    name: signer.member.name,
-                                  })
-                                }
-                                className="p-1.5 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
-                                aria-label={tSignoffs("removeCustomSigner")}
-                                title={tSignoffs("removeCustomSigner")}
-                              >
-                                <XMarkIcon className="w-4 h-4" />
-                              </button>
                             )}
                         </div>
-                      </div>
+                      </li>
                     );
                   })}
-                </div>
+                </ul>
               )}
         </div>
+        )}
 
         {/* Tabs Section */}
         {availableTabs.length > 0 && (
@@ -672,5 +738,159 @@ export default function StageDetailPanel({
         </Modal>
       </div>
     </div>
+  );
+}
+
+/** Initials-only avatar — neutral colored circle keyed off the
+ *  signer's name so two signers don't end up looking identical. */
+function SignerAvatar({ name }: { name: string }) {
+  const initials = name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("");
+  // Tiny string hash → one of a fixed palette. Stable per name, so a
+  // single user keeps the same colour across the panel.
+  const palette = [
+    "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
+    "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
+    "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
+    "bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300",
+    "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300",
+    "bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300",
+  ];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) | 0;
+  const tone = palette[Math.abs(hash) % palette.length];
+  return (
+    <div
+      className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0 ${tone}`}
+      aria-hidden="true"
+    >
+      {initials || "?"}
+    </div>
+  );
+}
+
+/** Dot + label status for a row. Mirrors the four signoff states and
+ *  the "not submitted yet" default — same colour vocabulary as the
+ *  header summary chip so the user reads them together. */
+function SignoffStatusIndicator({
+  status,
+  t,
+}: {
+  status: "pending" | "signed" | "rejected" | undefined;
+  t: (key: string) => string;
+}) {
+  const map = {
+    signed: {
+      dot: "bg-green-500",
+      label: "text-green-700 dark:text-green-400",
+      key: "signoffStatus.signed",
+    },
+    rejected: {
+      dot: "bg-red-500",
+      label: "text-red-700 dark:text-red-400",
+      key: "signoffStatus.rejected",
+    },
+    pending: {
+      dot: "bg-amber-500",
+      label: "text-amber-700 dark:text-amber-400",
+      key: "signoffStatus.pending",
+    },
+    undefined: {
+      dot: "bg-gray-300 dark:bg-gray-600",
+      label: "text-gray-500 dark:text-gray-400",
+      key: "notSubmitted",
+    },
+  } as const;
+  const entry = map[status ?? "undefined"];
+  return (
+    <span className="inline-flex items-center gap-1.5 text-xs font-medium">
+      <span
+        className={`w-2 h-2 rounded-full ${entry.dot}`}
+        aria-hidden="true"
+      />
+      <span className={entry.label}>{t(entry.key)}</span>
+    </span>
+  );
+}
+
+interface SignoffSummary {
+  total: number;
+  pending: number;
+  signed: number;
+  rejected: number;
+  tone: "rejected" | "pending" | "signed" | "neutral";
+}
+
+interface SignoffSummaryChipProps {
+  summary: SignoffSummary;
+  expanded: boolean;
+  onToggle: () => void;
+  /** Translator scoped to the `signoffs` namespace — chip strings sit
+   *  under that bucket alongside the rest of the signoff copy. */
+  t: (key: string, values?: Record<string, number | string>) => string;
+  loading: boolean;
+}
+
+/** Header-level summary of the sign-off list. Click to expand the
+ *  full list below. Colour signals the most-actionable state so the
+ *  user notices a pending request even when collapsed. */
+function SignoffSummaryChip({
+  summary,
+  expanded,
+  onToggle,
+  t,
+  loading,
+}: SignoffSummaryChipProps) {
+  if (loading) {
+    return (
+      <div className="h-8 w-32 rounded-full bg-gray-100 dark:bg-gray-800 animate-pulse flex-shrink-0" />
+    );
+  }
+
+  const { total, pending, signed, rejected, tone } = summary;
+
+  const toneClasses: Record<SignoffSummary["tone"], string> = {
+    rejected:
+      "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800 hover:bg-red-200 dark:hover:bg-red-900/40",
+    pending:
+      "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800 hover:bg-amber-200 dark:hover:bg-amber-900/40",
+    signed:
+      "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800 hover:bg-green-200 dark:hover:bg-green-900/40",
+    neutral:
+      "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:bg-gray-200 dark:hover:bg-gray-700",
+  };
+
+  let label: string;
+  if (total === 0) {
+    label = t("summaryNoSigners");
+  } else if (rejected > 0) {
+    label = t("summaryRejected", { count: rejected });
+  } else if (pending > 0) {
+    label = t("summaryAwaiting", { count: pending });
+  } else if (signed === total) {
+    label = t("summaryAllSigned", { count: total });
+  } else {
+    label = t("summarySigners", { count: total });
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-medium transition-colors flex-shrink-0 ${toneClasses[tone]}`}
+      aria-expanded={expanded}
+    >
+      <span>{label}</span>
+      <ChevronDownIcon
+        className={`w-3.5 h-3.5 transition-transform ${
+          expanded ? "rotate-180" : ""
+        }`}
+        aria-hidden="true"
+      />
+    </button>
   );
 }

@@ -16,4 +16,5 @@ export { default as RejectSignoffModal } from "./RejectSignoffModal";
 
 // Release Forms
 export { default as ReleaseFormsList } from "./ReleaseFormsList";
+export { default as ReleaseFormsBadge } from "./ReleaseFormsBadge";
 export { default as CreateReleaseFormModal } from "./CreateReleaseFormModal";

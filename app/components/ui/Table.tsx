@@ -58,7 +58,7 @@ export default function Table<T>({
           {label}
         </label>
       )}
-      <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+      <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-x-auto">
         <table className="w-full" style={{ minWidth }}>
           <thead className="bg-gray-50 dark:bg-gray-700/50">
             <tr>

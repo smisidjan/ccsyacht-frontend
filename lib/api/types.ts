@@ -511,6 +511,11 @@ export interface DocumentType {
   name: string;
   isRequired: boolean;
   isLocked: boolean;
+  /** Document types backed by a server-side feature (e.g. release forms
+   *  generated from stage data). Locked + uploads via the manual
+   *  POST endpoint are rejected with 422. Hide them from the upload-type
+   *  picker — content for these types is created elsewhere in the UI. */
+  isSystemManaged: boolean;
   documentCount: number;
   dateCreated: string;
   dateModified: string;
@@ -1325,6 +1330,11 @@ export interface DocumentTypeTemplate {
   isRequired: boolean;
   isLocked: boolean;
   isActive: boolean;
+  /** Same flag the per-project DocumentType carries — when true the
+   *  backend forbids manual document uploads (422), and consumers
+   *  hide the upload/request UI. Settable from the system-admin
+   *  template editor. */
+  isSystemManaged: boolean;
   canDelete: boolean;
   dateCreated: string;
   dateModified: string;
@@ -1333,6 +1343,8 @@ export interface DocumentTypeTemplate {
 export interface CreateDocumentTypeTemplateRequest {
   name: string;
   is_required?: boolean;
+  is_locked?: boolean;
+  is_system_managed?: boolean;
   sort_order?: number;
   is_active?: boolean;
 }
@@ -1340,6 +1352,8 @@ export interface CreateDocumentTypeTemplateRequest {
 export interface UpdateDocumentTypeTemplateRequest {
   name?: string;
   is_required?: boolean;
+  is_locked?: boolean;
+  is_system_managed?: boolean;
   sort_order?: number;
   is_active?: boolean;
 }

@@ -56,6 +56,7 @@ export default function TenantTemplatesTab({ tenantId }: TenantTemplatesTabProps
   const [docTypeName, setDocTypeName] = useState("");
   const [docTypeIsRequired, setDocTypeIsRequired] = useState(false);
   const [docTypeIsLocked, setDocTypeIsLocked] = useState(false);
+  const [docTypeIsSystemManaged, setDocTypeIsSystemManaged] = useState(false);
   const [docTypeIsActive, setDocTypeIsActive] = useState(true);
 
   // Kickoff Documents state
@@ -203,6 +204,7 @@ export default function TenantTemplatesTab({ tenantId }: TenantTemplatesTabProps
         name: docTypeName,
         is_required: docTypeIsRequired,
         is_locked: docTypeIsLocked,
+        is_system_managed: docTypeIsSystemManaged,
         is_active: docTypeIsActive,
       };
       if (template) {
@@ -216,12 +218,18 @@ export default function TenantTemplatesTab({ tenantId }: TenantTemplatesTabProps
       setDocTypeName("");
       setDocTypeIsRequired(false);
       setDocTypeIsLocked(false);
+      setDocTypeIsSystemManaged(false);
       setDocTypeIsActive(true);
     },
     populateForm: (template) => {
       setDocTypeName(template.name);
       setDocTypeIsRequired(template.isRequired);
       setDocTypeIsLocked(template.isLocked);
+      // Coalesce — backend may omit the new field on existing rows
+      // until it's been backfilled, and an `undefined` here would
+      // flip the checkbox from uncontrolled to controlled on first
+      // click and trigger a React warning.
+      setDocTypeIsSystemManaged(template.isSystemManaged ?? false);
       setDocTypeIsActive(template.isActive);
     },
     successMessages: {
@@ -426,6 +434,15 @@ export default function TenantTemplatesTab({ tenantId }: TenantTemplatesTabProps
       ),
     },
     {
+      key: "systemManaged",
+      header: t("systemManaged"),
+      cell: (docType: DocumentTypeTemplate) => (
+        <span className="text-gray-500 dark:text-gray-400">
+          {docType.isSystemManaged ? "Yes" : "No"}
+        </span>
+      ),
+    },
+    {
       key: "active",
       header: t("active"),
       cell: (docType: DocumentTypeTemplate) => (
@@ -622,16 +639,19 @@ export default function TenantTemplatesTab({ tenantId }: TenantTemplatesTabProps
                 name={docTypeName}
                 isRequired={docTypeIsRequired}
                 isLocked={docTypeIsLocked}
+                isSystemManaged={docTypeIsSystemManaged}
                 isActive={docTypeIsActive}
                 onNameChange={setDocTypeName}
                 onIsRequiredChange={setDocTypeIsRequired}
                 onIsLockedChange={setDocTypeIsLocked}
+                onIsSystemManagedChange={setDocTypeIsSystemManaged}
                 onIsActiveChange={setDocTypeIsActive}
                 translations={{
                   name: t("name"),
                   namePlaceholder: "Enter document type name",
                   required: t("required"),
                   locked: t("locked"),
+                  systemManaged: t("systemManaged"),
                   active: t("active"),
                 }}
               />

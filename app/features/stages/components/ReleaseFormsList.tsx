@@ -357,18 +357,6 @@ export default function ReleaseFormsList({
                 {t("releaseFormsNoContent")}
               </p>
             )}
-            {viewForm.hasFile && (
-              <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => handleDownload(viewForm)}
-                >
-                  <ArrowDownTrayIcon className="w-4 h-4" />
-                  {t("releaseFormsDownload")}
-                </Button>
-              </div>
-            )}
           </div>
         )}
       </Modal>

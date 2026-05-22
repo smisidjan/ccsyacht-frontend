@@ -12,7 +12,7 @@ import {
 } from "@heroicons/react/24/outline";
 import Button from "@/app/components/ui/Button";
 import Alert from "@/app/components/ui/Alert";
-import { CreateStagesModal, StageTimeline } from "@/app/features/stages";
+import { CreateStagesModal, ReleaseFormsBadge, StageTimeline } from "@/app/features/stages";
 import { OpenPunchlistBadge } from "@/app/features/punchlist";
 import { AreaGAPreview } from "@/app/features/ga/components/shared";
 import DefineAreaModal from "@/app/features/areas/components/DefineAreaModal";
@@ -165,27 +165,31 @@ export default function AreaDetailPage() {
                   </span>
                 </div>
               )}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="flex items-center gap-4 px-5 py-4 rounded-lg bg-gray-50 dark:bg-gray-900/40 border border-gray-200 dark:border-gray-700">
                   <ProgressCircle percentage={progress} size={88} strokeWidth={8} />
                   <div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">
-                      {t("progress")}
-                    </p>
                     <p className="text-2xl font-bold text-gray-900 dark:text-white leading-none">
                       {completedStages}/{totalStages}
                     </p>
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      {t("completed")}
+                      {t("stagesCompleted")}
                     </p>
                   </div>
                 </div>
                 {activeStage && (
-                  <OpenPunchlistBadge
-                    projectId={projectId}
-                    stageId={activeStage.identifier}
-                    refreshTrigger={punchlistVersion}
-                  />
+                  <>
+                    <OpenPunchlistBadge
+                      projectId={projectId}
+                      stageId={activeStage.identifier}
+                      refreshTrigger={punchlistVersion}
+                    />
+                    <ReleaseFormsBadge
+                      projectId={projectId}
+                      stageId={activeStage.identifier}
+                      refreshTrigger={punchlistVersion}
+                    />
+                  </>
                 )}
               </div>
             </div>

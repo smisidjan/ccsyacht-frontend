@@ -34,8 +34,46 @@ export default function DocumentTypeSidebar({
   const t = useTranslations("projectDetail.documents");
   const tDocTypes = useTranslations("documentTypes");
 
+  const renderTypeRow = (type: DocumentType) => {
+    const menuItems = getMenuItems(type);
+    const isSelected = selectedTypeId === type.identifier;
+
+    return (
+      <div
+        key={type.identifier}
+        className={`flex items-center justify-between transition-colors ${
+          isSelected
+            ? "bg-blue-600 text-white"
+            : "hover:bg-gray-50 dark:hover:bg-gray-700/50 text-gray-900 dark:text-white"
+        }`}
+      >
+        <button
+          onClick={() => onSelectType(type.identifier)}
+          className="flex-1 flex items-center justify-between p-3 lg:p-4 text-left gap-2"
+        >
+          <div className="flex items-center gap-2 lg:gap-3 flex-1 min-w-0">
+            <FolderIcon className="w-4 h-4 lg:w-5 lg:h-5 flex-shrink-0" />
+            <span className="font-medium text-sm lg:text-base break-words">{type.name}</span>
+          </div>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <DocumentTypeBadge type={type} isSelected={isSelected} t={t} />
+            <ChevronRightIcon className="w-4 h-4 lg:hidden text-gray-400" />
+          </div>
+        </button>
+        {menuItems.length > 0 && (
+          <div
+            className="pr-2 hidden lg:block"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <DropdownMenu items={menuItems} />
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
-    <div className={`${showMobileDetail ? "hidden" : "block"} lg:block w-full lg:w-80 xl:w-96 flex-shrink-0`}>
+    <div className={`${showMobileDetail ? "hidden" : "block"} lg:block w-full lg:w-64 xl:w-72 flex-shrink-0`}>
       <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-lg flex flex-col max-h-[60vh] lg:max-h-[calc(100vh-240px)]">
         {/* Header */}
         <div className="p-3 lg:p-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
@@ -56,45 +94,25 @@ export default function DocumentTypeSidebar({
           </div>
         </div>
 
-        {/* Document Types List */}
+        {/* Document Types List — split into user-managed types up
+            top, then a "generated from system" group below for types
+            populated by another part of the product (release forms,
+            etc.). Same renderer for both groups. */}
         <div className="overflow-y-auto overflow-x-visible">
-          {documentTypes.map((type) => {
-            const menuItems = getMenuItems(type);
-            const isSelected = selectedTypeId === type.identifier;
+          {documentTypes
+            .filter((type) => !type.isSystemManaged)
+            .map((type) => renderTypeRow(type))}
 
-            return (
-              <div
-                key={type.identifier}
-                className={`flex items-center justify-between transition-colors ${
-                  isSelected
-                    ? "bg-blue-600 text-white"
-                    : "hover:bg-gray-50 dark:hover:bg-gray-700/50 text-gray-900 dark:text-white"
-                }`}
-              >
-                <button
-                  onClick={() => onSelectType(type.identifier)}
-                  className="flex-1 flex items-center justify-between p-3 lg:p-4 text-left gap-2"
-                >
-                  <div className="flex items-center gap-2 lg:gap-3 flex-1 min-w-0">
-                    <FolderIcon className="w-4 h-4 lg:w-5 lg:h-5 flex-shrink-0" />
-                    <span className="font-medium text-sm lg:text-base truncate">{type.name}</span>
-                  </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <DocumentTypeBadge type={type} isSelected={isSelected} t={t} />
-                    <ChevronRightIcon className="w-4 h-4 lg:hidden text-gray-400" />
-                  </div>
-                </button>
-                {menuItems.length > 0 && (
-                  <div
-                    className="pr-2 hidden lg:block"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <DropdownMenu items={menuItems} />
-                  </div>
-                )}
+          {documentTypes.some((type) => type.isSystemManaged) && (
+            <>
+              <div className="px-3 lg:px-4 pt-3 pb-1 text-[10px] lg:text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500 border-t border-gray-100 dark:border-gray-700">
+                {t("documentTypesGeneratedFromSystem")}
               </div>
-            );
-          })}
+              {documentTypes
+                .filter((type) => type.isSystemManaged)
+                .map((type) => renderTypeRow(type))}
+            </>
+          )}
         </div>
       </div>
     </div>
