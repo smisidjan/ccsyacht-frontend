@@ -5,11 +5,8 @@ import { useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
 import {
   DocumentTextIcon,
-  PencilIcon,
-  TrashIcon,
   PaperClipIcon,
   UserCircleIcon,
-  ArrowTopRightOnSquareIcon,
   ArrowLeftIcon,
 } from "@heroicons/react/24/outline";
 import { useGAPins } from "@/lib/api/ga-pins";
@@ -32,8 +29,76 @@ import Alert from "@/app/components/ui/Alert";
 import Tooltip from "@/app/components/ui/Tooltip";
 import AuthenticatedImage from "@/app/components/ui/AuthenticatedImage";
 import { CreateGAPinModal, GALeafletViewer } from "@/app/features/ga";
-import ConfirmModal from "@/app/components/modals/ConfirmModal";
-import type { GAPin, StageStatus, PunchlistItemStatus, GeneralArrangement, Deck, Area } from "@/lib/api/types";
+import {
+  PunchlistItemRow,
+  PunchlistItemCard,
+  CancelPunchlistItemModal,
+} from "@/app/features/punchlist";
+import PunchlistFilterPopover, {
+  EMPTY_FILTERS,
+  applyPunchlistFilters,
+  type PunchlistFilters,
+} from "@/app/features/punchlist/components/PunchlistFilterPopover";
+import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
+import type {
+  GAPin,
+  PunchlistItem,
+  PunchlistItemPriority,
+  PunchlistItemStatus,
+  StageStatus,
+  GeneralArrangement,
+  Deck,
+  Area,
+} from "@/lib/api/types";
+
+/** Project the GA pin's embedded punchlistItem onto the
+ *  `PunchlistItem` shape the shared row + dropdowns expect. The
+ *  embedded version omits a few fields (`assignees[].email`,
+ *  `actionStatus`, `dateModified`), so we fill in sensible blanks —
+ *  none of them are rendered as primary content in the row. */
+function pinToPunchlistItem(pin: GAPin): PunchlistItem | null {
+  if (!pin.punchlistItem) return null;
+  const dueDate = pin.punchlistItem.dueDate ?? undefined;
+  const isOverdue =
+    !!dueDate &&
+    new Date(dueDate) < new Date() &&
+    pin.punchlistItem.status !== "done" &&
+    pin.punchlistItem.status !== "cancelled";
+  return {
+    identifier: pin.punchlistItem.identifier,
+    name: pin.punchlistItem.name,
+    description: pin.punchlistItem.description ?? undefined,
+    actionStatus: "",
+    status: pin.punchlistItem.status,
+    priority: pin.punchlistItem.priority,
+    dueDate,
+    isOverdue,
+    stage: {
+      identifier: pin.stage.identifier,
+      name: pin.stage.name,
+      area: {
+        identifier: pin.area.identifier,
+        name: pin.area.name,
+        deck: pin.deck
+          ? { identifier: pin.deck.identifier, name: pin.deck.name }
+          : undefined,
+      },
+    },
+    creator: {
+      identifier: pin.creator.identifier,
+      name: pin.creator.name,
+    },
+    assignees: pin.punchlistItem.assignees.map((a) => ({
+      identifier: a.identifier,
+      name: a.name,
+      email: "",
+      assignedAt: "",
+    })),
+    attachmentCount: pin.punchlistItem.attachmentCount,
+    dateCreated: pin.punchlistItem.dateCreated,
+    dateModified: pin.punchlistItem.dateCreated,
+  };
+}
 
 interface GeneralArrangementTabProps {
   projectId: string;
@@ -178,23 +243,27 @@ export default function GeneralArrangementTab({
   // stage. Off by default — opt-in visualization.
   const [showActiveStages, setShowActiveStages] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedPin, setSelectedPin] = useState<GAPin | null>(null);
-  const [pinToDelete, setPinToDelete] = useState<string | null>(null);
   const [newPinPosition, setNewPinPosition] = useState<{ x: number; y: number } | null>(null);
   const [clickedDeck, setClickedDeck] = useState<Deck | null>(null);
   const [clickedArea, setClickedArea] = useState<Area | null>(null);
   const [hoveredPinId, setHoveredPinId] = useState<string | null>(null);
   const [selectedPinDetail, setSelectedPinDetail] = useState<GAPin | null>(null);
+  // Cancel-reason modal target — same pattern as the stage punchlist
+  // list. Row dropdown signals intent here, modal collects the reason.
+  const [cancelTarget, setCancelTarget] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
 
-  // Filter state
-  const [selectedDeckFilter, setSelectedDeckFilter] = useState<string | null>(null);
-  const [selectedAreaFilter, setSelectedAreaFilter] = useState<string | null>(null);
-  const [selectedStageFilter, setSelectedStageFilter] = useState<string | null>(null);
-  const [selectedStatusFilter, setSelectedStatusFilter] = useState<string | null>(null);
+  // Filter state — same shared shape as the punchlist tabs so the
+  // GA pin list filters by status / assignee / priority / deck /
+  // area / stage through one popover instead of four selects.
+  const [filters, setFilters] = useState<PunchlistFilters>(EMPTY_FILTERS);
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Fetch pins and filter data
-  const { data: allPins, loading: rawLoading, deletePin, refetch } = useGAPins(projectId);
+  const { data: allPins, loading: rawLoading, refetch } = useGAPins(projectId);
   const { data: decks } = useDecks(projectId);
   const { data: areas } = useAreas(projectId, undefined);
   const { data: stages } = useProjectStages(projectId);
@@ -276,35 +345,139 @@ export default function GeneralArrangementTab({
     return out;
   }, [stages]);
 
-  // Filter pins based on selected filters. The status filter targets
-  // the linked punchlist item's status (what the user is actually
-  // triaging), not the parent stage's status.
-  const displayedPins = allPins.filter((pin) => {
-    if (selectedDeckFilter && pin.deck.identifier !== selectedDeckFilter) return false;
-    if (selectedAreaFilter && pin.area.identifier !== selectedAreaFilter) return false;
-    if (selectedStageFilter && pin.stage.name !== selectedStageFilter) return false;
-    if (selectedStatusFilter && pin.punchlistItem?.status !== selectedStatusFilter) return false;
-    return true;
-  });
+  // Pair every pin with the synthetic `PunchlistItem` shape the
+  // shared filter helper understands. Pins without a linked punchlist
+  // get a `null` synthetic and pass through unfiltered on the
+  // punchlist axes — they only respect deck / area / stage matches.
+  const pinsWithSynthetic = useMemo(
+    () =>
+      allPins.map((pin) => ({
+        pin,
+        item: pinToPunchlistItem(pin),
+      })),
+    [allPins]
+  );
 
-  // Handle pin deletion
-  const handleDeletePin = useCallback((pinId: string) => {
-    setPinToDelete(pinId);
-    setIsDeleteModalOpen(true);
-  }, []);
+  // Drive the GA pin list through the same filter helper as the
+  // punchlist tabs. Pins are mapped to their synthetic
+  // `PunchlistItem`; pins without one fall back to a manual location
+  // check so they keep showing when no other axis is active.
+  const displayedPins = useMemo(() => {
+    const itemsForOptions = pinsWithSynthetic
+      .map((p) => p.item)
+      .filter((i): i is NonNullable<typeof i> => i !== null);
+    const matched = new Set(
+      applyPunchlistFilters(itemsForOptions, searchQuery, filters).map(
+        (i) => i.identifier
+      )
+    );
+    const anyFilter =
+      searchQuery.trim().length > 0 ||
+      filters.statuses.length > 0 ||
+      filters.assigneeIds.length > 0 ||
+      filters.priorities.length > 0 ||
+      filters.deckIds.length > 0 ||
+      filters.areaIds.length > 0 ||
+      filters.stageIds.length > 0;
+    return pinsWithSynthetic
+      .filter(({ pin, item }) => {
+        if (item) return matched.has(item.identifier);
+        // No linked punchlist item — only location filters apply.
+        if (filters.deckIds.length > 0 && !filters.deckIds.includes(pin.deck.identifier))
+          return false;
+        if (filters.areaIds.length > 0 && !filters.areaIds.includes(pin.area.identifier))
+          return false;
+        if (filters.stageIds.length > 0 && !filters.stageIds.includes(pin.stage.identifier))
+          return false;
+        // Status / assignee / priority / search wipe these pins out
+        // entirely since they're orthogonal to GA-only markers.
+        if (
+          filters.statuses.length > 0 ||
+          filters.assigneeIds.length > 0 ||
+          filters.priorities.length > 0 ||
+          searchQuery.trim().length > 0
+        )
+          return false;
+        return anyFilter ? true : true;
+      })
+      .map(({ pin }) => pin);
+  }, [pinsWithSynthetic, searchQuery, filters]);
 
-  const confirmDeletePin = useCallback(async () => {
-    if (!pinToDelete) return;
-    try {
-      await deletePin(pinToDelete);
-      showToast("success", tPins("deleteSuccess"));
-    } catch (err) {
-      handleError(err, { showToast, fallbackMessage: tPins("deleteError") });
-    } finally {
-      setPinToDelete(null);
-      setIsDeleteModalOpen(false);
-    }
-  }, [pinToDelete, deletePin, showToast, tPins]);
+  const filterSourceItems = useMemo(
+    () =>
+      pinsWithSynthetic
+        .map((p) => p.item)
+        .filter((i): i is NonNullable<typeof i> => i !== null),
+    [pinsWithSynthetic]
+  );
+
+
+  // Row mutation handlers — mirror the stage/project punchlist
+  // tabs so editing from this surface stays consistent. Each one
+  // hits the same backend endpoints and triggers a pins refetch so
+  // the linked `punchlistItem` snapshot in the row updates too.
+  const handleRowStatusChange = useCallback(
+    async (itemId: string, status: PunchlistItemStatus) => {
+      try {
+        await punchlistItemsApi.updateStatus(projectId, itemId, { status });
+        showToast("success", tPunchlist("updateSuccess"));
+        refetch();
+      } catch (err) {
+        handleError(err, {
+          showToast,
+          fallbackMessage: tPunchlist("updateError"),
+        });
+      }
+    },
+    [projectId, refetch, showToast, tPunchlist]
+  );
+
+  const handleRowPriorityChange = useCallback(
+    async (itemId: string, priority: PunchlistItemPriority) => {
+      try {
+        await punchlistItemsApi.update(projectId, itemId, { priority });
+        showToast(
+          "success",
+          tPunchlist("priorityUpdated", {
+            priority: tPunchlist(
+              `priority${priority.charAt(0).toUpperCase()}${priority.slice(1)}`
+            ),
+          })
+        );
+        refetch();
+      } catch (err) {
+        handleError(err, {
+          showToast,
+          fallbackMessage: tPunchlist("updateError"),
+        });
+      }
+    },
+    [projectId, refetch, showToast, tPunchlist]
+  );
+
+  const handleRowCancel = useCallback(
+    async (reason: string) => {
+      if (!cancelTarget) return;
+      try {
+        await punchlistItemsApi.updateStatus(projectId, cancelTarget.id, {
+          status: "cancelled",
+          reason,
+        });
+        showToast("success", tPunchlist("cancelSuccess"));
+        setCancelTarget(null);
+        refetch();
+      } catch (err) {
+        handleError(err, {
+          showToast,
+          fallbackMessage: tPunchlist("updateError"),
+        });
+        throw err;
+      }
+    },
+    [cancelTarget, projectId, refetch, showToast, tPunchlist]
+  );
+
+  const canEditPunchlistItems = hasPermission(PERMISSIONS.EDIT_STAGES);
 
   // Handle pin edit
   const handleEditPin = useCallback((pin: GAPin) => {
@@ -313,8 +486,11 @@ export default function GeneralArrangementTab({
     setIsCreateModalOpen(true);
   }, []);
 
-  // Loading state
-  if (loading) {
+  // Only swap to the skeleton on the very first load — refetches
+  // (after an attachment upload, pin edit, etc.) keep the rendered
+  // tab in place so the page doesn't jump while the request is in
+  // flight.
+  if (loading && allPins.length === 0) {
     return <LoadingSkeleton type="list" rows={5} />;
   }
 
@@ -350,74 +526,30 @@ export default function GeneralArrangementTab({
 
   return (
     <div className="space-y-8">
-      {/* Header with Controls */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          {/* Filter Dropdowns */}
-          {decks && decks.length > 0 && (
-            <select
-              value={selectedDeckFilter || "all"}
-              onChange={(e) => setSelectedDeckFilter(e.target.value === "all" ? null : e.target.value)}
-              className="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg text-sm text-gray-700 dark:text-gray-300"
-            >
-              <option value="all">{tPins("allDecks") || "All Decks"}</option>
-              {decks.map((deck) => (
-                <option key={deck.identifier} value={deck.identifier}>
-                  {deck.name}
-                </option>
-              ))}
-            </select>
-          )}
-
-          {areas && areas.length > 0 && (
-            <select
-              value={selectedAreaFilter || "all"}
-              onChange={(e) => setSelectedAreaFilter(e.target.value === "all" ? null : e.target.value)}
-              className="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg text-sm text-gray-700 dark:text-gray-300"
-            >
-              <option value="all">{tPins("allAreas") || "All Areas"}</option>
-              {areas.map((area) => (
-                <option key={area.identifier} value={area.identifier}>
-                  {area.name}
-                </option>
-              ))}
-            </select>
-          )}
-
-          {uniqueStageNames.length > 0 && (
-            <select
-              value={selectedStageFilter || "all"}
-              onChange={(e) => setSelectedStageFilter(e.target.value === "all" ? null : e.target.value)}
-              className="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg text-sm text-gray-700 dark:text-gray-300"
-            >
-              <option value="all">{tPins("allStages") || "All Stages"}</option>
-              {uniqueStageNames.map((name) => (
-                <option key={name} value={name}>
-                  {name}
-                </option>
-              ))}
-            </select>
-          )}
-
-          <select
-            value={selectedStatusFilter || "all"}
-            onChange={(e) => setSelectedStatusFilter(e.target.value === "all" ? null : e.target.value)}
-            className="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg text-sm text-gray-700 dark:text-gray-300"
-          >
-            <option value="all">{tPins("allStatuses")}</option>
-            <option value="open">{punchlistStatusLabel("open")}</option>
-            <option value="in_progress">{punchlistStatusLabel("in_progress")}</option>
-            <option value="next_step_release">{punchlistStatusLabel("next_step_release")}</option>
-            <option value="done">{punchlistStatusLabel("done")}</option>
-            <option value="cancelled">{punchlistStatusLabel("cancelled")}</option>
-          </select>
-
-          {displayedPins.length > 0 && (
-            <span className="text-sm text-gray-500 dark:text-gray-400">
-              {displayedPins.length} {tPins("pins")}
-            </span>
-          )}
+      {/* Toolbar — same search + filter popover as the punchlist
+          tabs. The popover sources its deck / area / stage options
+          from the synthetic items derived from the loaded pins. */}
+      <div className="flex items-center gap-3">
+        <div className="relative flex-1 max-w-sm">
+          <MagnifyingGlassIcon className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder={tPunchlist("searchPlaceholder")}
+            className="w-full pl-9 pr-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          />
         </div>
+        <PunchlistFilterPopover
+          items={filterSourceItems}
+          value={filters}
+          onChange={setFilters}
+        />
+        {displayedPins.length > 0 && (
+          <span className="text-sm text-gray-500 dark:text-gray-400 ml-auto">
+            {displayedPins.length} {tPins("pins")}
+          </span>
+        )}
       </div>
 
       {/* GA Image with Pins - Flex Layout */}
@@ -564,67 +696,81 @@ export default function GeneralArrangementTab({
                   {tPins("noPins")}
                 </p>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-gray-200 dark:border-gray-700">
-                        <th className="text-left py-2 px-2 font-medium text-gray-700 dark:text-gray-300">P</th>
-                        <th className="text-left py-2 px-2 font-medium text-gray-700 dark:text-gray-300">S</th>
-                        <th className="text-left py-2 px-2 font-medium text-gray-700 dark:text-gray-300">{tPins("pinTitle")}</th>
-                        <th className="text-left py-2 px-2 font-medium text-gray-700 dark:text-gray-300">{tPins("pinDescription")}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {displayedPins.map((pin) => (
-                        <tr
+                <div
+                  className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-md divide-y divide-gray-100 dark:divide-gray-700"
+                  onMouseLeave={() => setHoveredPinId(null)}
+                >
+                  {displayedPins.map((pin) => {
+                    const synthetic = pinToPunchlistItem(pin);
+                    // Pins without a linked punchlist item are rare —
+                    // surface a minimal row so they don't disappear.
+                    if (!synthetic) {
+                      return (
+                        <div
                           key={pin.identifier}
-                          className={`border-b border-gray-100 dark:border-gray-700 cursor-pointer transition-colors ${
-                            hoveredPinId === pin.identifier
-                              ? "bg-blue-50 dark:bg-blue-900/20"
-                              : "hover:bg-gray-50 dark:hover:bg-gray-700/50"
-                          }`}
+                          role="button"
+                          tabIndex={0}
                           onClick={() => setSelectedPinDetail(pin)}
                           onMouseEnter={() => setHoveredPinId(pin.identifier)}
-                          onMouseLeave={() => setHoveredPinId(null)}
+                          className={`flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-colors border-l-2 ${
+                            hoveredPinId === pin.identifier
+                              ? "bg-blue-50 dark:bg-blue-900/20 border-l-blue-500"
+                              : "border-l-transparent hover:bg-gray-50 dark:hover:bg-gray-700/40"
+                          }`}
                         >
-                          <td className="py-3 px-2">
-                            <div
-                              className="w-4 h-4 rounded-full border-2 border-white dark:border-gray-800"
-                              style={{ backgroundColor: pin.color || "#3B82F6" }}
-                            />
-                          </td>
-                          <td className="py-3 px-2">
-                            {getPunchlistStatusBadge(
-                              pin.punchlistItem?.status,
-                              pin.punchlistItem
-                                ? punchlistStatusLabel(pin.punchlistItem.status)
-                                : ""
-                            )}
-                          </td>
-                          <td className="py-3 px-2 font-medium text-gray-900 dark:text-white">
+                          <span
+                            className="w-2.5 h-2.5 rounded-full flex-shrink-0 border border-white dark:border-gray-800 shadow-sm"
+                            style={{ backgroundColor: pin.color || "#3B82F6" }}
+                            aria-hidden="true"
+                          />
+                          <span className="flex-1 min-w-0 text-sm font-medium text-gray-900 dark:text-white truncate">
                             {pin.label || tPins("unnamedPin")}
-                          </td>
-                          <td className="py-3 px-2">
-                            {pin.punchlistItem?.description ? (
-                              <Tooltip content={pin.punchlistItem.description} position="top">
-                                <span className="text-gray-600 dark:text-gray-400 truncate max-w-[150px] block">
-                                  {pin.punchlistItem.description}
-                                </span>
-                              </Tooltip>
-                            ) : (
-                              <span className="text-gray-600 dark:text-gray-400">-</span>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                          </span>
+                        </div>
+                      );
+                    }
+                    return (
+                      <div
+                        key={pin.identifier}
+                        onMouseEnter={() => setHoveredPinId(pin.identifier)}
+                      >
+                        <PunchlistItemRow
+                          item={synthetic}
+                          projectId={projectId}
+                          isSelected={false}
+                          canEdit={canEditPunchlistItems}
+                          stageColor={pin.color}
+                          onSelect={() => setSelectedPinDetail(pin)}
+                          onChangeStatus={(next) =>
+                            handleRowStatusChange(synthetic.identifier, next)
+                          }
+                          onChangePriority={(next) =>
+                            handleRowPriorityChange(
+                              synthetic.identifier,
+                              next
+                            )
+                          }
+                          onRequestCancel={() =>
+                            setCancelTarget({
+                              id: synthetic.identifier,
+                              name: synthetic.name,
+                            })
+                          }
+                          onAssigneesChange={() => refetch()}
+                        />
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </>
           ) : (
             <>
-              {/* Detail View */}
+              {/* Detail view — same shared `PunchlistItemCard` as the
+                  stage / project punchlist tabs. Deck / Area / Stage
+                  show up under Details because we pass `showLocation`.
+                  Pin-specific actions (Go to stage / Edit / Delete pin)
+                  sit below since the punchlist card doesn't own them. */}
               <div className="space-y-4">
                 <button
                   onClick={() => setSelectedPinDetail(null)}
@@ -634,92 +780,35 @@ export default function GeneralArrangementTab({
                   {tCommon("back")}
                 </button>
 
-                <div className="space-y-4">
-                  <div className="flex items-start gap-3">
-                    <div
-                      className="w-6 h-6 rounded-full flex-shrink-0 mt-0.5"
-                      style={{ backgroundColor: selectedPinDetail.color || "#3B82F6" }}
+                {(() => {
+                  const synthetic = pinToPunchlistItem(selectedPinDetail);
+                  if (!synthetic) {
+                    return (
+                      <p className="text-sm italic text-gray-500 dark:text-gray-400">
+                        {tPins("unnamedPin")}
+                      </p>
+                    );
+                  }
+                  return (
+                    <PunchlistItemCard
+                      key={synthetic.identifier}
+                      item={synthetic}
+                      projectId={projectId}
+                      showLocation
+                      onUpdate={refetch}
+                      onGoToStage={() =>
+                        router.push(
+                          `/dashboard/projects/${projectId}/areas/${selectedPinDetail.area.identifier}?stage=${selectedPinDetail.stage.identifier}`
+                        )
+                      }
+                      onEditPinLocation={
+                        canEdit
+                          ? () => handleEditPin(selectedPinDetail)
+                          : undefined
+                      }
                     />
-                    <div className="flex-1">
-                      <h4 className="font-semibold text-gray-900 dark:text-white text-lg">
-                        {selectedPinDetail.label || tPins("unnamedPin")}
-                      </h4>
-                      <div className="mt-1">
-                        {getPunchlistStatusBadge(
-                          selectedPinDetail.punchlistItem?.status,
-                          selectedPinDetail.punchlistItem
-                            ? punchlistStatusLabel(
-                                selectedPinDetail.punchlistItem.status
-                              )
-                            : ""
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2 text-sm border-t border-gray-200 dark:border-gray-700 pt-4">
-                    <div>
-                      <span className="text-gray-500 dark:text-gray-400">Deck: </span>
-                      <span className="text-gray-900 dark:text-white font-medium">{selectedPinDetail.deck.name}</span>
-                    </div>
-                    <div>
-                      <span className="text-gray-500 dark:text-gray-400">Area: </span>
-                      <span className="text-gray-900 dark:text-white font-medium">{selectedPinDetail.area.name}</span>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-gray-500 dark:text-gray-400">Stage: </span>
-                      <span className="text-gray-900 dark:text-white font-medium">{selectedPinDetail.stage.name}</span>
-                      {getStageStatusBadge(selectedPinDetail.stage.status)}
-                    </div>
-                  </div>
-
-                  <div className="space-y-2 text-sm border-t border-gray-200 dark:border-gray-700 pt-4">
-                    <div>
-                      <span className="text-gray-500 dark:text-gray-400">{tPins("createdBy")}: </span>
-                      <span className="text-gray-900 dark:text-white">{selectedPinDetail.creator.name}</span>
-                    </div>
-                    <div>
-                      <span className="text-gray-500 dark:text-gray-400">{tPins("dateCreated")}: </span>
-                      <span className="text-gray-900 dark:text-white">
-                        {new Date(selectedPinDetail.dateCreated).toLocaleDateString()} {new Date(selectedPinDetail.dateCreated).toLocaleTimeString()}
-                      </span>
-                    </div>
-                  </div>
-
-                  <PinDetailExtras
-                    pin={selectedPinDetail}
-                    projectId={projectId}
-                    tPunchlist={tPunchlist}
-                  />
-
-                  <div className="flex flex-wrap gap-2 border-t border-gray-200 dark:border-gray-700 pt-4">
-                    <button
-                      onClick={() => router.push(`/dashboard/projects/${projectId}/areas/${selectedPinDetail.area.identifier}?stage=${selectedPinDetail.stage.identifier}`)}
-                      className="flex items-center gap-2 px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                    >
-                      <ArrowTopRightOnSquareIcon className="w-4 h-4" />
-                      {tPins("goToStage")}
-                    </button>
-                    {canEdit && (
-                      <>
-                        <button
-                          onClick={() => handleEditPin(selectedPinDetail)}
-                          className="flex items-center gap-2 px-3 py-2 text-sm bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
-                        >
-                          <PencilIcon className="w-4 h-4" />
-                          {tPins("editPin")}
-                        </button>
-                        <button
-                          onClick={() => handleDeletePin(selectedPinDetail.identifier)}
-                          className="flex items-center gap-2 px-3 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-                        >
-                          <TrashIcon className="w-4 h-4" />
-                          {tPins("deletePin")}
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </div>
+                  );
+                })()}
               </div>
             </>
           )}
@@ -747,19 +836,14 @@ export default function GeneralArrangementTab({
         initialArea={clickedArea}
       />
 
-      {/* Delete Confirmation Modal */}
-      <ConfirmModal
-        isOpen={isDeleteModalOpen}
-        onClose={() => {
-          setIsDeleteModalOpen(false);
-          setPinToDelete(null);
-        }}
-        onConfirm={confirmDeletePin}
-        title={tPins("deletePin")}
-        message={tPins("confirmDelete")}
-        confirmLabel={tCommon("delete")}
-        cancelLabel={tCommon("cancel")}
-        confirmVariant="danger"
+      {/* Cancel-reason modal triggered from the row's status dropdown
+          when the user picks "Cancelled". Sits alongside the existing
+          pin-delete confirmation. */}
+      <CancelPunchlistItemModal
+        isOpen={!!cancelTarget}
+        onClose={() => setCancelTarget(null)}
+        onConfirm={handleRowCancel}
+        itemName={cancelTarget?.name ?? ""}
       />
 
     </div>

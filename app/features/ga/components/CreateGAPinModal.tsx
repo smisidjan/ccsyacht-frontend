@@ -267,6 +267,88 @@ export default function CreateGAPinModal({
     setY(newY);
   };
 
+  // Edit mode collapses the whole right-column form into a compact
+  // location breadcrumb and gives the full body to the GA viewer.
+  // The pin can be dragged inside the area polygon. Deck / area /
+  // stage stay read-only — those identities are part of what the
+  // pin IS; moving it across decks is "create a new pin", not edit.
+  const editAreaPolygon =
+    initialData?.area && areas
+      ? areas.find((a) => a.identifier === initialData.area.identifier)?.polygon
+      : undefined;
+
+  if (isEditing && initialData) {
+    const deckName = initialData.deck.name;
+    const areaName = initialData.area.name;
+    const stageName = initialData.stage.name;
+    return (
+      <BaseModal
+        isOpen={isOpen}
+        onClose={onClose}
+        title={t("editPin")}
+        formId="ga-pin-form"
+        onSubmit={handleSubmit}
+        successMessage={t("updateSuccess")}
+        errorFallbackMessage={t("updateError")}
+        onSuccessCallback={onSuccess}
+        size="2xl"
+      >
+        <div className="space-y-4">
+          {/* Compact location breadcrumb */}
+          <div className="flex items-center flex-wrap gap-2 px-4 py-2.5 rounded-lg bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-700 text-sm">
+            <span className="text-gray-900 dark:text-gray-100">
+              {deckName}
+            </span>
+            <span className="text-gray-400 dark:text-gray-500">/</span>
+            <span className="text-gray-900 dark:text-gray-100">
+              {areaName}
+            </span>
+            <span className="text-gray-400 dark:text-gray-500">/</span>
+            {color && (
+              <span
+                className="inline-block w-3 h-3 rounded-sm border border-gray-200 dark:border-gray-600 flex-shrink-0"
+                style={{ backgroundColor: color }}
+                aria-hidden="true"
+              />
+            )}
+            <span className="text-gray-900 dark:text-gray-100 font-medium">
+              {stageName}
+            </span>
+          </div>
+
+          {/* GA viewer — zoomed on the deck, area polygon highlighted,
+              pin draggable but constrained to the area's polygon. */}
+          {showGAPreview ? (
+            <div className="h-[520px]">
+              <GAPreview
+                imageUrl={gaImageUrl}
+                imageWidth={gaImageWidth}
+                imageHeight={gaImageHeight}
+                x={x}
+                y={y}
+                color={color}
+                onPositionChange={handlePositionChange}
+                initialDeck={
+                  decks?.find(
+                    (d) => d.identifier === initialData.deck.identifier
+                  ) ?? null
+                }
+                areas={areas ?? undefined}
+                selectedAreaId={initialData.area.identifier}
+                constrainPolygon={editAreaPolygon}
+                existingPins={existingPins}
+              />
+            </div>
+          ) : (
+            <div className="h-[200px] flex items-center justify-center text-sm text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-900/40 rounded-lg border border-dashed border-gray-300 dark:border-gray-600">
+              {t("noGAImage") || "GA image not available."}
+            </div>
+          )}
+        </div>
+      </BaseModal>
+    );
+  }
+
   return (
     <BaseModal
       isOpen={isOpen}

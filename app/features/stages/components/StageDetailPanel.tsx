@@ -2,7 +2,12 @@
 
 import { useMemo, useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
-import { PlusIcon, XMarkIcon, ChevronDownIcon } from "@heroicons/react/24/outline";
+import {
+  PlusIcon,
+  XMarkIcon,
+  ChevronDownIcon,
+  CheckIcon,
+} from "@heroicons/react/24/outline";
 import Button from "@/app/components/ui/Button";
 import Modal from "@/app/components/ui/Modal";
 import DeleteConfirmModal from "@/app/components/modals/DeleteConfirmModal";
@@ -344,14 +349,14 @@ export default function StageDetailPanel({
               {t("signoffs")}
             </h3>
             {canManageCustomSigners && (
-              <Button
-                variant="secondary"
-                size="sm"
+              <button
+                type="button"
                 onClick={() => setIsAddSignerModalOpen(true)}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 hover:border-gray-400 dark:hover:border-gray-500 transition-colors"
               >
-                <PlusIcon className="w-4 h-4" />
+                <PlusIcon className="w-3.5 h-3.5" />
                 {tSignoffs("addCustomSigner")}
-              </Button>
+              </button>
             )}
           </div>
           {(signoffsLoading || signersLoading || customSignersLoading) ? (
@@ -423,26 +428,34 @@ export default function StageDetailPanel({
                               />
                               {(canSign || canReject) && signoff && (
                                 <div className="flex items-center gap-1.5">
-                                  <Button
-                                    variant="success"
-                                    size="sm"
+                                  <button
+                                    type="button"
                                     onClick={() => {
                                       setSelectedSignoffId(signoff.identifier);
                                       setShowSignModal(true);
                                     }}
+                                    className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-green-700 dark:text-green-300 bg-white dark:bg-gray-800 border border-green-300 dark:border-green-700/60 rounded-md hover:bg-green-50 dark:hover:bg-green-900/30 hover:border-green-400 dark:hover:border-green-600 transition-colors"
                                   >
+                                    <CheckIcon
+                                      className="w-3.5 h-3.5"
+                                      aria-hidden="true"
+                                    />
                                     {tSignoffs("sign")}
-                                  </Button>
-                                  <Button
-                                    variant="danger"
-                                    size="sm"
+                                  </button>
+                                  <button
+                                    type="button"
                                     onClick={() => {
                                       setSelectedSignoffId(signoff.identifier);
                                       setShowRejectModal(true);
                                     }}
+                                    className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-red-700 dark:text-red-300 bg-white dark:bg-gray-800 border border-red-300 dark:border-red-700/60 rounded-md hover:bg-red-50 dark:hover:bg-red-900/30 hover:border-red-400 dark:hover:border-red-600 transition-colors"
                                   >
+                                    <XMarkIcon
+                                      className="w-3.5 h-3.5"
+                                      aria-hidden="true"
+                                    />
                                     {tSignoffs("reject")}
-                                  </Button>
+                                  </button>
                                 </div>
                               )}
                               {isCustom &&

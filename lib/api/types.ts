@@ -1111,6 +1111,10 @@ export interface LogbookFilters {
   to_date?: string;
   per_page?: number;
   page?: number;
+  /** Server-side filter on `metadata.item_id` so a single punchlist
+   *  item can pull its own history without paginating through the
+   *  whole project logbook. */
+  punchlist_item_id?: string;
 }
 
 // ============ Project Members & Signers ============

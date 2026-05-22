@@ -1,14 +1,24 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useTranslations } from "next-intl";
-import { PlusIcon, CheckCircleIcon, ClockIcon, ExclamationTriangleIcon, XCircleIcon } from "@heroicons/react/24/outline";
+import { PlusIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import Alert from "@/app/components/ui/Alert";
 import Tooltip from "@/app/components/ui/Tooltip";
 import LoadingSkeleton from "@/app/components/ui/LoadingSkeleton";
 import CreateGAPinModal from "@/app/features/ga/components/CreateGAPinModal";
 import PunchlistItemCard from "./PunchlistItemCard";
-import { usePunchlistItems } from "@/lib/api/punchlist-items";
+import PunchlistItemRow from "./PunchlistItemRow";
+import CancelPunchlistItemModal from "./CancelPunchlistItemModal";
+import PunchlistFilterPopover, {
+  EMPTY_FILTERS,
+  applyPunchlistFilters,
+  type PunchlistFilters,
+} from "./PunchlistFilterPopover";
+import { punchlistItemsApi, usePunchlistItems } from "@/lib/api/punchlist-items";
+import { useGAPins } from "@/lib/api/ga-pins";
+import { useToast } from "@/app/context/ToastContext";
+import { handleError } from "@/lib/utils/errors";
 import { useArea } from "@/lib/api/areas";
 import { useDecks } from "@/lib/api/decks";
 import { useProject } from "@/lib/api/hooks";
@@ -20,7 +30,13 @@ import {
 } from "@/app/features/ga/utils/helpers";
 import { usePermission } from "@/lib/hooks/usePermission";
 import { PERMISSIONS } from "@/lib/constants/permissions";
-import type { PunchlistItemStatus, Stage } from "@/lib/api/types";
+import type {
+  GAPin,
+  PunchlistItem,
+  PunchlistItemPriority,
+  PunchlistItemStatus,
+  Stage,
+} from "@/lib/api/types";
 
 interface PunchlistListProps {
   projectId: string;
@@ -44,18 +60,42 @@ export default function PunchlistList({ projectId, areaId, stage, onPunchlistCha
   const t = useTranslations("punchlist");
   const { hasPermission } = usePermission();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [statusFilter, setStatusFilter] = useState<"all" | PunchlistItemStatus>("all");
+  // Jira-style filters — all client-side against the loaded page so
+  // the user can combine status / assignee / priority in one popover
+  // instead of stepping through single-status tabs.
+  const [filters, setFilters] = useState<PunchlistFilters>(EMPTY_FILTERS);
+  const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  // GA pin currently being edited via the More-actions menu.
+  // Reuses the existing CreateGAPinModal in edit mode.
+  const [editingPin, setEditingPin] = useState<GAPin | null>(null);
+  // Cancel needs a reason — `cancelTarget` keeps the row that asked
+  // for it while the modal is open. Mirrors the pattern used inside
+  // the detail card.
+  const [cancelTarget, setCancelTarget] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+  const { showToast } = useToast();
 
+  // No server-side filter — the popover supports multi-select for
+  // status / assignee / priority, which the current hook can't express,
+  // so we load the page raw and apply every filter axis client-side.
   const { data: items, loading, error, pagination, refetch } = usePunchlistItems(
     projectId,
     stageId,
     {
       page: currentPage,
       per_page: 5,
-      ...(statusFilter !== "all" ? { status: statusFilter } : {}),
     }
   );
+
+  // GA pins — needed to look up the pin attached to the currently
+  // selected punchlist item so the More-actions menu can offer
+  // "Edit pin location" without us having to add a pin reference
+  // to every PunchlistItem on the backend.
+  const { data: gaPins, refetch: refetchPins } = useGAPins(projectId);
 
   // Refetch the local list AND ping ancestors so derived stats (e.g.
   // the area page's open-count badge) stay in sync with our mutations.
@@ -96,10 +136,84 @@ export default function PunchlistList({ projectId, areaId, stage, onPunchlistCha
   const canView = hasPermission(PERMISSIONS.VIEW_PUNCHLIST_ITEMS);
   const isStageInProgress = stageStatus === "in_progress";
 
-  // Reset to page 1 when filter changes
+  // Filters/search are client-side — they don't drive the API, so no
+  // pagination reset is needed when they change.
+
+  // Selection lives outside the items array — if the selected id
+  // disappears (filter change, page move, server-side delete) clear
+  // it so the detail panel doesn't keep referencing a stale row.
   useEffect(() => {
-    setCurrentPage(1);
-  }, [statusFilter]);
+    if (!items || !selectedItemId) return;
+    if (!items.some((item) => item.identifier === selectedItemId)) {
+      setSelectedItemId(null);
+    }
+  }, [items, selectedItemId]);
+
+  // Apply search + filter popover values client-side. Helper is
+  // shared with the project-level and GA tabs so they all read the
+  // same filter semantics.
+  const filteredItems = useMemo(
+    () => applyPunchlistFilters(items ?? [], searchQuery, filters),
+    [items, searchQuery, filters]
+  );
+
+  const selectedItem = filteredItems.find(
+    (i: PunchlistItem) => i.identifier === selectedItemId
+  );
+
+  // Status mutation shared between the row dropdown and the detail
+  // panel. Cancellation hits a different path (needs a reason) and
+  // routes through the modal below.
+  const handleRowStatusChange = async (
+    itemId: string,
+    status: PunchlistItemStatus
+  ) => {
+    try {
+      await punchlistItemsApi.updateStatus(projectId, itemId, { status });
+      showToast("success", t("updateSuccess"));
+      handleChange();
+    } catch (err) {
+      handleError(err, { showToast, fallbackMessage: t("updateError") });
+    }
+  };
+
+  const handleRowPriorityChange = async (
+    itemId: string,
+    priority: PunchlistItemPriority
+  ) => {
+    try {
+      await punchlistItemsApi.update(projectId, itemId, { priority });
+      showToast(
+        "success",
+        t("priorityUpdated", {
+          priority: t(
+            `priority${priority.charAt(0).toUpperCase()}${priority.slice(1)}`
+          ),
+        })
+      );
+      handleChange();
+    } catch (err) {
+      handleError(err, { showToast, fallbackMessage: t("updateError") });
+    }
+  };
+
+  const handleRowCancel = async (reason: string) => {
+    if (!cancelTarget) return;
+    try {
+      await punchlistItemsApi.updateStatus(projectId, cancelTarget.id, {
+        status: "cancelled",
+        reason,
+      });
+      showToast("success", t("cancelSuccess"));
+      setCancelTarget(null);
+      handleChange();
+    } catch (err) {
+      handleError(err, { showToast, fallbackMessage: t("updateError") });
+      throw err;
+    }
+  };
+
+  const canEditItems = hasPermission(PERMISSIONS.EDIT_STAGES);
 
   // Scroll to top when page changes
   useEffect(() => {
@@ -115,50 +229,22 @@ export default function PunchlistList({ projectId, areaId, stage, onPunchlistCha
     );
   }
 
-  // Show loading skeleton for entire section when loading
-  if (loading) {
+  // Only swap to the skeleton on the very first load. Refetches
+  // (after a status change, assignee edit, etc.) keep the previous
+  // data on screen so the panel doesn't collapse and the page doesn't
+  // jump while the request is in flight.
+  if (loading && items === null) {
     return <LoadingSkeleton type="list" rows={5} />;
   }
 
-  // Note: Counts are calculated from current page only when filter is active
-  // This is a limitation of the current pagination implementation
-  const openCount = items?.filter((i) => i.status === "open").length || 0;
-  const inProgressCount = items?.filter((i) => i.status === "in_progress").length || 0;
-  const nextStepReleaseCount = items?.filter((i) => i.status === "next_step_release").length || 0;
-  const doneCount = items?.filter((i) => i.status === "done").length || 0;
-  const cancelledCount = items?.filter((i) => i.status === "cancelled").length || 0;
-
   return (
     <div className="space-y-8">
-      {/* Header with Stats */}
+      {/* Header — title + create. Per-status counts moved out; the
+          filter popover handles slicing the list by status now. */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-8">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-            {t("title")}
-          </h3>
-          <div className="flex items-center gap-6 text-sm">
-            <span className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
-              <ClockIcon className="w-4 h-4" />
-              {t("openItems", { count: openCount })}
-            </span>
-            <span className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
-              <ExclamationTriangleIcon className="w-4 h-4" />
-              {inProgressCount} {t("statusInProgress").toLowerCase()}
-            </span>
-            <span className="flex items-center gap-2 text-purple-600 dark:text-purple-400">
-              <ExclamationTriangleIcon className="w-4 h-4" />
-              {nextStepReleaseCount} {t("statusNextStepRelease").toLowerCase()}
-            </span>
-            <span className="flex items-center gap-2 text-green-600 dark:text-green-400">
-              <CheckCircleIcon className="w-4 h-4" />
-              {t("completedItems", { count: doneCount })}
-            </span>
-            <span className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
-              <XCircleIcon className="w-4 h-4" />
-              {t("cancelledItems", { count: cancelledCount })}
-            </span>
-          </div>
-        </div>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+          {t("title")}
+        </h3>
         {canCreate && isStageInProgress && (
           <Tooltip content={t("createItem")} position="left">
             <button
@@ -171,28 +257,25 @@ export default function PunchlistList({ projectId, areaId, stage, onPunchlistCha
         )}
       </div>
 
-      {/* Filter Tabs */}
-      <div className="flex gap-2 border-b border-gray-200 dark:border-gray-700 mb-8">
-        {[
-          { key: "all" as const, label: t("filterAll") },
-          { key: "open" as const, label: t("filterOpen") },
-          { key: "in_progress" as const, label: t("filterInProgress") },
-          { key: "next_step_release" as const, label: t("filterNextStepRelease") },
-          { key: "done" as const, label: t("filterDone") },
-          { key: "cancelled" as const, label: t("filterCancelled") },
-        ].map((filter) => (
-          <button
-            key={filter.key}
-            onClick={() => setStatusFilter(filter.key)}
-            className={`px-5 py-3 text-sm font-medium border-b-2 transition-colors ${
-              statusFilter === filter.key
-                ? "border-blue-600 text-blue-600 dark:text-blue-400"
-                : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
-            }`}
-          >
-            {filter.label}
-          </button>
-        ))}
+      {/* Toolbar — Jira-style: search input + filter popover. The
+          popover handles status / assignee / priority in one place
+          and supports multi-select on each axis. */}
+      <div className="flex items-center gap-3 mb-6">
+        <div className="relative flex-1 max-w-sm">
+          <MagnifyingGlassIcon className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder={t("searchPlaceholder")}
+            className="w-full pl-9 pr-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          />
+        </div>
+        <PunchlistFilterPopover
+          items={items ?? []}
+          value={filters}
+          onChange={setFilters}
+        />
       </div>
 
       {/* Error State */}
@@ -206,25 +289,83 @@ export default function PunchlistList({ projectId, areaId, stage, onPunchlistCha
       {/* Items List */}
       {!error && items && (
         <>
-          {items.length === 0 ? (
+          {filteredItems.length === 0 ? (
             <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
               <p className="text-gray-500 dark:text-gray-400">
-                {statusFilter === "all"
+                {items.length === 0
                   ? t("noPunchlistItems")
-                  : `No ${statusFilter.replace("_", " ")} items`}
+                  : t("noMatchingItems")}
               </p>
             </div>
           ) : (
-            <div className="space-y-5">
-              {items.map((item) => (
-                <PunchlistItemCard
-                  key={item.identifier}
-                  item={item}
-                  projectId={projectId}
-                  stageStatus={stageStatus}
-                  onUpdate={handleChange}
-                />
-              ))}
+            <div className="flex flex-col lg:flex-row gap-4 items-start">
+              {/* List — thin rows, Jira-style. Stays full-width on
+                  small screens; on lg+ shrinks to make room for the
+                  detail panel beside it. */}
+              <div
+                className={`bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-md divide-y divide-gray-100 dark:divide-gray-700 ${
+                  selectedItem ? "lg:w-2/5 xl:w-1/3" : "w-full"
+                }`}
+              >
+                {filteredItems.map((item: PunchlistItem) => (
+                  <PunchlistItemRow
+                    key={item.identifier}
+                    item={item}
+                    projectId={projectId}
+                    isSelected={selectedItemId === item.identifier}
+                    stageStatus={stageStatus}
+                    canEdit={canEditItems}
+                    compact={!!selectedItem}
+                    onSelect={() =>
+                      setSelectedItemId(
+                        selectedItemId === item.identifier
+                          ? null
+                          : item.identifier
+                      )
+                    }
+                    onChangeStatus={(next) =>
+                      handleRowStatusChange(item.identifier, next)
+                    }
+                    onChangePriority={(next) =>
+                      handleRowPriorityChange(item.identifier, next)
+                    }
+                    onRequestCancel={() =>
+                      setCancelTarget({ id: item.identifier, name: item.name })
+                    }
+                    onAssigneesChange={handleChange}
+                  />
+                ))}
+              </div>
+
+              {/* Detail panel — slides in beside the list on lg+, full
+                  width above on smaller screens. Reuses the existing
+                  card layout (full metadata, actions, attachments)
+                  as the detail view. */}
+              {selectedItem && (
+                <div className="flex-1 min-w-0 max-w-3xl">
+                  <PunchlistItemCard
+                    key={selectedItem.identifier}
+                    item={selectedItem}
+                    projectId={projectId}
+                    stageStatus={stageStatus}
+                    onUpdate={handleChange}
+                    onClose={() => setSelectedItemId(null)}
+                    onEditPinLocation={(() => {
+                      // Look up the GA pin attached to the selected
+                      // punchlist item — only offer the menu entry
+                      // when the lookup actually finds one.
+                      const pin = gaPins?.find(
+                        (p) =>
+                          p.punchlistItem?.identifier ===
+                          selectedItem.identifier
+                      );
+                      return pin
+                        ? () => setEditingPin(pin)
+                        : undefined;
+                    })()}
+                  />
+                </div>
+              )}
             </div>
           )}
 
@@ -280,6 +421,36 @@ export default function PunchlistList({ projectId, areaId, stage, onPunchlistCha
           }}
         />
       )}
+
+      {/* Edit-pin modal — reuses CreateGAPinModal in edit mode when
+          the user picks "Edit pin location" from the More menu. */}
+      {editingPin && (
+        <CreateGAPinModal
+          isOpen={!!editingPin}
+          onClose={() => setEditingPin(null)}
+          projectId={projectId}
+          initialPosition={{ x: editingPin.x, y: editingPin.y }}
+          initialData={editingPin}
+          gaImageUrl={imageBlobUrl || undefined}
+          gaImageWidth={ga?.imageWidth}
+          gaImageHeight={ga?.imageHeight}
+          onSuccess={() => {
+            setEditingPin(null);
+            refetchPins();
+            handleChange();
+          }}
+        />
+      )}
+
+      {/* Cancel-reason modal shared by every row's status dropdown.
+          The detail card keeps its own internal modal — both routes
+          end up at the same backend endpoint with a reason string. */}
+      <CancelPunchlistItemModal
+        isOpen={!!cancelTarget}
+        onClose={() => setCancelTarget(null)}
+        onConfirm={handleRowCancel}
+        itemName={cancelTarget?.name ?? ""}
+      />
     </div>
   );
 }

@@ -80,7 +80,7 @@ export default function ImageViewerModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm"
+      className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/90 backdrop-blur-sm"
       onClick={onClose}
     >
       {/* Close button */}

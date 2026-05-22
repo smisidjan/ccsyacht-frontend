@@ -34,6 +34,7 @@ export const logbookApi = {
       to_date: filters?.to_date,
       per_page: filters?.per_page,
       page: filters?.page,
+      punchlist_item_id: filters?.punchlist_item_id,
     })}`),
 };
 
