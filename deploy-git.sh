@@ -64,7 +64,7 @@ fi
 
 # Install dependencies if package.json changed
 echo -e "${YELLOW}📦 Installing dependencies...${NC}"
-npm ci --production=false
+npm ci --production=false --force
 
 # Build the application
 echo -e "${YELLOW}🔨 Building application...${NC}"
