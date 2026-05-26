@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM node:20-alpine AS base
+FROM node:20-slim AS base
 
 # Install dependencies only when needed
 FROM base AS deps
@@ -27,7 +27,15 @@ CMD ["npm", "run", "dev"]
 # Build the application
 FROM base AS builder
 WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
+
+# Copy package files
+COPY package.json package-lock.json* ./
+
+# Install dependencies fresh for the target platform
+# This ensures native bindings are compiled for linux/amd64
+RUN npm ci
+
+# Copy application code
 COPY . .
 
 ENV NEXT_TELEMETRY_DISABLED=1
@@ -35,14 +43,14 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
 # Production image
-FROM base AS production
+FROM node:20-slim AS production
 WORKDIR /app
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+RUN groupadd -r -g 1001 nodejs || true
+RUN useradd -r -u 1001 -g nodejs nextjs || true
 
 COPY --from=builder /app/public ./public
 
@@ -55,5 +63,9 @@ USER nextjs
 EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
+
+# Add health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD node -e "require('http').request({path: '/', port: 3000, timeout: 2000}, (r) => {process.exit(r.statusCode === 200 ? 0 : 1)}).on('error', () => process.exit(1)).end()"
 
 CMD ["node", "server.js"]

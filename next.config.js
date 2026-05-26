@@ -1,5 +1,4 @@
-import type { NextConfig } from "next";
-import createNextIntlPlugin from "next-intl/plugin";
+const createNextIntlPlugin = require("next-intl/plugin");
 
 const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
 
@@ -7,8 +6,8 @@ const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
 // In production, nginx handles this
 const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:9000";
 
-const nextConfig: NextConfig = {
-  ...(process.env.NODE_ENV === "production" && { output: "standalone" as const }),
+const nextConfig = {
+  ...(process.env.NODE_ENV === "production" && { output: "standalone" }),
   experimental: {
     // Rewrite barrel imports to direct paths so unused exports don't get parsed.
     // Critical for @heroicons/react (96 import sites in this codebase).
@@ -32,4 +31,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default withNextIntl(nextConfig);
+module.exports = withNextIntl(nextConfig);
