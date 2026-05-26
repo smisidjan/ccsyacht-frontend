@@ -46,8 +46,9 @@ COPY . .
 
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Rebuild native bindings for the container architecture
-RUN npm rebuild
+# Delete and reinstall Tailwind CSS packages to force native binding compilation
+RUN rm -rf node_modules/@tailwindcss && \
+    npm install @tailwindcss/postcss@alpha @tailwindcss/cli@alpha @tailwindcss/vite@alpha --force
 
 RUN npm run build
 
