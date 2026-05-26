@@ -729,6 +729,16 @@ export interface AreaPolygonPoint {
   y: number;
 }
 
+/** One polygon per placement — the same area is drawn separately on the
+ *  primary deck rectangle and on each of the deck's side profiles.
+ *  `placementId` matches either `Deck.deckPlacement.identifier` or one of
+ *  `Deck.sideProfiles[i].identifier`. */
+export interface AreaPolygonEntry {
+  identifier: string;
+  placementId: string;
+  points: AreaPolygonPoint[];
+}
+
 export interface Area {
   "@context"?: string;
   "@type"?: string;
@@ -741,9 +751,13 @@ export interface Area {
   inProgressStageCount?: number;
   containedInPlace?: AreaDeck;
   containsPlace?: AreaStage[];
-  /** Polygon outline on the GA in image-percentage coords. Optional for older
-   *  records that were created before polygon support was added. */
+  /** Polygon outline on the GA in normalized 0..1 coords. Legacy single-
+   *  polygon field kept by the backend for one release; new code should
+   *  prefer `polygons` so per-placement outlines are visible. */
   polygon?: AreaPolygonPoint[];
+  /** Per-placement polygons. Each entry is the same area projected onto a
+   *  different view (primary deck rectangle vs each side profile). */
+  polygons?: AreaPolygonEntry[];
   dateCreated: string;
   dateModified: string;
 }
@@ -764,10 +778,22 @@ export type CreateAreaStageInput =
       color?: string | null;
     };
 
+/** Replace-all entry for the per-placement polygons payload. `placementId`
+ *  must reference either the deck's primary placement or one of its side
+ *  profiles. Min 3 vertices, all normalized 0..1. */
+export interface AreaPolygonInput {
+  placementId: string;
+  points: AreaPolygonPoint[];
+}
+
 export interface CreateAreaRequest {
   name: string;
   description?: string;
+  /** Legacy single polygon. Prefer `polygons` — backend keeps both for one
+   *  release. */
   polygon?: AreaPolygonPoint[];
+  /** Per-placement polygons (replace-all). */
+  polygons?: AreaPolygonInput[];
   /** Required. When true the backend creates stages on the new area; when
    *  false the area is created without stages and the user adds them later. */
   create_stages: boolean;
@@ -780,9 +806,11 @@ export interface CreateAreaRequest {
 export interface UpdateAreaRequest {
   name?: string;
   description?: string;
-  /** Replacement polygon (0..1 normalized vertices). Omit when only
-   *  text fields are being edited. */
+  /** Legacy single polygon. Prefer `polygons` — backend keeps both for one
+   *  release. */
   polygon?: AreaPolygonPoint[];
+  /** Per-placement polygons (replace-all). */
+  polygons?: AreaPolygonInput[];
 }
 
 export interface BulkCreateAreasRequest {

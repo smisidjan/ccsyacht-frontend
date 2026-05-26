@@ -295,27 +295,55 @@ export default function GeneralArrangementTab({
       list.push(s);
       stagesByArea.set(s.area.identifier, list);
     }
-    return areas
-      .filter((a) => Array.isArray(a.polygon) && a.polygon.length >= 3)
-      .map((a) => {
-        const areaStages = (stagesByArea.get(a.identifier) ?? [])
-          .slice()
-          .sort((x, y) => x.position - y.position);
-        const active =
-          areaStages.find((s) => s.status.name === "in_progress") ??
-          areaStages.find((s) => s.status.name === "pending_signoff") ??
-          areaStages.find((s) => s.status.name === "not_started") ??
-          null;
-        if (!active?.color) return null;
-        return {
+    type Overlay = {
+      id: string;
+      name: string;
+      polygon: NonNullable<Area["polygon"]>;
+      color: string;
+      stageName: string;
+    };
+    const overlays: Overlay[] = [];
+    for (const a of areas) {
+      const areaStages = (stagesByArea.get(a.identifier) ?? [])
+        .slice()
+        .sort((x, y) => x.position - y.position);
+      const active =
+        areaStages.find((s) => s.status.name === "in_progress") ??
+        areaStages.find((s) => s.status.name === "pending_signoff") ??
+        areaStages.find((s) => s.status.name === "not_started") ??
+        null;
+      if (!active?.color) continue;
+
+      // Emit one polygon entry per placement that the area is drawn on
+      // (primary deck top-down + each side profile). The viewer just
+      // iterates `areaPolygons` and renders each independently — so
+      // the same area gets coloured on every view it has a polygon
+      // for. Falls back to the legacy single `a.polygon` field when
+      // the new `polygons` array hasn't been backfilled.
+      const perPlacement = (a.polygons ?? []).filter(
+        (p) => Array.isArray(p.points) && p.points.length >= 3
+      );
+      if (perPlacement.length > 0) {
+        for (const entry of perPlacement) {
+          overlays.push({
+            id: `${a.identifier}-${entry.placementId}`,
+            name: `${a.name} — ${active.name}`,
+            polygon: entry.points,
+            color: active.color,
+            stageName: active.name,
+          });
+        }
+      } else if (Array.isArray(a.polygon) && a.polygon.length >= 3) {
+        overlays.push({
           id: a.identifier,
           name: `${a.name} — ${active.name}`,
-          polygon: a.polygon!,
+          polygon: a.polygon,
           color: active.color,
           stageName: active.name,
-        };
-      })
-      .filter((p): p is NonNullable<typeof p> => p !== null);
+        });
+      }
+    }
+    return overlays;
   }, [showActiveStages, areas, stages]);
 
   // Legend: each distinct (stageName + color) combination currently coloring

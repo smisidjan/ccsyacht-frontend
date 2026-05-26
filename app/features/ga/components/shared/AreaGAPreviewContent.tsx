@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { MapContainer, ImageOverlay, Marker, Polygon, Tooltip, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -59,12 +60,13 @@ function createPinIcon(color: string): L.DivIcon {
 
 const FALLBACK_COLOR = "#3B82F6";
 
-// Re-fit to the deck after the container settles. The MapContainer already
-// mounts with `bounds={deckBounds}`, but the first paint can land before
-// Leaflet has the right container size — invalidateSize + a second fit
-// nails the zoom level once the layout has resolved. We pin minZoom to
-// that level so the user can't accidentally zoom out past the deck.
-function FitToDeck({ deckBounds }: { deckBounds: L.LatLngBoundsExpression }) {
+// Re-fit to the current view's bounds. Re-runs when the user switches
+// between the deck and a side-profile view so the camera follows their
+// selection. `key` on the parent forces a remount on switch — that
+// alone re-runs the effect, but the cleanup-based minZoom unlock is
+// still needed for the same-mount case (initial paint with the wrong
+// container size).
+function FitToBounds({ bounds }: { bounds: L.LatLngBoundsExpression }) {
   const map = useMap();
   const hasInitialized = useRef(false);
 
@@ -74,11 +76,11 @@ function FitToDeck({ deckBounds }: { deckBounds: L.LatLngBoundsExpression }) {
 
     const timer = setTimeout(() => {
       map.invalidateSize();
-      map.fitBounds(deckBounds, { padding: [20, 20], animate: false });
+      map.fitBounds(bounds, { padding: [20, 20], animate: false });
       map.setMinZoom(map.getZoom());
     }, 100);
     return () => clearTimeout(timer);
-  }, [map, deckBounds]);
+  }, [map, bounds]);
 
   return null;
 }
@@ -92,6 +94,7 @@ export default function AreaGAPreviewContent({
   activeStageId,
   refreshTrigger,
 }: AreaGAPreviewContentProps) {
+  const tAreas = useTranslations("areas");
   const { data: project } = useProject(projectId);
   const { data: decks } = useDecks(projectId);
   const { data: areas } = useAreas(projectId, undefined);
@@ -130,6 +133,55 @@ export default function AreaGAPreviewContent({
     (d) => d.identifier === currentArea?.containedInPlace?.identifier
   );
 
+  // Per-view selector: primary deck rectangle first, then each side
+  // profile. Default = primary. Hidden when the deck only has one
+  // placement.
+  type PlacementView = {
+    id: string;
+    name: string;
+    bbox: { x: number; y: number; w: number; h: number };
+  };
+  const placements = useMemo<PlacementView[]>(() => {
+    if (!deck) return [];
+    const out: PlacementView[] = [];
+    if (deck.deckPlacement) {
+      out.push({
+        id: deck.deckPlacement.identifier,
+        name: tAreas("placementDeckView"),
+        bbox: {
+          x: deck.deckPlacement.bbox_x,
+          y: deck.deckPlacement.bbox_y,
+          w: deck.deckPlacement.bbox_width,
+          h: deck.deckPlacement.bbox_height,
+        },
+      });
+    }
+    for (const sp of deck.sideProfiles ?? []) {
+      out.push({
+        id: sp.identifier,
+        name: sp.name,
+        bbox: { x: sp.bbox_x, y: sp.bbox_y, w: sp.bbox_width, h: sp.bbox_height },
+      });
+    }
+    return out;
+  }, [deck]);
+
+  const primaryPlacementId = deck?.deckPlacement?.identifier ?? null;
+
+  const [activePlacementId, setActivePlacementId] = useState<string | null>(
+    null
+  );
+  // Keep active pointed at a valid placement — default to primary.
+  useEffect(() => {
+    if (placements.length === 0) return;
+    if (
+      !activePlacementId ||
+      !placements.some((p) => p.id === activePlacementId)
+    ) {
+      setActivePlacementId(placements[0].id);
+    }
+  }, [placements, activePlacementId]);
+
   const fullBounds = useMemo<L.LatLngBoundsExpression | null>(() => {
     if (!ga?.imageWidth || !ga.imageHeight) return null;
     return [
@@ -138,34 +190,71 @@ export default function AreaGAPreviewContent({
     ];
   }, [ga?.imageWidth, ga?.imageHeight]);
 
-  const deckBounds = useMemo<L.LatLngBoundsExpression | null>(() => {
-    if (!ga?.imageWidth || !ga.imageHeight || !deck?.deckPlacement) return null;
-    const { bbox_x, bbox_y, bbox_width, bbox_height } = deck.deckPlacement;
-    const x1 = (bbox_x / 100) * ga.imageWidth;
-    const y1 = (bbox_y / 100) * ga.imageHeight;
-    const x2 = ((bbox_x + bbox_width) / 100) * ga.imageWidth;
-    const y2 = ((bbox_y + bbox_height) / 100) * ga.imageHeight;
+  // Bounds for whichever view is active. Falls back to the deck's
+  // primary bbox while `activePlacementId` resolves on the first
+  // render.
+  const viewBounds = useMemo<L.LatLngBoundsExpression | null>(() => {
+    if (!ga?.imageWidth || !ga.imageHeight) return null;
+    const placement =
+      placements.find((p) => p.id === activePlacementId) ?? placements[0];
+    if (!placement) return null;
+    const x1 = (placement.bbox.x / 100) * ga.imageWidth;
+    const y1 = (placement.bbox.y / 100) * ga.imageHeight;
+    const x2 = ((placement.bbox.x + placement.bbox.w) / 100) * ga.imageWidth;
+    const y2 = ((placement.bbox.y + placement.bbox.h) / 100) * ga.imageHeight;
     return [
       [y1, x1],
       [y2, x2],
     ];
-  }, [ga?.imageWidth, ga?.imageHeight, deck?.deckPlacement]);
+  }, [ga?.imageWidth, ga?.imageHeight, placements, activePlacementId]);
+
+  /** Resolve an area's polygon for the active view. Per-placement
+   *  `area.polygons` is the source of truth; legacy `area.polygon` is
+   *  only used when the active view is the primary deck. Returns
+   *  undefined when the area has nothing drawn for this view. */
+  const polygonForActiveView = (
+    a: Pick<Area, "polygon" | "polygons">
+  ) => {
+    if (!activePlacementId) return undefined;
+    const perPlacement = a.polygons?.find(
+      (p) => p.placementId === activePlacementId
+    )?.points;
+    if (perPlacement && perPlacement.length >= 3) return perPlacement;
+    if (
+      activePlacementId === primaryPlacementId &&
+      Array.isArray(a.polygon) &&
+      a.polygon.length >= 3
+    ) {
+      return a.polygon;
+    }
+    return undefined;
+  };
 
   // Other areas on the same deck — drawn dashed gray so the user can see
   // what else is on the deck without them stealing visual attention from
-  // the highlighted area.
+  // the highlighted area. Filtered to those with a polygon on the
+  // currently-active view so a side-profile only shows neighbours that
+  // were actually drawn on that view.
   const siblingAreas = useMemo(() => {
     if (!areas || !deck) return [];
-    return areas.filter(
-      (a) =>
-        a.containedInPlace?.identifier === deck.identifier &&
-        a.identifier !== areaId &&
-        Array.isArray(a.polygon) &&
-        a.polygon.length >= 3
-    );
-  }, [areas, deck, areaId]);
+    return areas
+      .filter(
+        (a) =>
+          a.containedInPlace?.identifier === deck.identifier &&
+          a.identifier !== areaId
+      )
+      .map((a) => ({ area: a, polygon: polygonForActiveView(a) }))
+      .filter((entry): entry is { area: Area; polygon: typeof entry.polygon } =>
+        !!entry.polygon
+      );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [areas, deck, areaId, activePlacementId, primaryPlacementId]);
 
-  if (!ga || !ga.imageWidth || !ga.imageHeight || !fullBounds || !deckBounds) {
+  const currentAreaPolygon = currentArea
+    ? polygonForActiveView(currentArea)
+    : undefined;
+
+  if (!ga || !ga.imageWidth || !ga.imageHeight || !fullBounds || !viewBounds) {
     return (
       <div
         className={`${heightClassName} w-full rounded-lg bg-gray-100 dark:bg-gray-800 animate-pulse`}
@@ -182,74 +271,105 @@ export default function AreaGAPreviewContent({
   }
 
   const highlightColor = activeStageColor || FALLBACK_COLOR;
+  const isPrimaryView = activePlacementId === primaryPlacementId;
 
   return (
-    <div className={`${heightClassName} w-full rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700`}>
-      <MapContainer
-        crs={L.CRS.Simple}
-        bounds={deckBounds}
-        maxBounds={fullBounds}
-        maxBoundsViscosity={1.0}
-        minZoom={-5}
-        maxZoom={4}
-        zoomControl={false}
-        attributionControl={false}
-        scrollWheelZoom={false}
-        doubleClickZoom={false}
-        touchZoom={false}
-        dragging={false}
-        keyboard={false}
-        className="smooth-zoom-map"
-        style={{
-          height: "100%",
-          width: "100%",
-          background: "#f3f4f6",
-        }}
-      >
-        <FitToDeck deckBounds={deckBounds} />
-        <ImageOverlay url={imageBlobUrl} bounds={fullBounds} />
+    <div
+      className={`${heightClassName} w-full rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 flex flex-col`}
+    >
+      {placements.length > 1 && (
+        // View switcher: top view + each side profile. Only shown when
+        // the deck has more than one placement so the single-view case
+        // stays uncluttered.
+        <div className="flex flex-wrap items-center gap-1 px-2 py-1.5 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+          {placements.map((p) => {
+            const isActive = p.id === activePlacementId;
+            return (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => setActivePlacementId(p.id)}
+                className={`px-2.5 py-1 text-xs font-medium rounded transition-colors ${
+                  isActive
+                    ? "bg-blue-600 text-white"
+                    : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                }`}
+              >
+                {p.name}
+              </button>
+            );
+          })}
+        </div>
+      )}
+      <div className="relative flex-1 min-h-0">
+        <MapContainer
+          // `key` forces a fresh map on placement switch so Leaflet
+          // re-runs the initial fit instead of holding the old bounds.
+          key={activePlacementId ?? "primary"}
+          crs={L.CRS.Simple}
+          bounds={viewBounds}
+          maxBounds={fullBounds}
+          maxBoundsViscosity={1.0}
+          minZoom={-5}
+          maxZoom={4}
+          zoomControl={false}
+          attributionControl={false}
+          scrollWheelZoom={false}
+          doubleClickZoom={false}
+          touchZoom={false}
+          dragging={false}
+          keyboard={false}
+          className="smooth-zoom-map"
+          style={{
+            height: "100%",
+            width: "100%",
+            background: "#f3f4f6",
+          }}
+        >
+          <FitToBounds bounds={viewBounds} />
+          <ImageOverlay url={imageBlobUrl} bounds={fullBounds} />
 
-        {siblingAreas.map((a) => {
-          const positions: [number, number][] = a.polygon!.map((p) => [
-            p.y * ga.imageHeight!,
-            p.x * ga.imageWidth!,
-          ]);
-          return (
+          {siblingAreas.map(({ area: a, polygon }) => {
+            const positions: [number, number][] = polygon!.map((p) => [
+              p.y * ga.imageHeight!,
+              p.x * ga.imageWidth!,
+            ]);
+            return (
+              <Polygon
+                key={`sibling-${a.identifier}`}
+                positions={positions}
+                pathOptions={{
+                  color: "#9ca3af",
+                  weight: 1,
+                  dashArray: "4 4",
+                  fillColor: "#9ca3af",
+                  fillOpacity: 0.1,
+                  interactive: false,
+                }}
+              />
+            );
+          })}
+
+          {currentAreaPolygon && (
             <Polygon
-              key={`sibling-${a.identifier}`}
-              positions={positions}
+              positions={currentAreaPolygon.map((p) => [
+                p.y * ga.imageHeight!,
+                p.x * ga.imageWidth!,
+              ])}
               pathOptions={{
-                color: "#9ca3af",
-                weight: 1,
-                dashArray: "4 4",
-                fillColor: "#9ca3af",
-                fillOpacity: 0.1,
+                color: highlightColor,
+                weight: 2.5,
+                fillColor: highlightColor,
+                fillOpacity: 0.45,
                 interactive: false,
               }}
             />
-          );
-        })}
+          )}
 
-        {currentArea?.polygon && currentArea.polygon.length >= 3 && (
-          <Polygon
-            positions={currentArea.polygon.map((p) => [
-              p.y * ga.imageHeight!,
-              p.x * ga.imageWidth!,
-            ])}
-            pathOptions={{
-              color: highlightColor,
-              weight: 2.5,
-              fillColor: highlightColor,
-              fillOpacity: 0.45,
-              interactive: false,
-            }}
-          />
-        )}
-
-        {/* Pins on the active stage — small dots with hover labels so
-            the user gets a one-glance overview of outstanding work
-            inside this area's currently-active stage. */}
-        {stagePins.map((pin) => {
+          {/* Pins on the active stage — only rendered on the primary
+              top-down view. Pin (x, y) is in top-down coordinates and
+              doesn't map to a side-profile view. */}
+          {isPrimaryView && stagePins.map((pin) => {
           const position: [number, number] = [
             (pin.y / 100) * ga.imageHeight!,
             (pin.x / 100) * ga.imageWidth!,
@@ -275,7 +395,8 @@ export default function AreaGAPreviewContent({
             </Marker>
           );
         })}
-      </MapContainer>
+        </MapContainer>
+      </div>
     </div>
   );
 }

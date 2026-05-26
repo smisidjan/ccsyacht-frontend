@@ -11,7 +11,7 @@ import Button from "@/app/components/ui/Button";
 import Alert from "@/app/components/ui/Alert";
 import { areasApi, stagesApi, useAreas, useDecks, useStages, useGAPins } from "@/lib/api";
 import { stageTemplatesApi } from "@/lib/api/stageTemplates";
-import { usePolygonHistory } from "./usePolygonHistory";
+import { usePlacementPolygons } from "./usePlacementPolygons";
 import StageEditList, { type LocalStage } from "./StageEditList";
 import { useGAImage } from "@/lib/hooks/useGAImage";
 import { handleError } from "@/lib/utils/errors";
@@ -41,6 +41,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import type {
   Area,
+  AreaPolygonInput,
   AreaPolygonPoint,
   CreateAreaStageInput,
   GeneralArrangement,
@@ -229,10 +230,15 @@ export default function DefineAreaModal({
     set: setPolygonSnapshot,
     undo: undoPolygon,
     redo: redoPolygon,
-    reset: resetPolygon,
+    reset: resetActivePolygon,
     canUndo,
     canRedo,
-  } = usePolygonHistory();
+    activeId: activePlacementId,
+    setActive: setActivePlacement,
+    seed: seedPlacement,
+    resetAll: resetAllPolygons,
+    all: polygonsByPlacement,
+  } = usePlacementPolygons();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -287,23 +293,18 @@ export default function DefineAreaModal({
 
   // Seed (or reset) form state when the modal opens. In edit mode we
   // pre-fill from the supplied area; in create mode we start blank.
-  // Polygon reset on subsequent deck changes is handled by the
-  // FormSelect's onChange so it doesn't fire on the initial mount and
-  // wipe the just-loaded polygon.
+  // Polygons are seeded in a separate effect below because we need
+  // `selectedDeck` (which loads asynchronously via `useDecks`) to know
+  // which placement IDs to hydrate.
   useEffect(() => {
     if (!isOpen) return;
+    resetAllPolygons();
     if (area) {
       setSelectedDeckId(area.containedInPlace?.identifier ?? "");
-      if (area.polygon && area.polygon.length >= 3) {
-        setPolygonSnapshot(area.polygon, true);
-      } else {
-        resetPolygon();
-      }
       setName(area.name);
       setDescription(area.description ?? "");
     } else {
       setSelectedDeckId("");
-      resetPolygon();
       setName("");
       setDescription("");
     }
@@ -313,7 +314,7 @@ export default function DefineAreaModal({
     setNewCustomStageName("");
     setEditTab("details");
     setLocalStages([]);
-  }, [isOpen, area, resetPolygon, setPolygonSnapshot]);
+  }, [isOpen, area, resetAllPolygons]);
 
   // Seed the local stage list from the server snapshot once stages
   // arrive. Stays in sync only on the first arrival per modal open —
@@ -349,13 +350,99 @@ export default function DefineAreaModal({
   const handleDeckChange = (deckId: string) => {
     if (deckId === selectedDeckId) return;
     setSelectedDeckId(deckId);
-    resetPolygon();
+    // New deck → polygons drawn against the old deck's placements no
+    // longer apply. Wipe everything; the "set active to primary"
+    // effect below picks up the new deck's primary placement.
+    resetAllPolygons();
   };
 
   const selectedDeck = useMemo(
     () => decks?.find((d) => d.identifier === selectedDeckId),
     [decks, selectedDeckId]
   );
+
+  // The set of "views" the user can draw on: the primary deck rectangle
+  // first, then each side profile. `id` matches the placement ID the
+  // backend expects on save.
+  type PlacementView = {
+    id: string;
+    name: string;
+    bounds: { x1: number; y1: number; x2: number; y2: number };
+    kind: "deck" | "side_profile";
+  };
+  const placements = useMemo<PlacementView[]>(() => {
+    if (!selectedDeck) return [];
+    const out: PlacementView[] = [];
+    const pd = selectedDeck.deckPlacement;
+    if (pd) {
+      out.push({
+        id: pd.identifier,
+        name: t("placementDeckView") || "Top view",
+        bounds: {
+          x1: pd.bbox_x,
+          y1: pd.bbox_y,
+          x2: pd.bbox_x + pd.bbox_width,
+          y2: pd.bbox_y + pd.bbox_height,
+        },
+        kind: "deck",
+      });
+    }
+    for (const sp of selectedDeck.sideProfiles ?? []) {
+      out.push({
+        id: sp.identifier,
+        name: sp.name,
+        bounds: {
+          x1: sp.bbox_x,
+          y1: sp.bbox_y,
+          x2: sp.bbox_x + sp.bbox_width,
+          y2: sp.bbox_y + sp.bbox_height,
+        },
+        kind: "side_profile",
+      });
+    }
+    return out;
+  }, [selectedDeck, t]);
+
+  const primaryPlacementId = selectedDeck?.deckPlacement?.identifier ?? null;
+
+  // Keep `activePlacementId` pointing at a valid placement: default to
+  // the primary deck view whenever the deck changes or the current
+  // active placement disappears.
+  useEffect(() => {
+    if (placements.length === 0) return;
+    if (
+      !activePlacementId ||
+      !placements.some((p) => p.id === activePlacementId)
+    ) {
+      setActivePlacement(placements[0].id);
+    }
+  }, [placements, activePlacementId, setActivePlacement]);
+
+  // Hydrate from an existing area in edit mode. Prefer `area.polygons`
+  // (per-placement); fall back to the legacy `area.polygon` (mapped to
+  // the primary placement) so old records keep working until the
+  // backend drops the field.
+  useEffect(() => {
+    if (!isOpen || !area || placements.length === 0) return;
+    let seededAny = false;
+    if (Array.isArray(area.polygons) && area.polygons.length > 0) {
+      for (const entry of area.polygons) {
+        // Only seed placements that actually exist on the current deck
+        // (defensive against orphaned polygons after side-profile
+        // deletes).
+        if (!placements.some((p) => p.id === entry.placementId)) continue;
+        if (!Array.isArray(entry.points) || entry.points.length < 3) continue;
+        seedPlacement(entry.placementId, entry.points, true);
+        seededAny = true;
+      }
+    }
+    if (!seededAny && primaryPlacementId && area.polygon && area.polygon.length >= 3) {
+      seedPlacement(primaryPlacementId, area.polygon, true);
+    }
+    // Only re-hydrate when the area / deck changes — not when the
+    // user is mid-edit (placements stays stable then).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, area, primaryPlacementId, placements.length]);
 
   const { data: existingAreasInDeck } = useAreas(projectId, selectedDeckId);
 
@@ -385,37 +472,34 @@ export default function DefineAreaModal({
     [decks, t]
   );
 
-  // Map existing areas (with polygons) to the drawer format. In edit
-  // mode skip the area currently being edited — the drawer treats
-  // existing-area polygons as obstacles (rejects vertex drops inside
-  // them) and the user's whole working region IS that area.
-  const existingAreasForDrawer = useMemo(
-    () =>
-      (existingAreasInDeck ?? [])
-        .filter(
-          (a) =>
-            Array.isArray(a.polygon) &&
-            a.polygon.length >= 3 &&
-            a.identifier !== area?.identifier
-        )
-        .map((a) => ({
-          id: a.identifier,
-          name: a.name,
-          polygon: a.polygon!,
-        })),
-    [existingAreasInDeck, area?.identifier]
-  );
+  // Map existing areas (with polygons) to the drawer format —
+  // restricted to the active placement so the obstacles shown on a
+  // side-profile view are the polygons drawn on THAT view, not the
+  // top-down ones. Falls back to the legacy `area.polygon` only when
+  // the active view is the primary deck (where it was always drawn).
+  const existingAreasForDrawer = useMemo(() => {
+    if (!activePlacementId) return [];
+    type Entry = { id: string; name: string; polygon: AreaPolygonPoint[] };
+    const out: Entry[] = [];
+    for (const a of existingAreasInDeck ?? []) {
+      if (a.identifier === area?.identifier) continue;
+      const perPlacement = a.polygons?.find(
+        (p) => p.placementId === activePlacementId
+      );
+      const points =
+        perPlacement?.points ??
+        (activePlacementId === primaryPlacementId ? a.polygon : undefined);
+      if (!points || points.length < 3) continue;
+      out.push({ id: a.identifier, name: a.name, polygon: points });
+    }
+    return out;
+  }, [existingAreasInDeck, area?.identifier, activePlacementId, primaryPlacementId]);
 
+  // Bounds for the drawer: the bbox of whichever placement is active.
   const deckBounds = useMemo(() => {
-    const placement = selectedDeck?.deckPlacement;
-    if (!placement) return null;
-    return {
-      x1: placement.bbox_x,
-      y1: placement.bbox_y,
-      x2: placement.bbox_x + placement.bbox_width,
-      y2: placement.bbox_y + placement.bbox_height,
-    };
-  }, [selectedDeck]);
+    if (!activePlacementId) return null;
+    return placements.find((p) => p.id === activePlacementId)?.bounds ?? null;
+  }, [placements, activePlacementId]);
 
   /** Colors that collide between rows the user would actually create. Template
    *  rows count only when included (excluded ones don't go to the server).
@@ -435,18 +519,19 @@ export default function DefineAreaModal({
   }, [stageRows, createStages]);
   const hasDuplicateColors = duplicateColors.size > 0;
 
-  // Count pins that would end up outside the new polygon. Once the
-  // polygon is closed we hard-block save until each pin is back inside;
-  // before that the user is still placing vertices and the count is
-  // meaningless. Empty pin list short-circuits to 0.
+  // Count pins that would end up outside the new polygon. Pins live in
+  // top-down coordinates, so this check only makes sense on the primary
+  // deck view — on a side profile the pin's (x, y) doesn't map to
+  // what's being drawn.
   const pinsOutsideCount = useMemo(() => {
+    if (activePlacementId !== primaryPlacementId) return 0;
     if (existingPinsForDrawer.length === 0) return 0;
     if (polygon.length < 3) return 0;
     return existingPinsForDrawer.reduce(
       (count, pin) => (isInsidePolygon(pin.point, polygon) ? count : count + 1),
       0
     );
-  }, [existingPinsForDrawer, polygon]);
+  }, [existingPinsForDrawer, polygon, activePlacementId, primaryPlacementId]);
   const hasPinsOutside = pinsOutsideCount > 0;
 
   // Catch overlap with neighbour areas. The drawer already rejects
@@ -463,17 +548,39 @@ export default function DefineAreaModal({
   }, [existingAreasForDrawer, polygon]);
   const hasOverlap = overlappingAreasCount > 0;
 
+  // Primary deck polygon is the gating one; side-profile polygons are
+  // optional. Whichever side-profile views the user did start drawing
+  // on must be closed though — half-drawn polygons can't be saved.
+  const primaryEntry = primaryPlacementId
+    ? polygonsByPlacement[primaryPlacementId]
+    : undefined;
+  const primaryReady =
+    !!primaryEntry && primaryEntry.isClosed && primaryEntry.polygon.length >= 3;
+
+  const halfDrawnPlacements = useMemo(() => {
+    const ids: string[] = [];
+    for (const p of placements) {
+      if (p.id === primaryPlacementId) continue;
+      const entry = polygonsByPlacement[p.id];
+      if (!entry || entry.polygon.length === 0) continue;
+      if (!entry.isClosed || entry.polygon.length < 3) ids.push(p.id);
+    }
+    return ids;
+  }, [placements, polygonsByPlacement, primaryPlacementId]);
+
   const canSave =
     !!selectedDeckId &&
-    isClosed &&
-    polygon.length >= 3 &&
+    primaryReady &&
+    halfDrawnPlacements.length === 0 &&
     name.trim().length > 0 &&
     !hasDuplicateColors &&
     !hasPinsOutside &&
     !hasOverlap;
 
   const handleReset = () => {
-    resetPolygon();
+    // Reset clears just the view the user is currently on — switching
+    // to a different placement and resetting only wipes that one.
+    resetActivePolygon();
   };
 
   const handleSave = async () => {
@@ -481,11 +588,20 @@ export default function DefineAreaModal({
     setError(null);
     setSubmitting(true);
     try {
+      // Build the per-placement payload. Only closed, ≥3-vertex
+      // polygons go to the server — `canSave` already gates this so
+      // half-drawn side profiles can't sneak through.
+      const polygonsPayload: AreaPolygonInput[] = [];
+      for (const p of placements) {
+        const entry = polygonsByPlacement[p.id];
+        if (!entry || !entry.isClosed || entry.polygon.length < 3) continue;
+        polygonsPayload.push({ placementId: p.id, points: entry.polygon });
+      }
       if (isEditing && area) {
         await areasApi.update(projectId, area.identifier, {
           name: name.trim(),
           description: description.trim() || undefined,
-          polygon,
+          polygons: polygonsPayload,
         });
 
         // Diff localStages against the server snapshot and apply the
@@ -600,7 +716,7 @@ export default function DefineAreaModal({
         await areasApi.create(projectId, selectedDeckId, {
           name: name.trim(),
           description: description.trim() || undefined,
-          polygon,
+          polygons: polygonsPayload,
           create_stages: createStages,
           ...(stagesPayload.length > 0 ? { stages: stagesPayload } : {}),
         });
@@ -618,12 +734,18 @@ export default function DefineAreaModal({
   const ga = generalArrangement;
   const hasGA = !!gaBlobUrl && !!ga?.imageWidth && !!ga?.imageHeight;
 
-  // Drawing-state hint shown beneath the form fields.
+  // Drawing-state hint shown beneath the form fields. Reflects the
+  // active view's polygon — a "polygon ready" message on the top view
+  // doesn't mean the user is done if a side-profile polygon is still
+  // half-drawn, so we also flag that.
   const drawingHint = (() => {
     if (!selectedDeckId) return t("hintSelectDeck");
     if (polygon.length === 0) return t("hintStartDrawing");
     if (polygon.length < 3) return t("hintAddMoreVertices");
     if (!isClosed) return t("hintClosePolygon");
+    if (halfDrawnPlacements.length > 0) {
+      return t("hintFinishOtherViews") || "Finish or clear half-drawn views";
+    }
     return t("hintPolygonReady");
   })();
 
@@ -640,32 +762,78 @@ export default function DefineAreaModal({
           forcing a 70vh box that pushes inputs off-screen when the user
           focuses one. */}
       <div className="flex flex-col md:flex-row gap-4 md:gap-4 md:h-[70vh]">
-        {/* Left: GA viewer */}
-        <div className="relative flex-1 h-[300px] md:h-auto md:min-h-[300px] bg-gray-50 dark:bg-gray-900 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
-          {hasGA && selectedDeckId ? (
-            <AreaPolygonDrawer
-              imageUrl={gaBlobUrl!}
-              imageWidth={ga!.imageWidth!}
-              imageHeight={ga!.imageHeight!}
-              deckBounds={deckBounds ?? undefined}
-              existingAreas={existingAreasForDrawer}
-              existingPins={existingPinsForDrawer}
-              polygon={polygon}
-              isClosed={isClosed}
-              onUndo={undoPolygon}
-              onRedo={redoPolygon}
-              canUndo={canUndo}
-              canRedo={canRedo}
-              onReset={handleReset}
-              onChange={(p, c) => {
-                setPolygonSnapshot(p, c);
-              }}
-            />
-          ) : (
-            <div className="flex items-center justify-center h-full text-base font-medium text-gray-600 dark:text-gray-300 px-6 text-center">
-              {!hasGA ? t("noGAUploaded") : t("selectDeckToStart")}
+        {/* Left: GA viewer + per-placement view tabs */}
+        <div className="relative flex-1 h-[300px] md:h-auto md:min-h-[300px] bg-gray-50 dark:bg-gray-900 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 flex flex-col">
+          {hasGA && selectedDeckId && placements.length > 1 && (
+            // Tab strip: one button per view (top + each side profile).
+            // A small green dot marks views that already have a closed
+            // polygon, so the user can see which are still to-do.
+            <div className="flex flex-wrap items-center gap-1 px-2 py-1.5 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+              {placements.map((p) => {
+                const isActive = p.id === activePlacementId;
+                const entry = polygonsByPlacement[p.id];
+                const drawn = !!entry && entry.isClosed && entry.polygon.length >= 3;
+                const halfDrawn =
+                  !!entry && !drawn && entry.polygon.length > 0;
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => setActivePlacement(p.id)}
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded transition-colors ${
+                      isActive
+                        ? "bg-blue-600 text-white"
+                        : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                    }`}
+                  >
+                    {p.name}
+                    {drawn && (
+                      <span
+                        className={`w-1.5 h-1.5 rounded-full ${
+                          isActive ? "bg-white" : "bg-green-500"
+                        }`}
+                        aria-label={t("placementDrawn") || "Drawn"}
+                      />
+                    )}
+                    {halfDrawn && (
+                      <span
+                        className={`w-1.5 h-1.5 rounded-full ${
+                          isActive ? "bg-white" : "bg-amber-500"
+                        }`}
+                        aria-label={t("placementInProgress") || "In progress"}
+                      />
+                    )}
+                  </button>
+                );
+              })}
             </div>
           )}
+          <div className="relative flex-1 min-h-0">
+            {hasGA && selectedDeckId ? (
+              <AreaPolygonDrawer
+                imageUrl={gaBlobUrl!}
+                imageWidth={ga!.imageWidth!}
+                imageHeight={ga!.imageHeight!}
+                deckBounds={deckBounds ?? undefined}
+                existingAreas={existingAreasForDrawer}
+                existingPins={existingPinsForDrawer}
+                polygon={polygon}
+                isClosed={isClosed}
+                onUndo={undoPolygon}
+                onRedo={redoPolygon}
+                canUndo={canUndo}
+                canRedo={canRedo}
+                onReset={handleReset}
+                onChange={(p, c) => {
+                  setPolygonSnapshot(p, c);
+                }}
+              />
+            ) : (
+              <div className="flex items-center justify-center h-full text-base font-medium text-gray-600 dark:text-gray-300 px-6 text-center">
+                {!hasGA ? t("noGAUploaded") : t("selectDeckToStart")}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Right: form. Scrollable only on md+ where the column is
