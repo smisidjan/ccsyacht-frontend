@@ -39,16 +39,15 @@ RUN apt-get update && apt-get install -y \
 COPY package.json package-lock.json* ./
 
 # Install dependencies fresh for the target platform
-# Force rebuild of native modules for the container's architecture
-RUN npm ci --force
+RUN npm ci
 
 # Copy application code
 COPY . .
 
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Rebuild native bindings if needed
-RUN npm rebuild @tailwindcss/oxide --force
+# Rebuild native bindings for the container architecture
+RUN npm rebuild
 
 RUN npm run build
 
