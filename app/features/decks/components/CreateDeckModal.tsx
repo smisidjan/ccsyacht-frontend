@@ -361,12 +361,26 @@ export default function CreateDeckModal({
 
   // Save all decks
   const handleSaveAll = async () => {
-    if (pendingDecks.length === 0) return;
+    if (pendingDecks.length === 0 && !editMode) return;
 
     setIsSubmitting(true);
     setError(null);
 
     try {
+      // In edit mode, any pre-existing deck that's no longer in
+      // `pendingDecks` was removed by the user — delete it on the
+      // server before we run the create/update pass so the diff is
+      // applied as a single transaction from the user's point of view.
+      if (editMode && existingDecks) {
+        const keptIds = new Set(
+          pendingDecks.filter((d) => d.isExisting).map((d) => d.id)
+        );
+        const toDelete = existingDecks.filter((d) => !keptIds.has(d.identifier));
+        for (const d of toDelete) {
+          await decksApi.delete(projectId, d.identifier);
+        }
+      }
+
       // Process all decks sequentially
       for (const deck of pendingDecks) {
         // Convert bounds from (x1,y1,x2,y2) to the placement bbox shape the
