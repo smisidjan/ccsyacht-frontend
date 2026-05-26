@@ -2,7 +2,6 @@
 
 import { PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import FormInput from "@/app/components/ui/FormInput";
-import { MAX_FILE_SIZE } from "@/lib/constants/fileUpload";
 import type { PunchlistItemPriority, ProjectMember } from "@/lib/api/types";
 
 interface PunchlistItemFormProps {
@@ -10,8 +9,11 @@ interface PunchlistItemFormProps {
   onTitleChange: (title: string) => void;
   description: string;
   onDescriptionChange: (description: string) => void;
-  priority: PunchlistItemPriority;
-  onPriorityChange: (priority: PunchlistItemPriority) => void;
+  /** Empty string means the user hasn't picked one yet — the select
+   *  shows a disabled placeholder so they can't slip past without
+   *  making an explicit choice. */
+  priority: PunchlistItemPriority | "";
+  onPriorityChange: (priority: PunchlistItemPriority | "") => void;
   dueDate: string;
   onDueDateChange: (date: string) => void;
   assignees: string[];
@@ -27,6 +29,7 @@ interface PunchlistItemFormProps {
     punchlistDescription: string;
     punchlistDescriptionPlaceholder: string;
     punchlistPriority: string;
+    punchlistPriorityPlaceholder: string;
     priorityLow: string;
     priorityMedium: string;
     priorityHigh: string;
@@ -84,16 +87,27 @@ export default function PunchlistItemForm({
         />
       </div>
 
-      {/* Priority */}
+      {/* Priority — no default selection. User must pick one
+          explicitly; the backend defaults to medium when omitted but
+          we want the choice surfaced rather than baked in. */}
       <div>
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
           {t.punchlistPriority}
+          <span className="text-red-500 ml-0.5" aria-hidden="true">
+            *
+          </span>
         </label>
         <select
           value={priority}
-          onChange={(e) => onPriorityChange(e.target.value as PunchlistItemPriority)}
+          required
+          onChange={(e) =>
+            onPriorityChange(e.target.value as PunchlistItemPriority | "")
+          }
           className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
         >
+          <option value="" disabled>
+            {t.punchlistPriorityPlaceholder}
+          </option>
           <option value="low">{t.priorityLow}</option>
           <option value="medium">{t.priorityMedium}</option>
           <option value="high">{t.priorityHigh}</option>

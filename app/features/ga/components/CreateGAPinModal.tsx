@@ -88,7 +88,10 @@ export default function CreateGAPinModal({
 
   // Punchlist item fields (only for create mode)
   const [punchlistDescription, setPunchlistDescription] = useState("");
-  const [punchlistPriority, setPunchlistPriority] = useState<PunchlistItemPriority>("medium");
+  // Empty string = no choice yet. The user picks one explicitly before
+  // submit; the backend would default to "medium" if omitted but we
+  // want the choice surfaced.
+  const [punchlistPriority, setPunchlistPriority] = useState<PunchlistItemPriority | "">("");
   const [punchlistDueDate, setPunchlistDueDate] = useState("");
   const [punchlistAssignees, setPunchlistAssignees] = useState<string[]>([]);
   const [punchlistFiles, setPunchlistFiles] = useState<File[]>([]);
@@ -140,7 +143,7 @@ export default function CreateGAPinModal({
       setSelectedStageId(initialStage?.identifier || "");
       // Reset punchlist fields
       setPunchlistDescription("");
-      setPunchlistPriority("medium");
+      setPunchlistPriority("");
       setPunchlistDueDate("");
       setPunchlistAssignees([]);
       setPunchlistFiles([]);
@@ -249,7 +252,7 @@ export default function CreateGAPinModal({
         color,
         // Punchlist fields (optioneel)
         description: punchlistDescription.trim() || undefined,
-        priority: punchlistPriority,
+        priority: punchlistPriority || undefined,
         due_date: punchlistDueDate || undefined,
         assignee_ids: punchlistAssignees.length > 0 ? punchlistAssignees : undefined,
       };
@@ -359,7 +362,10 @@ export default function CreateGAPinModal({
       successMessage={isEditing ? t("updateSuccess") : t("createSuccess")}
       errorFallbackMessage={isEditing ? t("updateError") : t("createError")}
       onSuccessCallback={onSuccess}
-      submitDisabled={!isEditing && (!selectedStageId || !label.trim())}
+      submitDisabled={
+        !isEditing &&
+        (!selectedStageId || !label.trim() || !punchlistPriority)
+      }
       size={showGAPreview ? "2xl" : "md"}
     >
       <div className={showGAPreview ? "flex gap-6" : ""}>
@@ -681,6 +687,7 @@ export default function CreateGAPinModal({
                 punchlistDescription: t("punchlistDescription"),
                 punchlistDescriptionPlaceholder: t("punchlistDescriptionPlaceholder"),
                 punchlistPriority: t("punchlistPriority"),
+                punchlistPriorityPlaceholder: t("punchlistPriorityPlaceholder"),
                 priorityLow: t("priorityLow"),
                 priorityMedium: t("priorityMedium"),
                 priorityHigh: t("priorityHigh"),

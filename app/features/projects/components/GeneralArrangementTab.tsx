@@ -34,6 +34,7 @@ import {
   PunchlistItemCard,
   CancelPunchlistItemModal,
 } from "@/app/features/punchlist";
+import PunchlistAssigneeQuickFilter from "@/app/features/punchlist/components/PunchlistAssigneeQuickFilter";
 import PunchlistFilterPopover, {
   EMPTY_FILTERS,
   applyPunchlistFilters,
@@ -529,7 +530,7 @@ export default function GeneralArrangementTab({
       {/* Toolbar — same search + filter popover as the punchlist
           tabs. The popover sources its deck / area / stage options
           from the synthetic items derived from the loaded pins. */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center flex-wrap gap-3">
         <div className="relative flex-1 max-w-sm">
           <MagnifyingGlassIcon className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <input
@@ -540,6 +541,18 @@ export default function GeneralArrangementTab({
             className="w-full pl-9 pr-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           />
         </div>
+        <PunchlistAssigneeQuickFilter
+          items={filterSourceItems}
+          selectedIds={filters.assigneeIds}
+          onToggle={(id) =>
+            setFilters((prev) => ({
+              ...prev,
+              assigneeIds: prev.assigneeIds.includes(id)
+                ? prev.assigneeIds.filter((v) => v !== id)
+                : [...prev.assigneeIds, id],
+            }))
+          }
+        />
         <PunchlistFilterPopover
           items={filterSourceItems}
           value={filters}

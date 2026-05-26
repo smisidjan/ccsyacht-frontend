@@ -10,6 +10,7 @@ import CreateGAPinModal from "@/app/features/ga/components/CreateGAPinModal";
 import PunchlistItemCard from "./PunchlistItemCard";
 import PunchlistItemRow from "./PunchlistItemRow";
 import CancelPunchlistItemModal from "./CancelPunchlistItemModal";
+import PunchlistAssigneeQuickFilter from "./PunchlistAssigneeQuickFilter";
 import PunchlistFilterPopover, {
   EMPTY_FILTERS,
   applyPunchlistFilters,
@@ -260,7 +261,7 @@ export default function PunchlistList({ projectId, areaId, stage, onPunchlistCha
       {/* Toolbar — Jira-style: search input + filter popover. The
           popover handles status / assignee / priority in one place
           and supports multi-select on each axis. */}
-      <div className="flex items-center gap-3 mb-6">
+      <div className="flex items-center flex-wrap gap-3 mb-6">
         <div className="relative flex-1 max-w-sm">
           <MagnifyingGlassIcon className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <input
@@ -271,6 +272,18 @@ export default function PunchlistList({ projectId, areaId, stage, onPunchlistCha
             className="w-full pl-9 pr-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           />
         </div>
+        <PunchlistAssigneeQuickFilter
+          items={items ?? []}
+          selectedIds={filters.assigneeIds}
+          onToggle={(id) =>
+            setFilters((prev) => ({
+              ...prev,
+              assigneeIds: prev.assigneeIds.includes(id)
+                ? prev.assigneeIds.filter((v) => v !== id)
+                : [...prev.assigneeIds, id],
+            }))
+          }
+        />
         <PunchlistFilterPopover
           items={items ?? []}
           value={filters}
