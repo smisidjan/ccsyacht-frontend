@@ -1,0 +1,71 @@
+[0;32m🚀 Starting CCS Yacht Frontend Deployment[0m
+[1;33m📦 Building Docker image locally for AMD64...[0m
+#0 building with "desktop-linux" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 1.38kB done
+#1 DONE 0.0s
+
+#2 [internal] load .dockerignore
+#2 transferring context: 225B done
+#2 DONE 0.0s
+
+#3 resolve image config for docker.io/docker/dockerfile:1
+#3 DONE 0.6s
+
+#4 docker-image://docker.io/docker/dockerfile:1@sha256:87999aa3d42bdc6bea60565083ee17e86d1f3339802f543c0d03998580f9cb89
+#4 CACHED
+
+#5 [internal] load build definition from Dockerfile
+#5 DONE 0.0s
+
+#6 [internal] load metadata for docker.io/library/node:20-alpine
+#6 DONE 0.4s
+
+#7 [internal] load .dockerignore
+#7 DONE 0.0s
+
+#8 [base 1/2] FROM docker.io/library/node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293
+#8 DONE 0.0s
+
+#9 [base 2/2] RUN apk add --no-cache python3 make g++ libc6-compat
+#9 CACHED
+
+#10 [deps 1/3] WORKDIR /app
+#10 CACHED
+
+#11 [production 2/6] RUN addgroup --system --gid 1001 nodejs
+#11 CACHED
+
+#12 [production 3/6] RUN adduser --system --uid 1001 nextjs
+#12 CACHED
+
+#13 [internal] load build context
+#13 transferring context: 79.38kB 0.1s done
+#13 DONE 0.1s
+
+#14 [deps 2/3] COPY package.json package-lock.json* ./
+#14 CACHED
+
+#15 [deps 3/3] RUN npm ci --force &&     npm rebuild @parcel/watcher --update-binary
+#15 1.138 npm warn using --force Recommended protections disabled.
+#15 3.911 npm warn ERESOLVE overriding peer dependency
+#15 3.914 npm warn While resolving: @tiptap/extension-image@3.23.6
+#15 3.914 npm warn Found: @tiptap/core@3.22.4
+#15 3.914 npm warn node_modules/@tiptap/core
+#15 3.914 npm warn   peer @tiptap/core@"3.22.4" from @tiptap/extension-blockquote@3.22.4
+#15 3.914 npm warn   node_modules/@tiptap/extension-blockquote
+#15 3.914 npm warn     @tiptap/extension-blockquote@"^3.22.4" from @tiptap/starter-kit@3.22.4
+#15 3.914 npm warn     node_modules/@tiptap/starter-kit
+#15 3.914 npm warn   20 more (@tiptap/extension-bold, ...)
+#15 3.914 npm warn
+#15 3.914 npm warn Could not resolve dependency:
+#15 3.914 npm warn peer @tiptap/core@"3.23.6" from @tiptap/extension-image@3.23.6
+#15 3.914 npm warn node_modules/@tiptap/extension-image
+#15 3.914 npm warn   @tiptap/extension-image@"^3.22.4" from the root project
+#15 3.914 npm warn
+#15 3.914 npm warn Conflicting peer dependency: @tiptap/core@3.23.6
+#15 3.914 npm warn node_modules/@tiptap/core
+#15 3.914 npm warn   peer @tiptap/core@"3.23.6" from @tiptap/extension-image@3.23.6
+#15 3.914 npm warn   node_modules/@tiptap/extension-image
+#15 3.914 npm warn     @tiptap/extension-image@"^3.22.4" from the root project

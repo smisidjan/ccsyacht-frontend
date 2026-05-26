@@ -30,8 +30,8 @@ scp_copy() {
     scp -i $SSH_KEY -r $1 $SERVER_USER@$SERVER_IP:$2
 }
 
-# Step 1: Build the Docker image locally for AMD64 platform
-echo -e "${YELLOW}📦 Building Docker image locally for AMD64...${NC}"
+# Step 1: Build the Docker image for AMD64 platform
+echo -e "${YELLOW}📦 Building Docker image for linux/amd64...${NC}"
 docker buildx build --platform linux/amd64 -t ccsyacht-frontend:latest --target production --load .
 
 # Step 2: Save Docker image

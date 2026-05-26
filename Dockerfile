@@ -28,27 +28,16 @@ CMD ["npm", "run", "dev"]
 FROM base AS builder
 WORKDIR /app
 
-# Install build dependencies for native modules
-RUN apt-get update && apt-get install -y \
-    python3 \
-    make \
-    g++ \
-    && rm -rf /var/lib/apt/lists/*
-
 # Copy package files
 COPY package.json package-lock.json* ./
 
-# Install dependencies fresh for the target platform
+# Install dependencies
 RUN npm ci
 
 # Copy application code
 COPY . .
 
 ENV NEXT_TELEMETRY_DISABLED=1
-
-# Delete and reinstall Tailwind CSS packages to force native binding compilation
-RUN rm -rf node_modules/@tailwindcss && \
-    npm install @tailwindcss/postcss@alpha @tailwindcss/cli@alpha @tailwindcss/vite@alpha --force
 
 RUN npm run build
 
