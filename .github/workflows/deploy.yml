@@ -79,6 +79,12 @@ jobs:
                 restart: unless-stopped
                 environment:
                   - NODE_ENV=production
+                  - NEXT_PUBLIC_API_URL=https://api.papertrail.ccsyacht.com/api
+                  - NEXT_PUBLIC_APP_NAME=Papertrail Marine by CCS Yacht
+                  - NEXT_PUBLIC_REVERB_APP_KEY=papertrail-prod-key-2024
+                  - NEXT_PUBLIC_REVERB_HOST=papertrail.ccsyacht.com
+                  - NEXT_PUBLIC_REVERB_PORT=443
+                  - NEXT_PUBLIC_REVERB_SCHEME=https
                 env_file:
                   - .env
             EOF
