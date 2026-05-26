@@ -150,24 +150,34 @@ export default function GALeafletContent({
     return [leafletY, leafletX]; // [lat, lng] order
   };
 
-  // Convert deck placement (percentage 0–100) to Leaflet bounds. Returns
-  // null for decks without a primary GA placement.
-  const convertDeckToLeafletBounds = (deck: Deck): L.LatLngBoundsExpression | null => {
-    if (!deck.deckPlacement) return null;
-    const { bbox_x, bbox_y, bbox_width, bbox_height } = deck.deckPlacement;
-    // Convert percentage to pixel coordinates
-    const x1 = (bbox_x / 100) * imageWidth;
-    const y1 = (bbox_y / 100) * imageHeight;
-    const x2 = ((bbox_x + bbox_width) / 100) * imageWidth;
-    const y2 = ((bbox_y + bbox_height) / 100) * imageHeight;
+  // Convert a percentage bbox (works for both the primary deck placement
+  // and any side-profile rectangle) to Leaflet bounds.
+  const bboxToLeafletBounds = (bbox: {
+    bbox_x: number;
+    bbox_y: number;
+    bbox_width: number;
+    bbox_height: number;
+  }): L.LatLngBoundsExpression => {
+    const x1 = (bbox.bbox_x / 100) * imageWidth;
+    const y1 = (bbox.bbox_y / 100) * imageHeight;
+    const x2 = ((bbox.bbox_x + bbox.bbox_width) / 100) * imageWidth;
+    const y2 = ((bbox.bbox_y + bbox.bbox_height) / 100) * imageHeight;
     return [
-      [y1, x1], // Southwest [lat, lng]
-      [y2, x2], // Northeast [lat, lng]
+      [y1, x1],
+      [y2, x2],
     ];
   };
 
   // Decks with a primary GA placement (skip ones still in setup with no bbox).
   const decksWithBounds = decks.filter((d) => d.deckPlacement);
+
+  // Flatten all side-profile rectangles across decks so we can render
+  // them as clickable additional drop zones. Each entry carries its
+  // parent deck so the click handler can fall back to the same
+  // `onDeckClick` callback used by the primary placement.
+  const sideProfiles = decks.flatMap((deck) =>
+    (deck.sideProfiles ?? []).map((sp) => ({ deck, sideProfile: sp }))
+  );
 
   return (
     <div
@@ -275,8 +285,7 @@ export default function GALeafletContent({
 
         {/* Render deck bounding boxes on hover when in edit mode */}
         {canEdit && decksWithBounds.map((deck) => {
-          const deckBounds = convertDeckToLeafletBounds(deck);
-          if (!deckBounds) return null;
+          const deckBounds = bboxToLeafletBounds(deck.deckPlacement!);
           const isHovered = hoveredDeckId === deck.identifier;
 
           return (
@@ -301,6 +310,51 @@ export default function GALeafletContent({
                   const y = (e.latlng.lat / imageHeight) * 100;
                   // Polygon coords are normalized 0..1 — use the same scale
                   // for the hit-test point. Only this deck's areas can match.
+                  const normalized = { x: x / 100, y: y / 100 };
+                  const hitArea =
+                    areas.find(
+                      (a) =>
+                        a.containedInPlace?.identifier === deck.identifier &&
+                        a.polygon &&
+                        isInsidePolygon(normalized, a.polygon)
+                    ) ?? null;
+                  onDeckClick(deck, x, y, hitArea);
+                },
+              }}
+            />
+          );
+        })}
+
+        {/* Render side-profile rectangles. Same click semantics as the
+            primary deck rectangle — drops the user into create-pin
+            scoped to that deck. Side profiles typically sit outside
+            any area polygon, so the hit-test will usually return
+            `null` and the area stays unselected. Purple matches the
+            convention from CreateDeckModal so the two markers read
+            as different kinds of placement at a glance. */}
+        {canEdit && sideProfiles.map(({ deck, sideProfile }) => {
+          const bounds = bboxToLeafletBounds(sideProfile);
+          const isHovered = hoveredDeckId === deck.identifier;
+
+          return (
+            <Rectangle
+              key={`side-${sideProfile.identifier}`}
+              bounds={bounds}
+              pathOptions={{
+                color: "#8B5CF6",
+                weight: isHovered ? 3 : 2,
+                fillColor: "#8B5CF6",
+                fillOpacity: isHovered ? 0.3 : 0.1,
+                dashArray: isHovered ? undefined : "5, 5",
+              }}
+              eventHandlers={{
+                mouseover: () => setHoveredDeckId(deck.identifier),
+                mouseout: () => setHoveredDeckId(null),
+                click: (e) => {
+                  L.DomEvent.stopPropagation(e.originalEvent);
+                  if (!onDeckClick) return;
+                  const x = (e.latlng.lng / imageWidth) * 100;
+                  const y = (e.latlng.lat / imageHeight) * 100;
                   const normalized = { x: x / 100, y: y / 100 };
                   const hitArea =
                     areas.find(

@@ -8,6 +8,7 @@ import {
   PaperClipIcon,
   UserCircleIcon,
   ArrowLeftIcon,
+  Squares2X2Icon,
 } from "@heroicons/react/24/outline";
 import { useGAPins } from "@/lib/api/ga-pins";
 import { useDecks } from "@/lib/api/decks";
@@ -29,6 +30,7 @@ import Alert from "@/app/components/ui/Alert";
 import Tooltip from "@/app/components/ui/Tooltip";
 import AuthenticatedImage from "@/app/components/ui/AuthenticatedImage";
 import { CreateGAPinModal, GALeafletViewer } from "@/app/features/ga";
+import { CreateDeckModal } from "@/app/features/decks";
 import {
   PunchlistItemRow,
   PunchlistItemCard,
@@ -265,7 +267,8 @@ export default function GeneralArrangementTab({
 
   // Fetch pins and filter data
   const { data: allPins, loading: rawLoading, refetch } = useGAPins(projectId);
-  const { data: decks } = useDecks(projectId);
+  const { data: decks, refetch: refetchDecks } = useDecks(projectId);
+  const [isManageDecksOpen, setIsManageDecksOpen] = useState(false);
   const { data: areas } = useAreas(projectId, undefined);
   const { data: stages } = useProjectStages(projectId);
 
@@ -615,6 +618,17 @@ export default function GeneralArrangementTab({
               </div>
             </label>
 
+            {canEdit && (
+              <button
+                type="button"
+                onClick={() => setIsManageDecksOpen(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              >
+                <Squares2X2Icon className="w-4 h-4" />
+                {tPins("manageDecks") || "Manage decks"}
+              </button>
+            )}
+
             {canEdit && isAddPinMode && (
               <span className="text-sm text-blue-600 dark:text-blue-400">
                 {tPins("hoverDeckToAdd") || "Hover over a deck to add a pin"}
@@ -858,6 +872,26 @@ export default function GeneralArrangementTab({
         onConfirm={handleRowCancel}
         itemName={cancelTarget?.name ?? ""}
       />
+
+      {/* Manage decks (edit mode of the same modal used during Setup
+          tasks). Lets a user with EDIT_PROJECTS revise deck placements
+          and side profiles without leaving the GA tab. */}
+      {isManageDecksOpen && (
+        <CreateDeckModal
+          isOpen={isManageDecksOpen}
+          onClose={() => setIsManageDecksOpen(false)}
+          projectId={projectId}
+          onSuccess={() => {
+            setIsManageDecksOpen(false);
+            refetchDecks();
+          }}
+          gaImageUrl={imageBlobUrl || undefined}
+          gaImageWidth={generalArrangement?.imageWidth}
+          gaImageHeight={generalArrangement?.imageHeight}
+          existingDecks={decks ?? []}
+          editMode
+        />
+      )}
 
     </div>
   );
