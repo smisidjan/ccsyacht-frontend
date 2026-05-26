@@ -151,6 +151,11 @@
       "pending": "Open",
       "completed": "Klaar"
     },
+    "groups": {
+      "overdue": "Te laat",
+      "pending": "Open",
+      "completed": "Afgerond"
+    },
     "filters": {
       "all": "Alles",
       "documents": "Docs",
@@ -179,7 +184,9 @@
       "sign": "Tekenen",
       "remind": "Stuur herinnering",
       "openProject": "Open Project",
-      "openInProject": "Bekijk in project"
+      "openInProject": "Bekijk in project",
+      "expand": "Uitklappen",
+      "collapse": "Inklappen"
     },
     "uploadDocument": "Upload {type}",
     "acknowledgeDocument": "Review: {title}",

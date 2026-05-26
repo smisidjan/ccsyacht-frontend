@@ -9,8 +9,8 @@ WORKDIR /app
 # Copy package files
 COPY package.json package-lock.json* ./
 
-# Install dependencies with force to resolve conflicts
-RUN npm ci --force
+# Install dependencies
+RUN npm ci
 
 # Development image
 FROM base AS development

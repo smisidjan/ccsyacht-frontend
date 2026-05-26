@@ -295,7 +295,7 @@ export default function CreateGAPinModal({
       >
         <div className="space-y-4">
           {/* Compact location breadcrumb */}
-          <div className="flex items-center flex-wrap gap-2 px-4 py-2.5 rounded-lg bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-700 text-sm">
+          <div className="flex items-center flex-wrap gap-2 text-sm">
             <span className="text-gray-900 dark:text-gray-100">
               {deckName}
             </span>

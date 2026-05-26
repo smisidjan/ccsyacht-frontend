@@ -151,6 +151,11 @@
       "pending": "Pending",
       "completed": "Done"
     },
+    "groups": {
+      "overdue": "Overdue",
+      "pending": "Open",
+      "completed": "Completed"
+    },
     "filters": {
       "all": "All",
       "documents": "Docs",
@@ -179,7 +184,9 @@
       "sign": "Sign",
       "remind": "Send reminder",
       "openProject": "Open Project",
-      "openInProject": "Open in project"
+      "openInProject": "Open in project",
+      "expand": "Expand",
+      "collapse": "Collapse"
     },
     "uploadDocument": "Upload {type}",
     "acknowledgeDocument": "Review: {title}",
