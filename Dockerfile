@@ -28,17 +28,27 @@ CMD ["npm", "run", "dev"]
 FROM base AS builder
 WORKDIR /app
 
+# Install build dependencies for native modules
+RUN apt-get update && apt-get install -y \
+    python3 \
+    make \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
+
 # Copy package files
 COPY package.json package-lock.json* ./
 
 # Install dependencies fresh for the target platform
-# This ensures native bindings are compiled for linux/amd64
-RUN npm ci
+# Force rebuild of native modules for the container's architecture
+RUN npm ci --force
 
 # Copy application code
 COPY . .
 
 ENV NEXT_TELEMETRY_DISABLED=1
+
+# Rebuild native bindings if needed
+RUN npm rebuild @tailwindcss/oxide --force
 
 RUN npm run build
 
