@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from "react";
 import { authApi, getAuthToken } from "@/lib/api/client";
+import { useAuth } from "@/app/context/AuthContext";
 import type { CurrentUser, ApiError } from "@/lib/api/types";
 
 interface CurrentUserContextValue {
@@ -17,6 +18,13 @@ export function CurrentUserProvider({ children }: { children: ReactNode }) {
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<ApiError | null>(null);
+  // Subscribe to the auth token so a same-tab login/logout refetches the
+  // user immediately. The `storage` listener below only fires in *other*
+  // tabs, so without this the first-login flow would land on a protected
+  // route with currentUser=null → permission check fails → ProtectedRoute
+  // redirects to /dashboard → /dashboard forwards to /dashboard/projects
+  // → redirect loop.
+  const { token } = useAuth();
 
   const fetchUser = useCallback(async () => {
     const token = getAuthToken();
@@ -39,10 +47,11 @@ export function CurrentUserProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // Fetch user on mount and when token changes
+  // Fetch user on mount and whenever the auth token changes in the
+  // current tab (login/logout).
   useEffect(() => {
     fetchUser();
-  }, [fetchUser]);
+  }, [fetchUser, token]);
 
   // Listen for auth changes (login/logout)
   useEffect(() => {

@@ -88,7 +88,7 @@ export default function ProtectedRoute({
   loadingType = "table",
 }: ProtectedRouteProps) {
   const router = useRouter();
-  const { hasPermission, hasAnyPermission, hasAllPermissions, loading } =
+  const { hasPermission, hasAnyPermission, hasAllPermissions, loading, user } =
     usePermission();
 
   // Normalize permissions to array
@@ -109,12 +109,17 @@ export default function ProtectedRoute({
     }
   })();
 
-  // Handle redirect when permissions are loaded and user lacks access
+  // Handle redirect when permissions are loaded and user lacks access.
+  // Skip when there's no authenticated user — that case belongs to
+  // AuthContext, which redirects to /login. Firing our own redirect to
+  // /dashboard during logout races with AuthContext and can land in a
+  // loop (e.g. /dashboard/projects → /dashboard → /dashboard/projects).
   useEffect(() => {
+    if (!user) return;
     if (!loading && !hasAccess && !showErrorMessage) {
       router.push(redirectTo);
     }
-  }, [loading, hasAccess, showErrorMessage, router, redirectTo]);
+  }, [loading, hasAccess, showErrorMessage, router, redirectTo, user]);
 
   // Show loading state
   if (loading) {
