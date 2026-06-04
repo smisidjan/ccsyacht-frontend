@@ -29,9 +29,10 @@ export interface GALeafletViewerProps {
   imageHeight: number;
   pins: GAPin[];
   selectedPinId?: string | null;
-  /** Pin id that the matching table row is being hovered for — the
-   *  marker for this pin scales up to mirror the row highlight. */
-  hoveredPinId?: string | null;
+  /** Pin ids whose markers should pop in lockstep with a hover in the
+   *  pins list. A set rather than a single id so hovering a parent
+   *  punchlist row can highlight every child pin under it at once. */
+  hoveredPinIds?: ReadonlySet<string> | null;
   onPinClick?: (pin: GAPin) => void;
   /** Fired when the user hovers a pin on the GA so the matching table
    *  row can be highlighted in lockstep. */

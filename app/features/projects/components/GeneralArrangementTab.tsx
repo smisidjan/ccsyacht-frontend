@@ -254,7 +254,13 @@ export default function GeneralArrangementTab({
   const [newPinPosition, setNewPinPosition] = useState<{ x: number; y: number } | null>(null);
   const [clickedDeck, setClickedDeck] = useState<Deck | null>(null);
   const [clickedArea, setClickedArea] = useState<Area | null>(null);
-  const [hoveredPinId, setHoveredPinId] = useState<string | null>(null);
+  // Pin ids the GA viewer should highlight in lockstep with a hover
+   // in the pins list. A set rather than a single id so hovering a
+   // parent row pops every child pin attached under it at the same
+   // time — child rows just contribute their own single pin.
+  const [hoveredPinIds, setHoveredPinIds] = useState<ReadonlySet<string>>(
+    () => new Set()
+  );
   // Detail panel selection — drives both the right-hand `PunchlistItemCard`
   // and the GA viewer's `selectedPinId` highlight. We track the
   // punchlist item id (parent or child) instead of the pin object so
@@ -857,13 +863,17 @@ export default function GeneralArrangementTab({
                 imageHeight={generalArrangement.imageHeight!}
                 pins={displayedPins}
                 selectedPinId={selectedDetail?.pin?.identifier}
-                hoveredPinId={hoveredPinId}
+                hoveredPinIds={hoveredPinIds}
                 onPinClick={(pin) =>
                   setSelectedDetailId(
                     pin.punchlistItem?.identifier ?? pin.identifier
                   )
                 }
-                onPinHover={(pin) => setHoveredPinId(pin?.identifier ?? null)}
+                onPinHover={(pin) =>
+                  setHoveredPinIds(
+                    pin ? new Set([pin.identifier]) : new Set()
+                  )
+                }
                 onDeckClick={(deck, x, y, area) => {
                   if (canEdit && isAddPinMode) {
                     setNewPinPosition({ x, y });
@@ -913,11 +923,25 @@ export default function GeneralArrangementTab({
                         ""
                     ) ?? pinByItemId.get(it.identifier)?.color
                   }
-                  onRowHover={(it) =>
-                    setHoveredPinId(
-                      it ? pinByItemId.get(it.identifier)?.identifier ?? null : null
-                    )
-                  }
+                  onRowHover={(it) => {
+                    if (!it) {
+                      setHoveredPinIds(new Set());
+                      return;
+                    }
+                    // Collect every pin reachable from this row — the
+                    // item itself plus each of its children. Parents
+                    // often carry no pin directly (all pins live on
+                    // children); without this expansion hovering a
+                    // parent row would highlight nothing on the GA.
+                    const ids = new Set<string>();
+                    const own = pinByItemId.get(it.identifier);
+                    if (own) ids.add(own.identifier);
+                    for (const child of it.children ?? []) {
+                      const childPin = pinByItemId.get(child.identifier);
+                      if (childPin) ids.add(childPin.identifier);
+                    }
+                    setHoveredPinIds(ids);
+                  }}
                   onSelectItem={(id) => setSelectedDetailId(id)}
                   onChangeStatus={(id, next) =>
                     handleRowStatusChange(id, next)

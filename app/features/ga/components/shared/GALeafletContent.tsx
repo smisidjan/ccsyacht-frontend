@@ -34,7 +34,9 @@ interface GALeafletContentProps {
   imageHeight: number;
   pins: GAPin[];
   selectedPinId?: string | null;
-  hoveredPinId?: string | null;
+  /** Pin ids whose markers should pop in lockstep with the pins-list
+   *  hover. A set so a parent row can highlight every child pin. */
+  hoveredPinIds?: ReadonlySet<string> | null;
   onPinClick?: (pin: GAPin) => void;
   onPinHover?: (pin: GAPin | null) => void;
   onImageClick?: (x: number, y: number) => void;
@@ -84,7 +86,7 @@ export default function GALeafletContent({
   imageHeight,
   pins,
   selectedPinId,
-  hoveredPinId,
+  hoveredPinIds,
   onPinClick,
   onPinHover,
   onImageClick,
@@ -237,7 +239,7 @@ export default function GALeafletContent({
             pin={pin}
             position={convertPinToLeaflet(pin)}
             isSelected={selectedPinId === pin.identifier}
-            isHovered={hoveredPinId === pin.identifier}
+            isHovered={hoveredPinIds?.has(pin.identifier) ?? false}
             onClick={onPinClick}
             onHover={onPinHover}
           />

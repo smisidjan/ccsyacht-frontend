@@ -43,3 +43,55 @@ export function createDonePinIcon(
     popupAnchor: [0, -size / 2 - 4],
   });
 }
+
+/** Marker icon for high-priority pins (status not yet done). Same dot
+ *  shape and background colour as the regular pin so the link back to
+ *  the stage stays visible — only the inner glyph differs: a bold
+ *  white `!` calls attention to triage without losing the colour
+ *  language used everywhere else.
+ *
+ *  `color` is the stage / pin colour to fill the circle with. */
+export function createHighPriorityPinIcon(
+  size: number,
+  color: string,
+  options: { emphasised?: boolean } = {}
+): L.DivIcon {
+  const { emphasised = false } = options;
+  const borderWidth = size >= 20 ? 3 : 2;
+  // Glyph is just text — a bold `!` reads cleanly at every pin size
+  // and avoids the visual noise an SVG bang would add at 16px.
+  const fontSize = Math.max(10, Math.round(size * 0.7));
+
+  return L.divIcon({
+    className: "custom-pin-marker custom-pin-marker--high",
+    html: `
+      <div style="
+        width: ${size}px;
+        height: ${size}px;
+        background-color: ${color};
+        border: ${borderWidth}px solid white;
+        border-radius: 50%;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: transform 0.15s ease;
+        ${emphasised ? "transform: scale(1.15);" : ""}
+      ">
+        <span style="
+          color: white;
+          font-family: ui-sans-serif, system-ui, sans-serif;
+          font-weight: 800;
+          font-size: ${fontSize}px;
+          line-height: 1;
+          /* Optical centring — the exclamation glyph has more weight
+             at the top, so a tiny nudge down centres it in the dot. */
+          margin-top: 1px;
+        ">!</span>
+      </div>
+    `,
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
+    popupAnchor: [0, -size / 2 - 4],
+  });
+}

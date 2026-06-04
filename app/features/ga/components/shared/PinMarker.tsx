@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { Marker, Tooltip } from "react-leaflet";
 import L from "leaflet";
 import type { GAPin, StageStatus } from "@/lib/api/types";
-import { createDonePinIcon } from "./pinIcons";
+import { createDonePinIcon, createHighPriorityPinIcon } from "./pinIcons";
 
 interface PinMarkerProps {
   pin: GAPin;
@@ -76,14 +76,23 @@ export default function PinMarker({
   // same in either case.
   const isEmphasised = isSelected || isHovered;
   const isDone = pin.punchlistItem?.status === "done";
+  // High-priority gets a white `!` inside the dot. Done wins when
+  // both apply — a finished item shouldn't still scream for triage.
+  const isHighPriority =
+    !isDone && pin.punchlistItem?.priority === "high";
 
-  const icon = useMemo(
-    () =>
-      isDone
-        ? createDonePinIcon(isEmphasised ? 22 : 16, { emphasised: isEmphasised })
-        : createPinIcon(pinColor, isEmphasised),
-    [pinColor, isEmphasised, isDone]
-  );
+  const icon = useMemo(() => {
+    const size = isEmphasised ? 22 : 16;
+    if (isDone) {
+      return createDonePinIcon(size, { emphasised: isEmphasised });
+    }
+    if (isHighPriority) {
+      return createHighPriorityPinIcon(size, pinColor, {
+        emphasised: isEmphasised,
+      });
+    }
+    return createPinIcon(pinColor, isEmphasised);
+  }, [pinColor, isEmphasised, isDone, isHighPriority]);
 
   return (
     <Marker

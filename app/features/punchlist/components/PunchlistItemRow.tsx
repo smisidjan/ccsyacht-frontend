@@ -6,6 +6,7 @@ import {
   PaperClipIcon,
   MapPinIcon,
 } from "@heroicons/react/24/outline";
+import { CheckCircleIcon } from "@heroicons/react/24/solid";
 import PunchlistStatusDropdown from "./PunchlistStatusDropdown";
 import PunchlistPriorityDropdown from "./PunchlistPriorityDropdown";
 import PunchlistAssigneePicker from "./PunchlistAssigneePicker";
@@ -100,13 +101,23 @@ export default function PunchlistItemRow({
             : "border-l-transparent hover:bg-gray-50 dark:hover:bg-gray-700/40"
       }`}
     >
-      {stageColor && (
+      {/* Leading status anchor. Completed items get a green
+          checkmark so "done" reads at a glance without the user
+          having to scan to the status pill on the right; everything
+          else falls back to the stage-color dot the parent supplied
+          (the visual link back to the GA marker). */}
+      {item.status === "done" ? (
+        <CheckCircleIcon
+          className="w-4 h-4 flex-shrink-0 text-green-500 dark:text-green-400"
+          aria-hidden="true"
+        />
+      ) : stageColor ? (
         <span
           className="w-2.5 h-2.5 rounded-full flex-shrink-0 border border-white dark:border-gray-800 shadow-sm"
           style={{ backgroundColor: stageColor }}
           aria-hidden="true"
         />
-      )}
+      ) : null}
 
       {/* Short numeric id — `#1`, `#2`, ... — assigned by the parent
           based on project-wide creation order so an item keeps the
