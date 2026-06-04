@@ -1219,6 +1219,16 @@ export interface PunchlistItem {
   "@context"?: string;
   "@type"?: string;
   identifier: string;
+  /** `null` for top-level items, parent identifier for children.
+   *  Self-referential parent / child tree — sub-items are just
+   *  punchlist items with `parentId` set, so every action a
+   *  top-level item supports (status, priority, assignees, due_date,
+   *  attachments, logbook, signoff gating) works for children too. */
+  parentId: string | null;
+  /** Child sub-items, only present when the relation is loaded by
+   *  the backend (index endpoints inline them; mutation responses
+   *  may omit). One level deep — backend rejects sub-sub-items. */
+  children?: PunchlistItem[];
   name: string;
   description?: string;
   actionStatus: string;
@@ -1262,12 +1272,49 @@ export interface PunchlistItem {
   };
 }
 
+/** Pin entry on a `CreatePunchlistItemRequest`. When the array is
+ *  supplied the backend creates one GA pin per entry — deck / area /
+ *  stage are inferred from the `stageId` in the URL, so the client
+ *  only sends coordinates. */
+export interface CreatePunchlistItemPinInput {
+  /** Percentage 0–100 across the GA image. */
+  x: number;
+  /** Percentage 0–100 down the GA image. */
+  y: number;
+  /** Optional per-pin label; defaults server-side to the item title. */
+  label?: string;
+  /** Hex `#RRGGBB`; defaults server-side to `#3B82F6`. */
+  color?: string;
+}
+
+/** Child sub-item on a `CreatePunchlistItemRequest`. Inherits the
+ *  parent's stage server-side; can carry its own assignees, priority,
+ *  due date and pins. Only one level deep — backend rejects a
+ *  `children` field on a child entry. */
+export interface CreatePunchlistItemChildInput {
+  title: string;
+  description?: string;
+  priority?: PunchlistItemPriority;
+  due_date?: string; // YYYY-MM-DD
+  assignee_ids?: string[];
+  pins?: CreatePunchlistItemPinInput[];
+}
+
 export interface CreatePunchlistItemRequest {
   title: string;
   description?: string;
   priority?: PunchlistItemPriority;
   due_date?: string; // YYYY-MM-DD
   assignee_ids?: string[];
+  /** Optional list of GA pins to drop alongside the item — same
+   *  endpoint creates the item and every pin atomically. Omit for
+   *  "punchlist item without a location" workflows. */
+  pins?: CreatePunchlistItemPinInput[];
+  /** Optional sub-items created together with the parent. Each
+   *  child becomes its own `PunchlistItem` with `parentId` pointing
+   *  to the new parent. Server runs the whole tree in a single
+   *  transaction. */
+  children?: CreatePunchlistItemChildInput[];
 }
 
 export interface UpdatePunchlistItemRequest {

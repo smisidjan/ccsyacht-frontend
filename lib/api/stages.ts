@@ -67,6 +67,13 @@ export function useStages(projectId: string, areaId: string) {
   });
 
   const fetchStages = useCallback(async () => {
+    // Skip when no area is selected — the URL would be malformed
+    // (`/areas//stages`) and the backend returns 404. Idle state is
+    // the correct semantic here: there's nothing to fetch yet.
+    if (!projectId || !areaId) {
+      setState({ data: [], loading: false, error: null });
+      return;
+    }
     setState((prev) => ({ ...prev, loading: true, error: null }));
     try {
       const response = await stagesApi.getAll(projectId, areaId);

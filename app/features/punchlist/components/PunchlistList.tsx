@@ -8,7 +8,7 @@ import Tooltip from "@/app/components/ui/Tooltip";
 import LoadingSkeleton from "@/app/components/ui/LoadingSkeleton";
 import CreateGAPinModal from "@/app/features/ga/components/CreateGAPinModal";
 import PunchlistItemCard from "./PunchlistItemCard";
-import PunchlistItemRow from "./PunchlistItemRow";
+import PunchlistTreeList from "./PunchlistTreeList";
 import CancelPunchlistItemModal from "./CancelPunchlistItemModal";
 import PunchlistAssigneeQuickFilter from "./PunchlistAssigneeQuickFilter";
 import PunchlistFilterPopover, {
@@ -17,7 +17,7 @@ import PunchlistFilterPopover, {
   type PunchlistFilters,
 } from "./PunchlistFilterPopover";
 import { punchlistItemsApi, usePunchlistItems } from "@/lib/api/punchlist-items";
-import { usePunchlistNumbers } from "@/lib/hooks/usePunchlistNumbers";
+import { usePunchlistProjectItems } from "@/lib/hooks/usePunchlistProjectItems";
 import { useGAPins } from "@/lib/api/ga-pins";
 import { useToast } from "@/app/context/ToastContext";
 import { handleError } from "@/lib/utils/errors";
@@ -29,12 +29,12 @@ import { polygonCentroid } from "@/lib/utils/geometry";
 import {
   hasGAImageData,
   getFixedImageUrl,
+  getAreaPolygonForDeck,
 } from "@/app/features/ga/utils/helpers";
 import { usePermission } from "@/lib/hooks/usePermission";
 import { PERMISSIONS } from "@/lib/constants/permissions";
 import type {
   GAPin,
-  PunchlistItem,
   PunchlistItemPriority,
   PunchlistItemStatus,
   Stage,
@@ -57,7 +57,11 @@ interface PunchlistListProps {
 }
 
 export default function PunchlistList({ projectId, areaId, stage, onPunchlistChange }: PunchlistListProps) {
-  const punchlistNumbers = usePunchlistNumbers(projectId);
+  // Use the project-wide tree's numbering so children get the
+  // hierarchical `"N.M"` form. Shared across the stage-, project- and
+  // GA-level surfaces so every appearance of the same item shows the
+  // same number.
+  const { numbers: punchlistNumbers } = usePunchlistProjectItems(projectId);
   const stageId = stage.identifier;
   const stageStatus = stage.status.name;
   const t = useTranslations("punchlist");
@@ -113,9 +117,15 @@ export default function PunchlistList({ projectId, areaId, stage, onPunchlistCha
   const { data: project } = useProject(projectId);
   const { data: area } = useArea(projectId, areaId);
   const { data: decks } = useDecks(projectId);
-  const deck = decks?.find(
-    (d) => d.identifier === area?.containedInPlace?.identifier
-  );
+  // Resolve the deck via the area's containment relation first; if
+  // the area record came back without `containedInPlace` (the field
+  // is optional and some endpoints omit it), fall back to the stage's
+  // deck — the stage is always pinned to a deck and we already have
+  // the full Stage object as a prop. Either path lands on the same
+  // deck for the area's primary placement.
+  const deckId =
+    area?.containedInPlace?.identifier ?? stage.deck?.identifier;
+  const deck = decks?.find((d) => d.identifier === deckId);
   const ga =
     project && typeof project.generalArrangement === "object"
       ? project.generalArrangement
@@ -125,15 +135,18 @@ export default function PunchlistList({ projectId, areaId, stage, onPunchlistCha
       ? getFixedImageUrl(ga.imageUrl)
       : undefined;
   const { imageBlobUrl } = useGAImage(gaImageRawUrl);
-  // Centroid of the area's polygon — used as the marker's drop point so
-  // the user starts inside the area. Falls back to the image centre when
-  // the area has no polygon (legacy data).
-  const initialPinPosition = area?.polygon
-    ? (() => {
-        const c = polygonCentroid(area.polygon);
-        return c ? { x: c.x * 100, y: c.y * 100 } : { x: 50, y: 50 };
-      })()
-    : { x: 50, y: 50 };
+  // Centroid of the area's polygon — used as the marker's drop point
+  // so the user starts inside the area. Resolves either the
+  // per-placement polygon (new model) or the legacy `polygon` field,
+  // both keyed off the area's deck. Falls back to the image centre
+  // when the area has no usable polygon yet (e.g. freshly created,
+  // waiting on a draw).
+  const initialPinPosition = (() => {
+    const points = getAreaPolygonForDeck(area, deck);
+    if (!points) return { x: 50, y: 50 };
+    const c = polygonCentroid(points);
+    return c ? { x: c.x * 100, y: c.y * 100 } : { x: 50, y: 50 };
+  })();
 
   const canCreate = hasPermission(PERMISSIONS.CREATE_PUNCHLIST_ITEMS);
   const canView = hasPermission(PERMISSIONS.VIEW_PUNCHLIST_ITEMS);
@@ -141,16 +154,6 @@ export default function PunchlistList({ projectId, areaId, stage, onPunchlistCha
 
   // Filters/search are client-side — they don't drive the API, so no
   // pagination reset is needed when they change.
-
-  // Selection lives outside the items array — if the selected id
-  // disappears (filter change, page move, server-side delete) clear
-  // it so the detail panel doesn't keep referencing a stale row.
-  useEffect(() => {
-    if (!items || !selectedItemId) return;
-    if (!items.some((item) => item.identifier === selectedItemId)) {
-      setSelectedItemId(null);
-    }
-  }, [items, selectedItemId]);
 
   // Apply search + filter popover values client-side. Helper is
   // shared with the project-level and GA tabs so they all read the
@@ -160,9 +163,20 @@ export default function PunchlistList({ projectId, areaId, stage, onPunchlistCha
     [items, searchQuery, filters]
   );
 
-  const selectedItem = filteredItems.find(
-    (i: PunchlistItem) => i.identifier === selectedItemId
-  );
+  /** Resolve the selected id to the real item — checks both
+   *  top-level and inlined children so the card can render a child's
+   *  detail when the user picks one from the parent's sub-tasks
+   *  section. */
+  const selectedItem = useMemo(() => {
+    if (!selectedItemId) return null;
+    for (const top of filteredItems) {
+      if (top.identifier === selectedItemId) return top;
+      for (const child of top.children ?? []) {
+        if (child.identifier === selectedItemId) return child;
+      }
+    }
+    return null;
+  }, [filteredItems, selectedItemId]);
 
   // Status mutation shared between the row dropdown and the detail
   // panel. Cancellation hits a different path (needs a reason) and
@@ -314,43 +328,30 @@ export default function PunchlistList({ projectId, areaId, stage, onPunchlistCha
             </div>
           ) : (
             <div className="flex flex-col lg:flex-row gap-4 items-start">
-              {/* List — thin rows, Jira-style. Stays full-width on
-                  small screens; on lg+ shrinks to make room for the
-                  detail panel beside it. */}
-              <div
-                className={`bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-md divide-y divide-gray-100 dark:divide-gray-700 ${
-                  selectedItem ? "lg:w-2/5 xl:w-1/3" : "w-full"
-                }`}
-              >
-                {filteredItems.map((item: PunchlistItem) => (
-                  <PunchlistItemRow
-                    key={item.identifier}
-                    item={item}
-                    projectId={projectId}
-                    isSelected={selectedItemId === item.identifier}
-                    stageStatus={stageStatus}
-                    canEdit={canEditItems}
-                    compact={!!selectedItem}
-                    displayNumber={punchlistNumbers.get(item.identifier)}
-                    onSelect={() =>
-                      setSelectedItemId(
-                        selectedItemId === item.identifier
-                          ? null
-                          : item.identifier
-                      )
-                    }
-                    onChangeStatus={(next) =>
-                      handleRowStatusChange(item.identifier, next)
-                    }
-                    onChangePriority={(next) =>
-                      handleRowPriorityChange(item.identifier, next)
-                    }
-                    onRequestCancel={() =>
-                      setCancelTarget({ id: item.identifier, name: item.name })
-                    }
-                    onAssigneesChange={handleChange}
-                  />
-                ))}
+              {/* List — shared tree-aware component so the stage,
+                  project and GA surfaces all behave identically. */}
+              <div className={selectedItem ? "lg:w-2/5 xl:w-1/3" : "w-full"}>
+                <PunchlistTreeList
+                  items={filteredItems}
+                  projectId={projectId}
+                  selectedItemId={selectedItemId}
+                  stageStatus={stageStatus}
+                  canEdit={canEditItems}
+                  compact={!!selectedItem}
+                  getDisplayNumber={(id) => punchlistNumbers.get(id)}
+                  getRowColor={() => stage.color ?? undefined}
+                  onSelectItem={(id) =>
+                    setSelectedItemId(selectedItemId === id ? null : id)
+                  }
+                  onChangeStatus={(id, next) =>
+                    handleRowStatusChange(id, next)
+                  }
+                  onChangePriority={(id, next) =>
+                    handleRowPriorityChange(id, next)
+                  }
+                  onRequestCancel={(target) => setCancelTarget(target)}
+                  onAssigneesChange={handleChange}
+                />
               </div>
 
               {/* Detail panel — slides in beside the list on lg+, full
@@ -366,6 +367,14 @@ export default function PunchlistList({ projectId, areaId, stage, onPunchlistCha
                     stageStatus={stageStatus}
                     onUpdate={handleChange}
                     displayNumber={punchlistNumbers.get(selectedItem.identifier)}
+                    subItems={
+                      !selectedItem.parentId &&
+                      (selectedItem.children?.length ?? 0) > 0
+                        ? selectedItem.children
+                        : undefined
+                    }
+                    onSubItemSelect={(id) => setSelectedItemId(id)}
+                    getSubItemDisplayNumber={(id) => punchlistNumbers.get(id)}
                     onClose={() => setSelectedItemId(null)}
                     onEditPinLocation={(() => {
                       // Look up the GA pin attached to the selected

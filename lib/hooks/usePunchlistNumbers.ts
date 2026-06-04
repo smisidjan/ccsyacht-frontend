@@ -43,9 +43,14 @@ export function usePunchlistNumbers(
   }, [projectId, refreshKey]);
 
   return useMemo(() => {
-    const sorted = [...items].sort((a, b) =>
-      (a.dateCreated ?? "").localeCompare(b.dateCreated ?? "")
-    );
+    // Tiebreaker on identifier keeps the order deterministic when two
+    // items share a `dateCreated` (or it's empty) — otherwise their
+    // `#N` values would swap on every refetch.
+    const sorted = [...items].sort((a, b) => {
+      const cmp = (a.dateCreated ?? "").localeCompare(b.dateCreated ?? "");
+      if (cmp !== 0) return cmp;
+      return a.identifier.localeCompare(b.identifier);
+    });
     const out = new Map<string, number>();
     sorted.forEach((p, i) => out.set(p.identifier, i + 1));
     return out;

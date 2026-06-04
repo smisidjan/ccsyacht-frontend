@@ -12,6 +12,7 @@ import type {
   ApiError,
 } from "./types";
 import { apiFetch, buildQueryString } from "./fetch";
+import { getAuthToken, getTenantUrl } from "./client";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
 
@@ -101,6 +102,95 @@ export const punchlistItemsApi = {
       method: "POST",
       body: data,
     }),
+
+  /** Same endpoint as `create`, but accepts pins (`pins[]`) and
+   *  file attachments (`attachments[]`) via FormData so they land
+   *  in one atomic round-trip. Backend mirrors the pin shape from
+   *  the JSON contract: `pins[i][x]`, `pins[i][y]`, optional
+   *  `pins[i][label]`, `pins[i][color]`. */
+  createWithPins: async (
+    projectId: string,
+    stageId: string,
+    data: CreatePunchlistItemRequest,
+    files?: File[]
+  ): Promise<PunchlistItem> => {
+    const token = getAuthToken();
+    const tenantUrl = getTenantUrl();
+
+    const formData = new FormData();
+    formData.append("title", data.title);
+    if (data.description) formData.append("description", data.description);
+    if (data.priority) formData.append("priority", data.priority);
+    if (data.due_date) formData.append("due_date", data.due_date);
+    if (data.assignee_ids?.length) {
+      data.assignee_ids.forEach((id) => formData.append("assignee_ids[]", id));
+    }
+    if (data.pins?.length) {
+      data.pins.forEach((pin, i) => {
+        formData.append(`pins[${i}][x]`, pin.x.toString());
+        formData.append(`pins[${i}][y]`, pin.y.toString());
+        if (pin.label) formData.append(`pins[${i}][label]`, pin.label);
+        if (pin.color) formData.append(`pins[${i}][color]`, pin.color);
+      });
+    }
+    if (data.children?.length) {
+      // Children are flat dot-path FormData rather than nested JSON
+      // so the backend's standard array-bracket parser picks them
+      // up the same way as `pins[i][...]`. One level deep — children
+      // can carry their own pins but not their own children.
+      data.children.forEach((child, i) => {
+        formData.append(`children[${i}][title]`, child.title);
+        if (child.description)
+          formData.append(`children[${i}][description]`, child.description);
+        if (child.priority)
+          formData.append(`children[${i}][priority]`, child.priority);
+        if (child.due_date)
+          formData.append(`children[${i}][due_date]`, child.due_date);
+        child.assignee_ids?.forEach((id) =>
+          formData.append(`children[${i}][assignee_ids][]`, id)
+        );
+        child.pins?.forEach((pin, j) => {
+          formData.append(`children[${i}][pins][${j}][x]`, pin.x.toString());
+          formData.append(`children[${i}][pins][${j}][y]`, pin.y.toString());
+          if (pin.label)
+            formData.append(`children[${i}][pins][${j}][label]`, pin.label);
+          if (pin.color)
+            formData.append(`children[${i}][pins][${j}][color]`, pin.color);
+        });
+      });
+    }
+    if (files?.length) {
+      files.forEach((file) => formData.append("attachments[]", file));
+    }
+
+    const headers: HeadersInit = {};
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+    if (tenantUrl) headers["X-Tenant-ID"] = tenantUrl;
+
+    const response = await fetch(
+      `${API_BASE_URL}/projects/${projectId}/stages/${stageId}/punchlist-items`,
+      {
+        method: "POST",
+        headers,
+        body: formData,
+      }
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      const error: ApiError = {
+        message:
+          errorData.message ||
+          errorData.error ||
+          `HTTP error ${response.status}`,
+        code: errorData.code,
+        status: response.status,
+      };
+      throw error;
+    }
+
+    return response.json();
+  },
 
   update: (
     projectId: string,

@@ -60,10 +60,22 @@ interface PunchlistItemCardProps {
    *  item has a backing pin. Shown as the first entry in the
    *  More-actions menu. */
   onEditPinLocation?: () => void;
-  /** Project-wide display number — rendered as `#N` next to the
-   *  title so the user can refer to the item by a short number.
-   *  Same convention as `PunchlistItemRow.displayNumber`. */
-  displayNumber?: number;
+  /** Project-wide display number — rendered as `#N` or `#N.M` next
+   *  to the title so the user can refer to the item by a short
+   *  number. Same convention as `PunchlistItemRow.displayNumber`. */
+  displayNumber?: string | number;
+  /** Sub-items to render in the Jira-style "Sub-tasks" section.
+   *  When omitted (or empty), the section is skipped. Each row has
+   *  its own priority / assignee / status controls so the user can
+   *  drive sub-items forward without leaving the parent's detail. */
+  subItems?: PunchlistItem[];
+  /** Click handler for a sub-task row's title — the caller swaps the
+   *  detail panel to the child. Omit to make sub-task titles
+   *  non-interactive. */
+  onSubItemSelect?: (id: string) => void;
+  /** Resolve the `#N.M` display number for a sub-item id. Same
+   *  contract as `displayNumber` on the parent row. */
+  getSubItemDisplayNumber?: (id: string) => string | undefined;
 }
 
 /** Detail panel for a single punchlist item — modelled on Jira's
@@ -83,6 +95,9 @@ export default function PunchlistItemCard({
   onGoToStage,
   onEditPinLocation,
   displayNumber,
+  subItems,
+  onSubItemSelect,
+  getSubItemDisplayNumber,
 }: PunchlistItemCardProps) {
   const t = useTranslations("punchlist");
   const { hasPermission } = usePermission();
@@ -91,6 +106,14 @@ export default function PunchlistItemCard({
   const [showDeleteItemModal, setShowDeleteItemModal] = useState(false);
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
   const moreMenuRef = useRef<HTMLDivElement | null>(null);
+  // Sub-task cancellation: the row's status dropdown asks for a
+  // reason via this target, then the shared modal at the bottom of
+  // the card hands the value to the backend. Same shape as the row
+  // surfaces above us.
+  const [subItemCancelTarget, setSubItemCancelTarget] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
   const [selectedImage, setSelectedImage] =
     useState<PunchlistItemAttachment | null>(null);
   const [selectedDocument, setSelectedDocument] =
@@ -283,6 +306,61 @@ export default function PunchlistItemCard({
     } catch (error) {
       handleError(error, { showToast, fallbackMessage: t("updateError") });
       throw error;
+    }
+  };
+
+  // Cancel a sub-task — same endpoint as the parent, just targeting
+  // the sub-item id captured in the cancel-target state.
+  const handleSubItemCancel = async (reason: string) => {
+    if (!subItemCancelTarget) return;
+    try {
+      await punchlistItemsApi.updateStatus(
+        projectId,
+        subItemCancelTarget.id,
+        { status: "cancelled", reason }
+      );
+      showToast("success", t("cancelSuccess"));
+      setSubItemCancelTarget(null);
+      onUpdate?.();
+    } catch (error) {
+      handleError(error, { showToast, fallbackMessage: t("updateError") });
+      throw error;
+    }
+  };
+
+  // Sub-task status / priority mutations — fire the same backend
+  // endpoints as the parent and call `onUpdate` so the host refetches
+  // the tree (children come back with the new values).
+  const handleSubItemStatusChange = async (
+    id: string,
+    status: PunchlistItemStatus
+  ) => {
+    try {
+      await punchlistItemsApi.updateStatus(projectId, id, { status });
+      showToast("success", t("updateSuccess"));
+      onUpdate?.();
+    } catch (error) {
+      handleError(error, { showToast, fallbackMessage: t("updateError") });
+    }
+  };
+
+  const handleSubItemPriorityChange = async (
+    id: string,
+    priority: PunchlistItemPriority
+  ) => {
+    try {
+      await punchlistItemsApi.update(projectId, id, { priority });
+      showToast(
+        "success",
+        t("priorityUpdated", {
+          priority: t(
+            `priority${priority.charAt(0).toUpperCase()}${priority.slice(1)}`
+          ),
+        })
+      );
+      onUpdate?.();
+    } catch (error) {
+      handleError(error, { showToast, fallbackMessage: t("updateError") });
     }
   };
 
@@ -482,7 +560,7 @@ export default function PunchlistItemCard({
               onClick={() => beginEdit("name")}
               title={canEdit ? t("clickToEdit") : undefined}
             >
-              {typeof displayNumber === "number" && (
+              {(typeof displayNumber === "number" || typeof displayNumber === "string") && (
                 <span className="font-mono text-base text-gray-400 dark:text-gray-500 flex-shrink-0">
                   #{displayNumber}
                 </span>
@@ -668,6 +746,45 @@ export default function PunchlistItemCard({
           </Section>
         )}
 
+        {/* Sub-tasks — Jira-style row per child sub-item. Each row
+            carries its own priority / assignee / status dropdowns so
+            the user can drive sub-tasks forward without switching to
+            their dedicated detail panel; clicking the title hands off
+            to the parent (e.g. the GA tab) via `onSubItemSelect`. */}
+        {subItems && subItems.length > 0 && (
+          <Section title={t("subTasksHeader")} count={subItems.length}>
+            <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden divide-y divide-gray-100 dark:divide-gray-700">
+              {subItems.map((child) => (
+                <SubTaskRow
+                  key={child.identifier}
+                  child={child}
+                  projectId={projectId}
+                  canEdit={canEdit}
+                  displayNumber={getSubItemDisplayNumber?.(child.identifier)}
+                  onSelect={
+                    onSubItemSelect
+                      ? () => onSubItemSelect(child.identifier)
+                      : undefined
+                  }
+                  onChangeStatus={(next) =>
+                    handleSubItemStatusChange(child.identifier, next)
+                  }
+                  onChangePriority={(next) =>
+                    handleSubItemPriorityChange(child.identifier, next)
+                  }
+                  onRequestCancel={() =>
+                    setSubItemCancelTarget({
+                      id: child.identifier,
+                      name: child.name,
+                    })
+                  }
+                  onAssigneesChange={() => onUpdate?.()}
+                />
+              ))}
+            </div>
+          </Section>
+        )}
+
         {/* Cancellation notice — only when applicable. */}
         {item.status === "cancelled" && item.cancellation?.cancelledBy && (
           <Section title={t("cancellationHeader")}>
@@ -731,7 +848,13 @@ export default function PunchlistItemCard({
                 </span>
               </DetailRow>
             )}
-            {showLocation && item.stage.area && (
+            {/* Inline children of a parent ship without the `stage`
+                relation loaded (the backend's children[] payload
+                only carries the item-level fields). Guard the
+                access so opening a sub-task's detail doesn't crash;
+                the breadcrumb is hidden when the location isn't
+                available. */}
+            {showLocation && item.stage?.area && (
               <DetailRow label={t("detailLocation")}>
                 <span className="inline-flex items-center gap-1 text-gray-700 dark:text-gray-300">
                   <MapPinIcon className="w-3.5 h-3.5" />
@@ -740,11 +863,13 @@ export default function PunchlistItemCard({
                 </span>
               </DetailRow>
             )}
-            <DetailRow label={t("detailCreator")}>
-              <span className="text-gray-900 dark:text-white">
-                {item.creator.name}
-              </span>
-            </DetailRow>
+            {item.creator?.name && (
+              <DetailRow label={t("detailCreator")}>
+                <span className="text-gray-900 dark:text-white">
+                  {item.creator.name}
+                </span>
+              </DetailRow>
+            )}
             <DetailRow label={t("detailCreated")}>
               <span className="text-gray-700 dark:text-gray-300">
                 {formatCreatedAt(item.dateCreated)}
@@ -765,6 +890,16 @@ export default function PunchlistItemCard({
         onClose={() => setShowCancelModal(false)}
         onConfirm={handleCancel}
         itemName={item.name}
+      />
+
+      {/* Cancel-reason modal for sub-task rows. Reuses the same
+          modal as the parent — the only difference is the target id
+          captured in `subItemCancelTarget`. */}
+      <CancelPunchlistItemModal
+        isOpen={!!subItemCancelTarget}
+        onClose={() => setSubItemCancelTarget(null)}
+        onConfirm={handleSubItemCancel}
+        itemName={subItemCancelTarget?.name ?? ""}
       />
 
       {/* Hard delete confirmation — only reachable from the More
@@ -955,6 +1090,81 @@ function DetailRow({
       </dt>
       <dd className="col-span-2 text-sm">{children}</dd>
     </>
+  );
+}
+
+/** Single sub-task row inside the parent's detail card. Modelled on
+ *  Jira's compact sub-task table — `#N.M` prefix, clickable title,
+ *  then priority / assignee / status dropdowns aligned to the right.
+ *  Mutation handlers are passed in so the parent card stays in charge
+ *  of the post-update refresh. */
+function SubTaskRow({
+  child,
+  projectId,
+  canEdit,
+  displayNumber,
+  onSelect,
+  onChangeStatus,
+  onChangePriority,
+  onRequestCancel,
+  onAssigneesChange,
+}: {
+  child: PunchlistItem;
+  projectId: string;
+  canEdit: boolean;
+  displayNumber?: string;
+  onSelect?: () => void;
+  onChangeStatus: (next: PunchlistItemStatus) => void;
+  onChangePriority: (next: PunchlistItemPriority) => void;
+  onRequestCancel: () => void;
+  onAssigneesChange: () => void;
+}) {
+  return (
+    <div className="flex items-center gap-3 px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors">
+      {displayNumber && (
+        <span className="font-mono text-xs text-gray-400 dark:text-gray-500 flex-shrink-0">
+          #{displayNumber}
+        </span>
+      )}
+      {onSelect ? (
+        <button
+          type="button"
+          onClick={onSelect}
+          className="flex-1 min-w-0 text-left text-sm font-medium text-gray-900 dark:text-white truncate hover:underline"
+        >
+          {child.name}
+        </button>
+      ) : (
+        <span className="flex-1 min-w-0 text-sm font-medium text-gray-900 dark:text-white truncate">
+          {child.name}
+        </span>
+      )}
+      <div className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+        <PunchlistPriorityDropdown
+          priority={child.priority}
+          canEdit={canEdit}
+          onChange={onChangePriority}
+        />
+      </div>
+      <div className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+        <PunchlistAssigneePicker
+          projectId={projectId}
+          itemId={child.identifier}
+          assignees={child.assignees}
+          canEdit={canEdit}
+          display="stack"
+          onChange={onAssigneesChange}
+        />
+      </div>
+      <div className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+        <PunchlistStatusDropdown
+          status={child.status}
+          canEdit={canEdit}
+          onChange={onChangeStatus}
+          onRequestCancel={onRequestCancel}
+        />
+      </div>
+    </div>
   );
 }
 

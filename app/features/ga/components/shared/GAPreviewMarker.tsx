@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { MapContainer, ImageOverlay, Marker, Polygon, Tooltip, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -86,59 +86,122 @@ function createExistingPinIcon(color: string): L.DivIcon {
   });
 }
 
-// Component to fit bounds on initial mount only (not on marker position changes)
+// Initial-zoom controller. Mirrors the original working pattern (a
+// single effect, single 100ms timeout for invalidateSize + fitBounds)
+// and extends it with refit-on-change so async data arrivals (e.g.
+// the modal opens before `useArea` resolves) still land the map on
+// the right target.
+//
+// Behaviour:
+//   - Always shows the full image on the very first run so the user
+//     sees something coherent immediately.
+//   - 100ms later, after the map has a chance to settle into its real
+//     size (`invalidateSize`), fits to `zoomBounds`. If no zoom
+//     target was supplied, settles on a marker-centred view instead.
+//   - On any subsequent change to `zoomBounds` (identity-based), it
+//     refits to the new target — skipping the full-image step so the
+//     transition is a direct snap to the new focus instead of a
+//     visible "zoom out / zoom in" flash.
 function FitToMarker({
   bounds,
   initialMarkerPosition,
-  deckBounds,
+  zoomBounds,
 }: {
   bounds: L.LatLngBoundsExpression;
   initialMarkerPosition: [number, number];
-  deckBounds?: L.LatLngBoundsExpression | null;
+  zoomBounds?: L.LatLngBoundsExpression | null;
 }) {
   const map = useMap();
-  const hasInitialized = useRef(false);
+  // What we last fit to. Null until the first fit fires. The ref
+  // doubles as the "first fit?" flag — checking against null is the
+  // same question as "have we initialized".
+  const lastFittedTarget = useRef<L.LatLngBoundsExpression | "marker" | null>(
+    null
+  );
+
+  // Latest values for the things we *read* at fire-time but don't
+  // want to *trigger* on. The fit only cares about the zoom target
+  // changing — pulling `bounds` / `initialMarkerPosition` /  `map`
+  // into the dep array would re-run the effect when the modal's init
+  // pass nudges `x` / `y` (which flows through `useMemo` into a fresh
+  // `initialMarkerPosition` reference), and that cleanup-then-bail
+  // race silently swallows the pending fit timer.
+  const mapRef = useRef(map);
+  const boundsRef = useRef(bounds);
+  const markerRef = useRef(initialMarkerPosition);
+  // useLayoutEffect keeps the refs in sync with the latest render
+  // synchronously, before paint, while satisfying the lint rule that
+  // bans mutating refs during render. The timer body reads through
+  // these refs so it always sees the freshest values without forcing
+  // the fit effect to re-run when only those values change.
+  useLayoutEffect(() => {
+    mapRef.current = map;
+    boundsRef.current = bounds;
+    markerRef.current = initialMarkerPosition;
+  }, [map, bounds, initialMarkerPosition]);
 
   useEffect(() => {
-    // Only run once on mount
-    if (hasInitialized.current) return;
-    hasInitialized.current = true;
+    const target: L.LatLngBoundsExpression | "marker" = zoomBounds ?? "marker";
+    if (lastFittedTarget.current === target) return;
+    const isFirstFit = lastFittedTarget.current === null;
+    lastFittedTarget.current = target;
 
-    // Fit the full image first
-    map.fitBounds(bounds, { padding: [10, 10], animate: false });
+    // Show the full image immediately so the user has *something* to
+    // look at while the deferred fit runs. Only on the very first
+    // pass — subsequent refits (e.g. area data arrives later) jump
+    // straight to the new target without a flash.
+    if (isFirstFit) {
+      mapRef.current.fitBounds(boundsRef.current, {
+        padding: [10, 10],
+        animate: false,
+      });
+    }
 
-    setTimeout(() => {
-      map.invalidateSize();
-
-      if (deckBounds) {
-        // Zoom to fit the deck bounds with some padding
-        map.fitBounds(deckBounds, { padding: [20, 20], animate: false });
+    // Defer invalidateSize + the real fit by one tick so the map has
+    // its actual viewport size by the time fitBounds computes the
+    // zoom level. Without this, the modal-mount frame can have a
+    // zero-sized map and fitBounds resolves to a meaningless level.
+    const t = setTimeout(() => {
+      const m = mapRef.current;
+      m.invalidateSize();
+      if (target === "marker") {
+        m.setView(markerRef.current, 1, { animate: false });
       } else {
-        // Set a reasonable zoom level that shows context around the marker
-        map.setView(initialMarkerPosition, 1, { animate: false });
+        m.fitBounds(target, { padding: [20, 20], animate: false });
       }
     }, 100);
-  }, [map, bounds, initialMarkerPosition, deckBounds]);
+    return () => clearTimeout(t);
+  }, [zoomBounds]);
 
   return null;
 }
 
-// Component to keep the pin visible after zooming
+// Component to keep the pin visible after zooming or after the parent
+// swaps which pin is the active draggable one (multi-pin create flow).
+// The zoom-end branch covers the user zooming until the marker leaves
+// the viewport; the effect on `markerPosition` covers the marker
+// "teleporting" — e.g. selecting a different pin from the side list,
+// which can drop the active position far outside the current view.
 function KeepPinInView({ markerPosition }: { markerPosition: [number, number] }) {
   const map = useMap();
 
   useMapEvents({
     zoomend: () => {
-      // Check if marker is in the visible bounds
       const bounds = map.getBounds();
       const markerLatLng = L.latLng(markerPosition[0], markerPosition[1]);
-
       if (!bounds.contains(markerLatLng)) {
-        // Pan smoothly to center on the marker while keeping current zoom
         map.panTo(markerLatLng, { animate: true, duration: 0.3, easeLinearity: 0.25 });
       }
     },
   });
+
+  useEffect(() => {
+    const bounds = map.getBounds();
+    const markerLatLng = L.latLng(markerPosition[0], markerPosition[1]);
+    if (!bounds.contains(markerLatLng)) {
+      map.panTo(markerLatLng, { animate: true, duration: 0.3, easeLinearity: 0.25 });
+    }
+  }, [map, markerPosition]);
 
   return null;
 }
@@ -169,11 +232,18 @@ export default function GAPreviewMarker({
     [x, y, imageWidth, imageHeight]
   );
 
-  // Compute the axis-aligned bounding box of the deck's primary polygon
-  // (points are normalized 0..1) and convert to Leaflet pixel bounds.
-  const deckBounds = useMemo<L.LatLngBoundsExpression | null>(() => {
-    if (!initialDeck?.deckPolygon) return null;
-    const bbox = polygonBbox(initialDeck.deckPolygon.points);
+  // Compute the axis-aligned bounding box of the polygon we want the
+  // user to focus on. When a constraint polygon is supplied (e.g.
+  // stage-level pin creation, scoped to an area), it's a tighter and
+  // more useful zoom target than the surrounding deck. Falls back to
+  // the deck's primary polygon for the free-roam GA flow.
+  const zoomBounds = useMemo<L.LatLngBoundsExpression | null>(() => {
+    const points =
+      (constrainPolygon && constrainPolygon.length >= 3
+        ? constrainPolygon
+        : initialDeck?.deckPolygon?.points) ?? null;
+    if (!points || points.length < 3) return null;
+    const bbox = polygonBbox(points);
     if (!bbox) return null;
     const x1 = bbox.bbox_x * imageWidth;
     const y1 = bbox.bbox_y * imageHeight;
@@ -183,7 +253,7 @@ export default function GAPreviewMarker({
       [y1, x1], // Southwest [lat, lng]
       [y2, x2], // Northeast [lat, lng]
     ];
-  }, [initialDeck, imageWidth, imageHeight]);
+  }, [constrainPolygon, initialDeck, imageWidth, imageHeight]);
 
   // Create icon with current color
   const icon = useMemo(() => createColoredIcon(color), [color]);
@@ -241,20 +311,57 @@ export default function GAPreviewMarker({
         <FitToMarker
           bounds={bounds}
           initialMarkerPosition={markerPosition}
-          deckBounds={deckBounds}
+          zoomBounds={zoomBounds}
         />
 
         <KeepPinInView markerPosition={markerPosition} />
 
         <ImageOverlay url={imageUrl} bounds={bounds} />
 
+        {/* Deck polygon — dashed gray outline of the deck the modal is
+            scoped to. Renders before areas so neighbour polygons sit on
+            top of it. Non-interactive; the pin's drop is constrained to
+            this shape via `constrainPolygon`. */}
+        {initialDeck?.deckPolygon &&
+          initialDeck.deckPolygon.points.length >= 3 && (
+            <Polygon
+              positions={initialDeck.deckPolygon.points.map((p) =>
+                normToLatLng(p, imageWidth, imageHeight)
+              )}
+              pathOptions={{
+                color: "#4b5563",
+                weight: 2,
+                dashArray: "6 4",
+                fillColor: "#9ca3af",
+                fillOpacity: 0.05,
+                interactive: false,
+              }}
+            />
+          )}
+
         {/* Area outlines for context. Selected area gets a solid blue
             stroke so the user can spot which one they've picked; the rest
             stay dashed gray. Non-interactive so they never steal events
-            from the draggable marker. */}
+            from the draggable marker.
+            Source of the points: prefer the per-placement entry that
+            matches the primary deck polygon (new shape), fall back to
+            the legacy single `area.polygon` field for records the
+            backend hasn't backfilled yet. */}
         {areas?.map((area) => {
-          if (!area.polygon || area.polygon.length < 3) return null;
-          const positions: [number, number][] = area.polygon.map((p) =>
+          const primaryPolygonId = initialDeck?.deckPolygon?.identifier;
+          const perPlacement = primaryPolygonId
+            ? area.polygons?.find(
+                (p) => p.parentPolygonId === primaryPolygonId
+              )?.points
+            : undefined;
+          const points =
+            perPlacement && perPlacement.length >= 3
+              ? perPlacement
+              : Array.isArray(area.polygon) && area.polygon.length >= 3
+              ? area.polygon
+              : null;
+          if (!points) return null;
+          const positions: [number, number][] = points.map((p) =>
             normToLatLng(p, imageWidth, imageHeight)
           );
           const isSelected = area.identifier === selectedAreaId;

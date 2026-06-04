@@ -7,8 +7,8 @@ import { useRouter } from "@/i18n/navigation";
 import Alert from "@/app/components/ui/Alert";
 import LoadingSkeleton from "@/app/components/ui/LoadingSkeleton";
 import PunchlistItemCard from "./PunchlistItemCard";
-import PunchlistItemRow from "./PunchlistItemRow";
-import { usePunchlistNumbers } from "@/lib/hooks/usePunchlistNumbers";
+import PunchlistTreeList from "./PunchlistTreeList";
+import { usePunchlistProjectItems } from "@/lib/hooks/usePunchlistProjectItems";
 import CancelPunchlistItemModal from "./CancelPunchlistItemModal";
 import PunchlistFilterPopover, {
   EMPTY_FILTERS,
@@ -54,7 +54,12 @@ export default function PunchlistTab({ projectId }: PunchlistTabProps) {
   const router = useRouter();
   const { hasPermission } = usePermission();
   const { showToast } = useToast();
-  const punchlistNumbers = usePunchlistNumbers(projectId);
+  // Pull the project-wide tree so display numbers carry the
+  // hierarchical `"3.1"` form for children (the older flat hook only
+  // assigned integer numbers, which the tree list can't render). The
+  // shape matches what the GA tab and stage-level list use so the
+  // same item shows the same number everywhere.
+  const { numbers: punchlistNumbers } = usePunchlistProjectItems(projectId);
 
   const [filters, setFilters] = useState<PunchlistFilters>(EMPTY_FILTERS);
   const [searchQuery, setSearchQuery] = useState("");
@@ -122,6 +127,17 @@ export default function PunchlistTab({ projectId }: PunchlistTabProps) {
     return map;
   }, [projectStages]);
 
+  /** Stage id → hex colour map. The row's leading dot reads from
+   *  this so every item — parent or child — visually anchors back
+   *  to its stage colour, matching the GA tab. */
+  const stageColorById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const s of projectStages ?? []) {
+      if (s.color) map.set(s.identifier, s.color);
+    }
+    return map;
+  }, [projectStages]);
+
   // Enrich each item's `stage.area.deck` from the lookup so the
   // shared filter / popover code can read deck + area off the same
   // shape it expects from the stage-scoped endpoint.
@@ -165,19 +181,20 @@ export default function PunchlistTab({ projectId }: PunchlistTabProps) {
     [items, searchQuery, filters]
   );
 
-  // Clear selection when the item disappears from the current page /
-  // filter set so the detail panel doesn't keep referencing a stale
-  // row.
-  useEffect(() => {
-    if (!selectedItemId) return;
-    if (!filteredItems.some((i) => i.identifier === selectedItemId)) {
-      setSelectedItemId(null);
+  /** Resolve the selected id to the real item — walks both
+   *  top-level and inlined children so the card can render a child's
+   *  detail when the user clicks one in the parent's sub-tasks
+   *  section. */
+  const selectedItem = useMemo(() => {
+    if (!selectedItemId) return null;
+    for (const top of filteredItems) {
+      if (top.identifier === selectedItemId) return top;
+      for (const child of top.children ?? []) {
+        if (child.identifier === selectedItemId) return child;
+      }
     }
+    return null;
   }, [filteredItems, selectedItemId]);
-
-  const selectedItem = filteredItems.find(
-    (i) => i.identifier === selectedItemId
-  );
 
   // Scroll to top on page change — same UX cue the old tab had.
   useEffect(() => {
@@ -310,39 +327,35 @@ export default function PunchlistTab({ projectId }: PunchlistTabProps) {
           ) : (
             <div className="flex flex-col lg:flex-row gap-4 items-start">
               <div
-                className={`bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-md divide-y divide-gray-100 dark:divide-gray-700 ${
-                  selectedItem ? "lg:w-2/5 xl:w-1/3" : "w-full"
-                }`}
+                className={selectedItem ? "lg:w-2/5 xl:w-1/3" : "w-full"}
               >
-                {filteredItems.map((item: PunchlistItem) => (
-                  <PunchlistItemRow
-                    key={item.identifier}
-                    item={item}
-                    projectId={projectId}
-                    isSelected={selectedItemId === item.identifier}
-                    canEdit={canEditItems}
-                    compact={!!selectedItem}
-                    showLocation
-                    displayNumber={punchlistNumbers.get(item.identifier)}
-                    onSelect={() =>
-                      setSelectedItemId(
-                        selectedItemId === item.identifier
-                          ? null
-                          : item.identifier
-                      )
-                    }
-                    onChangeStatus={(next) =>
-                      handleRowStatusChange(item.identifier, next)
-                    }
-                    onChangePriority={(next) =>
-                      handleRowPriorityChange(item.identifier, next)
-                    }
-                    onRequestCancel={() =>
-                      setCancelTarget({ id: item.identifier, name: item.name })
-                    }
-                    onAssigneesChange={handleChange}
-                  />
-                ))}
+                <PunchlistTreeList
+                  items={filteredItems}
+                  projectId={projectId}
+                  selectedItemId={selectedItemId}
+                  canEdit={canEditItems}
+                  compact={!!selectedItem}
+                  showLocation
+                  getDisplayNumber={(id) => punchlistNumbers.get(id)}
+                  getRowColor={(it, parent) =>
+                    stageColorById.get(
+                      it.stage?.identifier ?? parent?.stage?.identifier ?? ""
+                    )
+                  }
+                  onSelectItem={(id) =>
+                    setSelectedItemId(
+                      selectedItemId === id ? null : id
+                    )
+                  }
+                  onChangeStatus={(id, next) =>
+                    handleRowStatusChange(id, next)
+                  }
+                  onChangePriority={(id, next) =>
+                    handleRowPriorityChange(id, next)
+                  }
+                  onRequestCancel={(target) => setCancelTarget(target)}
+                  onAssigneesChange={handleChange}
+                />
               </div>
 
               {selectedItem && (
@@ -354,6 +367,14 @@ export default function PunchlistTab({ projectId }: PunchlistTabProps) {
                     onUpdate={handleChange}
                     showLocation
                     displayNumber={punchlistNumbers.get(selectedItem.identifier)}
+                    subItems={
+                      !selectedItem.parentId &&
+                      (selectedItem.children?.length ?? 0) > 0
+                        ? selectedItem.children
+                        : undefined
+                    }
+                    onSubItemSelect={(id) => setSelectedItemId(id)}
+                    getSubItemDisplayNumber={(id) => punchlistNumbers.get(id)}
                     onClose={() => setSelectedItemId(null)}
                     onGoToStage={() =>
                       router.push(

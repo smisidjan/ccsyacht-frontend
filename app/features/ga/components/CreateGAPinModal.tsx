@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { PencilIcon } from "@heroicons/react/24/outline";
 import BaseModal from "@/app/components/modals/BaseModal";
@@ -8,12 +8,16 @@ import FormInput from "@/app/components/ui/FormInput";
 import PunchlistItemForm from "@/app/features/punchlist/components/PunchlistItemForm";
 import GAPreview from "@/app/features/ga/components/shared/GAPreview";
 import { gaPinsApi, useGAPins } from "@/lib/api/ga-pins";
+import { punchlistItemsApi } from "@/lib/api/punchlist-items";
+import { TrashIcon, PlusIcon } from "@heroicons/react/24/outline";
+import { isInsidePolygon, polygonCentroid, polygonBbox } from "@/lib/utils/geometry";
+import { getAreaPolygonForDeck } from "@/app/features/ga/utils/helpers";
 import { useDecks } from "@/lib/api/decks";
 import { useAreas } from "@/lib/api/areas";
 import { useStages } from "@/lib/api/stages";
 import { useProjectMembersFromContext } from "@/app/context/ProjectContext";
 import { MAX_GA_FILE_SIZE, FILE_SIZE_LABELS } from "@/lib/constants/fileUpload";
-import type { GAPin, CreateGAPinRequest, UpdateGAPinRequest, PunchlistItemPriority, Deck, Area, Stage } from "@/lib/api/types";
+import type { GAPin, UpdateGAPinRequest, PunchlistItemPriority, Deck, Area, Stage } from "@/lib/api/types";
 
 interface CreateGAPinModalProps {
   isOpen: boolean;
@@ -76,7 +80,21 @@ export default function CreateGAPinModal({
   const [label, setLabel] = useState("");
   const [x, setX] = useState(50);
   const [y, setY] = useState(50);
-  const [color, setColor] = useState(DEFAULT_COLORS[0]);
+
+  /** Multi-pin draft state — create mode only. Edit mode keeps using
+   *  the single `x` / `y` / `label` triple above so the existing
+   *  single-pin API stays untouched. In create mode the `label` field
+   *  doubles as the punchlist item title; each pin can override its
+   *  own per-pin label inline. */
+  interface PendingPin {
+    id: string;
+    x: number;
+    y: number;
+    label: string;
+  }
+  const [pins, setPins] = useState<PendingPin[]>([]);
+  const [activePinId, setActivePinId] = useState<string | null>(null);
+  const activePin = pins.find((p) => p.id === activePinId) ?? null;
 
   // Cascading selection state
   const [selectedDeckId, setSelectedDeckId] = useState<string>("");
@@ -109,13 +127,31 @@ export default function CreateGAPinModal({
     (p) => !initialData || p.identifier !== initialData.identifier
   );
 
+  // Best-effort resolution of the area record we're constraining /
+  // zooming to. Sources, in priority order:
+  //   1. the entry in `areas` (loaded by the modal's own `useAreas`)
+  //      that matches the selected area id — this is the freshest
+  //      record and usually carries `polygons[]`
+  //   2. the `initialArea` prop the caller passed in — covers the
+  //      window before the modal's own list resolves, and fills in
+  //      when nothing is selected yet
+  // Either source is fine for polygon lookups; the helpers downstream
+  // pick the right per-placement entry from whichever one provides it.
+  const activeArea =
+    areas?.find((a) => a.identifier === selectedAreaId) ??
+    initialArea ??
+    null;
+  const constrainPolygonPoints = constrainToArea
+    ? getAreaPolygonForDeck(activeArea, initialDeck) ?? undefined
+    : initialDeck?.deckPolygon?.points;
+
   // Initialize form with data
   useEffect(() => {
     if (initialData) {
       setLabel(initialData.label || "");
       setX(initialData.x);
       setY(initialData.y);
-      setColor(initialData.color || DEFAULT_COLORS[0]);
+      // Color is derived from the selected stage now — no setter needed.
       setSelectedDeckId(initialData.deck.identifier);
       setSelectedAreaId(initialData.area.identifier);
       setSelectedStageId(initialData.stage.identifier);
@@ -123,14 +159,6 @@ export default function CreateGAPinModal({
       setX(initialPosition.x);
       setY(initialPosition.y);
       setLabel("");
-      // In constrain-to-area mode the pin's identity matches the stage
-      // it belongs to — adopt the stage's color so the pin reads as
-      // "this stage" on the GA. Caller without a stage colour falls
-      // back to the default palette.
-      setColor(
-        (constrainToArea && initialStage?.color) ||
-          DEFAULT_COLORS[0]
-      );
       // Pre-select deck if provided (from clicking on deck bounding box).
       // Prefer the area's own deck when an area was clicked — keeps the
       // two selectors consistent even if the caller forgot to pass both.
@@ -141,6 +169,19 @@ export default function CreateGAPinModal({
       );
       setSelectedAreaId(initialArea?.identifier || "");
       setSelectedStageId(initialStage?.identifier || "");
+      // Seed the multi-pin draft with one pin at the click location.
+      // Users start with this and can add more via the "Add another
+      // location" button in the Pins section.
+      const firstId = crypto.randomUUID();
+      setPins([
+        {
+          id: firstId,
+          x: initialPosition.x,
+          y: initialPosition.y,
+          label: "",
+        },
+      ]);
+      setActivePinId(firstId);
       // Reset punchlist fields
       setPunchlistDescription("");
       setPunchlistPriority("");
@@ -149,10 +190,11 @@ export default function CreateGAPinModal({
       setPunchlistFiles([]);
     } else {
       setLabel("");
-      setColor(DEFAULT_COLORS[0]);
       setSelectedDeckId("");
       setSelectedAreaId("");
       setSelectedStageId("");
+      setPins([]);
+      setActivePinId(null);
     }
   }, [initialData, initialPosition, initialDeck, initialArea, initialStage, constrainToArea]);
 
@@ -163,15 +205,73 @@ export default function CreateGAPinModal({
     }
   }, [decks, isEditing, selectedDeckId]);
 
-  // Auto-select if only one area available
+  /** Once the user has dragged the pin, suppress the "auto-select if
+   *  only one area / stage" effects. Otherwise dragging outside every
+   *  area clears the selection, the effect spots `!selectedAreaId` and
+   *  immediately rubber-bands the only available area back in — the
+   *  user sees no change in the breadcrumb even though the marker is
+   *  visibly outside. Reset when the modal opens fresh. */
+  const userDraggedRef = useRef(false);
   useEffect(() => {
-    if (!isEditing && selectedDeckId && areas && areas.length === 1 && !selectedAreaId) {
+    if (isOpen) userDraggedRef.current = false;
+  }, [isOpen]);
+
+  // Initial / fallback area selection. Order of preference:
+  //   1. Position-based detection — if a pin already sits on the GA
+  //      (typical when the user clicked a deck), the area that
+  //      contains it wins. Empty when the click landed outside every
+  //      area, so the breadcrumb shows "-" until the user drags into
+  //      one.
+  //   2. Auto-select the only available area — convenience for the
+  //      no-position flow (e.g. opening from a button).
+  // Either branch latches via `userDraggedRef` so subsequent renders
+  // (incl. the post-drag clears) don't rubber-band the selection.
+  useEffect(() => {
+    if (userDraggedRef.current) return;
+    if (isEditing) return;
+    if (!selectedDeckId || !areas || areas.length === 0) return;
+    if (selectedAreaId) return;
+
+    const firstPin = pins[0];
+    if (firstPin) {
+      const point = { x: firstPin.x / 100, y: firstPin.y / 100 };
+      const primaryPolygonId = initialDeck?.deckPolygon?.identifier;
+      const hit = areas.find((a) => {
+        const perPlacement = primaryPolygonId
+          ? a.polygons?.find((p) => p.parentPolygonId === primaryPolygonId)
+              ?.points
+          : undefined;
+        const points =
+          perPlacement && perPlacement.length >= 3
+            ? perPlacement
+            : Array.isArray(a.polygon) && a.polygon.length >= 3
+            ? a.polygon
+            : null;
+        return !!points && isInsidePolygon(point, points);
+      });
+      if (hit) setSelectedAreaId(hit.identifier);
+      // Either way, the position has had its say — lock the ref so
+      // the "auto-pick the only area" branch below doesn't override
+      // an intentionally-empty selection.
+      userDraggedRef.current = true;
+      return;
+    }
+
+    if (areas.length === 1) {
       setSelectedAreaId(areas[0].identifier);
     }
-  }, [areas, isEditing, selectedDeckId, selectedAreaId]);
+  }, [
+    areas,
+    isEditing,
+    selectedDeckId,
+    selectedAreaId,
+    pins,
+    initialDeck,
+  ]);
 
   // Auto-select if only one stage available
   useEffect(() => {
+    if (userDraggedRef.current) return;
     if (!isEditing && selectedAreaId && stages && stages.length === 1 && !selectedStageId) {
       setSelectedStageId(stages[0].identifier);
     }
@@ -179,6 +279,11 @@ export default function CreateGAPinModal({
 
   // Check if selected stage is completed
   const selectedStage = stages?.find((s) => s.identifier === selectedStageId);
+  // Pin color is derived from the selected stage so the marker on the
+  // GA always matches the stage swatch in the breadcrumb — no separate
+  // color picker. Falls back to the default palette when no stage is
+  // picked yet (e.g. pin sits outside every area).
+  const color = selectedStage?.color ?? DEFAULT_COLORS[0];
   const isStageCompleted = selectedStage?.status.name === "completed";
 
   // Handle deck selection change
@@ -243,31 +348,185 @@ export default function CreateGAPinModal({
       };
       await gaPinsApi.update(projectId, initialData.identifier, updateData);
     } else {
-      // Create new pin with punchlist item
-      const createData: CreateGAPinRequest = {
-        stage_id: selectedStageId,
-        label: label.trim(),
-        x,
-        y,
-        color,
-        // Punchlist fields (optioneel)
+      // Map the multi-pin draft onto the punchlist-item tree:
+      //   - 1 pin  → simple item with one pin, no children.
+      //   - N pins → parent item with N children, each carrying one
+      //              pin. The pin's label becomes the child title so
+      //              the user can drive #N.1, #N.2 ... etc. via the
+      //              same row UI used for top-level items.
+      const trimmedPins = pins.map((p) => ({
+        x: p.x,
+        y: p.y,
+        label: p.label.trim(),
+      }));
+      const basePayload = {
+        title: label.trim(),
         description: punchlistDescription.trim() || undefined,
         priority: punchlistPriority || undefined,
         due_date: punchlistDueDate || undefined,
-        assignee_ids: punchlistAssignees.length > 0 ? punchlistAssignees : undefined,
-      };
+        assignee_ids:
+          punchlistAssignees.length > 0 ? punchlistAssignees : undefined,
+      } as const;
 
-      await gaPinsApi.create(projectId, createData, punchlistFiles);
+      if (trimmedPins.length <= 1) {
+        await punchlistItemsApi.createWithPins(
+          projectId,
+          selectedStageId,
+          {
+            ...basePayload,
+            pins: trimmedPins.map((p) => ({
+              x: p.x,
+              y: p.y,
+              label: p.label || undefined,
+              color,
+            })),
+          },
+          punchlistFiles
+        );
+      } else {
+        await punchlistItemsApi.createWithPins(
+          projectId,
+          selectedStageId,
+          {
+            ...basePayload,
+            children: trimmedPins.map((p, i) => ({
+              title: p.label || `${t("location") || "Location"} ${i + 1}`,
+              pins: [{ x: p.x, y: p.y, color }],
+            })),
+          },
+          punchlistFiles
+        );
+      }
     }
   };
 
   // Check if we should show the GA preview
   const showGAPreview = !!(gaImageUrl && gaImageWidth && gaImageHeight);
 
-  // Handle position change from dragging marker in preview
+  // Handle position change from dragging marker in preview. Edit mode
+  // keeps the single x/y state; create mode routes the new coords to
+  // the active pin in the multi-pin draft and — if the drop lands
+  // inside one of the deck's area polygons — switches the area
+  // selector to that area so the form stays in sync with the marker.
   const handlePositionChange = (newX: number, newY: number) => {
-    setX(newX);
-    setY(newY);
+    if (isEditing) {
+      setX(newX);
+      setY(newY);
+      return;
+    }
+    if (!activePinId) return;
+    // Flag the user has interacted via drag — disables the
+    // "auto-select if only one" rubber-band so drag-clears stick.
+    userDraggedRef.current = true;
+    setPins((prev) =>
+      prev.map((p) =>
+        p.id === activePinId ? { ...p, x: newX, y: newY } : p
+      )
+    );
+    detectAreaForPosition(newX, newY);
+  };
+
+  // Auto-pick the area's active stage when create mode + the area
+  // changes + stages have arrived. Mirrors the "active stage per area"
+  // priority used by the GA tab's overlay so the form fills with the
+  // stage the team is currently progressing through.
+  useEffect(() => {
+    if (isEditing) return;
+    if (!selectedAreaId || !stages || stages.length === 0) return;
+    if (selectedStageId) return;
+    const sorted = [...stages].sort((a, b) => a.position - b.position);
+    const active =
+      sorted.find((s) => s.status.name === "in_progress") ??
+      sorted.find((s) => s.status.name === "pending_signoff") ??
+      sorted.find((s) => s.status.name === "not_started") ??
+      sorted[0];
+    if (active) setSelectedStageId(active.identifier);
+  }, [isEditing, selectedAreaId, stages, selectedStageId]);
+
+  /** Position-based area / stage selection. Looks up which area
+   *  polygon the (xPct, yPct) point lands in and updates the
+   *  breadcrumb to match — area changes drop the stage so the
+   *  auto-pick-active-stage effect repopulates it. Outside every
+   *  area, both clear to "-". */
+  const detectAreaForPosition = (xPct: number, yPct: number) => {
+    if (!areas || areas.length === 0) return;
+    const point = { x: xPct / 100, y: yPct / 100 };
+    const primaryPolygonId = initialDeck?.deckPolygon?.identifier;
+    const hit = areas.find((a) => {
+      const perPlacement = primaryPolygonId
+        ? a.polygons?.find((p) => p.parentPolygonId === primaryPolygonId)
+            ?.points
+        : undefined;
+      const points =
+        perPlacement && perPlacement.length >= 3
+          ? perPlacement
+          : Array.isArray(a.polygon) && a.polygon.length >= 3
+          ? a.polygon
+          : null;
+      return !!points && isInsidePolygon(point, points);
+    });
+    if (hit) {
+      if (hit.identifier !== selectedAreaId) {
+        setSelectedAreaId(hit.identifier);
+        setSelectedStageId("");
+      }
+    } else if (selectedAreaId || selectedStageId) {
+      setSelectedAreaId("");
+      setSelectedStageId("");
+    }
+  };
+
+  // Multi-pin handlers — create mode only.
+  const handleAddPin = () => {
+    const id = crypto.randomUUID();
+    // Drop new pins inside the active constraint so the marker lands
+    // somewhere the user can immediately see and the drag-snap doesn't
+    // jump it back to the polygon edge on first interaction. In
+    // constrain-to-area mode that's the area polygon (stage-level
+    // create flow); otherwise the deck polygon (GA tab). Falls back to
+    // image centre when no polygon is available.
+    let nextX = 50;
+    let nextY = 50;
+    // Re-use the resolved constrain polygon so a brand-new pin shares
+    // the same boundary as the active marker; falling back to the deck
+    // when the resolver couldn't land on an area polygon (legacy data,
+    // free-roam mode).
+    const points = constrainPolygonPoints ?? initialDeck?.deckPolygon?.points;
+    if (points && points.length >= 3) {
+      const c = polygonCentroid(points);
+      if (c) {
+        nextX = c.x * 100;
+        nextY = c.y * 100;
+      } else {
+        const bbox = polygonBbox(points);
+        if (bbox) {
+          nextX = (bbox.bbox_x + bbox.bbox_width / 2) * 100;
+          nextY = (bbox.bbox_y + bbox.bbox_height / 2) * 100;
+        }
+      }
+    }
+    setPins((prev) => [...prev, { id, x: nextX, y: nextY, label: "" }]);
+    setActivePinId(id);
+    // Re-evaluate the breadcrumb for the new pin's position. Without
+    // this the area/stage stay pinned to the previously-active pin
+    // even though the marker the user is now editing sits elsewhere.
+    userDraggedRef.current = true;
+    detectAreaForPosition(nextX, nextY);
+  };
+  const handleRemovePin = (id: string) => {
+    setPins((prev) => {
+      const next = prev.filter((p) => p.id !== id);
+      if (id === activePinId) {
+        setActivePinId(next[0]?.id ?? null);
+      }
+      return next;
+    });
+  };
+  const handleSelectPin = (id: string) => setActivePinId(id);
+  const handlePinLabelChange = (id: string, value: string) => {
+    setPins((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, label: value } : p))
+    );
   };
 
   // Edit mode collapses the whole right-column form into a compact
@@ -364,7 +623,10 @@ export default function CreateGAPinModal({
       onSuccessCallback={onSuccess}
       submitDisabled={
         !isEditing &&
-        (!selectedStageId || !label.trim() || !punchlistPriority)
+        (!selectedStageId ||
+          !label.trim() ||
+          !punchlistPriority ||
+          pins.length === 0)
       }
       size={showGAPreview ? "2xl" : "md"}
     >
@@ -376,24 +638,57 @@ export default function CreateGAPinModal({
               {t("pinLocation") || "Pin Location"}
             </p>
             <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-              {t("dragToAdjust") || "Drag the pin to adjust position"}
+              {pins.length > 1
+                ? t("dragSelectedPinToAdjust") ||
+                  "Drag the selected pin to adjust its position"
+                : t("dragToAdjust") || "Drag the pin to adjust position"}
             </p>
             <div className="h-[400px]">
               <GAPreview
                 imageUrl={gaImageUrl}
                 imageWidth={gaImageWidth}
                 imageHeight={gaImageHeight}
-                x={x}
-                y={y}
+                x={activePin?.x ?? x}
+                y={activePin?.y ?? y}
                 color={color}
                 onPositionChange={handlePositionChange}
                 initialDeck={initialDeck}
                 areas={areas ?? undefined}
                 selectedAreaId={selectedAreaId || undefined}
-                constrainPolygon={
-                  constrainToArea ? initialArea?.polygon : undefined
-                }
-                existingPins={existingPins}
+                constrainPolygon={constrainPolygonPoints}
+                // Non-active pending pins ride along as read-only
+                // reference markers, alongside the project's existing
+                // pins. Synthesised into the `GAPin` shape the
+                // GAPreview already knows how to render.
+                existingPins={[
+                  ...pins
+                    .filter((p) => p.id !== activePinId)
+                    .map((p, i) => ({
+                      identifier: `draft-${p.id}`,
+                      x: p.x,
+                      y: p.y,
+                      label:
+                        p.label.trim() ||
+                        label.trim() ||
+                        `${t("pin") || "Pin"} ${pins.indexOf(p) + 1}`,
+                      color,
+                      stage: {
+                        identifier: selectedStageId,
+                        name: "",
+                        status: "not_started",
+                        remarksCount: 0,
+                        punchlistItemsCount: 0,
+                      },
+                      area: { identifier: "", name: "" },
+                      deck: { identifier: "", name: "" },
+                      creator: { identifier: "", name: "" },
+                      dateCreated: "",
+                      dateModified: "",
+                      // Silence the `i` lint hint
+                      ...(i === -1 ? {} : {}),
+                    })) as unknown as typeof existingPins,
+                  ...existingPins,
+                ]}
               />
             </div>
           </div>
@@ -420,6 +715,66 @@ export default function CreateGAPinModal({
               {initialStage.name}
             </span>
           </div>
+        ) : !isEditing && initialDeck ? (
+          // Deck-anchored breadcrumb. The deck is locked (user clicked
+          // it on the GA tab), the area derives from where the pin
+          // landed (drag updates it live), and the stage stays a
+          // dropdown because the user picks which step the issue
+          // belongs to within the area. Falls back to "-" when the
+          // marker sits on the deck but outside every area.
+          (() => {
+            const areaName = selectedAreaId
+              ? areas?.find((a) => a.identifier === selectedAreaId)?.name ?? "-"
+              : "-";
+            const stageList = stages ?? [];
+            const activeStage = stageList.find(
+              (s) => s.identifier === selectedStageId
+            );
+            return (
+              <div className="flex items-center flex-wrap gap-2 px-4 py-3 rounded-lg bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-700 text-sm">
+                <span className="text-gray-900 dark:text-gray-100">
+                  {initialDeck.name}
+                </span>
+                <span className="text-gray-400 dark:text-gray-500">/</span>
+                <span
+                  className={
+                    selectedAreaId
+                      ? "text-gray-900 dark:text-gray-100"
+                      : "text-gray-400 dark:text-gray-500"
+                  }
+                >
+                  {areaName}
+                </span>
+                <span className="text-gray-400 dark:text-gray-500">/</span>
+                {selectedAreaId && stageList.length > 0 ? (
+                  <div className="flex items-center gap-1.5">
+                    {activeStage?.color && (
+                      <span
+                        className="inline-block w-3 h-3 rounded-sm border border-gray-200 dark:border-gray-600 flex-shrink-0"
+                        style={{ backgroundColor: activeStage.color }}
+                        aria-hidden="true"
+                      />
+                    )}
+                    <select
+                      value={selectedStageId}
+                      onChange={(e) => setSelectedStageId(e.target.value)}
+                      className="bg-transparent border-0 outline-none text-gray-900 dark:text-gray-100 font-medium focus:ring-0 px-0 py-0 cursor-pointer"
+                      required
+                    >
+                      <option value="">{t("chooseStage")}</option>
+                      {stageList.map((stage) => (
+                        <option key={stage.identifier} value={stage.identifier}>
+                          {stage.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : (
+                  <span className="text-gray-400 dark:text-gray-500">-</span>
+                )}
+              </div>
+            );
+          })()
         ) : (
           <>
         {/* Deck and Area Selection (side by side) */}
@@ -527,10 +882,16 @@ export default function CreateGAPinModal({
                   </div>
                 )
               ) : (
-                // Create mode: show text for 1 option, dropdown for multiple
+                // Create mode: show text for 1 option, dropdown for
+                // multiple. The static label reflects `selectedAreaId`
+                // — when the marker sits on the deck but outside any
+                // area, drag clears the selection and we show "-".
                 areas && areas.length === 1 ? (
                   <p className="text-gray-900 dark:text-gray-100 py-2">
-                    {areas[0].name}
+                    {selectedAreaId
+                      ? areas.find((a) => a.identifier === selectedAreaId)
+                          ?.name ?? "-"
+                      : "-"}
                   </p>
                 ) : (
                   <select
@@ -595,13 +956,18 @@ export default function CreateGAPinModal({
                 </div>
               )
             ) : (
-              // Create mode: show text for 1 option or when the stage was
-              // pre-selected from caller context; dropdown otherwise.
+              // Create mode: show text for 1 option or when the stage
+              // was pre-selected from caller context; dropdown
+              // otherwise. The static label reflects `selectedStageId`
+              // so the drag-clears-area flow (which also clears stage)
+              // visibly drops the stage label to "-" instead of
+              // pretending the single available stage is still picked.
               (stages && stages.length === 1) || initialStage ? (
                 <p className="text-gray-900 dark:text-gray-100 py-2">
-                  {(initialStage
-                    ? initialStage.name
-                    : stages?.[0]?.name) || "-"}
+                  {selectedStageId
+                    ? stages?.find((s) => s.identifier === selectedStageId)
+                        ?.name ?? "-"
+                    : "-"}
                 </p>
               ) : (
                 <select
@@ -628,36 +994,102 @@ export default function CreateGAPinModal({
         {/* Label and Color Picker — in constrain-to-area mode the pin
             color is locked to the stage's color, so the picker is
             hidden and Label spans the full row. */}
-        <div
-          className={
-            constrainToArea
-              ? ""
-              : "grid grid-cols-[1fr_auto] gap-4 items-start"
-          }
-        >
-          {/* Label */}
-          <FormInput
-            id="label"
-            label={t("pinLabel")}
-            value={label}
-            onChange={(e) => setLabel(e.target.value)}
-            placeholder={t("pinLabelPlaceholder")}
-            required={!isEditing}
-          />
+        {/* Label only — the pin's colour follows the selected stage
+            (rendered as a swatch in the breadcrumb above), so no
+            colour picker here. */}
+        <FormInput
+          id="label"
+          label={t("pinLabel")}
+          value={label}
+          onChange={(e) => setLabel(e.target.value)}
+          placeholder={t("pinLabelPlaceholder")}
+          required={!isEditing}
+        />
 
-          {/* Color Picker */}
-          {!constrainToArea && (
-            <div className="pt-7">
-              <input
-                type="color"
-                value={color}
-                onChange={(e) => setColor(e.target.value)}
-                className="w-16 h-10 rounded-lg border border-gray-300 dark:border-gray-600 cursor-pointer"
-                title={t("pinColor")}
-              />
+        {/* Pins — create mode only. Lists every dropped location with
+            a #N badge, the shared color swatch, an optional per-pin
+            label, and a delete button. Clicking a row makes that pin
+            the draggable one on the GA preview. Works in both the
+            free-roam GA flow and the stage-level constrain-to-area
+            flow — new pins drop at the area centroid in the latter
+            so they land inside the constraint polygon. */}
+        {!isEditing && (
+          <div className="border-t border-gray-200 dark:border-gray-700 pt-5">
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="text-sm font-medium text-gray-900 dark:text-white">
+                {t("pinsHeading") || "Pins"}{" "}
+                <span className="text-gray-400 dark:text-gray-500 font-normal">
+                  ({pins.length})
+                </span>
+              </h4>
+              <button
+                type="button"
+                onClick={handleAddPin}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-md transition-colors"
+              >
+                <PlusIcon className="w-3.5 h-3.5" />
+                {t("addAnotherPin") || "Add another location"}
+              </button>
             </div>
-          )}
-        </div>
+            {pins.length === 0 ? (
+              <p className="text-xs text-gray-500 dark:text-gray-400 italic px-2 py-3 rounded-md border border-dashed border-gray-300 dark:border-gray-600">
+                {t("noPinsYet") || "No locations yet — add one to continue."}
+              </p>
+            ) : (
+              <ul className="space-y-1.5">
+                {pins.map((p, i) => {
+                  const isActive = p.id === activePinId;
+                  return (
+                    <li
+                      key={p.id}
+                      onClick={() => handleSelectPin(p.id)}
+                      className={`flex items-center gap-2 px-2.5 py-2 rounded-md border cursor-pointer text-sm transition-colors ${
+                        isActive
+                          ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
+                          : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
+                      }`}
+                    >
+                      <span
+                        className="w-2.5 h-2.5 rounded-full flex-shrink-0 border border-white dark:border-gray-800 shadow-sm"
+                        style={{ backgroundColor: color }}
+                        aria-hidden="true"
+                      />
+                      <span className="font-mono text-xs text-gray-500 dark:text-gray-400 flex-shrink-0 w-7">
+                        #{i + 1}
+                      </span>
+                      <input
+                        type="text"
+                        value={p.label}
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={(e) =>
+                          handlePinLabelChange(p.id, e.target.value)
+                        }
+                        placeholder={
+                          t("pinLabelPlaceholder") || "Label (optional)"
+                        }
+                        maxLength={255}
+                        className="flex-1 min-w-0 bg-transparent border-0 outline-none text-gray-900 dark:text-white text-sm p-0 placeholder:text-gray-400 dark:placeholder:text-gray-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRemovePin(p.id);
+                        }}
+                        disabled={pins.length <= 1}
+                        className="p-1 text-gray-400 hover:text-red-600 dark:hover:text-red-400 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                        title={t("removePin") || "Remove pin"}
+                        aria-label={t("removePin") || "Remove pin"}
+                      >
+                        <TrashIcon className="w-4 h-4" />
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+        )}
 
         {/* Punchlist Item Fields (Create mode only, when stage is NOT completed) */}
         {!isEditing && selectedStageId && !isStageCompleted && (

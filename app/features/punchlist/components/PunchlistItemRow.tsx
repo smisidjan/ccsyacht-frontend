@@ -23,12 +23,13 @@ interface PunchlistItemRowProps {
   onSelect: () => void;
   stageStatus?: StageStatus;
   canEdit: boolean;
-  /** Project-wide display number — rendered as `#N` next to the
-   *  title so users can refer to an item by a short number instead
-   *  of the UUID. The parent computes it from the full project list
-   *  so the same item gets the same number in every view. Omitted
-   *  when the parent doesn't have that mapping at hand. */
-  displayNumber?: number;
+  /** Project-wide display number — rendered as `#N` (top-level) or
+   *  `#N.M` (child sub-item) next to the title so users can refer to
+   *  an item by a short number instead of the UUID. The parent
+   *  computes it from the full project tree so the same item gets
+   *  the same number in every view. Omitted when the parent doesn't
+   *  have that mapping at hand. */
+  displayNumber?: string | number;
   /** When the detail panel is open the list column shrinks to ~⅓ of
    *  the screen — secondary fields (the "Created by" reporter) are
    *  hidden then so the title can keep using the available width. */
@@ -41,6 +42,12 @@ interface PunchlistItemRowProps {
    *  tab where each row's pin / stage colour is the primary visual
    *  anchor mapping the row back to the marker on the drawing. */
   stageColor?: string | null;
+  /** Sub-rows render against a slightly grey background to read as
+   *  "indented under the parent" — but the default hover colour is
+   *  that same grey, so the hover state visually disappears. When
+   *  `true`, the row picks a darker hover tone so mousing over a
+   *  child still produces an obvious highlight. */
+  isSubRow?: boolean;
   onChangeStatus: (next: PunchlistItemStatus) => void;
   onChangePriority: (next: PunchlistItemPriority) => void;
   onRequestCancel: () => void;
@@ -63,6 +70,7 @@ export default function PunchlistItemRow({
   compact = false,
   showLocation = false,
   stageColor,
+  isSubRow = false,
   onChangeStatus,
   onChangePriority,
   onRequestCancel,
@@ -87,7 +95,9 @@ export default function PunchlistItemRow({
       className={`w-full flex items-center gap-3 px-4 py-2.5 text-left cursor-pointer transition-colors border-l-2 ${
         isSelected
           ? "bg-blue-50 dark:bg-blue-900/20 border-l-blue-500"
-          : "border-l-transparent hover:bg-gray-50 dark:hover:bg-gray-700/40"
+          : isSubRow
+            ? "border-l-transparent hover:bg-gray-100 dark:hover:bg-gray-700/70"
+            : "border-l-transparent hover:bg-gray-50 dark:hover:bg-gray-700/40"
       }`}
     >
       {stageColor && (
@@ -102,7 +112,7 @@ export default function PunchlistItemRow({
           based on project-wide creation order so an item keeps the
           same number wherever it shows up. Skipped when the parent
           doesn't have that mapping. */}
-      {typeof displayNumber === "number" && (
+      {(typeof displayNumber === "number" || typeof displayNumber === "string") && (
         <span className="font-mono text-xs text-gray-400 dark:text-gray-500 flex-shrink-0">
           #{displayNumber}
         </span>
@@ -114,8 +124,10 @@ export default function PunchlistItemRow({
 
       {/* Location breadcrumb — only on project-level lists where the
           item could come from any stage; hidden when the panel is
-          open to give the title more room. */}
-      {showLocation && !compact && item.stage.area && (
+          open to give the title more room. Inline children carried
+          under a parent ship without `stage` loaded — guard the
+          access so expanding a parent row doesn't crash. */}
+      {showLocation && !compact && item.stage?.area && (
         <span
           className="hidden md:inline-flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 flex-shrink-0 truncate max-w-[220px]"
           title={`${
@@ -132,8 +144,10 @@ export default function PunchlistItemRow({
 
       {/* Reporter — only shown when the list has room (detail panel
           closed). Hidden in compact mode so the title gets the width
-          back. */}
-      {!compact && (
+          back. Some API surfaces (e.g. child items inlined under a
+          parent) ship without the creator relation loaded — guard
+          the access so a missing field doesn't crash the row. */}
+      {!compact && item.creator?.name && (
         <span
           className="hidden md:inline text-xs text-gray-500 dark:text-gray-400 flex-shrink-0 truncate max-w-[180px]"
           title={t("createdBy", { name: item.creator.name })}

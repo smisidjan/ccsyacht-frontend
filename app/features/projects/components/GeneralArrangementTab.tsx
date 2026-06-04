@@ -32,12 +32,12 @@ import AuthenticatedImage from "@/app/components/ui/AuthenticatedImage";
 import { CreateGAPinModal, GALeafletViewer } from "@/app/features/ga";
 import { CreateDeckModal } from "@/app/features/decks";
 import {
-  PunchlistItemRow,
   PunchlistItemCard,
+  PunchlistTreeList,
   CancelPunchlistItemModal,
 } from "@/app/features/punchlist";
 import PunchlistAssigneeQuickFilter from "@/app/features/punchlist/components/PunchlistAssigneeQuickFilter";
-import { usePunchlistNumbers } from "@/lib/hooks/usePunchlistNumbers";
+import { usePunchlistProjectItems } from "@/lib/hooks/usePunchlistProjectItems";
 import PunchlistFilterPopover, {
   EMPTY_FILTERS,
   applyPunchlistFilters,
@@ -70,6 +70,9 @@ function pinToPunchlistItem(pin: GAPin): PunchlistItem | null {
     pin.punchlistItem.status !== "cancelled";
   return {
     identifier: pin.punchlistItem.identifier,
+    // Pin payload doesn't ship parent context — assume top-level
+    // and let the consumer override if it has tree info nearby.
+    parentId: null,
     name: pin.punchlistItem.name,
     description: pin.punchlistItem.description ?? undefined,
     actionStatus: "",
@@ -252,7 +255,15 @@ export default function GeneralArrangementTab({
   const [clickedDeck, setClickedDeck] = useState<Deck | null>(null);
   const [clickedArea, setClickedArea] = useState<Area | null>(null);
   const [hoveredPinId, setHoveredPinId] = useState<string | null>(null);
-  const [selectedPinDetail, setSelectedPinDetail] = useState<GAPin | null>(null);
+  // Detail panel selection — drives both the right-hand `PunchlistItemCard`
+  // and the GA viewer's `selectedPinId` highlight. We track the
+  // punchlist item id (parent or child) instead of the pin object so
+  // clicking a parent row opens the parent's detail with its sub-tasks
+  // listed inside; clicking a child row opens that child's detail.
+  // Orphan pins (no real item) fall back to the pin id.
+  const [selectedDetailId, setSelectedDetailId] = useState<string | null>(
+    null
+  );
   // Cancel-reason modal target — same pattern as the stage punchlist
   // list. Row dropdown signals intent here, modal collects the reason.
   const [cancelTarget, setCancelTarget] = useState<{
@@ -391,12 +402,24 @@ export default function GeneralArrangementTab({
     [allPins]
   );
 
-  /** Project-wide numeric ids keyed by punchlist item identifier —
-   *  same map every other surface uses, so an item carries the same
-   *  `#N` in the GA pin list, the project punchlist tab, and the
-   *  stage punchlist. Pulled via the shared hook so we don't
-   *  re-derive numbers per surface. */
-  const punchlistNumbers = usePunchlistNumbers(projectId);
+  /** Project-wide punchlist items tree (top-level + inlined children)
+   *  plus derived id→display-number map (`"3"` for parents, `"3.1"`
+   *  for child sub-items). The lookup map lets the Pins List fold a
+   *  child's pin under its parent row without walking the tree on
+   *  every render. `treeRefreshKey` bumps after any row-level mutation
+   *  so the tree (which carries the up-to-date status / priority /
+   *  assignees that we render in the rows) refetches alongside the
+   *  GA pins. */
+  const [treeRefreshKey, setTreeRefreshKey] = useState(0);
+  const {
+    items: projectPunchlistItems,
+    lookup: punchlistTreeLookup,
+    numbers: punchlistNumbers,
+  } = usePunchlistProjectItems(projectId, treeRefreshKey);
+  const refreshAll = useCallback(() => {
+    refetch();
+    setTreeRefreshKey((k) => k + 1);
+  }, [refetch]);
 
   // Drive the GA pin list through the same filter helper as the
   // punchlist tabs. Pins are mapped to their synthetic
@@ -451,6 +474,109 @@ export default function GeneralArrangementTab({
     [pinsWithSynthetic]
   );
 
+  /** Top-level items to feed the shared `PunchlistTreeList`. We walk
+   *  the displayed pins, resolve each to its top-level tree node, and
+   *  dedupe so the same parent only shows once. Children are pre-sorted
+   *  by display number so the rendered order matches their `#N.M`
+   *  labels (the backend doesn't promise a stable child order across
+   *  requests). Pins whose linked item isn't in the tree yet (data lag)
+   *  fall back to a synthetic node so they don't disappear from the
+   *  list — orphan pins behave the same as singletons. */
+  const displayedTreeItems = useMemo<PunchlistItem[]>(() => {
+    const out: PunchlistItem[] = [];
+    const seen = new Set<string>();
+    for (const pin of displayedPins) {
+      const pinItemId = pin.punchlistItem?.identifier;
+      const lookup = pinItemId ? punchlistTreeLookup.get(pinItemId) : undefined;
+      if (lookup) {
+        if (seen.has(lookup.topLevel.identifier)) continue;
+        seen.add(lookup.topLevel.identifier);
+        const sortedChildren = [...(lookup.topLevel.children ?? [])].sort(
+          (a, b) => {
+            const na = punchlistNumbers.get(a.identifier) ?? "";
+            const nb = punchlistNumbers.get(b.identifier) ?? "";
+            return na.localeCompare(nb, undefined, { numeric: true });
+          }
+        );
+        out.push({ ...lookup.topLevel, children: sortedChildren });
+      } else {
+        const synthetic = pinToPunchlistItem(pin);
+        if (!synthetic) continue;
+        if (seen.has(synthetic.identifier)) continue;
+        seen.add(synthetic.identifier);
+        out.push(synthetic);
+      }
+    }
+    return out;
+  }, [displayedPins, punchlistTreeLookup, punchlistNumbers]);
+
+  /** Map item id → first pin that references it. Used by the hover
+   *  bridge that highlights the corresponding marker on the GA
+   *  viewer when the user mouses over a row. Pin colour matches the
+   *  stage colour, but we don't rely on it for the leading dot
+   *  anymore — `stageColorById` covers items that have no direct pin
+   *  (e.g. a parent whose pins all live on its children). */
+  const pinByItemId = useMemo(() => {
+    const map = new Map<string, GAPin>();
+    for (const pin of displayedPins) {
+      const id = pin.punchlistItem?.identifier ?? pin.identifier;
+      if (!map.has(id)) map.set(id, pin);
+    }
+    return map;
+  }, [displayedPins]);
+
+  /** Stage id → hex colour map, derived from the project's stages.
+   *  Lets the row's leading dot resolve to the stage colour even when
+   *  the item has no pin attached (parent rows), and when the inline
+   *  child payload omits the `stage` relation (we fall back to the
+   *  parent's stage id at the call site). */
+  const stageColorById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const s of stages ?? []) {
+      if (s.color) map.set(s.identifier, s.color);
+    }
+    return map;
+  }, [stages]);
+
+  /** Resolve the selected item id back into a real `PunchlistItem`,
+   *  a backing pin (when available) and a flag telling the card
+   *  whether sub-tasks should be rendered. Tree-backed parents get
+   *  their children inlined; child rows and orphans don't. */
+  const selectedDetail = useMemo(() => {
+    if (!selectedDetailId) return null;
+    const lookup = punchlistTreeLookup.get(selectedDetailId);
+    if (lookup) {
+      const pin =
+        allPins.find(
+          (p) => p.punchlistItem?.identifier === selectedDetailId
+        ) ?? null;
+      const isParent = lookup.item.identifier === lookup.topLevel.identifier;
+      return {
+        item: lookup.item,
+        pin,
+        // Only the top-level item carries sub-tasks. Children render
+        // as standalone detail panels with no Sub-tasks section.
+        subItems:
+          isParent && (lookup.item.children?.length ?? 0) > 0
+            ? lookup.item.children
+            : undefined,
+      };
+    }
+    // Tree miss — fall back to synthetic from the matching pin. Used
+    // for orphan pins (no real punchlist item) and momentary lag
+    // between a mutation and the tree refetch.
+    const pin =
+      allPins.find(
+        (p) =>
+          p.identifier === selectedDetailId ||
+          p.punchlistItem?.identifier === selectedDetailId
+      ) ?? null;
+    if (!pin) return null;
+    const synthetic = pinToPunchlistItem(pin);
+    if (!synthetic) return null;
+    return { item: synthetic, pin, subItems: undefined };
+  }, [selectedDetailId, punchlistTreeLookup, allPins]);
+
 
   // Row mutation handlers — mirror the stage/project punchlist
   // tabs so editing from this surface stays consistent. Each one
@@ -461,7 +587,7 @@ export default function GeneralArrangementTab({
       try {
         await punchlistItemsApi.updateStatus(projectId, itemId, { status });
         showToast("success", tPunchlist("updateSuccess"));
-        refetch();
+        refreshAll();
       } catch (err) {
         handleError(err, {
           showToast,
@@ -469,7 +595,7 @@ export default function GeneralArrangementTab({
         });
       }
     },
-    [projectId, refetch, showToast, tPunchlist]
+    [projectId, refreshAll, showToast, tPunchlist]
   );
 
   const handleRowPriorityChange = useCallback(
@@ -484,7 +610,7 @@ export default function GeneralArrangementTab({
             ),
           })
         );
-        refetch();
+        refreshAll();
       } catch (err) {
         handleError(err, {
           showToast,
@@ -492,7 +618,7 @@ export default function GeneralArrangementTab({
         });
       }
     },
-    [projectId, refetch, showToast, tPunchlist]
+    [projectId, refreshAll, showToast, tPunchlist]
   );
 
   const handleRowCancel = useCallback(
@@ -505,7 +631,7 @@ export default function GeneralArrangementTab({
         });
         showToast("success", tPunchlist("cancelSuccess"));
         setCancelTarget(null);
-        refetch();
+        refreshAll();
       } catch (err) {
         handleError(err, {
           showToast,
@@ -514,7 +640,7 @@ export default function GeneralArrangementTab({
         throw err;
       }
     },
-    [cancelTarget, projectId, refetch, showToast, tPunchlist]
+    [cancelTarget, projectId, refreshAll, showToast, tPunchlist]
   );
 
   const canEditPunchlistItems = hasPermission(PERMISSIONS.EDIT_STAGES);
@@ -730,9 +856,13 @@ export default function GeneralArrangementTab({
                 imageWidth={generalArrangement.imageWidth!}
                 imageHeight={generalArrangement.imageHeight!}
                 pins={displayedPins}
-                selectedPinId={selectedPinDetail?.identifier}
+                selectedPinId={selectedDetail?.pin?.identifier}
                 hoveredPinId={hoveredPinId}
-                onPinClick={(pin) => setSelectedPinDetail(pin)}
+                onPinClick={(pin) =>
+                  setSelectedDetailId(
+                    pin.punchlistItem?.identifier ?? pin.identifier
+                  )
+                }
                 onPinHover={(pin) => setHoveredPinId(pin?.identifier ?? null)}
                 onDeckClick={(deck, x, y, area) => {
                   if (canEdit && isAddPinMode) {
@@ -756,9 +886,11 @@ export default function GeneralArrangementTab({
           </div>
         </div>
 
-        {/* Right: Pin Info */}
+        {/* Right: Pins list (tree-aware, shared with the stage /
+            project punchlist surfaces) or the selected item's
+            detail card with its sub-tasks inlined. */}
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 flex-1 min-w-0">
-          {!selectedPinDetail ? (
+          {!selectedDetail ? (
             <>
               <h4 className="font-semibold text-gray-900 dark:text-white mb-4">
                 {tPins("pinsList")}
@@ -768,123 +900,73 @@ export default function GeneralArrangementTab({
                   {tPins("noPins")}
                 </p>
               ) : (
-                <div
-                  className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-md divide-y divide-gray-100 dark:divide-gray-700"
-                  onMouseLeave={() => setHoveredPinId(null)}
-                >
-                  {displayedPins.map((pin) => {
-                    const synthetic = pinToPunchlistItem(pin);
-                    // Pins without a linked punchlist item are rare —
-                    // surface a minimal row so they don't disappear.
-                    if (!synthetic) {
-                      return (
-                        <div
-                          key={pin.identifier}
-                          role="button"
-                          tabIndex={0}
-                          onClick={() => setSelectedPinDetail(pin)}
-                          onMouseEnter={() => setHoveredPinId(pin.identifier)}
-                          className={`flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-colors border-l-2 ${
-                            hoveredPinId === pin.identifier
-                              ? "bg-blue-50 dark:bg-blue-900/20 border-l-blue-500"
-                              : "border-l-transparent hover:bg-gray-50 dark:hover:bg-gray-700/40"
-                          }`}
-                        >
-                          <span
-                            className="w-2.5 h-2.5 rounded-full flex-shrink-0 border border-white dark:border-gray-800 shadow-sm"
-                            style={{ backgroundColor: pin.color || "#3B82F6" }}
-                            aria-hidden="true"
-                          />
-                          <span className="flex-1 min-w-0 text-sm font-medium text-gray-900 dark:text-white truncate">
-                            {pin.label || tPins("unnamedPin")}
-                          </span>
-                        </div>
-                      );
-                    }
-                    return (
-                      <div
-                        key={pin.identifier}
-                        onMouseEnter={() => setHoveredPinId(pin.identifier)}
-                      >
-                        <PunchlistItemRow
-                          item={synthetic}
-                          projectId={projectId}
-                          isSelected={false}
-                          canEdit={canEditPunchlistItems}
-                          stageColor={pin.color}
-                          displayNumber={punchlistNumbers.get(synthetic.identifier)}
-                          onSelect={() => setSelectedPinDetail(pin)}
-                          onChangeStatus={(next) =>
-                            handleRowStatusChange(synthetic.identifier, next)
-                          }
-                          onChangePriority={(next) =>
-                            handleRowPriorityChange(
-                              synthetic.identifier,
-                              next
-                            )
-                          }
-                          onRequestCancel={() =>
-                            setCancelTarget({
-                              id: synthetic.identifier,
-                              name: synthetic.name,
-                            })
-                          }
-                          onAssigneesChange={() => refetch()}
-                        />
-                      </div>
-                    );
-                  })}
-                </div>
+                <PunchlistTreeList
+                  items={displayedTreeItems}
+                  projectId={projectId}
+                  selectedItemId={selectedDetailId}
+                  canEdit={canEditPunchlistItems}
+                  getDisplayNumber={(id) => punchlistNumbers.get(id)}
+                  getRowColor={(it, parent) =>
+                    stageColorById.get(
+                      it.stage?.identifier ??
+                        parent?.stage?.identifier ??
+                        ""
+                    ) ?? pinByItemId.get(it.identifier)?.color
+                  }
+                  onRowHover={(it) =>
+                    setHoveredPinId(
+                      it ? pinByItemId.get(it.identifier)?.identifier ?? null : null
+                    )
+                  }
+                  onSelectItem={(id) => setSelectedDetailId(id)}
+                  onChangeStatus={(id, next) =>
+                    handleRowStatusChange(id, next)
+                  }
+                  onChangePriority={(id, next) =>
+                    handleRowPriorityChange(id, next)
+                  }
+                  onRequestCancel={(t) => setCancelTarget(t)}
+                  onAssigneesChange={() => refreshAll()}
+                />
               )}
             </>
           ) : (
-            <>
-              {/* Detail view — same shared `PunchlistItemCard` as the
-                  stage / project punchlist tabs. Deck / Area / Stage
-                  show up under Details because we pass `showLocation`.
-                  Pin-specific actions (Go to stage / Edit / Delete pin)
-                  sit below since the punchlist card doesn't own them. */}
-              <div className="space-y-4">
-                <button
-                  onClick={() => setSelectedPinDetail(null)}
-                  className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
-                >
-                  <ArrowLeftIcon className="w-4 h-4" />
-                  {tCommon("back")}
-                </button>
+            <div className="space-y-4">
+              <button
+                onClick={() => setSelectedDetailId(null)}
+                className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+              >
+                <ArrowLeftIcon className="w-4 h-4" />
+                {tCommon("back")}
+              </button>
 
-                {(() => {
-                  const synthetic = pinToPunchlistItem(selectedPinDetail);
-                  if (!synthetic) {
-                    return (
-                      <p className="text-sm italic text-gray-500 dark:text-gray-400">
-                        {tPins("unnamedPin")}
-                      </p>
-                    );
-                  }
-                  return (
-                    <PunchlistItemCard
-                      key={synthetic.identifier}
-                      item={synthetic}
-                      projectId={projectId}
-                      showLocation
-                      displayNumber={punchlistNumbers.get(synthetic.identifier)}
-                      onUpdate={refetch}
-                      onGoToStage={() =>
+              <PunchlistItemCard
+                key={selectedDetail.item.identifier}
+                item={selectedDetail.item}
+                projectId={projectId}
+                showLocation
+                displayNumber={punchlistNumbers.get(
+                  selectedDetail.item.identifier
+                )}
+                onUpdate={refreshAll}
+                subItems={selectedDetail.subItems}
+                onSubItemSelect={(id) => setSelectedDetailId(id)}
+                getSubItemDisplayNumber={(id) => punchlistNumbers.get(id)}
+                onGoToStage={
+                  selectedDetail.pin
+                    ? () =>
                         router.push(
-                          `/dashboard/projects/${projectId}/areas/${selectedPinDetail.area.identifier}?stage=${selectedPinDetail.stage.identifier}`
+                          `/dashboard/projects/${projectId}/areas/${selectedDetail.pin!.area.identifier}?stage=${selectedDetail.pin!.stage.identifier}`
                         )
-                      }
-                      onEditPinLocation={
-                        canEdit
-                          ? () => handleEditPin(selectedPinDetail)
-                          : undefined
-                      }
-                    />
-                  );
-                })()}
-              </div>
-            </>
+                    : undefined
+                }
+                onEditPinLocation={
+                  canEdit && selectedDetail.pin
+                    ? () => handleEditPin(selectedDetail.pin!)
+                    : undefined
+                }
+              />
+            </div>
           )}
         </div>
       </div>
@@ -902,7 +984,7 @@ export default function GeneralArrangementTab({
         projectId={projectId}
         initialPosition={selectedPin ? { x: selectedPin.x, y: selectedPin.y } : newPinPosition}
         initialData={selectedPin}
-        onSuccess={refetch}
+        onSuccess={refreshAll}
         gaImageUrl={imageBlobUrl || undefined}
         gaImageWidth={generalArrangement?.imageWidth}
         gaImageHeight={generalArrangement?.imageHeight}

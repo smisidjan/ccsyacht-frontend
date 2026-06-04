@@ -3,7 +3,53 @@
  * Helper functions for General Arrangement feature
  */
 
-import type { GeneralArrangement, StageStatus } from "@/lib/api/types";
+import type {
+  Area,
+  AreaPolygonPoint,
+  Deck,
+  GeneralArrangement,
+  StageStatus,
+} from "@/lib/api/types";
+
+/** Resolve the points of an area's polygon scoped to a deck placement.
+ *  Newer areas store one polygon per placement under `polygons` keyed
+ *  by `parentPolygonId` (the deck's primary polygon or one of its side
+ *  profiles); older records only have the flat `polygon` field.
+ *
+ *  Preference order:
+ *    1. Per-placement entry matching the supplied deck's primary
+ *       polygon — the visually correct outline for that view.
+ *    2. Legacy single `polygon` field — kept around for one release.
+ *    3. First valid entry in `polygons` — used when the caller can't
+ *       pass a deck yet (e.g. `useDecks` is still resolving) but the
+ *       area's per-placement polygons are already loaded. Any valid
+ *       polygon is better than nothing here because callers use the
+ *       result for centroid drops and zoom targets, where landing
+ *       inside the area matters more than picking the exact view.
+ *
+ *  Returns `null` only when the area has no usable polygon at all
+ *  (fresh area waiting for a draw). */
+export function getAreaPolygonForDeck(
+  area: Area | null | undefined,
+  deck?: Deck | null
+): AreaPolygonPoint[] | null {
+  if (!area) return null;
+  const primaryPolygonId = deck?.deckPolygon?.identifier;
+  if (primaryPolygonId) {
+    const perPlacement = area.polygons?.find(
+      (p) => p.parentPolygonId === primaryPolygonId
+    )?.points;
+    if (perPlacement && perPlacement.length >= 3) return perPlacement;
+  }
+  if (Array.isArray(area.polygon) && area.polygon.length >= 3) {
+    return area.polygon;
+  }
+  const anyEntry = area.polygons?.find(
+    (p) => Array.isArray(p.points) && p.points.length >= 3
+  );
+  if (anyEntry) return anyEntry.points;
+  return null;
+}
 
 /**
  * Check if GA exists (uploaded but maybe not yet converted)
