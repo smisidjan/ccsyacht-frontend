@@ -95,9 +95,9 @@ export const polygonCentroid = (
  *  null for empty inputs. Used to render a rectangular silhouette of a
  *  deck/side-profile polygon — the actual outline is still the polygon. */
 export const polygonBbox = (
-  polygon: AreaPolygonPoint[]
+  polygon: AreaPolygonPoint[] | null | undefined
 ): { bbox_x: number; bbox_y: number; bbox_width: number; bbox_height: number } | null => {
-  if (polygon.length === 0) return null;
+  if (!polygon || polygon.length === 0) return null;
   let minX = polygon[0].x;
   let minY = polygon[0].y;
   let maxX = polygon[0].x;

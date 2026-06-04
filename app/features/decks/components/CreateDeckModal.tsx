@@ -94,13 +94,17 @@ interface CreateDeckModalProps {
 
 function apiDeckToPendingDeck(deck: Deck): PendingDeck {
   const polygon = deck.deckPolygon?.points ?? [];
-  const sideProfiles: PendingSideProfile[] = deck.sideProfilePolygons.map((sp) => ({
-    id: sp.identifier,
-    identifier: sp.identifier,
-    namePrefix: extractSideProfilePrefix(sp.name, deck.name),
-    polygon: sp.points,
-    isClosed: sp.points.length >= MIN_VERTICES,
-  }));
+  // Guard against backends mid-migration: the field may be absent or
+  // null, and each side profile may also be missing points.
+  const sideProfiles: PendingSideProfile[] = (deck.sideProfilePolygons ?? []).map(
+    (sp) => ({
+      id: sp.identifier,
+      identifier: sp.identifier,
+      namePrefix: extractSideProfilePrefix(sp.name, deck.name),
+      polygon: sp.points ?? [],
+      isClosed: (sp.points ?? []).length >= MIN_VERTICES,
+    })
+  );
   return {
     id: deck.identifier,
     name: deck.name,
