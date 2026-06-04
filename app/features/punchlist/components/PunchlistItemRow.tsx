@@ -49,6 +49,11 @@ interface PunchlistItemRowProps {
    *  `true`, the row picks a darker hover tone so mousing over a
    *  child still produces an obvious highlight. */
   isSubRow?: boolean;
+  /** External highlight — used by the GA tab to mirror a pin hover on
+   *  the map into the matching list row, so hovering a pin lights up
+   *  its row and vice versa. Same visual weight as the local hover
+   *  state but driven by props instead of native :hover. */
+  isHighlighted?: boolean;
   onChangeStatus: (next: PunchlistItemStatus) => void;
   onChangePriority: (next: PunchlistItemPriority) => void;
   onRequestCancel: () => void;
@@ -72,6 +77,7 @@ export default function PunchlistItemRow({
   showLocation = false,
   stageColor,
   isSubRow = false,
+  isHighlighted = false,
   onChangeStatus,
   onChangePriority,
   onRequestCancel,
@@ -96,9 +102,13 @@ export default function PunchlistItemRow({
       className={`w-full flex items-center gap-3 px-4 py-2.5 text-left cursor-pointer transition-colors border-l-2 ${
         isSelected
           ? "bg-blue-50 dark:bg-blue-900/20 border-l-blue-500"
-          : isSubRow
-            ? "border-l-transparent hover:bg-gray-100 dark:hover:bg-gray-700/70"
-            : "border-l-transparent hover:bg-gray-50 dark:hover:bg-gray-700/40"
+          : isHighlighted
+            ? isSubRow
+              ? "bg-gray-100 dark:bg-gray-700/70 border-l-transparent"
+              : "bg-gray-50 dark:bg-gray-700/40 border-l-transparent"
+            : isSubRow
+              ? "border-l-transparent hover:bg-gray-100 dark:hover:bg-gray-700/70"
+              : "border-l-transparent hover:bg-gray-50 dark:hover:bg-gray-700/40"
       }`}
     >
       {/* Leading status anchor. Completed items get a green

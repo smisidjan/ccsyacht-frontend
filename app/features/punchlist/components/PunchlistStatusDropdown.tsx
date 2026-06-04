@@ -34,11 +34,18 @@ const statusChipColors: Record<PunchlistItemStatus, string> = {
 // the More-actions menu in the detail panel (it needs a reason +
 // confirmation), not the workflow dropdown — keeping it out here
 // prevents the user from accidentally killing an item with one click.
+//
+// Backward transitions are intentionally allowed (re-opening a done
+// item, dropping an in-progress item back to open) — the workflow is
+// a graph, not a one-way ratchet, and users routinely correct
+// mis-clicks. `next_step_release` is no longer a step we lead users
+// into; legacy items already in that state can still exit, but no
+// transition arrives there.
 const ALLOWED_NEXT: Record<PunchlistItemStatus, PunchlistItemStatus[]> = {
   open: ["in_progress"],
-  in_progress: ["next_step_release", "done"],
-  next_step_release: ["in_progress", "done"],
-  done: [],
+  in_progress: ["open", "done"],
+  next_step_release: ["open", "in_progress", "done"],
+  done: ["in_progress"],
   cancelled: [],
 };
 

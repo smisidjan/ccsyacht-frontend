@@ -255,10 +255,18 @@ export default function GeneralArrangementTab({
   const [clickedDeck, setClickedDeck] = useState<Deck | null>(null);
   const [clickedArea, setClickedArea] = useState<Area | null>(null);
   // Pin ids the GA viewer should highlight in lockstep with a hover
-   // in the pins list. A set rather than a single id so hovering a
-   // parent row pops every child pin attached under it at the same
-   // time — child rows just contribute their own single pin.
+  // in the pins list. A set rather than a single id so hovering a
+  // parent row pops every child pin attached under it at the same
+  // time — child rows just contribute their own single pin.
   const [hoveredPinIds, setHoveredPinIds] = useState<ReadonlySet<string>>(
+    () => new Set()
+  );
+  // Mirror direction: punchlist item ids whose rows should light up
+  // when the user hovers their pin on the GA. Carries the matched
+  // item plus its top-level parent so a sub-pin lights up the parent
+  // row too, surfacing the group context without the user having to
+  // expand it manually.
+  const [hoveredItemIds, setHoveredItemIds] = useState<ReadonlySet<string>>(
     () => new Set()
   );
   // Detail panel selection — drives both the right-hand `PunchlistItemCard`
@@ -869,11 +877,29 @@ export default function GeneralArrangementTab({
                     pin.punchlistItem?.identifier ?? pin.identifier
                   )
                 }
-                onPinHover={(pin) =>
-                  setHoveredPinIds(
-                    pin ? new Set([pin.identifier]) : new Set()
-                  )
-                }
+                onPinHover={(pin) => {
+                  if (!pin) {
+                    setHoveredPinIds(new Set());
+                    setHoveredItemIds(new Set());
+                    return;
+                  }
+                  setHoveredPinIds(new Set([pin.identifier]));
+                  // Light up the matching row too — both the directly
+                  // linked punchlist item and (if it's a child) its
+                  // top-level parent, so the group context is obvious
+                  // even when the tree isn't expanded.
+                  const itemId = pin.punchlistItem?.identifier;
+                  if (!itemId) {
+                    setHoveredItemIds(new Set());
+                    return;
+                  }
+                  const lookup = punchlistTreeLookup.get(itemId);
+                  const ids = new Set<string>([itemId]);
+                  if (lookup && lookup.topLevel.identifier !== itemId) {
+                    ids.add(lookup.topLevel.identifier);
+                  }
+                  setHoveredItemIds(ids);
+                }}
                 onDeckClick={(deck, x, y, area) => {
                   if (canEdit && isAddPinMode) {
                     setNewPinPosition({ x, y });
@@ -896,25 +922,36 @@ export default function GeneralArrangementTab({
           </div>
         </div>
 
-        {/* Right: Pins list (tree-aware, shared with the stage /
-            project punchlist surfaces) or the selected item's
-            detail card with its sub-tasks inlined. */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 flex-1 min-w-0">
+        {/* Right column — either the pins list or the selected item's
+            detail card with its sub-tasks inlined. The column itself
+            sticks to the top of the viewport on lg+ so it follows
+            the page scroll; only the inner list scrolls when it
+            overflows so the column chrome doesn't move while a long
+            list ticks past.
+            `lg:mt-20` nudges the column down so its top edge lands at
+            the GA viewer's start, not at the toggles row above it —
+            the toggles live inside the left column and would
+            otherwise leave the list starting a few rows higher than
+            the drawing it's annotating. */}
+        <div className="flex-1 min-w-0 lg:mt-20 lg:sticky lg:top-4 lg:self-start lg:max-h-[calc(100vh-2rem)]">
           {!selectedDetail ? (
-            <>
-              <h4 className="font-semibold text-gray-900 dark:text-white mb-4">
-                {tPins("pinsList")}
-              </h4>
-              {displayedPins.length === 0 ? (
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  {tPins("noPins")}
-                </p>
-              ) : (
+            displayedPins.length === 0 ? (
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                {tPins("noPins")}
+              </p>
+            ) : (
+              <div className="lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto lg:overflow-x-hidden">
                 <PunchlistTreeList
                   items={displayedTreeItems}
                   projectId={projectId}
                   selectedItemId={selectedDetailId}
                   canEdit={canEditPunchlistItems}
+                  // The GA column is permanently narrow (drawing on
+                  // the left takes the rest), so always shrink rows
+                  // to the essentials — the reporter / breadcrumb
+                  // are nice but they push the row past the column
+                  // width and force a horizontal scroll.
+                  compact
                   getDisplayNumber={(id) => punchlistNumbers.get(id)}
                   getRowColor={(it, parent) =>
                     stageColorById.get(
@@ -923,6 +960,7 @@ export default function GeneralArrangementTab({
                         ""
                     ) ?? pinByItemId.get(it.identifier)?.color
                   }
+                  highlightedItemIds={hoveredItemIds}
                   onRowHover={(it) => {
                     if (!it) {
                       setHoveredPinIds(new Set());
@@ -952,10 +990,10 @@ export default function GeneralArrangementTab({
                   onRequestCancel={(t) => setCancelTarget(t)}
                   onAssigneesChange={() => refreshAll()}
                 />
-              )}
-            </>
+              </div>
+            )
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto lg:overflow-x-hidden">
               <button
                 onClick={() => setSelectedDetailId(null)}
                 className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"

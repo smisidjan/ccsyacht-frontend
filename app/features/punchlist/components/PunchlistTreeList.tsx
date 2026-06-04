@@ -56,6 +56,10 @@ interface PunchlistTreeListProps {
    *  viewer's pin marker). The shared component drives `onMouseEnter`
    *  per row; the parent decides what to highlight. */
   onRowHover?: (item: PunchlistItem | null) => void;
+  /** Item ids that should render with the highlight style — the GA
+   *  tab feeds this when a pin on the map is being hovered so the
+   *  matching row lights up in lockstep with the marker. */
+  highlightedItemIds?: ReadonlySet<string> | null;
 }
 
 /** Tree-aware punchlist list shared by the project-, stage- and
@@ -84,6 +88,7 @@ export default function PunchlistTreeList({
   getDisplayNumber,
   getRowColor,
   onRowHover,
+  highlightedItemIds,
 }: PunchlistTreeListProps) {
   const tPunchlist = useTranslations("punchlist");
   const [expandedItemIds, setExpandedItemIds] = useState<Set<string>>(
@@ -186,6 +191,9 @@ export default function PunchlistTreeList({
                   showLocation={showLocation}
                   compact={compact}
                   stageColor={parentColor}
+                  isHighlighted={
+                    highlightedItemIds?.has(parent.identifier) ?? false
+                  }
                   displayNumber={getDisplayNumber?.(parent.identifier)}
                   onSelect={() => onSelectItem(parent.identifier)}
                   onChangeStatus={(next) =>
@@ -233,6 +241,9 @@ export default function PunchlistTreeList({
                           compact={compact}
                           stageColor={childColor}
                           isSubRow
+                          isHighlighted={
+                            highlightedItemIds?.has(child.identifier) ?? false
+                          }
                           displayNumber={getDisplayNumber?.(child.identifier)}
                           onSelect={() => onSelectItem(child.identifier)}
                           onChangeStatus={(next) =>
