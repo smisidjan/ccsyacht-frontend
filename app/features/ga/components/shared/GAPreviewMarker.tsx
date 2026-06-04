@@ -6,7 +6,14 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "./ga-smooth-zoom.css";
 import type { Deck, Area, AreaPolygonPoint, GAPin } from "@/lib/api/types";
-import { isInsidePolygon } from "@/lib/utils/geometry";
+import { isInsidePolygon, polygonBbox } from "@/lib/utils/geometry";
+import {
+  normToLatLng,
+  pctToLatLng,
+  pctToNorm,
+  latLngToPct,
+} from "@/lib/utils/gaCoordinates";
+import { getFullImageBounds } from "@/lib/utils/gaLeaflet";
 import { createDonePinIcon } from "./pinIcons";
 
 interface GAPreviewMarkerProps {
@@ -152,31 +159,26 @@ export default function GAPreviewMarker({
 }: GAPreviewMarkerProps) {
   const mapRef = useRef<L.Map | null>(null);
 
-  // Calculate bounds based on image dimensions
   const bounds = useMemo<L.LatLngBoundsExpression>(
-    () => [
-      [0, 0],
-      [imageHeight, imageWidth],
-    ],
+    () => getFullImageBounds(imageWidth, imageHeight),
     [imageWidth, imageHeight]
   );
 
-  // Convert percentage to Leaflet coordinates
-  const markerPosition = useMemo<[number, number]>(() => {
-    const leafletY = (y / 100) * imageHeight;
-    const leafletX = (x / 100) * imageWidth;
-    return [leafletY, leafletX];
-  }, [x, y, imageWidth, imageHeight]);
+  const markerPosition = useMemo<[number, number]>(
+    () => pctToLatLng({ x, y }, imageWidth, imageHeight),
+    [x, y, imageWidth, imageHeight]
+  );
 
-  // Convert deck placement (percentage 0–100) to Leaflet bounds (if any).
+  // Compute the axis-aligned bounding box of the deck's primary polygon
+  // (points are normalized 0..1) and convert to Leaflet pixel bounds.
   const deckBounds = useMemo<L.LatLngBoundsExpression | null>(() => {
-    if (!initialDeck?.deckPlacement) return null;
-    const { bbox_x, bbox_y, bbox_width, bbox_height } = initialDeck.deckPlacement;
-    // Convert percentage to pixel coordinates
-    const x1 = (bbox_x / 100) * imageWidth;
-    const y1 = (bbox_y / 100) * imageHeight;
-    const x2 = ((bbox_x + bbox_width) / 100) * imageWidth;
-    const y2 = ((bbox_y + bbox_height) / 100) * imageHeight;
+    if (!initialDeck?.deckPolygon) return null;
+    const bbox = polygonBbox(initialDeck.deckPolygon.points);
+    if (!bbox) return null;
+    const x1 = bbox.bbox_x * imageWidth;
+    const y1 = bbox.bbox_y * imageHeight;
+    const x2 = (bbox.bbox_x + bbox.bbox_width) * imageWidth;
+    const y2 = (bbox.bbox_y + bbox.bbox_height) * imageHeight;
     return [
       [y1, x1], // Southwest [lat, lng]
       [y2, x2], // Northeast [lat, lng]
@@ -190,21 +192,16 @@ export default function GAPreviewMarker({
   const handleDragEnd = (e: L.DragEndEvent) => {
     const marker = e.target;
     const position = marker.getLatLng();
-
-    // Convert Leaflet coordinates back to percentage
-    const newX = (position.lng / imageWidth) * 100;
-    const newY = (position.lat / imageHeight) * 100;
-
-    // Clamp to valid range
-    const clampedX = Math.max(0, Math.min(100, newX));
-    const clampedY = Math.max(0, Math.min(100, newY));
+    const pct = latLngToPct(position, imageWidth, imageHeight);
+    const clampedX = Math.max(0, Math.min(100, pct.x));
+    const clampedY = Math.max(0, Math.min(100, pct.y));
 
     // When a constraint polygon is supplied, the drop must land inside
     // it. React's `position` prop alone won't snap the marker back
     // (parent state didn't change), so reset the Leaflet marker
     // imperatively to the last committed position.
     if (constrainPolygon) {
-      const normalized = { x: clampedX / 100, y: clampedY / 100 };
+      const normalized = pctToNorm({ x: clampedX, y: clampedY });
       if (!isInsidePolygon(normalized, constrainPolygon)) {
         marker.setLatLng(markerPosition);
         return;
@@ -257,10 +254,9 @@ export default function GAPreviewMarker({
             from the draggable marker. */}
         {areas?.map((area) => {
           if (!area.polygon || area.polygon.length < 3) return null;
-          const positions: [number, number][] = area.polygon.map((p) => [
-            p.y * imageHeight,
-            p.x * imageWidth,
-          ]);
+          const positions: [number, number][] = area.polygon.map((p) =>
+            normToLatLng(p, imageWidth, imageHeight)
+          );
           const isSelected = area.identifier === selectedAreaId;
           return (
             <Polygon
@@ -282,10 +278,11 @@ export default function GAPreviewMarker({
             draggable one stays on top, with the punchlist label shown
             on hover so the user can tell what's already there. */}
         {existingPins?.map((pin) => {
-          const pinPosition: [number, number] = [
-            (pin.y / 100) * imageHeight,
-            (pin.x / 100) * imageWidth,
-          ];
+          const pinPosition = pctToLatLng(
+            { x: pin.x, y: pin.y },
+            imageWidth,
+            imageHeight
+          );
           const isDone = pin.punchlistItem?.status === "done";
           return (
             <Marker

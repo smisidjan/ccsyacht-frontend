@@ -11,12 +11,12 @@ import Button from "@/app/components/ui/Button";
 import Alert from "@/app/components/ui/Alert";
 import { areasApi, stagesApi, useAreas, useDecks, useStages, useGAPins } from "@/lib/api";
 import { stageTemplatesApi } from "@/lib/api/stageTemplates";
-import { usePlacementPolygons } from "./usePlacementPolygons";
+import { usePlacementPolygons } from "@/lib/hooks/usePlacementPolygons";
 import StageEditList, { type LocalStage } from "./StageEditList";
 import { useGAImage } from "@/lib/hooks/useGAImage";
 import { handleError } from "@/lib/utils/errors";
 import { normalizeStageColor, pickFreshStageColor } from "@/lib/utils/colors";
-import { isInsidePolygon, polygonsOverlap } from "@/lib/utils/geometry";
+import { isInsidePolygon, polygonsOverlap, polygonBbox } from "@/lib/utils/geometry";
 import {
   XMarkIcon,
   PlusIcon,
@@ -373,29 +373,36 @@ export default function DefineAreaModal({
   const placements = useMemo<PlacementView[]>(() => {
     if (!selectedDeck) return [];
     const out: PlacementView[] = [];
-    const pd = selectedDeck.deckPlacement;
+    // Polygons travel as normalized 0..1; the AreaPolygonDrawer reads
+    // DeckBounds in 0..100, so scale through here.
+    const pd = selectedDeck.deckPolygon;
     if (pd) {
-      out.push({
-        id: pd.identifier,
-        name: t("placementDeckView") || "Top view",
-        bounds: {
-          x1: pd.bbox_x,
-          y1: pd.bbox_y,
-          x2: pd.bbox_x + pd.bbox_width,
-          y2: pd.bbox_y + pd.bbox_height,
-        },
-        kind: "deck",
-      });
+      const bbox = polygonBbox(pd.points);
+      if (bbox) {
+        out.push({
+          id: pd.identifier,
+          name: t("placementDeckView") || "Top view",
+          bounds: {
+            x1: bbox.bbox_x * 100,
+            y1: bbox.bbox_y * 100,
+            x2: (bbox.bbox_x + bbox.bbox_width) * 100,
+            y2: (bbox.bbox_y + bbox.bbox_height) * 100,
+          },
+          kind: "deck",
+        });
+      }
     }
-    for (const sp of selectedDeck.sideProfiles ?? []) {
+    for (const sp of selectedDeck.sideProfilePolygons ?? []) {
+      const bbox = polygonBbox(sp.points);
+      if (!bbox) continue;
       out.push({
         id: sp.identifier,
         name: sp.name,
         bounds: {
-          x1: sp.bbox_x,
-          y1: sp.bbox_y,
-          x2: sp.bbox_x + sp.bbox_width,
-          y2: sp.bbox_y + sp.bbox_height,
+          x1: bbox.bbox_x * 100,
+          y1: bbox.bbox_y * 100,
+          x2: (bbox.bbox_x + bbox.bbox_width) * 100,
+          y2: (bbox.bbox_y + bbox.bbox_height) * 100,
         },
         kind: "side_profile",
       });
@@ -403,7 +410,7 @@ export default function DefineAreaModal({
     return out;
   }, [selectedDeck, t]);
 
-  const primaryPlacementId = selectedDeck?.deckPlacement?.identifier ?? null;
+  const primaryPlacementId = selectedDeck?.deckPolygon?.identifier ?? null;
 
   // Keep `activePlacementId` pointing at a valid placement: default to
   // the primary deck view whenever the deck changes or the current
@@ -430,9 +437,9 @@ export default function DefineAreaModal({
         // Only seed placements that actually exist on the current deck
         // (defensive against orphaned polygons after side-profile
         // deletes).
-        if (!placements.some((p) => p.id === entry.placementId)) continue;
+        if (!placements.some((p) => p.id === entry.parentPolygonId)) continue;
         if (!Array.isArray(entry.points) || entry.points.length < 3) continue;
-        seedPlacement(entry.placementId, entry.points, true);
+        seedPlacement(entry.parentPolygonId, entry.points, true);
         seededAny = true;
       }
     }
@@ -484,7 +491,7 @@ export default function DefineAreaModal({
     for (const a of existingAreasInDeck ?? []) {
       if (a.identifier === area?.identifier) continue;
       const perPlacement = a.polygons?.find(
-        (p) => p.placementId === activePlacementId
+        (p) => p.parentPolygonId === activePlacementId
       );
       const points =
         perPlacement?.points ??
@@ -595,7 +602,7 @@ export default function DefineAreaModal({
       for (const p of placements) {
         const entry = polygonsByPlacement[p.id];
         if (!entry || !entry.isClosed || entry.polygon.length < 3) continue;
-        polygonsPayload.push({ placementId: p.id, points: entry.polygon });
+        polygonsPayload.push({ parentPolygonId: p.id, points: entry.polygon });
       }
       if (isEditing && area) {
         await areasApi.update(projectId, area.identifier, {

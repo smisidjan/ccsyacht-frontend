@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { XMarkIcon } from "@heroicons/react/24/outline";
 import Button from "./Button";
 import Alert from "./Alert";
@@ -61,6 +62,13 @@ export default function Modal({
 }: ModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  /** Track client mount so the portal isn't created during SSR (where
+   *  `document` is undefined). One render with `mounted=false` is fine
+   *  — the modal is only meaningful client-side anyway. */
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -144,7 +152,13 @@ export default function Modal({
     </>
   );
 
-  return (
+  // Portal to `document.body` so the modal escapes any ancestor's
+  // stacking context. Without this, sibling elements with even a
+  // modest `z-index` (like the sticky `<Header>`) sit above the modal
+  // because their parent's stacking context outranks `<main>`'s
+  // (which has no z-index of its own).
+  if (!mounted) return null;
+  return createPortal(
     <div
       className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
       onClick={handleBackdropClick}
@@ -175,6 +189,7 @@ export default function Modal({
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

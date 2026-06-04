@@ -1,35 +1,47 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
+import dynamic from "next/dynamic";
 import Modal from "@/app/components/ui/Modal";
 import Button from "@/app/components/ui/Button";
 import FormInput from "@/app/components/ui/FormInput";
-import { GAViewerWithDraw, type DeckBounds, type ExistingDeck } from "@/app/features/ga";
 import { decksApi } from "@/lib/api/decks";
 import { useToast } from "@/app/context/ToastContext";
 import { PencilIcon, PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
-import type { Deck, DeckSideProfileInput } from "@/lib/api/types";
+import type { Deck, AreaPolygonPoint, DeckSideProfilePolygonInput } from "@/lib/api/types";
+import { usePlacementPolygons } from "@/lib/hooks/usePlacementPolygons";
 import { handleError } from "@/lib/utils/errors";
 
+// Leaflet uses `window` at module-top, so the drawer + its polygon
+// overlays can only render client-side. Pulling them in dynamically
+// keeps the modal SSR-safe (the modal itself ships with the rest of
+// the page bundle).
+const PolygonDrawer = dynamic(
+  () => import("@/app/features/ga/components/shared/PolygonDrawer"),
+  { ssr: false }
+);
+const DeckOverlayLayer = dynamic(() => import("./DeckOverlayLayer"), {
+  ssr: false,
+});
+
 interface PendingSideProfile {
-  /** Local UUID — also used as the dnd/draw target id and React key. */
+  /** Local UUID — also used as the placement key in the polygons hook
+   *  and the React key for list rendering. */
   id: string;
   /** Server identifier when this profile already exists; absent means
    *  "create on save". The bulk-replace endpoint uses this to reconcile. */
   identifier?: string;
   /** User-editable prefix of the profile name. The full name persisted on
-   *  the backend is composed as `${namePrefix} - ${deckName}`, so the
-   *  prefix typically encodes the side (e.g. "SB", "PS"). */
+   *  the backend is `${namePrefix} - ${deckName}`, so the prefix
+   *  typically encodes the side (e.g. "SB", "PS"). */
   namePrefix: string;
-  bounds: DeckBounds | null;
+  polygon: AreaPolygonPoint[];
+  isClosed: boolean;
 }
 
 const SIDE_PROFILE_NAME_SEPARATOR = " - ";
 
-/** Compose the full side-profile name from the editable prefix and the
- *  parent deck's name. Returns just the prefix when the deck doesn't have
- *  a name yet (the suffix would be meaningless). */
 function buildSideProfileName(prefix: string, deckName: string): string {
   const trimmedPrefix = prefix.trim();
   const trimmedDeck = deckName.trim();
@@ -37,9 +49,6 @@ function buildSideProfileName(prefix: string, deckName: string): string {
   return `${trimmedPrefix}${SIDE_PROFILE_NAME_SEPARATOR}${trimmedDeck}`;
 }
 
-/** Inverse of `buildSideProfileName`: strip the ` - {deckName}` suffix from
- *  an existing profile name so the user only edits the prefix portion in
- *  the form. Legacy names that don't match the pattern stay intact. */
 function extractSideProfilePrefix(fullName: string, deckName: string): string {
   if (!deckName) return fullName;
   const suffix = `${SIDE_PROFILE_NAME_SEPARATOR}${deckName}`;
@@ -50,26 +59,26 @@ interface PendingDeck {
   id: string;
   name: string;
   description: string;
-  bounds: DeckBounds | null;
+  polygon: AreaPolygonPoint[];
+  isClosed: boolean;
   sideProfiles: PendingSideProfile[];
-  isExisting?: boolean; // Track if this deck already exists in the database
+  isExisting?: boolean;
 }
 
-/** What the user is currently drawing on the GA. The primary deck rect and
- *  each side profile share the same canvas — only one is interactive at a
- *  time. Other shapes are rendered as read-only `existingDecks` overlays. */
-type DrawTarget =
-  | { kind: "deck" }
-  | { kind: "sideProfile"; id: string };
+/** Active draw target for the polygons hook. The deck's primary polygon
+ *  lives under a fixed key so it can never collide with a side-profile
+ *  UUID. Side profiles use their own `id`. */
+const PRIMARY_KEY = "primary";
 
-// Blue for the primary deck rectangle, purple for side profiles. Picked so
-// they're clearly different on the GA without clashing with the typical
-// drawing background.
 const DECK_COLOR = "#3B82F6";
 const SIDE_PROFILE_COLOR = "#A855F7";
 
-// LocalStorage key prefix
 const STORAGE_KEY_PREFIX = "ccs_deck_modal_";
+/** Bump when the cached shape changes — older caches get dropped on
+ *  load. v2 = polygon-based (was bbox in v1, never versioned). */
+const STORAGE_VERSION = "v2";
+
+const MIN_VERTICES = 3;
 
 interface CreateDeckModalProps {
   isOpen: boolean;
@@ -79,77 +88,42 @@ interface CreateDeckModalProps {
   gaImageUrl?: string;
   gaImageWidth?: number;
   gaImageHeight?: number;
-  existingDecks?: Deck[]; // Existing decks from API for edit mode
-  editMode?: boolean; // True when viewing/editing existing decks
+  existingDecks?: Deck[];
+  editMode?: boolean;
 }
 
-// Helper to convert API deck to internal PendingDeck format
 function apiDeckToPendingDeck(deck: Deck): PendingDeck {
-  const placement = deck.deckPlacement;
-  const bounds: DeckBounds | null = placement
-    ? {
-        x1: placement.bbox_x,
-        y1: placement.bbox_y,
-        x2: placement.bbox_x + placement.bbox_width,
-        y2: placement.bbox_y + placement.bbox_height,
-      }
-    : null;
-
-  const sideProfiles: PendingSideProfile[] = deck.sideProfiles.map((sp) => ({
+  const polygon = deck.deckPolygon?.points ?? [];
+  const sideProfiles: PendingSideProfile[] = deck.sideProfilePolygons.map((sp) => ({
     id: sp.identifier,
     identifier: sp.identifier,
-    // Strip the deck-name suffix so the input round-trips cleanly: name on
-    // the backend is "SB - Deck 08", user edits "SB" here.
     namePrefix: extractSideProfilePrefix(sp.name, deck.name),
-    bounds: {
-      x1: sp.bbox_x,
-      y1: sp.bbox_y,
-      x2: sp.bbox_x + sp.bbox_width,
-      y2: sp.bbox_y + sp.bbox_height,
-    },
+    polygon: sp.points,
+    isClosed: sp.points.length >= MIN_VERTICES,
   }));
-
   return {
     id: deck.identifier,
     name: deck.name,
     description: deck.description || "",
-    bounds,
+    polygon,
+    isClosed: polygon.length >= MIN_VERTICES,
     sideProfiles,
     isExisting: true,
   };
 }
 
-function boundsToBbox(b: DeckBounds) {
-  return {
-    bbox_x: b.x1,
-    bbox_y: b.y1,
-    bbox_width: b.x2 - b.x1,
-    bbox_height: b.y2 - b.y1,
-  };
-}
-
-/** Backfill optional fields on a deck record. Cached entries in localStorage
- *  from a previous build may be missing newer keys like `sideProfiles`, or
- *  may carry the older `{ name }` shape from before the prefix split.
- *  Shape them into the current type rather than refuse to load. */
+/** Backfill optional fields on a deck record from localStorage. */
 function normalizePendingDeck(deck: Partial<PendingDeck> & { id?: string }): PendingDeck {
   const deckName = deck.name ?? "";
   const sideProfiles: PendingSideProfile[] = Array.isArray(deck.sideProfiles)
     ? deck.sideProfiles.map((spRaw) => {
-        // Legacy cached entries may carry a `{ name }` field from before the
-        // prefix split. Read both possibilities through `unknown` rather than
-        // tightening the input type.
-        const sp = spRaw as Partial<PendingSideProfile> & { name?: string };
+        const sp = spRaw as Partial<PendingSideProfile>;
         return {
           id: sp.id ?? crypto.randomUUID(),
           identifier: sp.identifier,
-          // Prefer the new field; fall back to extracting from the old `name`
-          // field on legacy cached entries.
-          namePrefix:
-            sp.namePrefix !== undefined
-              ? sp.namePrefix
-              : extractSideProfilePrefix(sp.name ?? "", deckName),
-          bounds: sp.bounds ?? null,
+          namePrefix: sp.namePrefix ?? "",
+          polygon: Array.isArray(sp.polygon) ? sp.polygon : [],
+          isClosed: !!sp.isClosed,
         };
       })
     : [];
@@ -157,7 +131,8 @@ function normalizePendingDeck(deck: Partial<PendingDeck> & { id?: string }): Pen
     id: deck.id ?? crypto.randomUUID(),
     name: deckName,
     description: deck.description ?? "",
-    bounds: deck.bounds ?? null,
+    polygon: Array.isArray(deck.polygon) ? deck.polygon : [],
+    isClosed: !!deck.isClosed,
     sideProfiles,
     isExisting: deck.isExisting,
   };
@@ -178,199 +153,187 @@ export default function CreateDeckModal({
   const tCommon = useTranslations("common");
   const { showToast } = useToast();
 
-  // LocalStorage key specific to this project
   const storageKey = `${STORAGE_KEY_PREFIX}${projectId}`;
 
-  // List of pending decks to be saved.
   const [pendingDecks, setPendingDecks] = useState<PendingDeck[]>([]);
-
-  // Currently editing deck ID (null = adding new)
   const [editingDeckId, setEditingDeckId] = useState<string | null>(null);
 
-  // Form state for current deck
+  // Metadata for the currently-editing deck. Polygons themselves live in
+  // the polygons hook (multi-polygon state with per-target undo/redo).
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [bounds, setBounds] = useState<DeckBounds | null>(null);
-  const [sideProfiles, setSideProfiles] = useState<PendingSideProfile[]>([]);
-  /** Which rectangle is currently interactive on the GA canvas. Only one
-   *  can be drawn at a time; the rest render as read-only overlays. */
-  const [drawTarget, setDrawTarget] = useState<DrawTarget>({ kind: "deck" });
+  /** Side profiles for the currently-editing deck — sans polygon data
+   *  (which is in `polygons.all[sp.id]`). */
+  const [sideProfilesMeta, setSideProfilesMeta] = useState<
+    Pick<PendingSideProfile, "id" | "identifier" | "namePrefix">[]
+  >([]);
 
-  // Loading/error states
+  const polygons = usePlacementPolygons();
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Check if we should show the GA preview
   const showGAPreview = !!(gaImageUrl && gaImageWidth && gaImageHeight);
 
-  // Load data on mount - either from API (edit mode) or localStorage (create mode)
+  // Load data on mount — API for edit mode, localStorage otherwise.
+  // Also pin the active draw target to the primary deck polygon so the
+  // user can start drawing immediately; without this, clicks land but
+  // `polygons.set` is a no-op (`activeId === null`) and nothing shows.
   useEffect(() => {
-    if (isOpen) {
-      if (editMode && existingDecks) {
-        // Edit mode: load existing decks from API
-        setPendingDecks(existingDecks.map(apiDeckToPendingDeck));
-      } else {
-        // Create mode: load from localStorage. Persisted entries from older
-        // builds may lack newer fields (e.g. `sideProfiles`); run them
-        // through `normalizePendingDeck` so the rest of the component can
-        // trust the shape.
-        try {
-          const saved = localStorage.getItem(storageKey);
-          if (saved) {
-            const data = JSON.parse(saved);
-            if (data.pendingDecks && Array.isArray(data.pendingDecks)) {
-              setPendingDecks(data.pendingDecks.map(normalizePendingDeck));
-            }
-          }
-        } catch (e) {
-          handleError(e, { severity: "console", context: "Loading deck data from localStorage" });
-        }
+    if (!isOpen) return;
+    polygons.setActive(PRIMARY_KEY);
+    if (editMode && existingDecks) {
+      setPendingDecks(existingDecks.map(apiDeckToPendingDeck));
+      return;
+    }
+    // Create mode: read from localStorage, drop if version mismatch.
+    try {
+      const saved = localStorage.getItem(storageKey);
+      if (!saved) return;
+      const data = JSON.parse(saved);
+      if (data.version !== STORAGE_VERSION) {
+        localStorage.removeItem(storageKey);
+        return;
       }
+      if (Array.isArray(data.pendingDecks)) {
+        setPendingDecks(data.pendingDecks.map(normalizePendingDeck));
+      }
+    } catch (e) {
+      handleError(e, {
+        severity: "console",
+        context: "Loading deck data from localStorage",
+      });
     }
   }, [isOpen, storageKey, editMode, existingDecks]);
 
-  // Save to localStorage whenever pendingDecks changes (only in create mode)
   useEffect(() => {
-    if (isOpen && !editMode && pendingDecks.length > 0) {
-      try {
-        localStorage.setItem(storageKey, JSON.stringify({ pendingDecks }));
-      } catch (e) {
-        handleError(e, { severity: "console", context: "Saving deck data to localStorage" });
-      }
+    if (!isOpen || editMode || pendingDecks.length === 0) return;
+    try {
+      localStorage.setItem(
+        storageKey,
+        JSON.stringify({ version: STORAGE_VERSION, pendingDecks })
+      );
+    } catch (e) {
+      handleError(e, {
+        severity: "console",
+        context: "Saving deck data to localStorage",
+      });
     }
   }, [pendingDecks, isOpen, storageKey, editMode]);
 
-  // Reset form for new deck
+  // Reset the form back to "add new deck" mode.
   const resetForm = useCallback(() => {
     setName("");
     setDescription("");
-    setBounds(null);
-    setSideProfiles([]);
-    setDrawTarget({ kind: "deck" });
+    setSideProfilesMeta([]);
+    polygons.resetAll();
+    polygons.setActive(PRIMARY_KEY);
     setEditingDeckId(null);
     setError(null);
-  }, []);
+  }, [polygons]);
 
-  // Active bounds + setter routed via the current draw target. The viewer
-  // sees a single "what is being drawn" pair; we fan out behind the scenes.
-  const activeBounds: DeckBounds | null =
-    drawTarget.kind === "deck"
-      ? bounds
-      : sideProfiles.find((sp) => sp.id === drawTarget.id)?.bounds ?? null;
+  // Snapshot the working copy back into a PendingDeck. Used by the
+  // "Add" / "Update" CTA — pulls every per-target polygon from the hook
+  // and matches them against `sideProfilesMeta` for the metadata.
+  const buildPendingDeckFromForm = useCallback((): Omit<PendingDeck, "id"> => {
+    const primary = polygons.all[PRIMARY_KEY] ?? { polygon: [], isClosed: false };
+    const sideProfiles: PendingSideProfile[] = sideProfilesMeta.map((meta) => {
+      const snap = polygons.all[meta.id] ?? { polygon: [], isClosed: false };
+      return {
+        ...meta,
+        polygon: snap.polygon,
+        isClosed: snap.isClosed,
+      };
+    });
+    return {
+      name: name.trim(),
+      description: description.trim(),
+      polygon: primary.polygon,
+      isClosed: primary.isClosed,
+      sideProfiles,
+    };
+  }, [polygons.all, sideProfilesMeta, name, description]);
 
-  const handleBoundsChange = (next: DeckBounds | null) => {
-    if (drawTarget.kind === "deck") {
-      setBounds(next);
-    } else {
-      const targetId = drawTarget.id;
-      setSideProfiles((prev) =>
-        prev.map((sp) => (sp.id === targetId ? { ...sp, bounds: next } : sp))
-      );
-    }
-  };
-
-  // Add deck to list
   const handleAddDeck = () => {
     if (!name.trim()) return;
-
+    const draft = buildPendingDeckFromForm();
     if (editingDeckId) {
-      // Update existing deck in list
       setPendingDecks((prev) =>
         prev.map((d) =>
-          d.id === editingDeckId
-            ? {
-                ...d,
-                name: name.trim(),
-                description: description.trim(),
-                bounds,
-                sideProfiles,
-              }
-            : d
+          d.id === editingDeckId ? { ...d, ...draft } : d
         )
       );
     } else {
-      // Add new deck to list
-      const newDeck: PendingDeck = {
-        id: crypto.randomUUID(),
-        name: name.trim(),
-        description: description.trim(),
-        bounds,
-        sideProfiles,
-      };
-      setPendingDecks((prev) => [...prev, newDeck]);
+      setPendingDecks((prev) => [
+        ...prev,
+        { ...draft, id: crypto.randomUUID() },
+      ]);
     }
-
     resetForm();
   };
 
-  // Edit deck from list
-  const handleEditDeck = (deck: PendingDeck) => {
-    setEditingDeckId(deck.id);
-    setName(deck.name);
-    setDescription(deck.description);
-    setBounds(deck.bounds);
-    setSideProfiles(deck.sideProfiles);
-    setDrawTarget({ kind: "deck" });
-  };
+  // Switch the form into "edit" mode for an existing pending deck. Seeds
+  // every polygon (primary + each side profile) into the polygons hook
+  // and points the active target at the primary one.
+  const handleEditDeck = useCallback(
+    (deck: PendingDeck) => {
+      setEditingDeckId(deck.id);
+      setName(deck.name);
+      setDescription(deck.description);
+      setSideProfilesMeta(
+        deck.sideProfiles.map((sp) => ({
+          id: sp.id,
+          identifier: sp.identifier,
+          namePrefix: sp.namePrefix,
+        }))
+      );
+      polygons.resetAll();
+      polygons.seed(PRIMARY_KEY, deck.polygon, deck.isClosed);
+      for (const sp of deck.sideProfiles) {
+        polygons.seed(sp.id, sp.polygon, sp.isClosed);
+      }
+      polygons.setActive(PRIMARY_KEY);
+    },
+    [polygons]
+  );
 
-  // Side profile mutations — all routed through the in-edit deck form.
   const handleAddSideProfile = () => {
     const id = crypto.randomUUID();
-    setSideProfiles((prev) => [
-      ...prev,
-      { id, namePrefix: "", bounds: null },
-    ]);
-    // Auto-focus the new profile for drawing so the user can immediately
-    // sketch its rectangle without an extra click.
-    setDrawTarget({ kind: "sideProfile", id });
+    setSideProfilesMeta((prev) => [...prev, { id, namePrefix: "" }]);
+    polygons.setActive(id);
   };
 
   const handleSideProfilePrefixChange = (id: string, value: string) => {
-    setSideProfiles((prev) =>
+    setSideProfilesMeta((prev) =>
       prev.map((sp) => (sp.id === id ? { ...sp, namePrefix: value } : sp))
     );
   };
 
   const handleRemoveSideProfile = (id: string) => {
-    setSideProfiles((prev) => prev.filter((sp) => sp.id !== id));
-    if (drawTarget.kind === "sideProfile" && drawTarget.id === id) {
-      setDrawTarget({ kind: "deck" });
+    setSideProfilesMeta((prev) => prev.filter((sp) => sp.id !== id));
+    if (polygons.activeId === id) {
+      polygons.setActive(PRIMARY_KEY);
     }
   };
 
-  const handleSelectSideProfile = (id: string) => {
-    setDrawTarget({ kind: "sideProfile", id });
-  };
+  const handleSelectSideProfile = (id: string) => polygons.setActive(id);
+  const handleSelectDeckTarget = () => polygons.setActive(PRIMARY_KEY);
 
-  const handleSelectDeckTarget = () => {
-    setDrawTarget({ kind: "deck" });
-  };
-
-  // Remove deck from list
   const handleRemoveDeck = (deckId: string) => {
     setPendingDecks((prev) => prev.filter((d) => d.id !== deckId));
-    if (editingDeckId === deckId) {
-      resetForm();
-    }
+    if (editingDeckId === deckId) resetForm();
   };
 
-  // Cancel editing (reset to add mode)
-  const handleCancelEdit = () => {
-    resetForm();
-  };
+  const handleCancelEdit = () => resetForm();
 
-  // Save all decks
   const handleSaveAll = async () => {
     if (pendingDecks.length === 0 && !editMode) return;
-
     setIsSubmitting(true);
     setError(null);
-
     try {
-      // In edit mode, any pre-existing deck that's no longer in
-      // `pendingDecks` was removed by the user — delete it on the
-      // server before we run the create/update pass so the diff is
-      // applied as a single transaction from the user's point of view.
+      // Delete decks the user removed in edit mode before the
+      // create/update pass — applied as a single transaction from the
+      // user's point of view.
       if (editMode && existingDecks) {
         const keptIds = new Set(
           pendingDecks.filter((d) => d.isExisting).map((d) => d.id)
@@ -381,144 +344,171 @@ export default function CreateDeckModal({
         }
       }
 
-      // Process all decks sequentially
       for (const deck of pendingDecks) {
-        // Convert bounds from (x1,y1,x2,y2) to the placement bbox shape the
-        // API expects. Omitting `deck_placement` keeps the existing one;
-        // we only send it when the user actually drew a rectangle.
-        const placement = deck.bounds ? boundsToBbox(deck.bounds) : null;
+        // Only send `deck_polygon` when the user actually drew one (and
+        // closed it). Omitting keeps the existing one on update.
+        const deckPolygonPayload =
+          deck.polygon.length >= MIN_VERTICES
+            ? { name: deck.name, points: deck.polygon }
+            : null;
 
-        // Build the side-profiles replace payload. Drop entries the user
-        // hasn't completed (no rectangle drawn or empty prefix) so the
-        // backend never sees a half-filled profile. The persisted name
-        // composes the prefix with the parent deck's name.
-        const sideProfilesPayload: DeckSideProfileInput[] = deck.sideProfiles
-          .filter((sp) => sp.bounds !== null && sp.namePrefix.trim() !== "")
+        const sideProfilePolygonsPayload: DeckSideProfilePolygonInput[] = deck.sideProfiles
+          .filter(
+            (sp) =>
+              sp.polygon.length >= MIN_VERTICES && sp.namePrefix.trim() !== ""
+          )
           .map((sp) => ({
             ...(sp.identifier ? { identifier: sp.identifier } : {}),
             name: buildSideProfileName(sp.namePrefix, deck.name),
-            ...boundsToBbox(sp.bounds!),
+            points: sp.polygon,
           }));
 
         if (deck.isExisting) {
-          // Update: always send `side_profiles` (full replace semantics —
-          // entries kept via their `identifier`, removed ones get deleted).
           await decksApi.update(projectId, deck.id, {
             name: deck.name,
             description: deck.description || undefined,
-            ...(placement ? { deck_placement: placement } : {}),
-            side_profiles: sideProfilesPayload,
+            ...(deckPolygonPayload ? { deck_polygon: deckPolygonPayload } : {}),
+            side_profile_polygons: sideProfilePolygonsPayload,
           });
         } else {
-          // Create: only send `side_profiles` when there are any — keeps
-          // the payload minimal for the common "no profiles" case.
           await decksApi.create(projectId, {
             name: deck.name,
             description: deck.description || undefined,
-            ...(placement ? { deck_placement: placement } : {}),
-            ...(sideProfilesPayload.length > 0
-              ? { side_profiles: sideProfilesPayload }
+            ...(deckPolygonPayload ? { deck_polygon: deckPolygonPayload } : {}),
+            ...(sideProfilePolygonsPayload.length > 0
+              ? { side_profile_polygons: sideProfilePolygonsPayload }
               : {}),
           });
         }
       }
 
-      // Clear localStorage after successful save (only in create mode)
-      if (!editMode) {
-        localStorage.removeItem(storageKey);
-      }
+      if (!editMode) localStorage.removeItem(storageKey);
 
-      showToast("success", editMode ? t("decksUpdatedSuccess") : t("decksCreatedSuccess", { count: pendingDecks.length }));
+      showToast(
+        "success",
+        editMode
+          ? t("decksUpdatedSuccess")
+          : t("decksCreatedSuccess", { count: pendingDecks.length })
+      );
       setPendingDecks([]);
       resetForm();
       onSuccess?.();
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : editMode ? t("updateError") : t("createError"));
+      setError(
+        err instanceof Error
+          ? err.message
+          : editMode
+          ? t("updateError")
+          : t("createError")
+      );
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Handle close - don't clear data, it's saved in localStorage
   const handleClose = () => {
     resetForm();
     onClose();
   };
 
-  // Clear all data (explicit action) - only in create mode
   const handleClearAll = () => {
-    if (editMode) return; // Don't allow clearing in edit mode
+    if (editMode) return;
     setPendingDecks([]);
     resetForm();
     localStorage.removeItem(storageKey);
   };
 
-  // Build the read-only overlay set rendered alongside whatever rectangle
-  // the user is actively drawing. Three buckets:
-  //  1. Each other pending deck's primary rectangle (blue).
-  //  2. Each other pending deck's side profiles (purple) — these are the
-  //     committed-but-not-saved entries you can see in the "Added Decks"
-  //     list. Skipped for the deck currently in edit; its profiles come
-  //     from the local `sideProfiles` state instead (bucket 3).
-  //  3. The in-edit deck's side profiles (purple), minus the one being
-  //     actively drawn (which feeds `bounds` / `onBoundsChange`).
-  const existingDecksForViewer: ExistingDeck[] = [
-    ...pendingDecks
-      .filter((d) => d.bounds !== null && d.id !== editingDeckId)
-      .map((d) => ({
-        id: d.id,
-        name: d.name,
-        color: DECK_COLOR,
-        bounds: d.bounds!,
-      })),
-    ...pendingDecks
-      .filter((d) => d.id !== editingDeckId)
-      .flatMap((d) =>
-        d.sideProfiles
-          .filter((sp) => sp.bounds !== null)
-          .map((sp) => ({
-            id: `side-profile:${sp.id}`,
-            name: buildSideProfileName(sp.namePrefix, d.name) || t("sideProfile"),
-            color: SIDE_PROFILE_COLOR,
-            bounds: sp.bounds!,
-          }))
-      ),
-    ...sideProfiles
-      .filter(
-        (sp) =>
-          sp.bounds !== null &&
-          !(drawTarget.kind === "sideProfile" && drawTarget.id === sp.id)
-      )
-      .map((sp) => ({
-        id: `side-profile:${sp.id}`,
-        name: buildSideProfileName(sp.namePrefix, name) || t("sideProfile"),
-        color: SIDE_PROFILE_COLOR,
-        bounds: sp.bounds!,
-      })),
-  ];
+  // ============ Drawer wiring ============
 
-  // Handle clicking an overlay on the viewer. Side-profile ids carry a
-  // prefix so we can distinguish them from deck ids; clicking one re-targets
-  // the draw mode at that profile (within the deck being edited).
-  const handleDeckClick = (clickedId: string) => {
-    if (clickedId.startsWith("side-profile:")) {
-      const spId = clickedId.slice("side-profile:".length);
-      if (sideProfiles.some((sp) => sp.id === spId)) {
-        setDrawTarget({ kind: "sideProfile", id: spId });
-      }
-      return;
-    }
-    const deck = pendingDecks.find((d) => d.id === clickedId);
-    if (deck) {
-      handleEditDeck(deck);
-    }
+  const activeId = polygons.activeId ?? PRIMARY_KEY;
+  const isPrimaryActive = activeId === PRIMARY_KEY;
+  const activeColor = isPrimaryActive ? DECK_COLOR : SIDE_PROFILE_COLOR;
+
+  /** Polygons rendered as static overlays in the drawer — every per-
+   *  target snapshot that isn't the active one, plus the polygons of
+   *  every other pending deck. Shape mirrors `DeckOverlay` so the
+   *  rendering child consumes it directly. */
+  type Overlay = {
+    key: string;
+    points: AreaPolygonPoint[];
+    color: string;
+    dashed: boolean;
+    onClick?: () => void;
   };
 
-  const selectedOverlayId =
-    drawTarget.kind === "sideProfile" ? `side-profile:${drawTarget.id}` : editingDeckId;
-  const activeColor =
-    drawTarget.kind === "sideProfile" ? SIDE_PROFILE_COLOR : DECK_COLOR;
+  const overlays = useMemo<Overlay[]>(() => {
+    if (!showGAPreview) return [];
+    const out: Overlay[] = [];
+
+    // Other pending decks (not currently being edited) — dashed so they
+    // read as "committed but in another deck's context".
+    for (const d of pendingDecks) {
+      if (d.id === editingDeckId) continue;
+      if (d.polygon.length >= MIN_VERTICES) {
+        out.push({
+          key: `deck:${d.id}`,
+          points: d.polygon,
+          color: DECK_COLOR,
+          dashed: true,
+          onClick: () => handleEditDeck(d),
+        });
+      }
+      for (const sp of d.sideProfiles) {
+        if (sp.polygon.length < MIN_VERTICES) continue;
+        out.push({
+          key: `deck:${d.id}:sp:${sp.id}`,
+          points: sp.polygon,
+          color: SIDE_PROFILE_COLOR,
+          dashed: true,
+          onClick: () => handleEditDeck(d),
+        });
+      }
+    }
+
+    // Currently-editing deck's non-active polygons — solid so they
+    // dominate over the dashed neighbours but stay out of the way of
+    // the actively-drawn one. Clicking switches the active target.
+    const primarySnap = polygons.all[PRIMARY_KEY];
+    if (
+      !isPrimaryActive &&
+      primarySnap &&
+      primarySnap.polygon.length >= MIN_VERTICES
+    ) {
+      out.push({
+        key: "active-deck:primary",
+        points: primarySnap.polygon,
+        color: DECK_COLOR,
+        dashed: false,
+        onClick: handleSelectDeckTarget,
+      });
+    }
+    for (const meta of sideProfilesMeta) {
+      if (meta.id === activeId) continue;
+      const snap = polygons.all[meta.id];
+      if (!snap || snap.polygon.length < MIN_VERTICES) continue;
+      out.push({
+        key: `active-sp:${meta.id}`,
+        points: snap.polygon,
+        color: SIDE_PROFILE_COLOR,
+        dashed: false,
+        onClick: () => handleSelectSideProfile(meta.id),
+      });
+    }
+    return out;
+    // handleSelect* / handleEditDeck change every render but the click
+    // closures are only consumed by Leaflet event handlers, not re-
+    // rendered React trees — fine to recreate.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    pendingDecks,
+    editingDeckId,
+    polygons.all,
+    sideProfilesMeta,
+    activeId,
+    isPrimaryActive,
+    showGAPreview,
+  ]);
 
   return (
     <Modal
@@ -534,7 +524,9 @@ export default function CreateDeckModal({
           variant: "secondary",
         },
         {
-          label: editMode ? t("saveChanges") : t("saveAllDecks", { count: pendingDecks.length }),
+          label: editMode
+            ? t("saveChanges")
+            : t("saveAllDecks", { count: pendingDecks.length }),
           onClick: handleSaveAll,
           variant: "primary",
           disabled: pendingDecks.length === 0 || isSubmitting,
@@ -543,42 +535,60 @@ export default function CreateDeckModal({
       ]}
     >
       <div className="flex gap-6">
-        {/* Left: GA Preview */}
-        {showGAPreview && (
-          <div className="w-1/2 flex-shrink-0">
+        {/* Left: GA preview. Takes all the column space the form
+            leaves over — width fills, height follows aspect-ratio.
+            For tall (portrait) GAs the canvas becomes very tall and
+            the modal body scrolls; the sticky toolbar keeps the
+            undo/redo/rect controls in view. */}
+        {showGAPreview && gaImageUrl && gaImageWidth && gaImageHeight && (
+          <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               {t("deckLocation")}
             </p>
             <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
               {t("markDeckArea")}
             </p>
+            {/* Match the GA tab's sizing pattern: fix the height,
+                derive width from the image aspect, clamp horizontally
+                to the column. For portrait GAs the calc width fits the
+                column → flush against every edge, no grey bars. For
+                landscape GAs the maxWidth clamps and the wrapper
+                doesn't grow taller — Leaflet's FitBounds keeps the
+                image flush sideways. */}
             <div
-              className="h-[800px]"
               style={{
-                width: gaImageWidth && gaImageHeight
-                  ? `${800 * (gaImageWidth / gaImageHeight)}px`
-                  : "100%",
-                maxWidth: "100%",
+                width: "100%",
+                aspectRatio: `${gaImageWidth} / ${gaImageHeight}`,
               }}
             >
-              <GAViewerWithDraw
+              <PolygonDrawer
                 imageUrl={gaImageUrl}
                 imageWidth={gaImageWidth}
                 imageHeight={gaImageHeight}
-                color={activeColor}
-                bounds={activeBounds}
-                onBoundsChange={handleBoundsChange}
-                existingDecks={existingDecksForViewer}
-                selectedDeckId={selectedOverlayId}
-                onDeckClick={handleDeckClick}
-              />
+                polygon={polygons.polygon}
+                isClosed={polygons.isClosed}
+                onChange={polygons.set}
+                onUndo={polygons.undo}
+                onRedo={polygons.redo}
+                canUndo={polygons.canUndo}
+                canRedo={polygons.canRedo}
+                onReset={polygons.reset}
+                strokeColor={activeColor}
+                fillColor={activeColor}
+              >
+                <DeckOverlayLayer
+                  overlays={overlays}
+                  imageWidth={gaImageWidth}
+                  imageHeight={gaImageHeight}
+                />
+              </PolygonDrawer>
             </div>
           </div>
         )}
 
-        {/* Right: Form and list */}
-        <div className={showGAPreview ? "w-1/2 flex flex-col" : "flex-1"}>
-          {/* Form */}
+        {/* Right: form and list — capped narrow so the GA column
+            gets most of the horizontal space. */}
+        <div className={showGAPreview ? "w-80 flex-shrink-0 flex flex-col" : "flex-1"}>
           <div className="mb-4">
             <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
               {editingDeckId ? t("editDeck") : t("addNewDeck")}
@@ -600,10 +610,10 @@ export default function CreateDeckModal({
                 placeholder={t("descriptionPlaceholder")}
               />
 
-              {/* Side profiles — extra rectangles on the same GA, e.g.
-                  port-side or starboard view strips. Each one has its own
-                  name + rectangle; the active draw target switches between
-                  the deck and the selected profile. */}
+              {/* Side profiles — extra polygons on the same GA, one
+                  per port/starboard/side view. Each row carries the
+                  name input + a switch-to-this CTA; the polygon for
+                  the active row gets drawn in the canvas. */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <div>
@@ -624,14 +634,11 @@ export default function CreateDeckModal({
                   </Button>
                 </div>
 
-                {/* Draw-target toggle: the deck row is always present so the
-                    user can switch back to drawing the primary rectangle
-                    after adding a side profile. */}
                 <ul className="space-y-1.5">
                   <li
                     onClick={handleSelectDeckTarget}
                     className={`flex items-center gap-2 p-2 rounded-md border cursor-pointer text-sm ${
-                      drawTarget.kind === "deck"
+                      isPrimaryActive
                         ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
                         : "border-gray-200 dark:border-gray-700"
                     }`}
@@ -644,19 +651,19 @@ export default function CreateDeckModal({
                     <span className="flex-1 text-gray-700 dark:text-gray-300 truncate">
                       {name.trim() || t("primaryDeckRectangle")}
                     </span>
-                    {bounds && (
+                    {(polygons.all[PRIMARY_KEY]?.polygon.length ?? 0) >=
+                      MIN_VERTICES && (
                       <span className="text-xs text-gray-500 dark:text-gray-400">
                         ✓
                       </span>
                     )}
                   </li>
 
-                  {sideProfiles.map((sp) => {
-                    const isActive =
-                      drawTarget.kind === "sideProfile" && drawTarget.id === sp.id;
-                    // Suffix shown as muted adornment so the user sees the
-                    // composed name as they type the prefix. Hidden when
-                    // the deck has no name yet (nothing to append).
+                  {sideProfilesMeta.map((sp) => {
+                    const isActive = activeId === sp.id;
+                    const snap = polygons.all[sp.id];
+                    const drawn =
+                      (snap?.polygon.length ?? 0) >= MIN_VERTICES;
                     const deckSuffix = name.trim()
                       ? `${SIDE_PROFILE_NAME_SEPARATOR}${name.trim()}`
                       : "";
@@ -701,10 +708,10 @@ export default function CreateDeckModal({
                             onClick={() => handleSelectSideProfile(sp.id)}
                             className="px-2 py-1 text-xs text-purple-700 dark:text-purple-300 hover:underline"
                           >
-                            {sp.bounds ? t("editDrawing") : t("draw")}
+                            {drawn ? t("editDrawing") : t("draw")}
                           </button>
                         )}
-                        {sp.bounds && (
+                        {drawn && (
                           <span
                             className="text-xs text-gray-500 dark:text-gray-400"
                             title={t("rectangleDrawn")}
@@ -742,10 +749,8 @@ export default function CreateDeckModal({
             </div>
           </div>
 
-          {/* Divider */}
           <hr className="border-gray-200 dark:border-gray-700 my-4" />
 
-          {/* Decks list */}
           <div className="flex-1 overflow-auto">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">

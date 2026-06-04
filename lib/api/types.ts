@@ -611,6 +611,18 @@ export interface UploadDocumentRequest {
 }
 
 // ============ Decks ============
+
+/** Axis-aligned rectangle on the GA, stored in the legacy percentage
+ *  0..100 coordinate system. Used by the deck-drawing UI as its internal
+ *  shape; conversion to the wire's polygon format happens at the API
+ *  boundary. Also used as the constraint rectangle for area drawing. */
+export interface DeckBounds {
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+}
+
 export interface DeckPlace {
   "@type"?: string;
   identifier: string;
@@ -619,50 +631,41 @@ export interface DeckPlace {
   stageCount?: number;
 }
 
-/** Placement of the deck on the GA. Coordinates are percentages 0–100 of
- *  the GA image. One placement per deck (the primary top-down marker). */
-export interface DeckPlacement {
+/** Primary polygon of a deck on the GA. Coordinates are normalized 0..1
+ *  of the GA image — same scheme as `AreaPolygonPoint`. One primary
+ *  polygon per deck; `null` until the user draws it. */
+export interface DeckPolygon {
   identifier: string;
-  bbox_x: number;
-  bbox_y: number;
-  bbox_width: number;
-  bbox_height: number;
+  name?: string;
+  points: AreaPolygonPoint[];
   /** OCR meta from the backend's auto-extraction pass; only present when the
    *  backend ran a detection step. */
   ocrConfidence?: number;
   ocrLabel?: string;
 }
 
-/** A side-view marker for the same deck. 0..N per deck, all placed on the
- *  GA image as additional rectangles (typically thin horizontal strips of
- *  the yacht's side profile). */
-export interface DeckSideProfilePlacement {
+/** A side-view polygon for the same deck. 0..N per deck, drawn on the
+ *  GA image as additional shapes (typically thin strips of the yacht's
+ *  side profile). */
+export interface DeckSideProfilePolygon {
   identifier: string;
   name: string;
-  bbox_x: number;
-  bbox_y: number;
-  bbox_width: number;
-  bbox_height: number;
+  points: AreaPolygonPoint[];
 }
 
-/** Write-side shape for the primary deck placement. */
-export interface DeckPlacementInput {
-  bbox_x: number;
-  bbox_y: number;
-  bbox_width: number;
-  bbox_height: number;
+/** Write-side shape for the primary deck polygon. */
+export interface DeckPolygonInput {
+  name?: string;
+  points: AreaPolygonPoint[];
 }
 
 /** Write-side shape for a side profile. `identifier` lets the backend
- *  reconcile updates vs creates within a `side_profiles` replace array;
- *  omit it for a brand-new entry. */
-export interface DeckSideProfileInput {
+ *  reconcile updates vs creates within a `side_profile_polygons` replace
+ *  array; omit it for a brand-new entry. */
+export interface DeckSideProfilePolygonInput {
   identifier?: string;
-  name: string;
-  bbox_x: number;
-  bbox_y: number;
-  bbox_width: number;
-  bbox_height: number;
+  name?: string;
+  points: AreaPolygonPoint[];
 }
 
 export interface Deck {
@@ -674,10 +677,10 @@ export interface Deck {
   position: number;
   areaCount: number;
   stageCount: number;
-  /** Primary marker on the GA. `null` for decks created without one. */
-  deckPlacement: DeckPlacement | null;
-  /** Extra markers on the same GA image — empty array means none. */
-  sideProfiles: DeckSideProfilePlacement[];
+  /** Primary polygon on the GA. `null` for decks created without one. */
+  deckPolygon: DeckPolygon | null;
+  /** Extra polygons on the same GA image — empty array means none. */
+  sideProfilePolygons: DeckSideProfilePolygon[];
   containsPlace?: DeckPlace[];
   dateCreated: string;
   dateModified: string;
@@ -686,21 +689,23 @@ export interface Deck {
 export interface CreateDeckRequest {
   name: string;
   description?: string;
-  deck_placement?: DeckPlacementInput | null;
-  side_profiles?: DeckSideProfileInput[];
+  deck_polygon?: DeckPolygonInput | null;
+  side_profile_polygons?: DeckSideProfilePolygonInput[];
 }
 
-/** Mutation semantics for the placement fields:
- *  - omitted          → unchanged
- *  - `deck_placement: null` → clear the primary placement
- *  - `side_profiles: []`    → wipe all side profiles
- *  - `side_profiles: [...]` → full replacement (use `identifier` per entry to
- *                              preserve existing rows; omit for new ones). */
+/** Mutation semantics for the polygon fields:
+ *  - omitted                       → unchanged
+ *  - `deck_polygon: null`          → clear the primary polygon (422 if
+ *                                     area polygons still reference it)
+ *  - `side_profile_polygons: []`   → wipe all side profiles
+ *  - `side_profile_polygons: [..]` → full replacement (use `identifier`
+ *                                     per entry to preserve existing rows;
+ *                                     omit for new ones). */
 export interface UpdateDeckRequest {
   name?: string;
   description?: string;
-  deck_placement?: DeckPlacementInput | null;
-  side_profiles?: DeckSideProfileInput[];
+  deck_polygon?: DeckPolygonInput | null;
+  side_profile_polygons?: DeckSideProfilePolygonInput[];
 }
 
 // ============ Areas ============
@@ -729,13 +734,13 @@ export interface AreaPolygonPoint {
   y: number;
 }
 
-/** One polygon per placement — the same area is drawn separately on the
- *  primary deck rectangle and on each of the deck's side profiles.
- *  `placementId` matches either `Deck.deckPlacement.identifier` or one of
- *  `Deck.sideProfiles[i].identifier`. */
+/** One polygon per parent — the same area is drawn separately on the
+ *  primary deck polygon and on each of the deck's side profile polygons.
+ *  `parentPolygonId` matches either `Deck.deckPolygon.identifier` or one
+ *  of `Deck.sideProfilePolygons[i].identifier`. */
 export interface AreaPolygonEntry {
   identifier: string;
-  placementId: string;
+  parentPolygonId: string;
   points: AreaPolygonPoint[];
 }
 
@@ -778,11 +783,11 @@ export type CreateAreaStageInput =
       color?: string | null;
     };
 
-/** Replace-all entry for the per-placement polygons payload. `placementId`
- *  must reference either the deck's primary placement or one of its side
- *  profiles. Min 3 vertices, all normalized 0..1. */
+/** Replace-all entry for the per-parent polygons payload. `parentPolygonId`
+ *  must reference either the deck's primary polygon or one of its side
+ *  profile polygons. Min 3 vertices, all normalized 0..1. */
 export interface AreaPolygonInput {
-  placementId: string;
+  parentPolygonId: string;
   points: AreaPolygonPoint[];
 }
 

@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import { MapContainer, ImageOverlay, Marker, Polygon, Tooltip, useMap } from "react-leaflet";
+import { MapContainer, ImageOverlay, Marker, Polygon, Tooltip } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "./ga-smooth-zoom.css";
@@ -13,6 +13,9 @@ import { useGAPins } from "@/lib/api/ga-pins";
 import { useGAImage } from "@/lib/hooks/useGAImage";
 import { createDonePinIcon } from "./pinIcons";
 import { getFixedImageUrl, hasGAImageData } from "@/app/features/ga/utils/helpers";
+import { polygonBbox } from "@/lib/utils/geometry";
+import { normToLatLng, pctToLatLng } from "@/lib/utils/gaCoordinates";
+import { FitBounds, getFullImageBounds } from "@/lib/utils/gaLeaflet";
 import type { Area } from "@/lib/api/types";
 
 interface AreaGAPreviewContentProps {
@@ -60,30 +63,6 @@ function createPinIcon(color: string): L.DivIcon {
 
 const FALLBACK_COLOR = "#3B82F6";
 
-// Re-fit to the current view's bounds. Re-runs when the user switches
-// between the deck and a side-profile view so the camera follows their
-// selection. `key` on the parent forces a remount on switch — that
-// alone re-runs the effect, but the cleanup-based minZoom unlock is
-// still needed for the same-mount case (initial paint with the wrong
-// container size).
-function FitToBounds({ bounds }: { bounds: L.LatLngBoundsExpression }) {
-  const map = useMap();
-  const hasInitialized = useRef(false);
-
-  useEffect(() => {
-    if (hasInitialized.current) return;
-    hasInitialized.current = true;
-
-    const timer = setTimeout(() => {
-      map.invalidateSize();
-      map.fitBounds(bounds, { padding: [20, 20], animate: false });
-      map.setMinZoom(map.getZoom());
-    }, 100);
-    return () => clearTimeout(timer);
-  }, [map, bounds]);
-
-  return null;
-}
 
 export default function AreaGAPreviewContent({
   projectId,
@@ -144,29 +123,42 @@ export default function AreaGAPreviewContent({
   const placements = useMemo<PlacementView[]>(() => {
     if (!deck) return [];
     const out: PlacementView[] = [];
-    if (deck.deckPlacement) {
-      out.push({
-        id: deck.deckPlacement.identifier,
-        name: tAreas("placementDeckView"),
-        bbox: {
-          x: deck.deckPlacement.bbox_x,
-          y: deck.deckPlacement.bbox_y,
-          w: deck.deckPlacement.bbox_width,
-          h: deck.deckPlacement.bbox_height,
-        },
-      });
+    // Polygons live in normalized 0..1; the rest of this file works in
+    // percentages 0..100 (legacy bbox scale). Scale through here once so
+    // downstream math stays unchanged.
+    if (deck.deckPolygon) {
+      const bbox = polygonBbox(deck.deckPolygon.points);
+      if (bbox) {
+        out.push({
+          id: deck.deckPolygon.identifier,
+          name: tAreas("placementDeckView"),
+          bbox: {
+            x: bbox.bbox_x * 100,
+            y: bbox.bbox_y * 100,
+            w: bbox.bbox_width * 100,
+            h: bbox.bbox_height * 100,
+          },
+        });
+      }
     }
-    for (const sp of deck.sideProfiles ?? []) {
+    for (const sp of deck.sideProfilePolygons ?? []) {
+      const bbox = polygonBbox(sp.points);
+      if (!bbox) continue;
       out.push({
         id: sp.identifier,
         name: sp.name,
-        bbox: { x: sp.bbox_x, y: sp.bbox_y, w: sp.bbox_width, h: sp.bbox_height },
+        bbox: {
+          x: bbox.bbox_x * 100,
+          y: bbox.bbox_y * 100,
+          w: bbox.bbox_width * 100,
+          h: bbox.bbox_height * 100,
+        },
       });
     }
     return out;
-  }, [deck]);
+  }, [deck, tAreas]);
 
-  const primaryPlacementId = deck?.deckPlacement?.identifier ?? null;
+  const primaryPlacementId = deck?.deckPolygon?.identifier ?? null;
 
   const [activePlacementId, setActivePlacementId] = useState<string | null>(
     null
@@ -184,10 +176,7 @@ export default function AreaGAPreviewContent({
 
   const fullBounds = useMemo<L.LatLngBoundsExpression | null>(() => {
     if (!ga?.imageWidth || !ga.imageHeight) return null;
-    return [
-      [0, 0],
-      [ga.imageHeight, ga.imageWidth],
-    ];
+    return getFullImageBounds(ga.imageWidth, ga.imageHeight);
   }, [ga?.imageWidth, ga?.imageHeight]);
 
   // Bounds for whichever view is active. Falls back to the deck's
@@ -198,14 +187,17 @@ export default function AreaGAPreviewContent({
     const placement =
       placements.find((p) => p.id === activePlacementId) ?? placements[0];
     if (!placement) return null;
-    const x1 = (placement.bbox.x / 100) * ga.imageWidth;
-    const y1 = (placement.bbox.y / 100) * ga.imageHeight;
-    const x2 = ((placement.bbox.x + placement.bbox.w) / 100) * ga.imageWidth;
-    const y2 = ((placement.bbox.y + placement.bbox.h) / 100) * ga.imageHeight;
-    return [
-      [y1, x1],
-      [y2, x2],
-    ];
+    const sw = pctToLatLng(
+      { x: placement.bbox.x, y: placement.bbox.y },
+      ga.imageWidth,
+      ga.imageHeight
+    );
+    const ne = pctToLatLng(
+      { x: placement.bbox.x + placement.bbox.w, y: placement.bbox.y + placement.bbox.h },
+      ga.imageWidth,
+      ga.imageHeight
+    );
+    return [sw, ne];
   }, [ga?.imageWidth, ga?.imageHeight, placements, activePlacementId]);
 
   /** Resolve an area's polygon for the active view. Per-placement
@@ -217,7 +209,7 @@ export default function AreaGAPreviewContent({
   ) => {
     if (!activePlacementId) return undefined;
     const perPlacement = a.polygons?.find(
-      (p) => p.placementId === activePlacementId
+      (p) => p.parentPolygonId === activePlacementId
     )?.points;
     if (perPlacement && perPlacement.length >= 3) return perPlacement;
     if (
@@ -326,14 +318,22 @@ export default function AreaGAPreviewContent({
             background: "#f3f4f6",
           }}
         >
-          <FitToBounds bounds={viewBounds} />
+          {/* Re-fit when the user switches between the deck and a side
+              profile. `key` on the parent already re-mounts, but the
+              delay + minZoom-lock dance is still needed for the initial
+              paint with the wrong container size. */}
+          <FitBounds
+            bounds={viewBounds}
+            padding={[20, 20]}
+            delayMs={100}
+            lockMinZoomToFit
+          />
           <ImageOverlay url={imageBlobUrl} bounds={fullBounds} />
 
           {siblingAreas.map(({ area: a, polygon }) => {
-            const positions: [number, number][] = polygon!.map((p) => [
-              p.y * ga.imageHeight!,
-              p.x * ga.imageWidth!,
-            ]);
+            const positions: [number, number][] = polygon!.map((p) =>
+              normToLatLng(p, ga.imageWidth!, ga.imageHeight!)
+            );
             return (
               <Polygon
                 key={`sibling-${a.identifier}`}
@@ -352,10 +352,9 @@ export default function AreaGAPreviewContent({
 
           {currentAreaPolygon && (
             <Polygon
-              positions={currentAreaPolygon.map((p) => [
-                p.y * ga.imageHeight!,
-                p.x * ga.imageWidth!,
-              ])}
+              positions={currentAreaPolygon.map((p) =>
+                normToLatLng(p, ga.imageWidth!, ga.imageHeight!)
+              )}
               pathOptions={{
                 color: highlightColor,
                 weight: 2.5,
@@ -370,10 +369,11 @@ export default function AreaGAPreviewContent({
               top-down view. Pin (x, y) is in top-down coordinates and
               doesn't map to a side-profile view. */}
           {isPrimaryView && stagePins.map((pin) => {
-          const position: [number, number] = [
-            (pin.y / 100) * ga.imageHeight!,
-            (pin.x / 100) * ga.imageWidth!,
-          ];
+          const position = pctToLatLng(
+            { x: pin.x, y: pin.y },
+            ga.imageWidth!,
+            ga.imageHeight!
+          );
           const isDone = pin.punchlistItem?.status === "done";
           return (
             <Marker

@@ -326,7 +326,7 @@ export default function GeneralArrangementTab({
       if (perPlacement.length > 0) {
         for (const entry of perPlacement) {
           overlays.push({
-            id: `${a.identifier}-${entry.placementId}`,
+            id: `${a.identifier}-${entry.parentPolygonId}`,
             name: `${a.name} — ${active.name}`,
             polygon: entry.points,
             color: active.color,
@@ -657,17 +657,26 @@ export default function GeneralArrangementTab({
               </button>
             )}
 
-            {canEdit && isAddPinMode && (
-              <span className="text-sm text-blue-600 dark:text-blue-400">
-                {tPins("hoverDeckToAdd") || "Hover over a deck to add a pin"}
-              </span>
-            )}
             {showActiveStages && activeStagePolygons.length === 0 && areas && stages && (
               <span className="text-sm text-gray-500 dark:text-gray-400">
                 {tPins("noActiveStages") || "No areas with an active stage to show."}
               </span>
             )}
           </div>
+
+          {/* Hint sits on its own line and is always rendered (visibility
+              toggled, not display) so flipping edit mode doesn't shift
+              the GA viewer down/up. */}
+          {canEdit && (
+            <p
+              className={`mb-4 text-sm text-blue-600 dark:text-blue-400 ${
+                isAddPinMode ? "" : "invisible"
+              }`}
+              aria-hidden={!isAddPinMode}
+            >
+              {tPins("hoverDeckToAdd") || "Hover over a deck to add a pin"}
+            </p>
+          )}
 
           {/* Legend — one pill per distinct stage currently coloring an
               area on the GA. Helps the viewer connect color → stage name

@@ -1,12 +1,19 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { MapContainer, ImageOverlay, Polygon, Rectangle, Tooltip, useMap, useMapEvents } from "react-leaflet";
+import { useMemo, useRef, useState } from "react";
+import { MapContainer, ImageOverlay, Polygon, Rectangle, Tooltip, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import type { GAPin, Deck, Area } from "@/lib/api/types";
 import type { AreaPolygonOverlay } from "./GALeafletViewer";
-import { isInsidePolygon } from "@/lib/utils/geometry";
+import { isInsidePolygon, polygonBbox } from "@/lib/utils/geometry";
+import {
+  normToLatLng,
+  pctToLatLng,
+  latLngToPct,
+  pctToNorm,
+} from "@/lib/utils/gaCoordinates";
+import { FitBounds, getFullImageBounds } from "@/lib/utils/gaLeaflet";
 import PinMarker from "./PinMarker";
 
 // Fix Leaflet default marker icon issue in Next.js
@@ -45,40 +52,6 @@ interface GALeafletContentProps {
   className?: string;
 }
 
-// Component to fit bounds when image loads and set minZoom to prevent zooming out beyond initial fit
-function FitBounds({ bounds }: { bounds: L.LatLngBoundsExpression }) {
-  const map = useMap();
-
-  useEffect(() => {
-    // Fit bounds exactly to the image (no padding)
-    map.fitBounds(bounds, {
-      padding: [0, 0],
-      animate: false,
-    });
-
-    // Invalidate size after a short delay to handle container resize
-    const timeoutId = setTimeout(() => {
-      // Check if map container still exists (prevents errors after unmount)
-      if (!map.getContainer()) return;
-
-      map.invalidateSize();
-      map.fitBounds(bounds, {
-        padding: [0, 0],
-        animate: false,
-      });
-
-      // Set minZoom to the current zoom level (the level that fits the image)
-      // This prevents zooming out beyond the initial fit
-      const fitZoom = map.getBoundsZoom(bounds as L.LatLngBoundsExpression);
-      map.setMinZoom(fitZoom);
-    }, 100);
-
-    // Cleanup timeout on unmount to prevent errors
-    return () => clearTimeout(timeoutId);
-  }, [map, bounds]);
-
-  return null;
-}
 
 // Component to handle map clicks for adding pins
 function MapClickHandler({
@@ -95,12 +68,7 @@ function MapClickHandler({
   useMapEvents({
     click: (e) => {
       if (!canEdit || !onImageClick) return;
-
-      // Convert Leaflet coordinates to percentage (0-100)
-      const x = (e.latlng.lng / imageWidth) * 100;
-      const y = (e.latlng.lat / imageHeight) * 100;
-
-      // Only trigger if click is within bounds
+      const { x, y } = latLngToPct(e.latlng, imageWidth, imageHeight);
       if (x >= 0 && x <= 100 && y >= 0 && y <= 100) {
         onImageClick(x, y);
       }
@@ -130,53 +98,43 @@ export default function GALeafletContent({
   const mapRef = useRef<L.Map | null>(null);
   const [hoveredDeckId, setHoveredDeckId] = useState<string | null>(null);
 
-  // Calculate bounds based on image dimensions
-  // Leaflet uses [y, x] / [lat, lng] order
   const bounds = useMemo<L.LatLngBoundsExpression>(
-    () => [
-      [0, 0], // Southwest corner
-      [imageHeight, imageWidth], // Northeast corner
-    ],
+    () => getFullImageBounds(imageWidth, imageHeight),
     [imageWidth, imageHeight]
   );
 
-  // Calculate aspect ratio for proper sizing
   const aspectRatio = imageWidth / imageHeight;
 
-  // Convert pin percentage coordinates to Leaflet coordinates
-  const convertPinToLeaflet = (pin: GAPin): [number, number] => {
-    const leafletY = (pin.y / 100) * imageHeight;
-    const leafletX = (pin.x / 100) * imageWidth;
-    return [leafletY, leafletX]; // [lat, lng] order
-  };
+  const convertPinToLeaflet = (pin: GAPin): [number, number] =>
+    pctToLatLng({ x: pin.x, y: pin.y }, imageWidth, imageHeight);
 
-  // Convert a percentage bbox (works for both the primary deck placement
-  // and any side-profile rectangle) to Leaflet bounds.
-  const bboxToLeafletBounds = (bbox: {
-    bbox_x: number;
-    bbox_y: number;
-    bbox_width: number;
-    bbox_height: number;
-  }): L.LatLngBoundsExpression => {
-    const x1 = (bbox.bbox_x / 100) * imageWidth;
-    const y1 = (bbox.bbox_y / 100) * imageHeight;
-    const x2 = ((bbox.bbox_x + bbox.bbox_width) / 100) * imageWidth;
-    const y2 = ((bbox.bbox_y + bbox.bbox_height) / 100) * imageHeight;
+  // Polygon (normalized 0..1) → Leaflet pixel bounds of its axis-aligned
+  // bbox. Decks and side profiles are rendered as rectangles for now
+  // even though the polygon may carry more detail.
+  const polygonToLeafletBounds = (
+    points: { x: number; y: number }[]
+  ): L.LatLngBoundsExpression | null => {
+    const bbox = polygonBbox(points);
+    if (!bbox) return null;
+    const x1 = bbox.bbox_x * imageWidth;
+    const y1 = bbox.bbox_y * imageHeight;
+    const x2 = (bbox.bbox_x + bbox.bbox_width) * imageWidth;
+    const y2 = (bbox.bbox_y + bbox.bbox_height) * imageHeight;
     return [
       [y1, x1],
       [y2, x2],
     ];
   };
 
-  // Decks with a primary GA placement (skip ones still in setup with no bbox).
-  const decksWithBounds = decks.filter((d) => d.deckPlacement);
+  // Decks with a primary GA polygon (skip ones still in setup with no polygon).
+  const decksWithBounds = decks.filter((d) => d.deckPolygon);
 
-  // Flatten all side-profile rectangles across decks so we can render
+  // Flatten all side-profile polygons across decks so we can render
   // them as clickable additional drop zones. Each entry carries its
   // parent deck so the click handler can fall back to the same
-  // `onDeckClick` callback used by the primary placement.
+  // `onDeckClick` callback used by the primary polygon.
   const sideProfiles = decks.flatMap((deck) =>
-    (deck.sideProfiles ?? []).map((sp) => ({ deck, sideProfile: sp }))
+    (deck.sideProfilePolygons ?? []).map((sp) => ({ deck, sideProfile: sp }))
   );
 
   return (
@@ -215,8 +173,11 @@ export default function GALeafletContent({
           cursor: canEdit ? "crosshair" : "grab",
         }}
       >
-        {/* Fit bounds on load */}
-        <FitBounds bounds={bounds} />
+        {/* Fit-to-image on load. `lockMinZoomToFit` prevents the user
+            from zooming out beyond the image — the empty canvas around it
+            isn't useful. `delayMs` waits for the flex container to settle
+            before the second fit. */}
+        <FitBounds bounds={bounds} delayMs={100} lockMinZoomToFit />
 
         {/* GA Image as overlay */}
         <ImageOverlay
@@ -241,10 +202,9 @@ export default function GALeafletContent({
             active stage color). */}
         {areaPolygons.map((area) => {
           if (!area.polygon || area.polygon.length < 3) return null;
-          const positions: [number, number][] = area.polygon.map((p) => [
-            p.y * imageHeight,
-            p.x * imageWidth,
-          ]);
+          const positions: [number, number][] = area.polygon.map((p) =>
+            normToLatLng(p, imageWidth, imageHeight)
+          );
           return (
             <Polygon
               key={`area-poly-${area.id}`}
@@ -285,7 +245,8 @@ export default function GALeafletContent({
 
         {/* Render deck bounding boxes on hover when in edit mode */}
         {canEdit && decksWithBounds.map((deck) => {
-          const deckBounds = bboxToLeafletBounds(deck.deckPlacement!);
+          const deckBounds = polygonToLeafletBounds(deck.deckPolygon!.points);
+          if (!deckBounds) return null;
           const isHovered = hoveredDeckId === deck.identifier;
 
           return (
@@ -305,12 +266,8 @@ export default function GALeafletContent({
                 click: (e) => {
                   L.DomEvent.stopPropagation(e.originalEvent);
                   if (!onDeckClick) return;
-                  // Convert click position to percentage
-                  const x = (e.latlng.lng / imageWidth) * 100;
-                  const y = (e.latlng.lat / imageHeight) * 100;
-                  // Polygon coords are normalized 0..1 — use the same scale
-                  // for the hit-test point. Only this deck's areas can match.
-                  const normalized = { x: x / 100, y: y / 100 };
+                  const pct = latLngToPct(e.latlng, imageWidth, imageHeight);
+                  const normalized = pctToNorm(pct);
                   const hitArea =
                     areas.find(
                       (a) =>
@@ -318,7 +275,7 @@ export default function GALeafletContent({
                         a.polygon &&
                         isInsidePolygon(normalized, a.polygon)
                     ) ?? null;
-                  onDeckClick(deck, x, y, hitArea);
+                  onDeckClick(deck, pct.x, pct.y, hitArea);
                 },
               }}
             />
@@ -333,7 +290,8 @@ export default function GALeafletContent({
             convention from CreateDeckModal so the two markers read
             as different kinds of placement at a glance. */}
         {canEdit && sideProfiles.map(({ deck, sideProfile }) => {
-          const bounds = bboxToLeafletBounds(sideProfile);
+          const bounds = polygonToLeafletBounds(sideProfile.points);
+          if (!bounds) return null;
           const isHovered = hoveredDeckId === deck.identifier;
 
           return (
@@ -353,9 +311,8 @@ export default function GALeafletContent({
                 click: (e) => {
                   L.DomEvent.stopPropagation(e.originalEvent);
                   if (!onDeckClick) return;
-                  const x = (e.latlng.lng / imageWidth) * 100;
-                  const y = (e.latlng.lat / imageHeight) * 100;
-                  const normalized = { x: x / 100, y: y / 100 };
+                  const pct = latLngToPct(e.latlng, imageWidth, imageHeight);
+                  const normalized = pctToNorm(pct);
                   const hitArea =
                     areas.find(
                       (a) =>
@@ -363,7 +320,7 @@ export default function GALeafletContent({
                         a.polygon &&
                         isInsidePolygon(normalized, a.polygon)
                     ) ?? null;
-                  onDeckClick(deck, x, y, hitArea);
+                  onDeckClick(deck, pct.x, pct.y, hitArea);
                 },
               }}
             />

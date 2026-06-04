@@ -89,3 +89,46 @@ export const polygonCentroid = (
   }
   return { x: sumX / polygon.length, y: sumY / polygon.length };
 };
+
+/** Axis-aligned bounding box for a polygon, in the same bbox shape the UI
+ *  drawing components use (x/y/width/height, all normalized 0..1). Returns
+ *  null for empty inputs. Used to render a rectangular silhouette of a
+ *  deck/side-profile polygon — the actual outline is still the polygon. */
+export const polygonBbox = (
+  polygon: AreaPolygonPoint[]
+): { bbox_x: number; bbox_y: number; bbox_width: number; bbox_height: number } | null => {
+  if (polygon.length === 0) return null;
+  let minX = polygon[0].x;
+  let minY = polygon[0].y;
+  let maxX = polygon[0].x;
+  let maxY = polygon[0].y;
+  for (let i = 1; i < polygon.length; i++) {
+    const { x, y } = polygon[i];
+    if (x < minX) minX = x;
+    if (y < minY) minY = y;
+    if (x > maxX) maxX = x;
+    if (y > maxY) maxY = y;
+  }
+  return {
+    bbox_x: minX,
+    bbox_y: minY,
+    bbox_width: maxX - minX,
+    bbox_height: maxY - minY,
+  };
+};
+
+/** 4-vertex axis-aligned polygon (clockwise from top-left) — the shape we
+ *  send to the backend when the user drew a rectangle for a deck or side
+ *  profile. Decks/profiles store polygons; the drawing UI still works in
+ *  bboxes, so we expand them at the wire boundary. */
+export const bboxToPolygon = (b: {
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+}): AreaPolygonPoint[] => [
+  { x: b.x1, y: b.y1 },
+  { x: b.x2, y: b.y1 },
+  { x: b.x2, y: b.y2 },
+  { x: b.x1, y: b.y2 },
+];
