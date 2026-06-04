@@ -8,6 +8,7 @@ import Alert from "@/app/components/ui/Alert";
 import LoadingSkeleton from "@/app/components/ui/LoadingSkeleton";
 import PunchlistItemCard from "./PunchlistItemCard";
 import PunchlistItemRow from "./PunchlistItemRow";
+import { usePunchlistNumbers } from "@/lib/hooks/usePunchlistNumbers";
 import CancelPunchlistItemModal from "./CancelPunchlistItemModal";
 import PunchlistFilterPopover, {
   EMPTY_FILTERS,
@@ -53,6 +54,7 @@ export default function PunchlistTab({ projectId }: PunchlistTabProps) {
   const router = useRouter();
   const { hasPermission } = usePermission();
   const { showToast } = useToast();
+  const punchlistNumbers = usePunchlistNumbers(projectId);
 
   const [filters, setFilters] = useState<PunchlistFilters>(EMPTY_FILTERS);
   const [searchQuery, setSearchQuery] = useState("");
@@ -321,6 +323,7 @@ export default function PunchlistTab({ projectId }: PunchlistTabProps) {
                     canEdit={canEditItems}
                     compact={!!selectedItem}
                     showLocation
+                    displayNumber={punchlistNumbers.get(item.identifier)}
                     onSelect={() =>
                       setSelectedItemId(
                         selectedItemId === item.identifier
@@ -350,6 +353,7 @@ export default function PunchlistTab({ projectId }: PunchlistTabProps) {
                     projectId={projectId}
                     onUpdate={handleChange}
                     showLocation
+                    displayNumber={punchlistNumbers.get(selectedItem.identifier)}
                     onClose={() => setSelectedItemId(null)}
                     onGoToStage={() =>
                       router.push(

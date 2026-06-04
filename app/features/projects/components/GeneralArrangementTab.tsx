@@ -37,6 +37,7 @@ import {
   CancelPunchlistItemModal,
 } from "@/app/features/punchlist";
 import PunchlistAssigneeQuickFilter from "@/app/features/punchlist/components/PunchlistAssigneeQuickFilter";
+import { usePunchlistNumbers } from "@/lib/hooks/usePunchlistNumbers";
 import PunchlistFilterPopover, {
   EMPTY_FILTERS,
   applyPunchlistFilters,
@@ -389,6 +390,13 @@ export default function GeneralArrangementTab({
       })),
     [allPins]
   );
+
+  /** Project-wide numeric ids keyed by punchlist item identifier —
+   *  same map every other surface uses, so an item carries the same
+   *  `#N` in the GA pin list, the project punchlist tab, and the
+   *  stage punchlist. Pulled via the shared hook so we don't
+   *  re-derive numbers per surface. */
+  const punchlistNumbers = usePunchlistNumbers(projectId);
 
   // Drive the GA pin list through the same filter helper as the
   // punchlist tabs. Pins are mapped to their synthetic
@@ -804,6 +812,7 @@ export default function GeneralArrangementTab({
                           isSelected={false}
                           canEdit={canEditPunchlistItems}
                           stageColor={pin.color}
+                          displayNumber={punchlistNumbers.get(synthetic.identifier)}
                           onSelect={() => setSelectedPinDetail(pin)}
                           onChangeStatus={(next) =>
                             handleRowStatusChange(synthetic.identifier, next)
@@ -859,6 +868,7 @@ export default function GeneralArrangementTab({
                       item={synthetic}
                       projectId={projectId}
                       showLocation
+                      displayNumber={punchlistNumbers.get(synthetic.identifier)}
                       onUpdate={refetch}
                       onGoToStage={() =>
                         router.push(

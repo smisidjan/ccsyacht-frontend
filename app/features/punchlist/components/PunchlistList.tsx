@@ -17,6 +17,7 @@ import PunchlistFilterPopover, {
   type PunchlistFilters,
 } from "./PunchlistFilterPopover";
 import { punchlistItemsApi, usePunchlistItems } from "@/lib/api/punchlist-items";
+import { usePunchlistNumbers } from "@/lib/hooks/usePunchlistNumbers";
 import { useGAPins } from "@/lib/api/ga-pins";
 import { useToast } from "@/app/context/ToastContext";
 import { handleError } from "@/lib/utils/errors";
@@ -56,6 +57,7 @@ interface PunchlistListProps {
 }
 
 export default function PunchlistList({ projectId, areaId, stage, onPunchlistChange }: PunchlistListProps) {
+  const punchlistNumbers = usePunchlistNumbers(projectId);
   const stageId = stage.identifier;
   const stageStatus = stage.status.name;
   const t = useTranslations("punchlist");
@@ -329,6 +331,7 @@ export default function PunchlistList({ projectId, areaId, stage, onPunchlistCha
                     stageStatus={stageStatus}
                     canEdit={canEditItems}
                     compact={!!selectedItem}
+                    displayNumber={punchlistNumbers.get(item.identifier)}
                     onSelect={() =>
                       setSelectedItemId(
                         selectedItemId === item.identifier
@@ -362,6 +365,7 @@ export default function PunchlistList({ projectId, areaId, stage, onPunchlistCha
                     projectId={projectId}
                     stageStatus={stageStatus}
                     onUpdate={handleChange}
+                    displayNumber={punchlistNumbers.get(selectedItem.identifier)}
                     onClose={() => setSelectedItemId(null)}
                     onEditPinLocation={(() => {
                       // Look up the GA pin attached to the selected

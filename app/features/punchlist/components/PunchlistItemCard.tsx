@@ -60,6 +60,10 @@ interface PunchlistItemCardProps {
    *  item has a backing pin. Shown as the first entry in the
    *  More-actions menu. */
   onEditPinLocation?: () => void;
+  /** Project-wide display number — rendered as `#N` next to the
+   *  title so the user can refer to the item by a short number.
+   *  Same convention as `PunchlistItemRow.displayNumber`. */
+  displayNumber?: number;
 }
 
 /** Detail panel for a single punchlist item — modelled on Jira's
@@ -78,6 +82,7 @@ export default function PunchlistItemCard({
   onClose,
   onGoToStage,
   onEditPinLocation,
+  displayNumber,
 }: PunchlistItemCardProps) {
   const t = useTranslations("punchlist");
   const { hasPermission } = usePermission();
@@ -469,7 +474,7 @@ export default function PunchlistItemCard({
             />
           ) : (
             <h2
-              className={`text-2xl font-bold text-gray-900 dark:text-white leading-tight rounded-md px-3 py-2 -mx-3 ${
+              className={`flex items-baseline gap-3 text-2xl font-bold text-gray-900 dark:text-white leading-tight rounded-md px-3 py-2 -mx-3 ${
                 canEdit
                   ? "cursor-text hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors"
                   : ""
@@ -477,7 +482,12 @@ export default function PunchlistItemCard({
               onClick={() => beginEdit("name")}
               title={canEdit ? t("clickToEdit") : undefined}
             >
-              {item.name}
+              {typeof displayNumber === "number" && (
+                <span className="font-mono text-base text-gray-400 dark:text-gray-500 flex-shrink-0">
+                  #{displayNumber}
+                </span>
+              )}
+              <span className="min-w-0">{item.name}</span>
             </h2>
           )}
         </div>

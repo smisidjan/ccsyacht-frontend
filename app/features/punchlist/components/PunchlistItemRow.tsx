@@ -23,6 +23,12 @@ interface PunchlistItemRowProps {
   onSelect: () => void;
   stageStatus?: StageStatus;
   canEdit: boolean;
+  /** Project-wide display number — rendered as `#N` next to the
+   *  title so users can refer to an item by a short number instead
+   *  of the UUID. The parent computes it from the full project list
+   *  so the same item gets the same number in every view. Omitted
+   *  when the parent doesn't have that mapping at hand. */
+  displayNumber?: number;
   /** When the detail panel is open the list column shrinks to ~⅓ of
    *  the screen — secondary fields (the "Created by" reporter) are
    *  hidden then so the title can keep using the available width. */
@@ -53,6 +59,7 @@ export default function PunchlistItemRow({
   onSelect,
   stageStatus,
   canEdit,
+  displayNumber,
   compact = false,
   showLocation = false,
   stageColor,
@@ -89,6 +96,16 @@ export default function PunchlistItemRow({
           style={{ backgroundColor: stageColor }}
           aria-hidden="true"
         />
+      )}
+
+      {/* Short numeric id — `#1`, `#2`, ... — assigned by the parent
+          based on project-wide creation order so an item keeps the
+          same number wherever it shows up. Skipped when the parent
+          doesn't have that mapping. */}
+      {typeof displayNumber === "number" && (
+        <span className="font-mono text-xs text-gray-400 dark:text-gray-500 flex-shrink-0">
+          #{displayNumber}
+        </span>
       )}
 
       <span className="flex-1 min-w-0 text-sm font-medium text-gray-900 dark:text-white truncate">
