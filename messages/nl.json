@@ -19,7 +19,12 @@
     "error": "Er is een fout opgetreden",
     "deleteConfirmation": "Verwijdering Bevestigen",
     "deleteWarning": "Weet je zeker dat je {name} wilt verwijderen?",
-    "deleteWarningSubtext": "Deze actie kan niet ongedaan worden gemaakt."
+    "deleteWarningSubtext": "Deze actie kan niet ongedaan worden gemaakt.",
+    "pagination": {
+      "page": "Pagina {current} van {total}",
+      "previous": "Vorige pagina",
+      "next": "Volgende pagina"
+    }
   },
   "auth": {
     "loginTitle": "Inloggen",
@@ -999,21 +1004,35 @@
       "addEntry": "Notitie Toevoegen",
       "searchPlaceholder": "Zoek activiteiten...",
       "showing": "{count} van {total} activiteiten worden getoond",
+      "showingRange": "{from}–{to} van {total} activiteiten",
       "noEntries": "Nog geen logboek notities",
       "noEntriesDescription": "Alle projectactiviteiten worden hier automatisch gelogd",
       "noResults": "Geen activiteiten gevonden",
       "tryDifferentFilters": "Probeer een andere zoekopdracht of filter",
       "loadError": "Kon logboek notities niet laden",
+      "filterLabel": "Filter",
+      "filterCategoryPerformedBy": "Uitgevoerd door",
+      "filterSearchPerformedBy": "Zoek personen…",
+      "filterPerformedByEmpty": "Nog geen activiteit in deze categorie.",
+      "filterCategoryDate": "Datum",
+      "filterSearchDate": "Zoek datums…",
+      "filterDateLast7Days": "Laatste 7 dagen",
+      "filterDateLast30Days": "Laatste 30 dagen",
+      "filterDateOlder": "Ouder dan 30 dagen",
+      "filterActiveCount": "{count, plural, =1 {# filter actief} other {# filters actief}}",
+      "filterClear": "Alles wissen",
       "filters": {
         "all": "Alle Activiteiten",
-        "projectManagement": "Projectbeheer",
-        "membersSigners": "Leden & Ondertekenaars",
-        "documents": "Documenten",
+        "project": "Project",
+        "members": "Leden & Ondertekenaars",
         "decksAreas": "Dekken & Gebieden",
-        "stageActivities": "Fase Activiteiten",
-        "punchlistItems": "Punchlist Items",
-        "remarks": "Opmerkingen",
-        "setupTasks": "Setup Taken"
+        "stages": "Fases",
+        "releaseForms": "Vrijgaveformulieren",
+        "punchlist": "Punchlist",
+        "documents": "Documenten",
+        "kickoff": "Kickoff",
+        "setupTasks": "Setup Taken",
+        "other": "Overig"
       }
     },
     "reporting": {

@@ -9,8 +9,6 @@ import {
   ArchiveBoxIcon,
   CheckCircleIcon,
   MagnifyingGlassIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
 } from "@heroicons/react/24/outline";
 import { useProjects, useShipyards, projectsApi, documentTypesApi } from "@/lib/api";
 import { handleError } from "@/lib/utils/errors";
@@ -20,6 +18,7 @@ import { useMinimumLoadingTime } from "@/lib/hooks/useMinimumLoadingTime";
 import { useRealtimeProjectsList } from "@/lib/hooks/useRealtimeProject";
 import ProtectedRoute from "@/app/components/guards/ProtectedRoute";
 import FilterPopover from "@/app/components/ui/FilterPopover";
+import Pagination from "@/app/components/ui/Pagination";
 import { CreateProjectModal, ProjectCard, type ProjectFormData } from "@/app/features/projects";
 import LoadingSkeleton from "@/app/components/ui/LoadingSkeleton";
 import Button from "@/app/components/ui/Button";
@@ -245,31 +244,12 @@ export default function ProjectsPage() {
               })}
             </p>
 
-            {/* Pagination controls */}
-            {pagination && pagination.lastPage > 1 && (
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-600 dark:text-gray-400">
-                  {t("pagination.page", { current: pagination.currentPage, total: pagination.lastPage })}
-                </span>
-                <div className="flex gap-1">
-                  <button
-                    onClick={() => setCurrentPage(currentPage - 1)}
-                    disabled={!pagination.hasPrev}
-                    className="p-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    aria-label={t("pagination.previous")}
-                  >
-                    <ChevronLeftIcon className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-                  </button>
-                  <button
-                    onClick={() => setCurrentPage(currentPage + 1)}
-                    disabled={!pagination.hasNext}
-                    className="p-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    aria-label={t("pagination.next")}
-                  >
-                    <ChevronRightIcon className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-                  </button>
-                </div>
-              </div>
+            {pagination && (
+              <Pagination
+                currentPage={pagination.currentPage}
+                totalPages={pagination.lastPage}
+                onPageChange={setCurrentPage}
+              />
             )}
           </div>
         )}

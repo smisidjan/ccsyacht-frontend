@@ -19,7 +19,12 @@
     "error": "An error occurred",
     "deleteConfirmation": "Confirm Deletion",
     "deleteWarning": "Are you sure you want to delete {name}?",
-    "deleteWarningSubtext": "This action cannot be undone."
+    "deleteWarningSubtext": "This action cannot be undone.",
+    "pagination": {
+      "page": "Page {current} of {total}",
+      "previous": "Previous page",
+      "next": "Next page"
+    }
   },
   "auth": {
     "loginTitle": "Login",
@@ -999,21 +1004,35 @@
       "addEntry": "Add Entry",
       "searchPlaceholder": "Search activities...",
       "showing": "Showing {count} of {total} activities",
+      "showingRange": "Showing {from}–{to} of {total} activities",
       "noEntries": "No logbook entries yet",
       "noEntriesDescription": "All project activities will be logged here automatically",
       "noResults": "No activities found",
       "tryDifferentFilters": "Try adjusting your search or filter",
       "loadError": "Failed to load logbook entries",
+      "filterLabel": "Filter",
+      "filterCategoryPerformedBy": "Performed by",
+      "filterSearchPerformedBy": "Search people…",
+      "filterPerformedByEmpty": "No activity in this category yet.",
+      "filterCategoryDate": "Date",
+      "filterSearchDate": "Search dates…",
+      "filterDateLast7Days": "Last 7 days",
+      "filterDateLast30Days": "Last 30 days",
+      "filterDateOlder": "Older than 30 days",
+      "filterActiveCount": "{count, plural, =1 {# filter active} other {# filters active}}",
+      "filterClear": "Clear all",
       "filters": {
         "all": "All Activities",
-        "projectManagement": "Project Management",
-        "membersSigners": "Members & Signers",
-        "documents": "Documents",
+        "project": "Project",
+        "members": "Members & Signers",
         "decksAreas": "Decks & Areas",
-        "stageActivities": "Stage Activities",
-        "punchlistItems": "Punchlist Items",
-        "remarks": "Remarks",
-        "setupTasks": "Setup Tasks"
+        "stages": "Stages",
+        "releaseForms": "Release Forms",
+        "punchlist": "Punchlist",
+        "documents": "Documents",
+        "kickoff": "Kickoff",
+        "setupTasks": "Setup Tasks",
+        "other": "Other"
       }
     },
     "reporting": {

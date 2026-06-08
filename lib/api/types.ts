@@ -1122,24 +1122,65 @@ export interface BulkSyncGAPinsRequest {
 }
 
 // ============ Logbook ============
+/** Coarse grouping for logbook entries, set server-side from the
+ *  action_type. `other` is the documented fallback (not emitted by
+ *  current data). `null` only appears if the action_type didn't map. */
+export type LogbookCategory =
+  | "project"
+  | "members"
+  | "decks_areas"
+  | "stages"
+  | "release_forms"
+  | "punchlist"
+  | "documents"
+  | "kickoff"
+  | "setup_tasks"
+  | "other";
+
+/** Entity types a logbook entry can point at. Drives deep-link
+ *  destinations once the FE detail routes exist for each type. */
+export type LogbookSubjectType =
+  | "stage"
+  | "punchlist_item"
+  | "release_form"
+  | "area"
+  | "deck"
+  | "document"
+  | "user";
+
+export interface LogbookSubject {
+  type: LogbookSubjectType;
+  id: string;
+  name: string;
+}
+
 export interface LogbookEntry {
   "@context"?: string;
   "@type"?: string;
   identifier: string;
   actionStatus: string;
   name: string;
+  /** Coarse grouping for filtering / iconography. `null` is the
+   *  documented unmapped state — treat it as "uncategorised". */
+  category: LogbookCategory | null;
+  /** Entity the action touched. `null` for bulk events that don't
+   *  hang off a single entity. */
+  subject: LogbookSubject | null;
   description: string;
   agent: {
     "@type"?: string;
     identifier?: string; // Optional - only present for Person type
     name: string;
   };
+  additionalProperty?: Record<string, unknown>;
   startTime: string;
 }
 
 export interface LogbookFilters {
   action_type?: string;
-  user_id?: string;
+  /** Single user id or an array — the API client serialises arrays
+   *  as comma-separated so the backend can do WHERE user_id IN (...). */
+  user_id?: string | string[];
   from_date?: string;
   to_date?: string;
   per_page?: number;
@@ -1148,6 +1189,15 @@ export interface LogbookFilters {
    *  item can pull its own history without paginating through the
    *  whole project logbook. */
   punchlist_item_id?: string;
+  /** Coarse category filter (e.g. "stages" includes remarks and
+   *  signoffs). Combines with the other query params. */
+  category?: LogbookCategory;
+  /** Pair with `subject_id` to pull a single entity's history. */
+  subject_type?: LogbookSubjectType;
+  subject_id?: string;
+  /** Free-text search; case-insensitive ILIKE on description,
+   *  action_type, subject_name, actor_name, and user.name. */
+  search?: string;
 }
 
 // ============ Project Members & Signers ============
