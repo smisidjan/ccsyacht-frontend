@@ -13,7 +13,6 @@ import {
   RectangleStackIcon,
   ClipboardDocumentListIcon,
   ChatBubbleLeftEllipsisIcon,
-  WrenchScrewdriverIcon,
 } from "@heroicons/react/24/outline";
 import type { ComponentType, SVGProps } from "react";
 import type { LogbookCategory } from "@/lib/api/types";
@@ -79,7 +78,6 @@ const CATEGORY_ICONS: Record<LogbookCategory, ComponentType<SVGProps<SVGSVGEleme
   punchlist: ClipboardDocumentListIcon,
   documents: DocumentTextIcon,
   kickoff: RectangleStackIcon,
-  setup_tasks: WrenchScrewdriverIcon,
   other: UserCircleIcon,
 };
 
@@ -177,7 +175,6 @@ export default function LogbookTab({ projectId }: LogbookTabProps) {
       { key: "punchlist" as CategoryKey, label: t("filters.punchlist") },
       { key: "documents" as CategoryKey, label: t("filters.documents") },
       { key: "kickoff" as CategoryKey, label: t("filters.kickoff") },
-      { key: "setup_tasks" as CategoryKey, label: t("filters.setupTasks") },
       { key: "other" as CategoryKey, label: t("filters.other") },
     ],
     [t]

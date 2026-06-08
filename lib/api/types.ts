@@ -1134,7 +1134,6 @@ export type LogbookCategory =
   | "punchlist"
   | "documents"
   | "kickoff"
-  | "setup_tasks"
   | "other";
 
 /** Entity types a logbook entry can point at. Drives deep-link
