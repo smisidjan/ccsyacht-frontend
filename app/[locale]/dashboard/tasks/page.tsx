@@ -11,33 +11,24 @@ import { useMyTasks } from "@/lib/api";
 import { useMinimumLoadingTime } from "@/lib/hooks/useMinimumLoadingTime";
 import LoadingSkeleton from "@/app/components/ui/LoadingSkeleton";
 import Alert from "@/app/components/ui/Alert";
+import FilterPopover from "@/app/components/ui/FilterPopover";
 import TaskRow, { type TaskItem } from "@/app/features/tasks/components/TaskRow";
 
-type FilterType =
-  | "all"
-  | "documents"
-  | "punchlist"
-  | "meetings"
-  | "acknowledgements"
-  | "signoffs";
+/** Task buckets the user can multi-select in the Filter popover.
+ *  Maps 1:1 onto `TaskItem.type` so the predicate stays trivial. */
+const TASK_TYPE_OPTIONS = [
+  { value: "document_request", labelKey: "documents" },
+  { value: "punchlist_item", labelKey: "punchlist" },
+  { value: "setup_task", labelKey: "meetings" },
+  { value: "document_acknowledgement", labelKey: "acknowledgements" },
+  { value: "stage_signoff", labelKey: "signoffs" },
+] as const;
 
-const FILTER_TYPES: FilterType[] = [
-  "all",
-  "documents",
-  "punchlist",
-  "meetings",
-  "acknowledgements",
-  "signoffs",
-];
+type TaskType = (typeof TASK_TYPE_OPTIONS)[number]["value"];
 
-function matchesType(task: TaskItem, filter: FilterType): boolean {
-  if (filter === "all") return true;
-  if (filter === "documents") return task.type === "document_request";
-  if (filter === "punchlist") return task.type === "punchlist_item";
-  if (filter === "meetings") return task.type === "setup_task";
-  if (filter === "acknowledgements") return task.type === "document_acknowledgement";
-  if (filter === "signoffs") return task.type === "stage_signoff";
-  return true;
+function matchesTypes(task: TaskItem, selected: string[]): boolean {
+  if (selected.length === 0) return true;
+  return selected.includes(task.type);
 }
 
 function matchesSearch(task: TaskItem, query: string): boolean {
@@ -79,7 +70,11 @@ function taskBucket(task: TaskItem): "overdue" | "pending" | "completed" {
 
 export default function MyTasksPage() {
   const t = useTranslations("myTasks");
-  const [filterType, setFilterType] = useState<FilterType>("all");
+  // Empty selection on either axis = no constraint (matches all). The
+  // popover lets the user multi-pick across types and projects — same
+  // Jira-style semantics as the punchlist filter.
+  const [selectedTaskTypes, setSelectedTaskTypes] = useState<TaskType[]>([]);
+  const [selectedProjectIds, setSelectedProjectIds] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [showCompleted, setShowCompleted] = useState(false);
 
@@ -97,9 +92,29 @@ export default function MyTasksPage() {
     ];
   }, [tasks]);
 
+  // Project options derived from the loaded tasks — only offering
+  // projects that actually have a task in scope keeps the filter
+  // tight to the user's current data.
+  const projectOptions = useMemo(() => {
+    const seen = new Map<string, string>();
+    for (const task of allTasks) {
+      seen.set(task.project.identifier, task.project.name);
+    }
+    return Array.from(seen.entries())
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [allTasks]);
+
   const filtered = useMemo(
-    () => allTasks.filter((task) => matchesType(task, filterType) && matchesSearch(task, searchQuery)),
-    [allTasks, filterType, searchQuery]
+    () =>
+      allTasks.filter(
+        (task) =>
+          matchesTypes(task, selectedTaskTypes) &&
+          (selectedProjectIds.length === 0 ||
+            selectedProjectIds.includes(task.project.identifier)) &&
+          matchesSearch(task, searchQuery)
+      ),
+    [allTasks, selectedTaskTypes, selectedProjectIds, searchQuery]
   );
 
   // Review documents (document_acknowledgement) are always tied to a
@@ -192,33 +207,63 @@ export default function MyTasksPage() {
           </div>
         </div>
 
-        {/* Search + filters */}
-        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-4">
-          <div className="relative flex-1 min-w-0">
-            <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+        {/* Search + filter — same visual language as the punchlist:
+            search box on the left, multi-select Filter popover on the
+            right. The popover's `Type` section replaces the old
+            single-select tab strip and keeps multi-pick semantics
+            (empty = all). */}
+        <div className="flex items-center flex-wrap gap-3 mb-4">
+          <div className="relative flex-1 max-w-sm">
+            <MagnifyingGlassIcon className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
               type="text"
               placeholder={t("searchPlaceholder")}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full pl-9 pr-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
-          <div className="flex items-center gap-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-1 overflow-x-auto">
-            {FILTER_TYPES.map((type) => (
-              <button
-                key={type}
-                onClick={() => setFilterType(type)}
-                className={`px-2.5 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap ${
-                  filterType === type
-                    ? "bg-blue-600 text-white"
-                    : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
-                }`}
-              >
-                {t(`filters.${type}`)}
-              </button>
-            ))}
-          </div>
+          <FilterPopover
+            triggerLabel={t("filterLabel")}
+            sections={[
+              {
+                id: "type",
+                label: t("filterCategoryType"),
+                searchPlaceholder: t("filterSearchType"),
+                options: TASK_TYPE_OPTIONS.map((opt) => ({
+                  value: opt.value,
+                  label: t(`filters.${opt.labelKey}`),
+                })),
+                selected: selectedTaskTypes,
+                onChange: (next) =>
+                  setSelectedTaskTypes(next as TaskType[]),
+              },
+              {
+                id: "project",
+                label: t("filterCategoryProject"),
+                searchPlaceholder: t("filterSearchProject"),
+                emptyLabel: t("filterNoProjects"),
+                options: projectOptions.map((p) => ({
+                  value: p.id,
+                  label: p.name,
+                })),
+                selected: selectedProjectIds,
+                onChange: setSelectedProjectIds,
+              },
+            ]}
+            onClearAll={
+              selectedTaskTypes.length + selectedProjectIds.length > 0
+                ? () => {
+                    setSelectedTaskTypes([]);
+                    setSelectedProjectIds([]);
+                  }
+                : undefined
+            }
+            activeCountLabel={(count) =>
+              t("filterActiveCount", { count })
+            }
+            clearAllLabel={t("filterClear")}
+          />
         </div>
 
         {/* Empty state */}
