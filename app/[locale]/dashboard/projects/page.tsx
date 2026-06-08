@@ -8,6 +8,7 @@ import {
   PlayIcon,
   ArchiveBoxIcon,
   CheckCircleIcon,
+  MagnifyingGlassIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
 } from "@heroicons/react/24/outline";
@@ -18,19 +19,32 @@ import { usePermission } from "@/lib/hooks/usePermission";
 import { useMinimumLoadingTime } from "@/lib/hooks/useMinimumLoadingTime";
 import { useRealtimeProjectsList } from "@/lib/hooks/useRealtimeProject";
 import ProtectedRoute from "@/app/components/guards/ProtectedRoute";
-import SearchInput from "@/app/components/ui/SearchInput";
-import FilterTabs from "@/app/components/ui/FilterTabs";
-import type { FilterOption } from "@/app/components/ui/FilterTabs";
+import FilterPopover from "@/app/components/ui/FilterPopover";
 import { CreateProjectModal, ProjectCard, type ProjectFormData } from "@/app/features/projects";
 import LoadingSkeleton from "@/app/components/ui/LoadingSkeleton";
 import Button from "@/app/components/ui/Button";
 import PageHeader from "@/app/components/ui/PageHeader";
 import type { ProjectStatus, UserRole } from "@/lib/api/types";
 
+/** Status options ordered the same way the old tab strip was — keeps
+ *  the iconography (cog/play/archive/check) and the user's mental
+ *  model of the workflow stages intact. */
+const STATUS_OPTIONS: { value: ProjectStatus; icon: typeof CogIcon }[] = [
+  { value: "setup", icon: CogIcon },
+  { value: "active", icon: PlayIcon },
+  { value: "archived", icon: ArchiveBoxIcon },
+  { value: "completed", icon: CheckCircleIcon },
+];
+
 export default function ProjectsPage() {
   const t = useTranslations("projects");
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeFilter, setActiveFilter] = useState<FilterOption>("all");
+  // Empty selection = no constraint (matches every status). Same
+  // Jira-style multi-select semantics as the punchlist + my-tasks
+  // filter popovers.
+  const [selectedStatuses, setSelectedStatuses] = useState<ProjectStatus[]>(
+    []
+  );
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -79,7 +93,7 @@ export default function ProjectsPage() {
   // Reset to page 1 when search or filter changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, activeFilter]);
+  }, [searchQuery, selectedStatuses]);
 
   // Scroll to top when page changes
   useEffect(() => {
@@ -139,14 +153,6 @@ export default function ProjectsPage() {
     }
   };
 
-  const filterTabs = [
-    { key: "all" as FilterOption, label: t("filters.all") },
-    { key: "setup" as FilterOption, label: t("filters.setup"), icon: CogIcon },
-    { key: "active" as FilterOption, label: t("filters.active"), icon: PlayIcon },
-    { key: "archived" as FilterOption, label: t("filters.archived"), icon: ArchiveBoxIcon },
-    { key: "completed" as FilterOption, label: t("filters.completed"), icon: CheckCircleIcon },
-  ];
-
   const filteredProjects = useMemo(() => {
     return projectsArray.filter((project) => {
       const matchesSearch =
@@ -155,7 +161,8 @@ export default function ProjectsPage() {
         project.producer?.name?.toLowerCase().includes(searchQuery.toLowerCase());
 
       const matchesFilter =
-        activeFilter === "all" || project.status === (activeFilter as ProjectStatus);
+        selectedStatuses.length === 0 ||
+        selectedStatuses.includes(project.status);
 
       // For guest roles, only show projects where user is a member
       const userRole = currentUser?.roles?.[0] as UserRole | undefined;
@@ -164,7 +171,7 @@ export default function ProjectsPage() {
 
       return matchesSearch && matchesFilter && matchesMembership;
     });
-  }, [projectsArray, searchQuery, activeFilter, currentUser]);
+  }, [projectsArray, searchQuery, selectedStatuses, currentUser]);
 
   // Enforce minimum loading time to prevent flickering
   const rawLoading = projectsLoading || shipyardsLoading;
@@ -184,17 +191,47 @@ export default function ProjectsPage() {
           )}
         />
 
-        {/* Filters */}
-        <div className="space-y-8 mb-10">
-          <SearchInput
-            value={searchQuery}
-            onChange={setSearchQuery}
-            placeholder={t("searchPlaceholder")}
-          />
-          <FilterTabs
-            activeFilter={activeFilter}
-            onChange={setActiveFilter}
-            tabs={filterTabs}
+        {/* Search + filter — same visual + interaction language as
+            the punchlist / my-tasks surfaces. The Filter popover holds
+            the status options that used to live in the tab strip,
+            keeping the cog/play/archive/check iconography. */}
+        <div className="flex items-center flex-wrap gap-3 mb-10">
+          <div className="relative flex-1 max-w-sm">
+            <MagnifyingGlassIcon className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              placeholder={t("searchPlaceholder")}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+          <FilterPopover
+            triggerLabel={t("filterLabel")}
+            sections={[
+              {
+                id: "status",
+                label: t("filterCategoryStatus"),
+                searchPlaceholder: t("filterSearchStatus"),
+                options: STATUS_OPTIONS.map((opt) => ({
+                  value: opt.value,
+                  label: t(`filters.${opt.value}`),
+                  icon: opt.icon,
+                })),
+                selected: selectedStatuses,
+                onChange: (next) =>
+                  setSelectedStatuses(next as ProjectStatus[]),
+              },
+            ]}
+            onClearAll={
+              selectedStatuses.length > 0
+                ? () => setSelectedStatuses([])
+                : undefined
+            }
+            activeCountLabel={(count) =>
+              t("filterActiveCount", { count })
+            }
+            clearAllLabel={t("filterClear")}
           />
         </div>
 

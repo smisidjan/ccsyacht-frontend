@@ -24,7 +24,6 @@ interface DocumentsPanelProps {
   documents: Document[] | null | undefined;
   documentsLoading: boolean;
   documentsError: { message?: string } | null;
-  showMobileDetail: boolean;
   onBackToList: () => void;
   onUpload: () => void;
   onAssign: () => void;
@@ -45,7 +44,6 @@ export default function DocumentsPanel({
   documents,
   documentsLoading,
   documentsError,
-  showMobileDetail,
   onBackToList,
   onUpload,
   onAssign,
@@ -63,8 +61,7 @@ export default function DocumentsPanel({
   const tDocTypes = useTranslations("documentTypes");
 
   return (
-    <div className={`${showMobileDetail ? "block" : "hidden"} lg:block flex-1 flex flex-col min-w-0 gap-4 lg:gap-6`}>
-      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-lg flex flex-col flex-1 min-h-0">
+    <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-lg flex flex-col flex-1 min-h-0">
         {/* Header */}
         <div className="p-4 lg:p-6 border-b border-gray-200 dark:border-gray-700">
           {/* Title row */}
@@ -172,7 +169,6 @@ export default function DocumentsPanel({
             </>
           )}
         </div>
-      </div>
     </div>
   );
 }

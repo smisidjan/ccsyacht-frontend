@@ -2,7 +2,16 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useTranslations } from "next-intl";
-import { DocumentTextIcon, PlusIcon, PencilIcon, TrashIcon } from "@heroicons/react/24/outline";
+import {
+  DocumentTextIcon,
+  PlusIcon,
+  PencilIcon,
+  TrashIcon,
+  MagnifyingGlassIcon,
+} from "@heroicons/react/24/outline";
+import FilterPopover from "@/app/components/ui/FilterPopover";
+import { calculateDocumentStatus } from "@/app/features/documents/components/DocumentAcknowledgementStatus";
+import { normalizeAcknowledgements } from "@/lib/utils/typeNormalization";
 import { useDocumentTypes } from "@/lib/api/document-types";
 import { useDocuments } from "@/lib/api/documents";
 import { useProjectMembers } from "@/lib/api/project-members";
@@ -81,6 +90,15 @@ export default function DocumentsTab({ projectId, projectStatus }: DocumentsTabP
   // State
   const [selectedTypeId, setSelectedTypeId] = useState<string | null>(null);
   const [showMobileDetail, setShowMobileDetail] = useState(false);
+  // The search input + filter live above the right panel and scope
+  // to the documents inside the selected document type. Each filter
+  // axis is OR within itself, AND across axes. The uploader options
+  // are derived from the actual authors that show up in `documents`,
+  // so the popover stays in sync with the data.
+  const [documentSearchQuery, setDocumentSearchQuery] = useState("");
+  const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
+  const [selectedUploaders, setSelectedUploaders] = useState<string[]>([]);
+  const [selectedDateRanges, setSelectedDateRanges] = useState<string[]>([]);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   // Document currently being viewed inline via the eye-icon button.
   // Cleared when the modal closes.
@@ -115,6 +133,74 @@ export default function DocumentsTab({ projectId, projectStatus }: DocumentsTabP
       return a.name.localeCompare(b.name);
     });
   }, [documentTypes]);
+
+  // Distinct uploader options for the filter, derived from the
+  // documents currently loaded for the selected type. Built off the
+  // raw `documents` (not the filtered list) so toggling the filter
+  // doesn't make options disappear.
+  const uploaderOptions = useMemo(() => {
+    if (!documents) return [];
+    const seen = new Map<string, string>();
+    for (const doc of documents) {
+      const id = doc.author.identifier;
+      if (id && !seen.has(id)) {
+        seen.set(id, doc.author.name);
+      }
+    }
+    return Array.from(seen, ([value, label]) => ({ value, label })).sort((a, b) =>
+      a.label.localeCompare(b.label)
+    );
+  }, [documents]);
+
+  // Documents narrowed by search, status, uploader, and upload-date
+  // filters. Each axis is OR-within / AND-across. Status mirrors the
+  // logic used by the status badge (totalRequired === 0 with no acks
+  // = pending_review) so the filter and the visible badge agree.
+  const filteredDocuments = useMemo(() => {
+    if (!documents) return documents;
+    const q = documentSearchQuery.trim().toLowerCase();
+    const now = Date.now();
+    const sevenDays = 7 * 24 * 60 * 60 * 1000;
+    const thirtyDays = 30 * 24 * 60 * 60 * 1000;
+    return documents.filter((doc) => {
+      if (q && !doc.name.toLowerCase().includes(q)) return false;
+
+      if (selectedStatuses.length > 0) {
+        const acks = normalizeAcknowledgements(doc.acknowledgements);
+        const totalRequired =
+          doc.totalAssignees || doc.totalRequiredAcknowledgers || 0;
+        const status =
+          !totalRequired && acks.length === 0
+            ? "pending_review"
+            : calculateDocumentStatus(acks, totalRequired);
+        if (!selectedStatuses.includes(status)) return false;
+      }
+
+      if (selectedUploaders.length > 0) {
+        const id = doc.author.identifier;
+        if (!id || !selectedUploaders.includes(id)) return false;
+      }
+
+      if (selectedDateRanges.length > 0) {
+        const age = now - new Date(doc.dateCreated).getTime();
+        const inRange = selectedDateRanges.some((token) => {
+          if (token === "last7days") return age <= sevenDays;
+          if (token === "last30days") return age <= thirtyDays;
+          if (token === "older") return age > thirtyDays;
+          return false;
+        });
+        if (!inRange) return false;
+      }
+
+      return true;
+    });
+  }, [
+    documents,
+    documentSearchQuery,
+    selectedStatuses,
+    selectedUploaders,
+    selectedDateRanges,
+  ]);
 
   // Auto-select first document type
   useEffect(() => {
@@ -284,39 +370,113 @@ export default function DocumentsTab({ projectId, projectStatus }: DocumentsTabP
   }
 
   return (
-    <div className="flex flex-col lg:flex-row gap-4 lg:gap-6">
-      {/* Left Sidebar */}
-      <DocumentTypeSidebar
-        documentTypes={sortedDocumentTypes}
-        selectedTypeId={selectedTypeId}
-        onSelectType={handleSelectType}
-        onCreateType={() => setIsCreateTypeModalOpen(true)}
-        getMenuItems={getDropdownMenuItems}
-        canCreateDocumentTypes={canCreateDocumentTypes}
-        isReadOnly={isReadOnly}
-        showMobileDetail={showMobileDetail}
-      />
+    <div>
+      <div className="flex flex-col lg:flex-row gap-4 lg:gap-6">
+        {/* Left Sidebar */}
+        <DocumentTypeSidebar
+          documentTypes={sortedDocumentTypes}
+          selectedTypeId={selectedTypeId}
+          onSelectType={handleSelectType}
+          onCreateType={() => setIsCreateTypeModalOpen(true)}
+          getMenuItems={getDropdownMenuItems}
+          canCreateDocumentTypes={canCreateDocumentTypes}
+          isReadOnly={isReadOnly}
+          showMobileDetail={showMobileDetail}
+        />
 
-      {/* Right Panel */}
-      <DocumentsPanel
-        selectedType={selectedType}
-        documents={documents}
-        documentsLoading={documentsLoading}
-        documentsError={documentsError}
-        showMobileDetail={showMobileDetail}
-        onBackToList={() => setShowMobileDetail(false)}
-        onUpload={() => setIsUploadModalOpen(true)}
-        onAssign={() => setIsAssignModalOpen(true)}
-        onDownload={handleDownload}
-        onView={setViewingDocument}
-        onNotifyAssignee={handleNotifyAssignee}
-        onRemoveAssignee={handleRemoveAssignee}
-        canUploadDocuments={canUploadDocuments}
-        canDownloadDocuments={canDownloadDocuments}
-        canEditDocumentTypes={canEditDocumentTypes}
-        isCurrentUserAssigneeWithPendingTask={!!isCurrentUserAssigneeWithPendingTask}
-        isReadOnly={isReadOnly}
-      />
+      {/* Right column — search + filter live above the documents
+          panel because every axis (search, status, uploader, upload
+          date) operates on the documents inside the selected type. */}
+      <div className={`${showMobileDetail ? "block" : "hidden"} lg:block flex-1 flex flex-col min-w-0 gap-8`}>
+        <div className="flex items-center flex-wrap gap-3">
+          <div className="relative flex-1 max-w-sm">
+            <MagnifyingGlassIcon className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              placeholder={t("searchPlaceholder")}
+              value={documentSearchQuery}
+              onChange={(e) => setDocumentSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+          <FilterPopover
+            triggerLabel={t("filterLabel")}
+            sections={[
+              {
+                id: "status",
+                label: t("filterCategoryStatus"),
+                searchPlaceholder: t("filterSearchStatus"),
+                options: [
+                  { value: "draft", label: t("filterStatusDraft") },
+                  {
+                    value: "pending_review",
+                    label: t("filterStatusPendingReview"),
+                  },
+                  { value: "active", label: t("filterStatusActive") },
+                  { value: "disputed", label: t("filterStatusDisputed") },
+                ],
+                selected: selectedStatuses,
+                onChange: setSelectedStatuses,
+              },
+              {
+                id: "uploader",
+                label: t("filterCategoryUploader"),
+                searchPlaceholder: t("filterSearchUploader"),
+                emptyLabel: t("filterUploaderEmpty"),
+                options: uploaderOptions,
+                selected: selectedUploaders,
+                onChange: setSelectedUploaders,
+              },
+              {
+                id: "date",
+                label: t("filterCategoryDate"),
+                searchPlaceholder: t("filterSearchDate"),
+                options: [
+                  { value: "last7days", label: t("filterDateLast7Days") },
+                  { value: "last30days", label: t("filterDateLast30Days") },
+                  { value: "older", label: t("filterDateOlder") },
+                ],
+                selected: selectedDateRanges,
+                onChange: setSelectedDateRanges,
+              },
+            ]}
+            onClearAll={
+              selectedStatuses.length > 0 ||
+              selectedUploaders.length > 0 ||
+              selectedDateRanges.length > 0
+                ? () => {
+                    setSelectedStatuses([]);
+                    setSelectedUploaders([]);
+                    setSelectedDateRanges([]);
+                  }
+                : undefined
+            }
+            activeCountLabel={(count) =>
+              t("filterActiveCount", { count })
+            }
+            clearAllLabel={t("filterClear")}
+          />
+        </div>
+
+        <DocumentsPanel
+          selectedType={selectedType}
+          documents={filteredDocuments}
+          documentsLoading={documentsLoading}
+          documentsError={documentsError}
+          onBackToList={() => setShowMobileDetail(false)}
+          onUpload={() => setIsUploadModalOpen(true)}
+          onAssign={() => setIsAssignModalOpen(true)}
+          onDownload={handleDownload}
+          onView={setViewingDocument}
+          onNotifyAssignee={handleNotifyAssignee}
+          onRemoveAssignee={handleRemoveAssignee}
+          canUploadDocuments={canUploadDocuments}
+          canDownloadDocuments={canDownloadDocuments}
+          canEditDocumentTypes={canEditDocumentTypes}
+          isCurrentUserAssigneeWithPendingTask={!!isCurrentUserAssigneeWithPendingTask}
+          isReadOnly={isReadOnly}
+        />
+      </div>
 
       {/* Modals */}
       {selectedType && (
@@ -411,6 +571,7 @@ export default function DocumentsTab({ projectId, projectStatus }: DocumentsTabP
           downloadUrl={documentsApi.getDownloadUrl(projectId, viewingDocument.identifier)}
         />
       )}
+      </div>
     </div>
   );
 }

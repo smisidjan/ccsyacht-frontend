@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ComponentType, type SVGProps } from "react";
 import {
   AdjustmentsHorizontalIcon,
   MagnifyingGlassIcon,
@@ -16,6 +16,10 @@ export interface FilterOption {
   /** Optional hex colour drawn as a small dot in front of the label —
    *  used for stage / status indicators. */
   swatch?: string;
+  /** Optional heroicon (or any SVG component) drawn in front of the
+   *  label. Lets callers carry the same visual cue they had on the
+   *  trigger button (e.g. project status icons) into the popover. */
+  icon?: ComponentType<SVGProps<SVGSVGElement>>;
 }
 
 /** One axis of filtering. The component is purely presentational: the
@@ -218,6 +222,12 @@ export default function FilterPopover({
                         <span
                           className="w-2.5 h-2.5 rounded-full flex-shrink-0 border border-white dark:border-gray-800 shadow-sm"
                           style={{ backgroundColor: option.swatch }}
+                          aria-hidden="true"
+                        />
+                      )}
+                      {option.icon && (
+                        <option.icon
+                          className="w-4 h-4 flex-shrink-0 text-gray-500 dark:text-gray-400"
                           aria-hidden="true"
                         />
                       )}
