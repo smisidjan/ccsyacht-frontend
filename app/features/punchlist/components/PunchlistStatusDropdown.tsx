@@ -23,8 +23,6 @@ const statusChipColors: Record<PunchlistItemStatus, string> = {
   open: "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300",
   in_progress:
     "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400",
-  next_step_release:
-    "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400",
   done: "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400",
   cancelled:
     "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400",
@@ -38,13 +36,10 @@ const statusChipColors: Record<PunchlistItemStatus, string> = {
 // Backward transitions are intentionally allowed (re-opening a done
 // item, dropping an in-progress item back to open) — the workflow is
 // a graph, not a one-way ratchet, and users routinely correct
-// mis-clicks. `next_step_release` is no longer a step we lead users
-// into; legacy items already in that state can still exit, but no
-// transition arrives there.
+// mis-clicks.
 const ALLOWED_NEXT: Record<PunchlistItemStatus, PunchlistItemStatus[]> = {
   open: ["in_progress"],
   in_progress: ["open", "done"],
-  next_step_release: ["open", "in_progress", "done"],
   done: ["in_progress"],
   cancelled: [],
 };
@@ -181,8 +176,6 @@ const statusDotClass = (s: PunchlistItemStatus): string => {
     case "open":
       return "bg-gray-400";
     case "in_progress":
-      return "bg-blue-500";
-    case "next_step_release":
       return "bg-blue-500";
     case "done":
       return "bg-green-500";

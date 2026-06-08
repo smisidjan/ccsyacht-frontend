@@ -173,38 +173,6 @@ const getStageStatusBadge = (status: StageStatus) => {
   );
 };
 
-// Pin status badge — reflects the linked punchlist item's status
-// (open / in_progress / done / cancelled), which is what the user
-// actually wants to triage from this view. Stage status lives one
-// level up and is shown separately in the detail panel.
-const punchlistStatusBadgeStyles: Record<PunchlistItemStatus, string> = {
-  open: "bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300",
-  in_progress: "bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300",
-  next_step_release:
-    "bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300",
-  done: "bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300",
-  cancelled: "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300",
-};
-const getPunchlistStatusBadge = (
-  status: PunchlistItemStatus | undefined,
-  label: string
-) => {
-  if (!status) {
-    return (
-      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400">
-        —
-      </span>
-    );
-  }
-  return (
-    <span
-      className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${punchlistStatusBadgeStyles[status]}`}
-    >
-      {label}
-    </span>
-  );
-};
-
 export default function GeneralArrangementTab({
   projectId,
   generalArrangement,
@@ -214,22 +182,6 @@ export default function GeneralArrangementTab({
   const tCommon = useTranslations("common");
   const tPunchlist = useTranslations("punchlist");
 
-  // Localized labels for the punchlist status badge / filter — kept
-  // inline so the badge helper stays a pure renderer.
-  const punchlistStatusLabel = (s: PunchlistItemStatus): string => {
-    switch (s) {
-      case "open":
-        return tPunchlist("statusOpen");
-      case "in_progress":
-        return tPunchlist("statusInProgress");
-      case "next_step_release":
-        return tPunchlist("statusNextStepRelease");
-      case "done":
-        return tPunchlist("statusDone");
-      case "cancelled":
-        return tPunchlist("statusCancelled");
-    }
-  };
   const { hasPermission } = usePermission();
   const router = useRouter();
   const { showToast } = useToast();
@@ -933,15 +885,14 @@ export default function GeneralArrangementTab({
             the toggles live inside the left column and would
             otherwise leave the list starting a few rows higher than
             the drawing it's annotating. */}
-        <div className="flex-1 min-w-0 lg:mt-20 lg:sticky lg:top-4 lg:self-start lg:max-h-[calc(100vh-2rem)]">
+        <div className="flex-1 min-w-0 lg:mt-20 lg:sticky lg:top-4 lg:self-start">
           {!selectedDetail ? (
             displayedPins.length === 0 ? (
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 {tPins("noPins")}
               </p>
             ) : (
-              <div className="lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto lg:overflow-x-hidden">
-                <PunchlistTreeList
+              <PunchlistTreeList
                   items={displayedTreeItems}
                   projectId={projectId}
                   selectedItemId={selectedDetailId}
@@ -990,10 +941,9 @@ export default function GeneralArrangementTab({
                   onRequestCancel={(t) => setCancelTarget(t)}
                   onAssigneesChange={() => refreshAll()}
                 />
-              </div>
-            )
+              )
           ) : (
-            <div className="space-y-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto lg:overflow-x-hidden">
+            <div className="space-y-4">
               <button
                 onClick={() => setSelectedDetailId(null)}
                 className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"

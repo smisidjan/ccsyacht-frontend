@@ -201,7 +201,7 @@ export const systemKickoffDocumentTemplatesApi = {
 // ============ Release Form Templates ============
 // Mirrors the kickoff-document-templates surface: same JSON + multipart
 // CRUD, plus reorder. Stage templates carry a required FK to one of
-// these (the gate for the `next_step_release` review flow).
+// these so the stage knows which form the user signs off with.
 export const systemReleaseFormTemplatesApi = {
   getAll: (
     tenantId: string,

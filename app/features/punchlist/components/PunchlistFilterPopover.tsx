@@ -93,7 +93,6 @@ type Category =
 const STATUS_OPTIONS: PunchlistItemStatus[] = [
   "open",
   "in_progress",
-  "next_step_release",
   "done",
   "cancelled",
 ];
