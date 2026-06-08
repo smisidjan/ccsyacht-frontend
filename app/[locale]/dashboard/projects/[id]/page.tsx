@@ -192,7 +192,7 @@ function ProjectDetailPageContent({ projectId }: { projectId: string }) {
           <LogbookTab projectId={projectId} />
         )}
         {activeTab === "reporting" && (
-          <ReportingTab />
+          <ReportingTab projectId={projectId} />
         )}
         {activeTab === "settings" && (
           <SettingsTab projectId={projectId} onProjectUpdate={refetch} />
