@@ -74,6 +74,7 @@ const DECK_COLOR = "#3B82F6";
 const SIDE_PROFILE_COLOR = "#A855F7";
 
 const STORAGE_KEY_PREFIX = "ccs_deck_modal_";
+const STORAGE_KEY_PREFIX_EDIT = "ccs_deck_modal_edit_";
 /** Bump when the cached shape changes — older caches get dropped on
  *  load. v2 = polygon-based (was bbox in v1, never versioned). */
 const STORAGE_VERSION = "v2";
@@ -157,7 +158,11 @@ export default function CreateDeckModal({
   const tCommon = useTranslations("common");
   const { showToast } = useToast();
 
-  const storageKey = `${STORAGE_KEY_PREFIX}${projectId}`;
+  // Separate keys per mode so a half-finished "create new decks" draft
+  // can't clobber an in-progress edit of existing decks.
+  const storageKey = `${
+    editMode ? STORAGE_KEY_PREFIX_EDIT : STORAGE_KEY_PREFIX
+  }${projectId}`;
 
   const [pendingDecks, setPendingDecks] = useState<PendingDeck[]>([]);
   const [editingDeckId, setEditingDeckId] = useState<string | null>(null);
@@ -179,28 +184,27 @@ export default function CreateDeckModal({
 
   const showGAPreview = !!(gaImageUrl && gaImageWidth && gaImageHeight);
 
-  // Load data on mount — API for edit mode, localStorage otherwise.
-  // Also pin the active draw target to the primary deck polygon so the
-  // user can start drawing immediately; without this, clicks land but
-  // `polygons.set` is a no-op (`activeId === null`) and nothing shows.
+  // Load data on mount — both modes prefer a same-version cached
+  // draft (so a refresh mid-edit doesn't lose work) and fall back to
+  // the live API state. Also pin the active draw target to the
+  // primary deck polygon so the user can start drawing immediately;
+  // without this, clicks land but `polygons.set` is a no-op
+  // (`activeId === null`) and nothing shows.
   useEffect(() => {
     if (!isOpen) return;
     polygons.setActive(PRIMARY_KEY);
-    if (editMode && existingDecks) {
-      setPendingDecks(existingDecks.map(apiDeckToPendingDeck));
-      return;
-    }
-    // Create mode: read from localStorage, drop if version mismatch.
+
+    let restoredFromCache = false;
     try {
       const saved = localStorage.getItem(storageKey);
-      if (!saved) return;
-      const data = JSON.parse(saved);
-      if (data.version !== STORAGE_VERSION) {
-        localStorage.removeItem(storageKey);
-        return;
-      }
-      if (Array.isArray(data.pendingDecks)) {
-        setPendingDecks(data.pendingDecks.map(normalizePendingDeck));
+      if (saved) {
+        const data = JSON.parse(saved);
+        if (data.version !== STORAGE_VERSION) {
+          localStorage.removeItem(storageKey);
+        } else if (Array.isArray(data.pendingDecks)) {
+          setPendingDecks(data.pendingDecks.map(normalizePendingDeck));
+          restoredFromCache = true;
+        }
       }
     } catch (e) {
       handleError(e, {
@@ -208,10 +212,20 @@ export default function CreateDeckModal({
         context: "Loading deck data from localStorage",
       });
     }
+
+    // Edit mode: seed from the API only when there's no draft yet.
+    // A cached draft always wins so refresh-during-edit is non-lossy.
+    if (!restoredFromCache && editMode && existingDecks) {
+      setPendingDecks(existingDecks.map(apiDeckToPendingDeck));
+    }
   }, [isOpen, storageKey, editMode, existingDecks]);
 
+  // Persist drafts in both modes. Edit mode used to skip this, which
+  // is exactly why a hard refresh wiped the user's in-progress
+  // changes. We still bail when the list is empty so cleaning out
+  // every deck doesn't leave a stale empty cache around.
   useEffect(() => {
-    if (!isOpen || editMode || pendingDecks.length === 0) return;
+    if (!isOpen || pendingDecks.length === 0) return;
     try {
       localStorage.setItem(
         storageKey,
@@ -223,7 +237,7 @@ export default function CreateDeckModal({
         context: "Saving deck data to localStorage",
       });
     }
-  }, [pendingDecks, isOpen, storageKey, editMode]);
+  }, [pendingDecks, isOpen, storageKey]);
 
   // Reset the form back to "add new deck" mode.
   const resetForm = useCallback(() => {
@@ -386,7 +400,9 @@ export default function CreateDeckModal({
         }
       }
 
-      if (!editMode) localStorage.removeItem(storageKey);
+      // Saved successfully — drop the draft cache in both modes so
+      // reopening shows the freshly-persisted state from the API.
+      localStorage.removeItem(storageKey);
 
       showToast(
         "success",
@@ -445,8 +461,12 @@ export default function CreateDeckModal({
     if (!showGAPreview) return [];
     const out: Overlay[] = [];
 
-    // Other pending decks (not currently being edited) — dashed so they
-    // read as "committed but in another deck's context".
+    // Other pending decks (not currently being edited) — dashed so
+    // they read as "committed but in another deck's context".
+    // Intentionally not clickable: a single click used to silently
+    // swap edit context, which destroyed in-progress work the moment
+    // the user grazed the wrong shape. Switching decks now requires
+    // an explicit pencil click in the right-hand list.
     for (const d of pendingDecks) {
       if (d.id === editingDeckId) continue;
       if (d.polygon.length >= MIN_VERTICES) {
@@ -455,7 +475,6 @@ export default function CreateDeckModal({
           points: d.polygon,
           color: DECK_COLOR,
           dashed: true,
-          onClick: () => handleEditDeck(d),
         });
       }
       for (const sp of d.sideProfiles) {
@@ -465,7 +484,6 @@ export default function CreateDeckModal({
           points: sp.polygon,
           color: SIDE_PROFILE_COLOR,
           dashed: true,
-          onClick: () => handleEditDeck(d),
         });
       }
     }

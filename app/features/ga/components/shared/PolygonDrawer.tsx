@@ -25,6 +25,49 @@ import { FitBounds, getFullImageBounds } from "@/lib/utils/gaLeaflet";
  *  closed polygon. */
 const MIN_VERTICES = 3;
 
+/** Wheel-to-zoom sensitivity. Multiplies wheel deltaY → zoom-level
+ *  delta. Trackpad pinch and mouse scroll both come through here, so
+ *  the value is tuned for "fine-grained" rather than "fast". */
+const WHEEL_ZOOM_SENSITIVITY = 0.006;
+
+/**
+ * Replaces Leaflet's default `scrollWheelZoom` so plain wheel events
+ * bubble up to the surrounding scroller (modal body, page) and only
+ * Cmd/Ctrl+wheel zooms. macOS trackpad pinch-to-zoom dispatches wheel
+ * events with `ctrlKey=true`, so it works through the same path.
+ * Uses fractional zoom + cursor-anchored `setZoomAround` for a smooth
+ * continuous feel — pair with `zoomSnap={0}` on the MapContainer.
+ */
+function SmoothModifierZoom() {
+  const map = useMap();
+  useEffect(() => {
+    const container = map.getContainer();
+    const onWheel = (event: WheelEvent) => {
+      const isZoomGesture = event.ctrlKey || event.metaKey;
+      if (!isZoomGesture) return; // let it bubble — modal/page can scroll
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      const zoomDelta = -event.deltaY * WHEEL_ZOOM_SENSITIVITY;
+      const targetZoom = Math.max(
+        map.getMinZoom(),
+        Math.min(map.getMaxZoom(), map.getZoom() + zoomDelta)
+      );
+      const rect = container.getBoundingClientRect();
+      const cursorPoint = L.point(
+        event.clientX - rect.left,
+        event.clientY - rect.top
+      );
+      const cursorLatLng = map.containerPointToLatLng(cursorPoint);
+      map.setZoomAround(cursorLatLng, targetZoom, { animate: false });
+    };
+    container.addEventListener("wheel", onWheel, { passive: false });
+    return () => container.removeEventListener("wheel", onWheel);
+  }, [map]);
+  return null;
+}
+
 const STROKE_COLOR = "#1d4ed8";
 const FILL_COLOR = "#2563eb";
 const FILL_OPACITY_OPEN = 0.15;
@@ -540,9 +583,15 @@ export default function PolygonDrawer({
         maxBoundsViscosity={1.0}
         minZoom={-5}
         maxZoom={4}
-        zoomDelta={0.5}
-        wheelPxPerZoomLevel={30}
-        scrollWheelZoom
+        zoomDelta={0.25}
+        // Allow fractional zoom levels so the modifier-wheel handler
+        // can land on any value smoothly. The +/- buttons still snap
+        // to `zoomDelta` increments.
+        zoomSnap={0}
+        // Plain wheel must scroll the modal/page; the
+        // SmoothModifierZoom child below handles Cmd/Ctrl+wheel and
+        // trackpad pinch zoom instead.
+        scrollWheelZoom={false}
         doubleClickZoom={false}
         // Off so Leaflet doesn't put `tabindex=0` on the container.
         // First click would otherwise focus it, the browser would
@@ -554,6 +603,7 @@ export default function PolygonDrawer({
         style={{ height: "100%", width: "100%", background: "#f3f4f6" }}
       >
         <ImageOverlay url={imageUrl} bounds={fullBounds} />
+        <SmoothModifierZoom />
         {/* Default fitter — fits the full image to the canvas on mount
             and pins the zoom-out floor to the fit level so the user
             can't pan past the image edges into grey canvas. Consumers
