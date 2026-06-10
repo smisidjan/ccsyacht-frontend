@@ -51,11 +51,19 @@ export function getTodayDateString(): string {
 }
 
 /**
- * Create ISO datetime string from date and time
+ * Build a full ISO datetime string from a separate date + time the
+ * user picked in their local timezone. The earlier naive
+ * concatenation (`${date}T${time}:00`) shipped without a timezone
+ * designator, so the backend treated it as UTC and the read-back via
+ * `new Date(...).toLocaleTimeString(...)` rendered the wrong clock
+ * time in any non-UTC zone. Parsing as a local Date and serialising
+ * with `.toISOString()` (UTC + `Z`) lets the round-trip preserve the
+ * clock time the user actually picked.
+ *
  * @param date - Date in YYYY-MM-DD format
  * @param time - Time in HH:MM format
- * @returns ISO datetime string (e.g., "2024-01-15T09:00:00")
+ * @returns ISO datetime string with UTC offset (e.g., "2026-06-12T13:00:00.000Z")
  */
 export function createISODateTime(date: string, time: string): string {
-  return `${date}T${time}:00`;
+  return new Date(`${date}T${time}:00`).toISOString();
 }
