@@ -19,54 +19,14 @@ import {
 } from "@/lib/utils/gaCoordinates";
 import { bboxToPolygon, polygonBbox } from "@/lib/utils/geometry";
 import { FitBounds, getFullImageBounds } from "@/lib/utils/gaLeaflet";
+import SmoothModifierZoom, {
+  SMOOTH_MAP_DEFAULTS,
+} from "./SmoothModifierZoom";
 
 /** Minimum vertices any polygon must have. Backend rejects fewer, and
  *  the Shift+click delete helper enforces it so the user can't break a
  *  closed polygon. */
 const MIN_VERTICES = 3;
-
-/** Wheel-to-zoom sensitivity. Multiplies wheel deltaY → zoom-level
- *  delta. Trackpad pinch and mouse scroll both come through here, so
- *  the value is tuned for "fine-grained" rather than "fast". */
-const WHEEL_ZOOM_SENSITIVITY = 0.006;
-
-/**
- * Replaces Leaflet's default `scrollWheelZoom` so plain wheel events
- * bubble up to the surrounding scroller (modal body, page) and only
- * Cmd/Ctrl+wheel zooms. macOS trackpad pinch-to-zoom dispatches wheel
- * events with `ctrlKey=true`, so it works through the same path.
- * Uses fractional zoom + cursor-anchored `setZoomAround` for a smooth
- * continuous feel — pair with `zoomSnap={0}` on the MapContainer.
- */
-function SmoothModifierZoom() {
-  const map = useMap();
-  useEffect(() => {
-    const container = map.getContainer();
-    const onWheel = (event: WheelEvent) => {
-      const isZoomGesture = event.ctrlKey || event.metaKey;
-      if (!isZoomGesture) return; // let it bubble — modal/page can scroll
-
-      event.preventDefault();
-      event.stopPropagation();
-
-      const zoomDelta = -event.deltaY * WHEEL_ZOOM_SENSITIVITY;
-      const targetZoom = Math.max(
-        map.getMinZoom(),
-        Math.min(map.getMaxZoom(), map.getZoom() + zoomDelta)
-      );
-      const rect = container.getBoundingClientRect();
-      const cursorPoint = L.point(
-        event.clientX - rect.left,
-        event.clientY - rect.top
-      );
-      const cursorLatLng = map.containerPointToLatLng(cursorPoint);
-      map.setZoomAround(cursorLatLng, targetZoom, { animate: false });
-    };
-    container.addEventListener("wheel", onWheel, { passive: false });
-    return () => container.removeEventListener("wheel", onWheel);
-  }, [map]);
-  return null;
-}
 
 const STROKE_COLOR = "#1d4ed8";
 const FILL_COLOR = "#2563eb";
@@ -583,15 +543,9 @@ export default function PolygonDrawer({
         maxBoundsViscosity={1.0}
         minZoom={-5}
         maxZoom={4}
-        zoomDelta={0.25}
-        // Allow fractional zoom levels so the modifier-wheel handler
-        // can land on any value smoothly. The +/- buttons still snap
-        // to `zoomDelta` increments.
-        zoomSnap={0}
-        // Plain wheel must scroll the modal/page; the
-        // SmoothModifierZoom child below handles Cmd/Ctrl+wheel and
-        // trackpad pinch zoom instead.
-        scrollWheelZoom={false}
+        // Cmd/Ctrl+wheel zoom + bubble plain wheel — see
+        // SmoothModifierZoom child below.
+        {...SMOOTH_MAP_DEFAULTS}
         doubleClickZoom={false}
         // Off so Leaflet doesn't put `tabindex=0` on the container.
         // First click would otherwise focus it, the browser would

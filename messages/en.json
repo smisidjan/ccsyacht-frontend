@@ -2056,7 +2056,9 @@
     "draw": "Draw",
     "editDrawing": "Edit rectangle",
     "rectangleDrawn": "Rectangle drawn",
-    "sideProfileCount": "{count, plural, one {# side profile} other {# side profiles}}"
+    "sideProfileCount": "{count, plural, one {# side profile} other {# side profiles}}",
+    "areaCount": "{count, plural, one {# area} other {# areas}}",
+    "cannotDeleteHasAreas": "Can't delete — this deck still has {count, plural, one {# area} other {# areas}}. Remove or reassign them first."
   },
   "areaDetail": {
     "loading": "Loading...",

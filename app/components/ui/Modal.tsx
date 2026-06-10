@@ -139,17 +139,16 @@ export default function Modal({
     </div>
   ) : null;
 
-  // Wrap content in form if needed
+  // The error banner is rendered outside the scrollable body so it
+  // stays visible even when the user has scrolled far down — a stale
+  // error tucked away above the fold is the main reason failures
+  // feel invisible.
   const content = isForm && onSubmit ? (
     <form id={formId} onSubmit={handleFormSubmit} className="space-y-4">
-      {error && <Alert type="error" message={error} />}
       {children}
     </form>
   ) : (
-    <>
-      {error && <Alert type="error" message={error} className="mb-4" />}
-      {children}
-    </>
+    children
   );
 
   // Portal to `document.body` so the modal escapes any ancestor's
@@ -178,6 +177,15 @@ export default function Modal({
             <XMarkIcon className="w-5 h-5" />
           </button>
         </div>
+
+        {/* Sticky error banner — sits between header and body, so it
+            stays put even when the user has scrolled deep into the
+            content. */}
+        {error && (
+          <div className="px-6 py-3 md:px-8 border-b border-red-200 dark:border-red-900/50">
+            <Alert type="error" message={error} />
+          </div>
+        )}
 
         <div className="flex-1 overflow-y-auto px-6 py-5 md:px-8 md:py-6">
           {content}

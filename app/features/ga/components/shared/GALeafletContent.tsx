@@ -15,6 +15,9 @@ import {
 } from "@/lib/utils/gaCoordinates";
 import { FitBounds, getFullImageBounds } from "@/lib/utils/gaLeaflet";
 import PinMarker from "./PinMarker";
+import SmoothModifierZoom, {
+  SMOOTH_MAP_DEFAULTS,
+} from "./SmoothModifierZoom";
 
 // Fix Leaflet default marker icon issue in Next.js
 import icon from "leaflet/dist/images/marker-icon.png";
@@ -156,9 +159,9 @@ export default function GALeafletContent({
         maxBoundsViscosity={1.0}
         minZoom={-5}
         maxZoom={4}
-        zoomSnap={0.25}
-        zoomDelta={0.5}
-        scrollWheelZoom={true}
+        // Cmd/Ctrl+wheel zoom + bubble plain wheel — see
+        // SmoothModifierZoom child below.
+        {...SMOOTH_MAP_DEFAULTS}
         doubleClickZoom={true}
         touchZoom={true}
         dragging={true}
@@ -180,6 +183,7 @@ export default function GALeafletContent({
             isn't useful. `delayMs` waits for the flex container to settle
             before the second fit. */}
         <FitBounds bounds={bounds} delayMs={100} lockMinZoomToFit />
+        <SmoothModifierZoom />
 
         {/* GA Image as overlay */}
         <ImageOverlay

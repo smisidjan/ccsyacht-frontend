@@ -2086,7 +2086,9 @@
     "draw": "Tekenen",
     "editDrawing": "Rechthoek aanpassen",
     "rectangleDrawn": "Rechthoek getekend",
-    "sideProfileCount": "{count, plural, one {# side profile} other {# side profiles}}"
+    "sideProfileCount": "{count, plural, one {# side profile} other {# side profiles}}",
+    "areaCount": "{count, plural, one {# gebied} other {# gebieden}}",
+    "cannotDeleteHasAreas": "Kan niet verwijderen — dit dek heeft nog {count, plural, one {# gebied} other {# gebieden}}. Verplaats of verwijder die eerst."
   },
   "areaDetail": {
     "loading": "Laden...",

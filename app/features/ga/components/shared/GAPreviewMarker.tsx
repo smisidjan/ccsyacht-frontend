@@ -15,6 +15,9 @@ import {
 } from "@/lib/utils/gaCoordinates";
 import { getFullImageBounds } from "@/lib/utils/gaLeaflet";
 import { createDonePinIcon } from "./pinIcons";
+import SmoothModifierZoom, {
+  SMOOTH_MAP_DEFAULTS,
+} from "./SmoothModifierZoom";
 
 interface GAPreviewMarkerProps {
   imageUrl: string;
@@ -291,10 +294,9 @@ export default function GAPreviewMarker({
         maxBoundsViscosity={1.0}
         minZoom={-5}
         maxZoom={4}
-        // zoomSnap={0}
-        zoomDelta={0.5}
-        wheelPxPerZoomLevel={30}
-        scrollWheelZoom={true}
+        // Cmd/Ctrl+wheel zoom + bubble plain wheel — see
+        // SmoothModifierZoom child below.
+        {...SMOOTH_MAP_DEFAULTS}
         doubleClickZoom={false}
         touchZoom={true}
         dragging={true}
@@ -308,6 +310,7 @@ export default function GAPreviewMarker({
           background: "#f3f4f6",
         }}
       >
+        <SmoothModifierZoom />
         <FitToMarker
           bounds={bounds}
           initialMarkerPosition={markerPosition}

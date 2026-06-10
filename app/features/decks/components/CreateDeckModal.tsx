@@ -63,6 +63,11 @@ interface PendingDeck {
   isClosed: boolean;
   sideProfiles: PendingSideProfile[];
   isExisting?: boolean;
+  /** Number of areas currently attached to this deck (server snapshot
+   *  at load time). Used to gate the delete button so the user can't
+   *  queue up a deletion the backend will reject — the API returns
+   *  "Cannot delete deck X: it still has areas." */
+  areaCount?: number;
 }
 
 /** Active draw target for the polygons hook. The deck's primary polygon
@@ -114,6 +119,7 @@ function apiDeckToPendingDeck(deck: Deck): PendingDeck {
     isClosed: polygon.length >= MIN_VERTICES,
     sideProfiles,
     isExisting: true,
+    areaCount: deck.areaCount ?? 0,
   };
 }
 
@@ -140,6 +146,7 @@ function normalizePendingDeck(deck: Partial<PendingDeck> & { id?: string }): Pen
     isClosed: !!deck.isClosed,
     sideProfiles,
     isExisting: deck.isExisting,
+    areaCount: deck.areaCount,
   };
 }
 
@@ -351,14 +358,28 @@ export default function CreateDeckModal({
     try {
       // Delete decks the user removed in edit mode before the
       // create/update pass — applied as a single transaction from the
-      // user's point of view.
+      // user's point of view. When the backend rejects a deletion
+      // (typically "still has areas"), the deck is restored to the
+      // local list so the user doesn't lose track of which deck
+      // failed. Without this, refresh + cache would silently drop the
+      // failed-to-delete deck from view.
       if (editMode && existingDecks) {
         const keptIds = new Set(
           pendingDecks.filter((d) => d.isExisting).map((d) => d.id)
         );
-        const toDelete = existingDecks.filter((d) => !keptIds.has(d.identifier));
+        const toDelete = existingDecks.filter(
+          (d) => !keptIds.has(d.identifier)
+        );
         for (const d of toDelete) {
-          await decksApi.delete(projectId, d.identifier);
+          try {
+            await decksApi.delete(projectId, d.identifier);
+          } catch (deleteErr) {
+            const restored = apiDeckToPendingDeck(d);
+            setPendingDecks((prev) =>
+              prev.some((p) => p.id === restored.id) ? prev : [...prev, restored]
+            );
+            throw deleteErr;
+          }
         }
       }
 
@@ -794,7 +815,9 @@ export default function CreateDeckModal({
               </p>
             ) : (
               <ul className="space-y-2">
-                {pendingDecks.map((deck) => (
+                {pendingDecks.map((deck) => {
+                  const hasAreas = (deck.areaCount ?? 0) > 0;
+                  return (
                   <li
                     key={deck.id}
                     className={`flex items-center justify-between p-3 rounded-lg border ${
@@ -815,6 +838,11 @@ export default function CreateDeckModal({
                         {deck.description && (
                           <p className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[180px]">
                             {deck.description}
+                          </p>
+                        )}
+                        {hasAreas && (
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                            {t("areaCount", { count: deck.areaCount ?? 0 })}
                           </p>
                         )}
                         {deck.sideProfiles.length > 0 && (
@@ -838,14 +866,22 @@ export default function CreateDeckModal({
                       <button
                         type="button"
                         onClick={() => handleRemoveDeck(deck.id)}
-                        className="p-1.5 text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 transition-colors"
-                        title={tCommon("remove")}
+                        disabled={hasAreas}
+                        className="p-1.5 text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:text-gray-500 dark:disabled:hover:text-gray-400"
+                        title={
+                          hasAreas
+                            ? t("cannotDeleteHasAreas", {
+                                count: deck.areaCount ?? 0,
+                              })
+                            : tCommon("remove")
+                        }
                       >
                         <TrashIcon className="w-4 h-4" />
                       </button>
                     </div>
                   </li>
-                ))}
+                  );
+                })}
               </ul>
             )}
           </div>
