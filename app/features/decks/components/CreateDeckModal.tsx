@@ -622,6 +622,12 @@ export default function CreateDeckModal({
       title={editMode ? t("manageDecks") : t("defineDecks")}
       size="2xl"
       error={error}
+      // The draft (form input, polygon mid-draw, side-profile edits)
+      // only persists when the user dismisses via an explicit Close
+      // or Save Changes — a stray backdrop click or Escape press
+      // would silently lose work the moment it landed.
+      disableBackdropClick
+      disableEscClose
       actions={[
         {
           label: tCommon("close"),

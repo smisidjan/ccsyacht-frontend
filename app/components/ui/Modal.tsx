@@ -36,6 +36,11 @@ interface ModalProps {
 
   // Disable backdrop click to close
   disableBackdropClick?: boolean;
+  /** Suppress the Escape-to-close shortcut. Pair with
+   *  `disableBackdropClick` to force the user to dismiss via an
+   *  explicit footer action — useful when the modal contains
+   *  hard-won draft state that an accidental click would lose. */
+  disableEscClose?: boolean;
 }
 
 const sizeClasses = {
@@ -59,6 +64,7 @@ export default function Modal({
   formId,
   error,
   disableBackdropClick = false,
+  disableEscClose = false,
 }: ModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -72,6 +78,7 @@ export default function Modal({
 
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
+      if (disableEscClose) return;
       if (e.key === "Escape") onClose();
     };
 
@@ -84,7 +91,7 @@ export default function Modal({
       document.removeEventListener("keydown", handleEscape);
       document.body.style.overflow = "unset";
     };
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, disableEscClose]);
 
   const handleBackdropClick = (e: React.MouseEvent) => {
     if (disableBackdropClick) return;
