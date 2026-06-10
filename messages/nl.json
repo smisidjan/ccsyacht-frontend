@@ -2088,7 +2088,9 @@
     "rectangleDrawn": "Rechthoek getekend",
     "sideProfileCount": "{count, plural, one {# side profile} other {# side profiles}}",
     "areaCount": "{count, plural, one {# gebied} other {# gebieden}}",
-    "cannotDeleteHasAreas": "Kan niet verwijderen — dit dek heeft nog {count, plural, one {# gebied} other {# gebieden}}. Verplaats of verwijder die eerst."
+    "cannotDeleteHasAreas": "Kan niet verwijderen — dit dek heeft nog {count, plural, one {# gebied} other {# gebieden}}. Verplaats of verwijder die eerst.",
+    "mobileTabGA": "GA-viewer",
+    "mobileTabDecks": "Dekken ({count})"
   },
   "areaDetail": {
     "loading": "Laden...",

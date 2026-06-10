@@ -12,6 +12,9 @@ import { PencilIcon, PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
 import type { Deck, AreaPolygonPoint, DeckSideProfilePolygonInput } from "@/lib/api/types";
 import { usePlacementPolygons } from "@/lib/hooks/usePlacementPolygons";
 import { handleError } from "@/lib/utils/errors";
+import { polygonBbox } from "@/lib/utils/geometry";
+import { FitBounds } from "@/lib/utils/gaLeaflet";
+import type { LatLngBoundsExpression } from "leaflet";
 
 // Leaflet uses `window` at module-top, so the drawer + its polygon
 // overlays can only render client-side. Pulling them in dynamically
@@ -189,6 +192,23 @@ export default function CreateDeckModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  /** Mobile-only view switcher. The desktop layout shows both panels
+   *  side by side; below `lg` we'd otherwise jam them into a single
+   *  row that squeezes the GA viewer to nothing, so we expose
+   *  explicit tabs instead. Default to the GA viewer so users land on
+   *  the drawing surface — entering edit mode also jumps here. */
+  const [activeMobileTab, setActiveMobileTab] = useState<"ga" | "decks">("ga");
+
+  /** When the user picks a deck to edit, we want the GA viewer to
+   *  zoom + pan to that deck's polygon. `bounds` carries the focus
+   *  rect; `version` increments on every focus request so re-picking
+   *  the same deck (same bounds object) still re-fits. `null` means
+   *  "use the default full-image fit". */
+  const [focusFit, setFocusFit] = useState<{
+    bounds: LatLngBoundsExpression;
+    version: number;
+  } | null>(null);
+
   const showGAPreview = !!(gaImageUrl && gaImageWidth && gaImageHeight);
 
   // Load data on mount — both modes prefer a same-version cached
@@ -255,6 +275,9 @@ export default function CreateDeckModal({
     polygons.setActive(PRIMARY_KEY);
     setEditingDeckId(null);
     setError(null);
+    // Drop the deck-specific focus so the viewer falls back to its
+    // default fit-to-full-image framing on the next render.
+    setFocusFit(null);
   }, [polygons]);
 
   // Snapshot the working copy back into a PendingDeck. Used by the
@@ -300,6 +323,32 @@ export default function CreateDeckModal({
   // Switch the form into "edit" mode for an existing pending deck. Seeds
   // every polygon (primary + each side profile) into the polygons hook
   // and points the active target at the primary one.
+  /** Build a Leaflet bounds expression around a normalized 0..1
+   *  polygon, in the same image-pixel coordinate space as the
+   *  PolygonDrawer's CRS.Simple map. Returns `null` for polygons too
+   *  small to frame or when the GA image dimensions are unknown. */
+  const polygonToLeafletBounds = useCallback(
+    (polygon: AreaPolygonPoint[]): LatLngBoundsExpression | null => {
+      if (
+        polygon.length < MIN_VERTICES ||
+        !gaImageWidth ||
+        !gaImageHeight
+      ) {
+        return null;
+      }
+      const bbox = polygonBbox(polygon);
+      if (!bbox) return null;
+      return [
+        [bbox.bbox_y * gaImageHeight, bbox.bbox_x * gaImageWidth],
+        [
+          (bbox.bbox_y + bbox.bbox_height) * gaImageHeight,
+          (bbox.bbox_x + bbox.bbox_width) * gaImageWidth,
+        ],
+      ];
+    },
+    [gaImageWidth, gaImageHeight]
+  );
+
   const handleEditDeck = useCallback(
     (deck: PendingDeck) => {
       setEditingDeckId(deck.id);
@@ -318,8 +367,21 @@ export default function CreateDeckModal({
         polygons.seed(sp.id, sp.polygon, sp.isClosed);
       }
       polygons.setActive(PRIMARY_KEY);
+      // Jump to the GA viewer on mobile so the user immediately sees
+      // (and can tweak) the polygon they just chose to edit.
+      setActiveMobileTab("ga");
+      // Re-frame the viewer on the deck the user picked. `version` is
+      // bumped so re-clicking the same pencil still re-fits if the
+      // user has since panned away.
+      const bounds = polygonToLeafletBounds(deck.polygon);
+      if (bounds) {
+        setFocusFit((prev) => ({
+          bounds,
+          version: (prev?.version ?? 0) + 1,
+        }));
+      }
     },
-    [polygons]
+    [polygons, polygonToLeafletBounds]
   );
 
   const handleAddSideProfile = () => {
@@ -577,14 +639,49 @@ export default function CreateDeckModal({
         },
       ]}
     >
-      <div className="flex gap-6">
+      <div className="flex flex-col gap-4">
+        {/* Mobile-only tab switcher. The desktop layout fits both
+            panels side by side; below `lg` we expose them as tabs so
+            the GA viewer can actually breathe on a phone. */}
+        {showGAPreview && (
+          <div className="lg:hidden flex p-1 bg-gray-100 dark:bg-gray-800 rounded-lg">
+            <button
+              type="button"
+              onClick={() => setActiveMobileTab("ga")}
+              className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${
+                activeMobileTab === "ga"
+                  ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
+                  : "text-gray-600 dark:text-gray-400"
+              }`}
+            >
+              {t("mobileTabGA")}
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveMobileTab("decks")}
+              className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${
+                activeMobileTab === "decks"
+                  ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
+                  : "text-gray-600 dark:text-gray-400"
+              }`}
+            >
+              {t("mobileTabDecks", { count: pendingDecks.length })}
+            </button>
+          </div>
+        )}
+
+      <div className="flex flex-col lg:flex-row gap-6">
         {/* Left: GA preview. Takes all the column space the form
             leaves over — width fills, height follows aspect-ratio.
             For tall (portrait) GAs the canvas becomes very tall and
             the modal body scrolls; the sticky toolbar keeps the
             undo/redo/rect controls in view. */}
         {showGAPreview && gaImageUrl && gaImageWidth && gaImageHeight && (
-          <div className="flex-1 min-w-0">
+          <div
+            className={`${
+              activeMobileTab === "ga" ? "block" : "hidden"
+            } lg:block flex-1 min-w-0`}
+          >
             <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               {t("deckLocation")}
             </p>
@@ -618,6 +715,23 @@ export default function CreateDeckModal({
                 onReset={polygons.reset}
                 strokeColor={activeColor}
                 fillColor={activeColor}
+                // Animated zoom-to-deck when the user picks one to
+                // edit. `key` on FitBounds remounts it on every
+                // version bump so re-picking the same deck still
+                // re-fits if the user has panned away. Falls back to
+                // the drawer's default full-image fit when there's
+                // no active focus.
+                fitter={
+                  focusFit ? (
+                    <FitBounds
+                      key={focusFit.version}
+                      bounds={focusFit.bounds}
+                      padding={[40, 40]}
+                      refitOnChange
+                      animate
+                    />
+                  ) : undefined
+                }
               >
                 <DeckOverlayLayer
                   overlays={overlays}
@@ -629,9 +743,19 @@ export default function CreateDeckModal({
           </div>
         )}
 
-        {/* Right: form and list — capped narrow so the GA column
-            gets most of the horizontal space. */}
-        <div className={showGAPreview ? "w-80 flex-shrink-0 flex flex-col" : "flex-1"}>
+        {/* Right: form and list — capped narrow on desktop so the GA
+            column gets most of the horizontal space; full-width on
+            mobile (where the mobile-tab visibility class controls
+            whether it renders at all). */}
+        <div
+          className={`${
+            activeMobileTab === "decks" || !showGAPreview ? "block" : "hidden"
+          } lg:block ${
+            showGAPreview
+              ? "lg:w-80 lg:flex-shrink-0 flex flex-col"
+              : "flex-1"
+          }`}
+        >
           <div className="mb-4">
             <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
               {editingDeckId ? t("editDeck") : t("addNewDeck")}
@@ -886,6 +1010,7 @@ export default function CreateDeckModal({
             )}
           </div>
         </div>
+      </div>
       </div>
     </Modal>
   );
