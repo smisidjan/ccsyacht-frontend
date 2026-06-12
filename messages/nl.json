@@ -2089,8 +2089,17 @@
     "sideProfileCount": "{count, plural, one {# side profile} other {# side profiles}}",
     "areaCount": "{count, plural, one {# gebied} other {# gebieden}}",
     "cannotDeleteHasAreas": "Kan niet verwijderen — dit dek heeft nog {count, plural, one {# gebied} other {# gebieden}}. Verplaats of verwijder die eerst.",
-    "mobileTabGA": "GA-viewer",
-    "mobileTabDecks": "Dekken ({count})"
+    "mobileTabGA": "GA",
+    "mobileTabAddDeck": "Dek toevoegen",
+    "mobileTabEditDeck": "Dek bewerken",
+    "mobileTabDeckList": "Dekken ({count})",
+    "deckAddedLocal": "Dek \"{name}\" toegevoegd",
+    "deckUpdatedLocal": "Dek \"{name}\" bijgewerkt",
+    "deleteDeckTitle": "Dek verwijderen",
+    "deleteDeckMessage": "Weet je zeker dat je \"{name}\" wilt verwijderen? Dit kan niet ongedaan worden gemaakt.",
+    "deleteDeckSuccess": "Dek \"{name}\" verwijderd",
+    "deleteDeckError": "Verwijderen van dek mislukt",
+    "done": "Klaar"
   },
   "areaDetail": {
     "loading": "Laden...",

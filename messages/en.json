@@ -2059,8 +2059,17 @@
     "sideProfileCount": "{count, plural, one {# side profile} other {# side profiles}}",
     "areaCount": "{count, plural, one {# area} other {# areas}}",
     "cannotDeleteHasAreas": "Can't delete — this deck still has {count, plural, one {# area} other {# areas}}. Remove or reassign them first.",
-    "mobileTabGA": "GA viewer",
-    "mobileTabDecks": "Decks ({count})"
+    "mobileTabGA": "GA",
+    "mobileTabAddDeck": "Add deck",
+    "mobileTabEditDeck": "Edit deck",
+    "mobileTabDeckList": "Decks ({count})",
+    "deckAddedLocal": "Deck \"{name}\" added",
+    "deckUpdatedLocal": "Deck \"{name}\" updated",
+    "deleteDeckTitle": "Delete deck",
+    "deleteDeckMessage": "Are you sure you want to delete \"{name}\"? This can't be undone.",
+    "deleteDeckSuccess": "Deck \"{name}\" deleted",
+    "deleteDeckError": "Failed to delete deck",
+    "done": "Done"
   },
   "areaDetail": {
     "loading": "Loading...",

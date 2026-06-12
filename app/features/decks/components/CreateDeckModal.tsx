@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import dynamic from "next/dynamic";
 import Modal from "@/app/components/ui/Modal";
+import DeleteConfirmModal from "@/app/components/modals/DeleteConfirmModal";
 import Button from "@/app/components/ui/Button";
 import FormInput from "@/app/components/ui/FormInput";
 import { decksApi } from "@/lib/api/decks";
@@ -11,7 +12,6 @@ import { useToast } from "@/app/context/ToastContext";
 import { PencilIcon, PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
 import type { Deck, AreaPolygonPoint, DeckSideProfilePolygonInput } from "@/lib/api/types";
 import { usePlacementPolygons } from "@/lib/hooks/usePlacementPolygons";
-import { handleError } from "@/lib/utils/errors";
 import { polygonBbox } from "@/lib/utils/geometry";
 import { FitBounds } from "@/lib/utils/gaLeaflet";
 import type { LatLngBoundsExpression } from "leaflet";
@@ -81,22 +81,26 @@ const PRIMARY_KEY = "primary";
 const DECK_COLOR = "#3B82F6";
 const SIDE_PROFILE_COLOR = "#A855F7";
 
-const STORAGE_KEY_PREFIX = "ccs_deck_modal_";
-const STORAGE_KEY_PREFIX_EDIT = "ccs_deck_modal_edit_";
-/** Bump when the cached shape changes — older caches get dropped on
- *  load. v2 = polygon-based (was bbox in v1, never versioned). */
-const STORAGE_VERSION = "v2";
-
 const MIN_VERTICES = 3;
 
 interface CreateDeckModalProps {
   isOpen: boolean;
   onClose: () => void;
   projectId: string;
+  /** Called once on modal close *if* the user made any changes. Lets
+   *  the parent refetch its own deck data so anything visible behind
+   *  the modal (the GA viewer, reporting tab, etc.) stays in sync.
+   *  We deliberately don't call this per-action — the resulting
+   *  parent re-render cascades back through `existingDecks` and
+   *  somehow tears down our Modal mid-flow. Batching at close-time
+   *  side-steps it. */
   onSuccess?: () => void;
   gaImageUrl?: string;
   gaImageWidth?: number;
   gaImageHeight?: number;
+  /** Seed the working list when the modal opens. The seed runs only
+   *  once per open, so refetch-driven prop changes can't restart the
+   *  cascade that was closing the modal. */
   existingDecks?: Deck[];
   editMode?: boolean;
 }
@@ -126,33 +130,6 @@ function apiDeckToPendingDeck(deck: Deck): PendingDeck {
   };
 }
 
-/** Backfill optional fields on a deck record from localStorage. */
-function normalizePendingDeck(deck: Partial<PendingDeck> & { id?: string }): PendingDeck {
-  const deckName = deck.name ?? "";
-  const sideProfiles: PendingSideProfile[] = Array.isArray(deck.sideProfiles)
-    ? deck.sideProfiles.map((spRaw) => {
-        const sp = spRaw as Partial<PendingSideProfile>;
-        return {
-          id: sp.id ?? crypto.randomUUID(),
-          identifier: sp.identifier,
-          namePrefix: sp.namePrefix ?? "",
-          polygon: Array.isArray(sp.polygon) ? sp.polygon : [],
-          isClosed: !!sp.isClosed,
-        };
-      })
-    : [];
-  return {
-    id: deck.id ?? crypto.randomUUID(),
-    name: deckName,
-    description: deck.description ?? "",
-    polygon: Array.isArray(deck.polygon) ? deck.polygon : [],
-    isClosed: !!deck.isClosed,
-    sideProfiles,
-    isExisting: deck.isExisting,
-    areaCount: deck.areaCount,
-  };
-}
-
 export default function CreateDeckModal({
   isOpen,
   onClose,
@@ -168,13 +145,16 @@ export default function CreateDeckModal({
   const tCommon = useTranslations("common");
   const { showToast } = useToast();
 
-  // Separate keys per mode so a half-finished "create new decks" draft
-  // can't clobber an in-progress edit of existing decks.
-  const storageKey = `${
-    editMode ? STORAGE_KEY_PREFIX_EDIT : STORAGE_KEY_PREFIX
-  }${projectId}`;
-
+  // Working copy of the deck list. Seeded once per modal open from
+  // `existingDecks` (see the load effect below) and then mutated
+  // optimistically by the action handlers. The parent only sees the
+  // changes when the modal closes, via the `hasChanges` flag.
   const [pendingDecks, setPendingDecks] = useState<PendingDeck[]>([]);
+  /** Tracks whether the user actually persisted anything this
+   *  session so `handleClose` knows whether to call `onSuccess` and
+   *  refetch the parent. Reset to `false` on each open. */
+  const [hasChanges, setHasChanges] = useState(false);
+
   const [editingDeckId, setEditingDeckId] = useState<string | null>(null);
 
   // Metadata for the currently-editing deck. Polygons themselves live in
@@ -192,12 +172,41 @@ export default function CreateDeckModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  /** Mobile-only view switcher. The desktop layout shows both panels
-   *  side by side; below `lg` we'd otherwise jam them into a single
-   *  row that squeezes the GA viewer to nothing, so we expose
-   *  explicit tabs instead. Default to the GA viewer so users land on
-   *  the drawing surface — entering edit mode also jumps here. */
-  const [activeMobileTab, setActiveMobileTab] = useState<"ga" | "decks">("ga");
+  /** Mobile-only view switcher — three panes share the screen on
+   *  desktop (GA, add/edit form, saved-decks list) so we expose them
+   *  as tabs below `lg` where there isn't room. Default to the GA
+   *  viewer; the pencil-edit flow also jumps here so the user lands
+   *  on the freshly-framed polygon. */
+  const [activeMobileTab, setActiveMobileTab] = useState<
+    "ga" | "form" | "list"
+  >("ga");
+
+  /** Id of the deck that was just added/updated. Used to flash a
+   *  ring + brand background on its list row so the user sees where
+   *  their click landed — even when the form tab is keeping the
+   *  saved-list out of view. Cleared after a short delay. */
+  const [recentlyChangedDeckId, setRecentlyChangedDeckId] = useState<
+    string | null
+  >(null);
+
+  /** Deck pending an explicit user confirmation before delete. The
+   *  trash icon opens DeleteConfirmModal with this value populated;
+   *  confirming there fires the DELETE API call. */
+  const [deckPendingDelete, setDeckPendingDelete] = useState<PendingDeck | null>(
+    null
+  );
+
+  // Auto-clear the highlight a couple of seconds after it's set —
+  // long enough to catch the user's eye without sticking around once
+  // they've moved on.
+  useEffect(() => {
+    if (!recentlyChangedDeckId) return;
+    const handle = setTimeout(
+      () => setRecentlyChangedDeckId(null),
+      2500
+    );
+    return () => clearTimeout(handle);
+  }, [recentlyChangedDeckId]);
 
   /** When the user picks a deck to edit, we want the GA viewer to
    *  zoom + pan to that deck's polygon. `bounds` carries the focus
@@ -211,60 +220,19 @@ export default function CreateDeckModal({
 
   const showGAPreview = !!(gaImageUrl && gaImageWidth && gaImageHeight);
 
-  // Load data on mount — both modes prefer a same-version cached
-  // draft (so a refresh mid-edit doesn't lose work) and fall back to
-  // the live API state. Also pin the active draw target to the
-  // primary deck polygon so the user can start drawing immediately;
-  // without this, clicks land but `polygons.set` is a no-op
-  // (`activeId === null`) and nothing shows.
+  // Seed the working list once per open from the parent snapshot,
+  // and pin the active draw target so clicks land on the polygons
+  // hook immediately. Critically, this depends *only* on `isOpen` —
+  // a later refetch-driven change to `existingDecks` must not
+  // re-seed mid-flight (that's what was re-triggering the modal-
+  // close cascade).
   useEffect(() => {
     if (!isOpen) return;
+    setPendingDecks((existingDecks ?? []).map(apiDeckToPendingDeck));
+    setHasChanges(false);
     polygons.setActive(PRIMARY_KEY);
-
-    let restoredFromCache = false;
-    try {
-      const saved = localStorage.getItem(storageKey);
-      if (saved) {
-        const data = JSON.parse(saved);
-        if (data.version !== STORAGE_VERSION) {
-          localStorage.removeItem(storageKey);
-        } else if (Array.isArray(data.pendingDecks)) {
-          setPendingDecks(data.pendingDecks.map(normalizePendingDeck));
-          restoredFromCache = true;
-        }
-      }
-    } catch (e) {
-      handleError(e, {
-        severity: "console",
-        context: "Loading deck data from localStorage",
-      });
-    }
-
-    // Edit mode: seed from the API only when there's no draft yet.
-    // A cached draft always wins so refresh-during-edit is non-lossy.
-    if (!restoredFromCache && editMode && existingDecks) {
-      setPendingDecks(existingDecks.map(apiDeckToPendingDeck));
-    }
-  }, [isOpen, storageKey, editMode, existingDecks]);
-
-  // Persist drafts in both modes. Edit mode used to skip this, which
-  // is exactly why a hard refresh wiped the user's in-progress
-  // changes. We still bail when the list is empty so cleaning out
-  // every deck doesn't leave a stale empty cache around.
-  useEffect(() => {
-    if (!isOpen || pendingDecks.length === 0) return;
-    try {
-      localStorage.setItem(
-        storageKey,
-        JSON.stringify({ version: STORAGE_VERSION, pendingDecks })
-      );
-    } catch (e) {
-      handleError(e, {
-        severity: "console",
-        context: "Saving deck data to localStorage",
-      });
-    }
-  }, [pendingDecks, isOpen, storageKey]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
 
   // Reset the form back to "add new deck" mode.
   const resetForm = useCallback(() => {
@@ -280,44 +248,85 @@ export default function CreateDeckModal({
     setFocusFit(null);
   }, [polygons]);
 
-  // Snapshot the working copy back into a PendingDeck. Used by the
-  // "Add" / "Update" CTA — pulls every per-target polygon from the hook
-  // and matches them against `sideProfilesMeta` for the metadata.
-  const buildPendingDeckFromForm = useCallback((): Omit<PendingDeck, "id"> => {
-    const primary = polygons.all[PRIMARY_KEY] ?? { polygon: [], isClosed: false };
-    const sideProfiles: PendingSideProfile[] = sideProfilesMeta.map((meta) => {
-      const snap = polygons.all[meta.id] ?? { polygon: [], isClosed: false };
-      return {
-        ...meta,
-        polygon: snap.polygon,
-        isClosed: snap.isClosed,
-      };
-    });
-    return {
-      name: name.trim(),
-      description: description.trim(),
-      polygon: primary.polygon,
-      isClosed: primary.isClosed,
-      sideProfiles,
-    };
-  }, [polygons.all, sideProfilesMeta, name, description]);
+  // Persist on every Add/Update Deck click. Pulls the polygon
+  // snapshot for each draw target straight from the polygons hook,
+  // builds the API payload inline, and lets `refetchDecksInModal`
+  // refresh the list view.
+  const handleAddDeck = async () => {
+    const trimmedName = name.trim();
+    if (!trimmedName || isSubmitting) return;
 
-  const handleAddDeck = () => {
-    if (!name.trim()) return;
-    const draft = buildPendingDeckFromForm();
-    if (editingDeckId) {
-      setPendingDecks((prev) =>
-        prev.map((d) =>
-          d.id === editingDeckId ? { ...d, ...draft } : d
+    const primarySnap = polygons.all[PRIMARY_KEY] ?? {
+      polygon: [],
+      isClosed: false,
+    };
+    const deckPolygonPayload =
+      primarySnap.polygon.length >= MIN_VERTICES
+        ? { name: trimmedName, points: primarySnap.polygon }
+        : null;
+
+    const sideProfilePolygonsPayload: DeckSideProfilePolygonInput[] =
+      sideProfilesMeta
+        .map((meta) => ({
+          meta,
+          snap: polygons.all[meta.id] ?? { polygon: [], isClosed: false },
+        }))
+        .filter(
+          ({ meta, snap }) =>
+            snap.polygon.length >= MIN_VERTICES &&
+            meta.namePrefix.trim() !== ""
         )
+        .map(({ meta, snap }) => ({
+          ...(meta.identifier ? { identifier: meta.identifier } : {}),
+          name: buildSideProfileName(meta.namePrefix, trimmedName),
+          points: snap.polygon,
+        }));
+
+    setIsSubmitting(true);
+    setError(null);
+    try {
+      let highlightId: string;
+      if (editingDeckId) {
+        const updated = await decksApi.update(projectId, editingDeckId, {
+          name: trimmedName,
+          description: description.trim() || undefined,
+          ...(deckPolygonPayload ? { deck_polygon: deckPolygonPayload } : {}),
+          side_profile_polygons: sideProfilePolygonsPayload,
+        });
+        const refreshed = apiDeckToPendingDeck(updated);
+        setPendingDecks((prev) =>
+          prev.map((d) => (d.id === editingDeckId ? refreshed : d))
+        );
+        highlightId = editingDeckId;
+        showToast("success", t("deckUpdatedLocal", { name: trimmedName }));
+      } else {
+        const created = await decksApi.create(projectId, {
+          name: trimmedName,
+          description: description.trim() || undefined,
+          ...(deckPolygonPayload ? { deck_polygon: deckPolygonPayload } : {}),
+          ...(sideProfilePolygonsPayload.length > 0
+            ? { side_profile_polygons: sideProfilePolygonsPayload }
+            : {}),
+        });
+        setPendingDecks((prev) => [...prev, apiDeckToPendingDeck(created)]);
+        highlightId = created.identifier;
+        showToast("success", t("deckAddedLocal", { name: trimmedName }));
+      }
+
+      setHasChanges(true);
+      setRecentlyChangedDeckId(highlightId);
+      resetForm();
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : editingDeckId
+            ? t("updateError")
+            : t("createError")
       );
-    } else {
-      setPendingDecks((prev) => [
-        ...prev,
-        { ...draft, id: crypto.randomUUID() },
-      ]);
+    } finally {
+      setIsSubmitting(false);
     }
-    resetForm();
   };
 
   // Switch the form into "edit" mode for an existing pending deck. Seeds
@@ -406,120 +415,63 @@ export default function CreateDeckModal({
   const handleSelectSideProfile = (id: string) => polygons.setActive(id);
   const handleSelectDeckTarget = () => polygons.setActive(PRIMARY_KEY);
 
-  const handleRemoveDeck = (deckId: string) => {
-    setPendingDecks((prev) => prev.filter((d) => d.id !== deckId));
-    if (editingDeckId === deckId) resetForm();
+  // Trash icon just opens the confirmation modal. The actual API
+  // call lives in `confirmRemoveDeck` and only fires after the user
+  // says yes — keeps a misclick from silently nuking work.
+  const handleRemoveDeck = (deck: PendingDeck) => {
+    setDeckPendingDelete(deck);
+  };
+
+  const confirmRemoveDeck = async () => {
+    if (!deckPendingDelete) return;
+    const deck = deckPendingDelete;
+    if (deck.isExisting) {
+      await decksApi.delete(projectId, deck.id);
+    }
+    setPendingDecks((prev) => prev.filter((d) => d.id !== deck.id));
+    if (editingDeckId === deck.id) resetForm();
+    setDeckPendingDelete(null);
+    setHasChanges(true);
   };
 
   const handleCancelEdit = () => resetForm();
 
-  const handleSaveAll = async () => {
-    if (pendingDecks.length === 0 && !editMode) return;
-    setIsSubmitting(true);
-    setError(null);
-    try {
-      // Delete decks the user removed in edit mode before the
-      // create/update pass — applied as a single transaction from the
-      // user's point of view. When the backend rejects a deletion
-      // (typically "still has areas"), the deck is restored to the
-      // local list so the user doesn't lose track of which deck
-      // failed. Without this, refresh + cache would silently drop the
-      // failed-to-delete deck from view.
-      if (editMode && existingDecks) {
-        const keptIds = new Set(
-          pendingDecks.filter((d) => d.isExisting).map((d) => d.id)
-        );
-        const toDelete = existingDecks.filter(
-          (d) => !keptIds.has(d.identifier)
-        );
-        for (const d of toDelete) {
-          try {
-            await decksApi.delete(projectId, d.identifier);
-          } catch (deleteErr) {
-            const restored = apiDeckToPendingDeck(d);
-            setPendingDecks((prev) =>
-              prev.some((p) => p.id === restored.id) ? prev : [...prev, restored]
-            );
-            throw deleteErr;
-          }
-        }
-      }
-
-      for (const deck of pendingDecks) {
-        // Only send `deck_polygon` when the user actually drew one (and
-        // closed it). Omitting keeps the existing one on update.
-        const deckPolygonPayload =
-          deck.polygon.length >= MIN_VERTICES
-            ? { name: deck.name, points: deck.polygon }
-            : null;
-
-        const sideProfilePolygonsPayload: DeckSideProfilePolygonInput[] = deck.sideProfiles
-          .filter(
-            (sp) =>
-              sp.polygon.length >= MIN_VERTICES && sp.namePrefix.trim() !== ""
-          )
-          .map((sp) => ({
-            ...(sp.identifier ? { identifier: sp.identifier } : {}),
-            name: buildSideProfileName(sp.namePrefix, deck.name),
-            points: sp.polygon,
-          }));
-
-        if (deck.isExisting) {
-          await decksApi.update(projectId, deck.id, {
-            name: deck.name,
-            description: deck.description || undefined,
-            ...(deckPolygonPayload ? { deck_polygon: deckPolygonPayload } : {}),
-            side_profile_polygons: sideProfilePolygonsPayload,
-          });
-        } else {
-          await decksApi.create(projectId, {
-            name: deck.name,
-            description: deck.description || undefined,
-            ...(deckPolygonPayload ? { deck_polygon: deckPolygonPayload } : {}),
-            ...(sideProfilePolygonsPayload.length > 0
-              ? { side_profile_polygons: sideProfilePolygonsPayload }
-              : {}),
-          });
-        }
-      }
-
-      // Saved successfully — drop the draft cache in both modes so
-      // reopening shows the freshly-persisted state from the API.
-      localStorage.removeItem(storageKey);
-
-      showToast(
-        "success",
-        editMode
-          ? t("decksUpdatedSuccess")
-          : t("decksCreatedSuccess", { count: pendingDecks.length })
-      );
-      setPendingDecks([]);
-      resetForm();
-      onSuccess?.();
-      onClose();
-    } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : editMode
-          ? t("updateError")
-          : t("createError")
-      );
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   const handleClose = () => {
     resetForm();
+    if (hasChanges) {
+      onSuccess?.();
+    }
     onClose();
   };
 
-  const handleClearAll = () => {
-    if (editMode) return;
-    setPendingDecks([]);
-    resetForm();
-    localStorage.removeItem(storageKey);
+  const handleClearAll = async () => {
+    // With per-deck auto-save there's nothing to "clear" locally
+    // beyond the API state. The button now deletes every deck on
+    // the project — gated by a quick confirm to keep stray clicks
+    // from nuking everything.
+    if (pendingDecks.length === 0) return;
+    if (
+      typeof window !== "undefined" &&
+      !window.confirm(t("clearAllConfirm"))
+    ) {
+      return;
+    }
+    setIsSubmitting(true);
+    setError(null);
+    try {
+      for (const deck of pendingDecks) {
+        if (deck.isExisting) {
+          await decksApi.delete(projectId, deck.id);
+        }
+      }
+      setPendingDecks([]);
+      setHasChanges(true);
+      resetForm();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("deleteError"));
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // ============ Drawer wiring ============
@@ -616,6 +568,7 @@ export default function CreateDeckModal({
   ]);
 
   return (
+    <>
     <Modal
       isOpen={isOpen}
       onClose={handleClose}
@@ -629,50 +582,52 @@ export default function CreateDeckModal({
       disableBackdropClick
       disableEscClose
       actions={[
+        // With per-deck auto-save the old batched "Save Changes" step
+        // is gone — Done just dismisses the modal.
         {
-          label: tCommon("close"),
+          label: t("done"),
           onClick: handleClose,
-          variant: "secondary",
-        },
-        {
-          label: editMode
-            ? t("saveChanges")
-            : t("saveAllDecks", { count: pendingDecks.length }),
-          onClick: handleSaveAll,
           variant: "primary",
-          disabled: pendingDecks.length === 0 || isSubmitting,
-          loading: isSubmitting,
         },
       ]}
     >
       <div className="flex flex-col gap-4">
-        {/* Mobile-only tab switcher. The desktop layout fits both
-            panels side by side; below `lg` we expose them as tabs so
-            the GA viewer can actually breathe on a phone. */}
+        {/* Mobile-only tab switcher. The desktop layout fits all
+            three panels side by side; below `lg` we expose them as
+            tabs so the GA viewer can actually breathe and the form
+            + list each get their own focused screen. */}
         {showGAPreview && (
-          <div className="lg:hidden flex p-1 bg-gray-100 dark:bg-gray-800 rounded-lg">
-            <button
-              type="button"
-              onClick={() => setActiveMobileTab("ga")}
-              className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${
-                activeMobileTab === "ga"
-                  ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
-                  : "text-gray-600 dark:text-gray-400"
-              }`}
-            >
-              {t("mobileTabGA")}
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveMobileTab("decks")}
-              className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${
-                activeMobileTab === "decks"
-                  ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
-                  : "text-gray-600 dark:text-gray-400"
-              }`}
-            >
-              {t("mobileTabDecks", { count: pendingDecks.length })}
-            </button>
+          <div className="lg:hidden flex p-1 bg-gray-100 dark:bg-gray-800 rounded-lg gap-1">
+            {(
+              [
+                { id: "ga", label: t("mobileTabGA") },
+                {
+                  id: "form",
+                  label: editingDeckId
+                    ? t("mobileTabEditDeck")
+                    : t("mobileTabAddDeck"),
+                },
+                {
+                  id: "list",
+                  label: t("mobileTabDeckList", {
+                    count: pendingDecks.length,
+                  }),
+                },
+              ] as const
+            ).map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveMobileTab(tab.id)}
+                className={`flex-1 py-2 text-xs sm:text-sm font-medium rounded-md transition-colors ${
+                  activeMobileTab === tab.id
+                    ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
+                    : "text-gray-600 dark:text-gray-400"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
           </div>
         )}
 
@@ -749,20 +704,63 @@ export default function CreateDeckModal({
           </div>
         )}
 
-        {/* Right: form and list — capped narrow on desktop so the GA
+        {/* Right column wrapper — capped narrow on desktop so the GA
             column gets most of the horizontal space; full-width on
-            mobile (where the mobile-tab visibility class controls
-            whether it renders at all). */}
+            mobile. Visible when either the form or list tab is
+            active (or when there's no GA preview at all). The inner
+            sections below switch between form and list on mobile. */}
         <div
           className={`${
-            activeMobileTab === "decks" || !showGAPreview ? "block" : "hidden"
+            activeMobileTab !== "ga" || !showGAPreview ? "block" : "hidden"
           } lg:block ${
             showGAPreview
               ? "lg:w-80 lg:flex-shrink-0 flex flex-col"
               : "flex-1"
           }`}
         >
-          <div className="mb-4">
+          {/* Right-column tab switcher — visible on laptops + desktops
+              where the GA panel takes the left half, so the narrower
+              right column can stay focused on either the form or the
+              list at a time. Phones already have the 3-button tab bar
+              above the whole layout. */}
+          {showGAPreview && (
+            <div className="hidden lg:flex p-1 bg-gray-100 dark:bg-gray-800 rounded-lg gap-1 mb-4">
+              <button
+                type="button"
+                onClick={() => setActiveMobileTab("form")}
+                className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                  activeMobileTab !== "list"
+                    ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
+                    : "text-gray-600 dark:text-gray-400"
+                }`}
+              >
+                {editingDeckId
+                  ? t("mobileTabEditDeck")
+                  : t("mobileTabAddDeck")}
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveMobileTab("list")}
+                className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                  activeMobileTab === "list"
+                    ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
+                    : "text-gray-600 dark:text-gray-400"
+                }`}
+              >
+                {t("mobileTabDeckList", { count: pendingDecks.length })}
+              </button>
+            </div>
+          )}
+
+          <div
+            className={`${
+              activeMobileTab === "form" || !showGAPreview ? "block" : "hidden"
+            } ${
+              activeMobileTab === "list" && showGAPreview
+                ? "lg:hidden"
+                : "lg:block"
+            } mb-4`}
+          >
             <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
               {editingDeckId ? t("editDeck") : t("addNewDeck")}
             </h3>
@@ -908,6 +906,7 @@ export default function CreateDeckModal({
             </div>
             <div className="flex gap-2 mt-4">
               <Button
+                type="button"
                 onClick={handleAddDeck}
                 disabled={!name.trim()}
                 variant="secondary"
@@ -915,16 +914,34 @@ export default function CreateDeckModal({
                 {editingDeckId ? t("updateDeck") : t("addDeck")}
               </Button>
               {editingDeckId && (
-                <Button onClick={handleCancelEdit} variant="ghost">
+                <Button
+                  type="button"
+                  onClick={handleCancelEdit}
+                  variant="ghost"
+                >
                   {tCommon("cancel")}
                 </Button>
               )}
             </div>
           </div>
 
-          <hr className="border-gray-200 dark:border-gray-700 my-4" />
+          {/* Divider only when form + list stack inside one column,
+              i.e. the no-GA fallback. With the GA preview the right
+              column tabs between form and list, so the rule would
+              just sit between two hidden siblings. */}
+          {!showGAPreview && (
+            <hr className="border-gray-200 dark:border-gray-700 my-4" />
+          )}
 
-          <div className="flex-1 overflow-auto">
+          <div
+            className={`${
+              activeMobileTab === "list" || !showGAPreview ? "block" : "hidden"
+            } ${
+              activeMobileTab !== "list" && showGAPreview
+                ? "lg:hidden"
+                : "lg:block"
+            } flex-1 overflow-auto`}
+          >
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
                 {editMode ? t("decks") : t("addedDecks")} ({pendingDecks.length})
@@ -947,13 +964,16 @@ export default function CreateDeckModal({
               <ul className="space-y-2">
                 {pendingDecks.map((deck) => {
                   const hasAreas = (deck.areaCount ?? 0) > 0;
+                  const isJustChanged = recentlyChangedDeckId === deck.id;
                   return (
                   <li
                     key={deck.id}
-                    className={`flex items-center justify-between p-3 rounded-lg border ${
-                      editingDeckId === deck.id
-                        ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
-                        : "border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800"
+                    className={`flex items-center justify-between p-3 rounded-lg border transition-colors ${
+                      isJustChanged
+                        ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 ring-2 ring-emerald-300 dark:ring-emerald-700"
+                        : editingDeckId === deck.id
+                          ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
+                          : "border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800"
                     }`}
                   >
                     <div className="flex items-center gap-3">
@@ -995,7 +1015,7 @@ export default function CreateDeckModal({
                       </button>
                       <button
                         type="button"
-                        onClick={() => handleRemoveDeck(deck.id)}
+                        onClick={() => handleRemoveDeck(deck)}
                         disabled={hasAreas}
                         className="p-1.5 text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:text-gray-500 dark:disabled:hover:text-gray-400"
                         title={
@@ -1019,5 +1039,26 @@ export default function CreateDeckModal({
       </div>
       </div>
     </Modal>
+
+    {/* Delete confirmation — fires the actual DELETE API call only
+        after the user explicitly confirms. The `areaCount > 0` guard
+        on the trash button already blocks the backend-rejected
+        case, but the confirm step also surfaces the deck name so a
+        misclick can be reversed. */}
+    {deckPendingDelete && (
+      <DeleteConfirmModal
+        isOpen={!!deckPendingDelete}
+        onClose={() => setDeckPendingDelete(null)}
+        onConfirm={confirmRemoveDeck}
+        title={t("deleteDeckTitle")}
+        message={t("deleteDeckMessage", { name: deckPendingDelete.name })}
+        successMessage={t("deleteDeckSuccess", {
+          name: deckPendingDelete.name,
+        })}
+        errorMessage={t("deleteDeckError")}
+        confirmLabel={tCommon("delete")}
+      />
+    )}
+    </>
   );
 }

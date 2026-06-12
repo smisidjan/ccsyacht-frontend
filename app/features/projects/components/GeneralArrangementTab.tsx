@@ -247,6 +247,7 @@ export default function GeneralArrangementTab({
   const { data: allPins, loading: rawLoading, refetch } = useGAPins(projectId);
   const { data: decks, refetch: refetchDecks } = useDecks(projectId);
   const [isManageDecksOpen, setIsManageDecksOpen] = useState(false);
+
   const { data: areas } = useAreas(projectId, undefined);
   const { data: stages } = useProjectStages(projectId);
 
@@ -1022,10 +1023,11 @@ export default function GeneralArrangementTab({
           isOpen={isManageDecksOpen}
           onClose={() => setIsManageDecksOpen(false)}
           projectId={projectId}
-          onSuccess={() => {
-            setIsManageDecksOpen(false);
-            refetchDecks();
-          }}
+          // Fires once on modal close *if* the user persisted any
+          // changes during the session. Refetching here (instead of
+          // after every action) keeps the parent re-render from
+          // cascading back into the modal mid-edit.
+          onSuccess={refetchDecks}
           gaImageUrl={imageBlobUrl || undefined}
           gaImageWidth={generalArrangement?.imageWidth}
           gaImageHeight={generalArrangement?.imageHeight}
