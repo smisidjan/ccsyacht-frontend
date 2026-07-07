@@ -27,6 +27,8 @@ interface UploadDocumentModalProps {
   defaultSigners?: PersonOption[];
   /** Additional project members who can be picked as extra reviewers (default signers already excluded). */
   availableReviewers?: PersonOption[];
+  /** When true, an active kickoff meeting handles approval — hide signers and reviewer picker. */
+  hasActiveMeeting?: boolean;
 }
 
 export default function UploadDocumentModal({
@@ -36,6 +38,7 @@ export default function UploadDocumentModal({
   documentTypeName,
   defaultSigners = [],
   availableReviewers = [],
+  hasActiveMeeting = false,
 }: UploadDocumentModalProps) {
   const t = useTranslations("systemSettings.tenantDetail.projects.detail.documents.uploadModal");
 
@@ -131,8 +134,8 @@ export default function UploadDocumentModal({
           rows={3}
         />
 
-        {/* Default signers info block */}
-        {defaultSigners.length > 0 && (
+        {/* Default signers info block — hidden when kickoff meeting handles approval */}
+        {!hasActiveMeeting && defaultSigners.length > 0 && (
           <div className="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 p-3">
             <div className="flex items-center gap-1.5 mb-2">
               <ShieldCheckIcon className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
@@ -157,8 +160,8 @@ export default function UploadDocumentModal({
           </div>
         )}
 
-        {/* Extra reviewer picker */}
-        {hasReviewers && (
+        {/* Extra reviewer picker — hidden when kickoff meeting handles approval */}
+        {!hasActiveMeeting && hasReviewers && (
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               {t("reviewers")}

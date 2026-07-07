@@ -18,6 +18,7 @@ import { calculateDocumentStatus } from "@/app/features/documents/components/Doc
 import { normalizeAcknowledgements } from "@/lib/utils/typeNormalization";
 import { useDocumentTypes } from "@/lib/api/document-types";
 import { useDocuments } from "@/lib/api/documents";
+import { setupTasksApi } from "@/lib/api/setup-tasks";
 import { useProjectMembers, useProjectSigners } from "@/lib/api/project-members";
 import { useCurrentUserContext } from "@/app/context/CurrentUserContext";
 import { usePermission } from "@/lib/hooks/usePermission";
@@ -105,6 +106,17 @@ export default function DocumentsTab({ projectId, projectStatus }: DocumentsTabP
     () => new Set(defaultSigners.map((s) => s.id)),
     [defaultSigners]
   );
+
+  const [hasActiveMeeting, setHasActiveMeeting] = useState(false);
+  useEffect(() => {
+    setupTasksApi.getAll(projectId).then((res) => {
+      setHasActiveMeeting(
+        (res.data || []).some(
+          (t) => t.additionalType === "kickoff_meeting" && !t.isComplete
+        )
+      );
+    }).catch(() => {});
+  }, [projectId]);
 
   // State
   const [selectedTypeId, setSelectedTypeId] = useState<string | null>(null);
@@ -600,6 +612,7 @@ export default function DocumentsTab({ projectId, projectStatus }: DocumentsTabP
             availableReviewers={availableUsers
               .filter((u) => !defaultSignerIds.has(u.id))
               .map((u) => ({ id: u.id, name: u.name, email: u.email ?? "" }))}
+            hasActiveMeeting={hasActiveMeeting}
           />
           <AssignDocumentModal
             isOpen={isAssignModalOpen}
