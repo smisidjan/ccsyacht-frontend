@@ -67,6 +67,9 @@ export const documentsApi = {
     formData.append("title", data.title);
     if (data.description) formData.append("description", data.description);
     formData.append("file", data.file);
+    if (data.reviewer_ids?.length) {
+      data.reviewer_ids.forEach((id) => formData.append("reviewer_ids[]", id));
+    }
 
     return apiFetch(`/projects/${projectId}/document-types/${typeId}/documents`, {
       method: "POST",
@@ -74,6 +77,17 @@ export const documentsApi = {
       skipContentType: true,
     });
   },
+
+  approve: (projectId: string, docId: string): Promise<Document> =>
+    apiFetch(`/projects/${projectId}/documents/${docId}/approve`, {
+      method: "POST",
+    }),
+
+  decline: (projectId: string, docId: string, reason: string): Promise<Document> =>
+    apiFetch(`/projects/${projectId}/documents/${docId}/decline`, {
+      method: "POST",
+      body: JSON.stringify({ reason }),
+    }),
 
   /** Plain URL builder for the auth-aware download endpoint —
    *  reused by `download()` and by the inline viewer modal which

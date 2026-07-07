@@ -18,6 +18,8 @@ import {
   UserIcon,
   ComputerDesktopIcon,
   VideoCameraIcon,
+  ShieldCheckIcon,
+  EyeIcon,
 } from "@heroicons/react/24/outline";
 import type {
   MyTaskDocumentRequest,
@@ -25,6 +27,7 @@ import type {
   MyTaskSetupTask,
   MyTaskDocumentAcknowledgement,
   MyTaskStageSignoff,
+  MyTaskDocumentReview,
   PunchlistItemPriority,
 } from "@/lib/api/types";
 
@@ -33,7 +36,8 @@ export type TaskItem =
   | MyTaskPunchlistItem
   | MyTaskSetupTask
   | MyTaskDocumentAcknowledgement
-  | MyTaskStageSignoff;
+  | MyTaskStageSignoff
+  | MyTaskDocumentReview;
 
 interface TaskRowProps {
   task: TaskItem;
@@ -48,6 +52,7 @@ interface TaskRowProps {
   expandable?: boolean;
   expanded?: boolean;
   onToggleExpand?: () => void;
+  onView?: (task: TaskItem) => void;
 }
 
 const TYPE_META = {
@@ -76,6 +81,11 @@ const TYPE_META = {
     iconClass: "text-indigo-600 dark:text-indigo-400 bg-indigo-100 dark:bg-indigo-900/30",
     typeKey: "stageSignoff",
   },
+  document_review: {
+    icon: ShieldCheckIcon,
+    iconClass: "text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/30",
+    typeKey: "documentReview",
+  },
 } as const;
 
 const PRIORITY_CLASS: Record<PunchlistItemPriority, string> = {
@@ -96,6 +106,8 @@ function getTaskTitle(task: TaskItem, t: (k: string, p?: Record<string, string |
       return t("acknowledgeDocument", { title: task.document.title });
     case "stage_signoff":
       return t("signoffStage", { stage: task.stage.name });
+    case "document_review":
+      return t("reviewDocument", { title: task.document.title });
   }
 }
 
@@ -110,6 +122,8 @@ function getTaskLink(task: TaskItem): string {
     case "document_acknowledgement":
     case "setup_task":
       return `/dashboard/projects/${task.project.identifier}#overview`;
+    case "document_review":
+      return `/dashboard/projects/${task.project.identifier}#documents`;
   }
 }
 
@@ -123,6 +137,8 @@ function getBreadcrumb(task: TaskItem): string | null {
       return task.documentType.name;
     case "document_request":
       return task.documentType.name;
+    case "document_review":
+      return task.documentType.name;
     case "setup_task":
       return null;
   }
@@ -134,6 +150,7 @@ function isTaskCompleted(task: TaskItem): boolean {
   if (task.type === "setup_task") return task.hasSigned;
   if (task.type === "document_acknowledgement") return task.isAcknowledged;
   if (task.type === "stage_signoff") return task.hasSigned;
+  if (task.type === "document_review") return task.hasReviewed;
   return false;
 }
 
@@ -156,6 +173,7 @@ export default function TaskRow({
   expandable = false,
   expanded = false,
   onToggleExpand,
+  onView,
 }: TaskRowProps) {
   const t = useTranslations("myTasks");
   const meta = TYPE_META[task.type];
@@ -300,6 +318,18 @@ export default function TaskRow({
           </a>
         )}
 
+      {/* Inline view button for document reviews */}
+      {task.type === "document_review" && onView && (
+        <button
+          type="button"
+          onClick={(e) => { e.preventDefault(); onView(task); }}
+          className="w-8 h-8 flex items-center justify-center flex-shrink-0 rounded-md text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+          title={t("actions.view")}
+        >
+          <EyeIcon className="w-4 h-4" />
+        </button>
+      )}
+
       {/* Right-side time/date block */}
       {task.type === "setup_task" && task.scheduledDate && !completed && (
         <span className="hidden sm:flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 flex-shrink-0">
@@ -336,14 +366,20 @@ export default function TaskRow({
           {new Date(task.requestedAt).toLocaleDateString()}
         </span>
       )}
+      {task.type === "document_review" && task.assignedAt && !completed && (
+        <span className="hidden sm:inline-flex items-center gap-1 text-xs flex-shrink-0 text-gray-500 dark:text-gray-400">
+          <ClockIcon className="w-3.5 h-3.5" />
+          {new Date(task.assignedAt).toLocaleDateString()}
+        </span>
+      )}
 
       <span
-        className={`inline-flex items-center gap-1 px-2 py-0.5 text-[10px] sm:text-xs font-semibold uppercase tracking-wide rounded-md flex-shrink-0 ${statusBadge.className}`}
-      >
-        {completed && <CheckCircleIcon className="w-3 h-3" />}
-        {overdue && <ExclamationCircleIcon className="w-3 h-3" />}
-        {statusBadge.label}
-      </span>
+          className={`inline-flex items-center gap-1 px-2 py-0.5 text-[10px] sm:text-xs font-semibold uppercase tracking-wide rounded-md flex-shrink-0 ${statusBadge.className}`}
+        >
+          {completed && <CheckCircleIcon className="w-3 h-3" />}
+          {overdue && <ExclamationCircleIcon className="w-3 h-3" />}
+          {statusBadge.label}
+        </span>
 
       <Link
         href={link}

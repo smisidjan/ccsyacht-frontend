@@ -616,22 +616,47 @@ export interface Document {
   category: DocumentCategory;
   uploadedBy?: string;
   uploadedByName?: string;
-  // Acknowledgement tracking
+  // Acknowledgement tracking (legacy)
   acknowledgements?: DocumentAcknowledgement[];
-  requiredAcknowledgers?: string[]; // User IDs who need to acknowledge
+  requiredAcknowledgers?: string[];
   status?: DocumentStatus;
   allAcknowledged?: boolean;
   acknowledgementCount?: number;
   agreedCount?: number;
   disagreedCount?: number;
   totalRequiredAcknowledgers?: number;
-  totalAssignees?: number; // API returns this field
+  totalAssignees?: number;
+  // Approval workflow (new — present when assignees are loaded)
+  /** null = no review flow started, otherwise reflects the current phase. */
+  approvalStatus?: DocumentApprovalStatus;
+  reviewers?: DocumentReviewer[];
+  allApproved?: boolean;
+  anyDeclined?: boolean;
+  pendingReviewCount?: number;
 }
 
 export interface UploadDocumentRequest {
   title: string;
   description?: string;
   file: File;
+  /** Extra reviewer IDs on top of the automatically assigned ones
+   *  (kickoff attendees or project signers). The backend merges both
+   *  sets; duplicates are ignored. */
+  reviewer_ids?: string[];
+}
+
+/** Approval lifecycle of a document. `null` means no review flow was
+ *  started (e.g. no signers/attendees were available at upload time). */
+export type DocumentApprovalStatus = "pending_review" | "approved" | "declined" | null;
+
+export interface DocumentReviewer {
+  "@type"?: string;
+  identifier: string;
+  name: string;
+  hasReviewed: boolean;
+  hasApproved: boolean | null;
+  declineReason: string | null;
+  reviewedAt: string | null;
 }
 
 // ============ Decks ============
@@ -2398,12 +2423,35 @@ export interface MyTaskStageSignoff {
   requestedAt: string;
 }
 
+export interface MyTaskDocumentReview {
+  type: "document_review";
+  /** The reviewer-assignment UUID (used to identify the row, not for API calls). */
+  identifier: string;
+  document: {
+    identifier: string;
+    title: string;
+    fileName: string;
+    approvalStatus: "pending_review";
+  };
+  documentType: {
+    identifier: string;
+    name: string;
+  };
+  project: MyTaskProject;
+  hasReviewed: boolean;
+  hasApproved: boolean | null;
+  declineReason: string | null;
+  reviewedAt: string | null;
+  assignedAt: string;
+}
+
 export type MyTask =
   | MyTaskDocumentRequest
   | MyTaskPunchlistItem
   | MyTaskSetupTask
   | MyTaskDocumentAcknowledgement
-  | MyTaskStageSignoff;
+  | MyTaskStageSignoff
+  | MyTaskDocumentReview;
 
 export interface MyTasksResponse {
   documentRequests: MyTaskDocumentRequest[];
@@ -2413,6 +2461,9 @@ export interface MyTasksResponse {
   /** Stage signoffs the user has been asked to provide. Optional so the
    *  type tolerates older backend versions that don't include the field. */
   stageSignoffs?: MyTaskStageSignoff[];
+  /** Document reviews where the current user is a reviewer. Optional so
+   *  the type tolerates older backend versions that don't include the field. */
+  documentReviews?: MyTaskDocumentReview[];
   counts: {
     total: number;
     pending: number;

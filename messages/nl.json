@@ -145,7 +145,8 @@
       "punchlistItem": "Punchlist",
       "meeting": "Meeting",
       "documentAcknowledgement": "Review",
-      "stageSignoff": "Signoff"
+      "stageSignoff": "Signoff",
+      "documentReview": "Reviewverzoek"
     },
     "status": {
       "pending": "In afwachting",
@@ -179,7 +180,8 @@
       "allStatus": "Alle statussen",
       "pending": "Open",
       "overdue": "Te laat",
-      "completed": "Voltooid"
+      "completed": "Voltooid",
+      "documentReviews": "Reviewverzoeken"
     },
     "dates": {
       "today": "Vandaag",
@@ -199,7 +201,9 @@
       "openProject": "Open Project",
       "openInProject": "Bekijk in project",
       "expand": "Uitklappen",
-      "collapse": "Inklappen"
+      "collapse": "Inklappen",
+      "approve": "Goedkeuren",
+      "decline": "Afwijzen"
     },
     "uploadDocument": "Upload {type}",
     "acknowledgeDocument": "Review: {title}",
@@ -227,7 +231,17 @@
     "relatedReviews": "{count, plural, =1 {1 gerelateerde review} other {# gerelateerde reviews}}",
     "pendingDocuments": "{count, plural, =1 {1 document} other {# documenten}}",
     "relatedTasks": "{count, plural, =1 {1 gerelateerde taak} other {# gerelateerde taken}}",
-    "pending": "openstaand"
+    "pending": "openstaand",
+    "reviewDocument": "Reviewverzoek: {title}",
+    "approveSuccess": "Document goedgekeurd",
+    "declineSuccess": "Document afgewezen",
+    "declineError": "Afwijzen mislukt",
+    "declineModal": {
+      "title": "Document afwijzen",
+      "message": "Je staat op het punt om \"{name}\" af te wijzen. Geef een reden op.",
+      "reasonLabel": "Reden voor afwijzing",
+      "reasonPlaceholder": "Licht toe waarom dit document wordt afgewezen…"
+    }
   },
   "projects": {
     "title": "Projecten",
@@ -967,9 +981,25 @@
           "draft": "Concept",
           "pendingReview": "In afwachting",
           "active": "Actief",
-          "disputed": "Betwist"
+          "disputed": "Betwist",
+          "approved": "Goedgekeurd",
+          "declined": "Afgewezen"
         }
-      }
+      },
+      "approve": "Goedkeuren",
+      "decline": "Afwijzen",
+      "approveSuccess": "Document goedgekeurd",
+      "declineSuccess": "Document afgewezen",
+      "declineError": "Afwijzen mislukt",
+      "declinedBanner": "Dit document is afgewezen.",
+      "uploadNewVersion": "Nieuwe versie uploaden",
+      "declineModal": {
+        "title": "Document afwijzen",
+        "message": "Je staat op het punt om \"{name}\" af te wijzen. Geef een reden op.",
+        "reasonLabel": "Reden voor afwijzing",
+        "reasonPlaceholder": "Licht toe waarom dit document wordt afgewezen…"
+      },
+      "pendingReviewTitle": "Wacht op jouw beoordeling"
     },
     "generalArrangement": {
       "title": "General Arrangement",
@@ -1682,7 +1712,40 @@
           "noDocumentTypes": "Geen documenttypen geconfigureerd voor dit project",
           "required": "Verplicht",
           "document": "document",
-          "documents": "documenten",
+          "documents": {
+            "uploadButton": "Uploaden",
+            "deleteButton": "Verwijderen",
+            "uploadModal": {
+              "title": "Document Uploaden - {type}",
+              "file": "Bestand",
+              "fileRequired": "Bestand is verplicht",
+              "selectedFile": "Geselecteerd bestand",
+              "titleLabel": "Titel",
+              "titleOptional": "Titel (optioneel)",
+              "titlePlaceholder": "Voer document titel in",
+              "titleHint": "Laat leeg om bestandsnaam te gebruiken",
+              "descriptionLabel": "Beschrijving",
+              "descriptionOptional": "Beschrijving (optioneel)",
+              "descriptionPlaceholder": "Voer beschrijving in (optioneel)",
+              "upload": "Uploaden",
+              "success": "Document succesvol geüpload",
+              "error": "Document uploaden mislukt",
+              "reviewers": "Extra reviewers (optioneel)",
+              "reviewersDescription": "Selecteer leden die dit document ook moeten beoordelen en goedkeuren.",
+              "defaultSigners": "Standaard ondertekenaars",
+              "defaultSignersDescription": "Deze leden ontvangen dit document automatisch ter goedkeuring.",
+              "reviewersSearchPlaceholder": "Zoek op naam of e-mail…",
+              "reviewersNoResults": "Geen leden gevonden."
+            },
+            "deleteModal": {
+              "title": "Document Verwijderen",
+              "message": "Weet je zeker dat je {name} wilt verwijderen?",
+              "warning": "Deze actie kan niet ongedaan worden gemaakt.",
+              "confirm": "Verwijderen",
+              "success": "Document succesvol verwijderd",
+              "error": "Document verwijderen mislukt"
+            }
+          },
           "noDocuments": "Geen documenten geüpload",
           "download": "Downloaden",
           "errors": {
@@ -1748,34 +1811,6 @@
               "confirm": "Verwijderen",
               "success": "Documenttype succesvol verwijderd",
               "error": "Documenttype verwijderen mislukt"
-            }
-          },
-          "documents": {
-            "uploadButton": "Uploaden",
-            "deleteButton": "Verwijderen",
-            "uploadModal": {
-              "title": "Document Uploaden - {type}",
-              "file": "Bestand",
-              "fileRequired": "Bestand is verplicht",
-              "selectedFile": "Geselecteerd bestand",
-              "titleLabel": "Titel",
-              "titleOptional": "Titel (optioneel)",
-              "titlePlaceholder": "Voer document titel in",
-              "titleHint": "Laat leeg om bestandsnaam te gebruiken",
-              "descriptionLabel": "Beschrijving",
-              "descriptionOptional": "Beschrijving (optioneel)",
-              "descriptionPlaceholder": "Voer beschrijving in (optioneel)",
-              "upload": "Uploaden",
-              "success": "Document succesvol geüpload",
-              "error": "Document uploaden mislukt"
-            },
-            "deleteModal": {
-              "title": "Document Verwijderen",
-              "message": "Weet je zeker dat je {name} wilt verwijderen?",
-              "warning": "Deze actie kan niet ongedaan worden gemaakt.",
-              "confirm": "Verwijderen",
-              "success": "Document succesvol verwijderd",
-              "error": "Document verwijderen mislukt"
             }
           }
         }

@@ -16,7 +16,9 @@ import {
 } from "@heroicons/react/24/solid";
 import Tooltip from "@/app/components/ui/Tooltip";
 import { normalizeAcknowledgements } from "@/lib/utils/typeNormalization";
-import type { DocumentAcknowledgement, DocumentStatus } from "@/lib/api/types";
+import type { DocumentAcknowledgement, DocumentStatus, DocumentApprovalStatus } from "@/lib/api/types";
+
+type AnyDocumentStatus = DocumentStatus | NonNullable<DocumentApprovalStatus>;
 
 interface DocumentAcknowledgementStatusProps {
   acknowledgements?: DocumentAcknowledgement[];
@@ -210,13 +212,27 @@ export function DocumentStatusBadge({
   status,
   className = "",
 }: {
-  status: DocumentStatus;
+  status: AnyDocumentStatus;
   className?: string;
 }) {
   const t = useTranslations("projectDetail.documents.acknowledgements.status");
 
   const config = useMemo(() => {
     switch (status) {
+      case "approved":
+        return {
+          label: t("approved"),
+          icon: ShieldCheckIcon,
+          bgColor: "bg-green-100 dark:bg-green-900/30",
+          textColor: "text-green-700 dark:text-green-400",
+        };
+      case "declined":
+        return {
+          label: t("declined"),
+          icon: XCircleSolid,
+          bgColor: "bg-red-100 dark:bg-red-900/30",
+          textColor: "text-red-700 dark:text-red-400",
+        };
       case "active":
         return {
           label: t("active"),

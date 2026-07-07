@@ -145,7 +145,8 @@
       "punchlistItem": "Punchlist",
       "meeting": "Meeting",
       "documentAcknowledgement": "Review",
-      "stageSignoff": "Signoff"
+      "stageSignoff": "Signoff",
+      "documentReview": "Review request"
     },
     "status": {
       "pending": "Pending",
@@ -179,7 +180,8 @@
       "allStatus": "All statuses",
       "pending": "Pending",
       "overdue": "Overdue",
-      "completed": "Completed"
+      "completed": "Completed",
+      "documentReviews": "Review requests"
     },
     "dates": {
       "today": "Today",
@@ -199,7 +201,9 @@
       "openProject": "Open Project",
       "openInProject": "Open in project",
       "expand": "Expand",
-      "collapse": "Collapse"
+      "collapse": "Collapse",
+      "approve": "Approve",
+      "decline": "Decline"
     },
     "uploadDocument": "Upload {type}",
     "acknowledgeDocument": "Review: {title}",
@@ -227,7 +231,17 @@
     "relatedReviews": "{count, plural, =1 {1 related review} other {# related reviews}}",
     "pendingDocuments": "{count, plural, =1 {1 document} other {# documents}}",
     "relatedTasks": "{count, plural, =1 {1 related task} other {# related tasks}}",
-    "pending": "pending"
+    "pending": "pending",
+    "reviewDocument": "Review request: {title}",
+    "approveSuccess": "Document approved",
+    "declineSuccess": "Document declined",
+    "declineError": "Failed to decline document",
+    "declineModal": {
+      "title": "Decline Document",
+      "message": "You are about to decline \"{name}\". Please provide a reason.",
+      "reasonLabel": "Reason for declining",
+      "reasonPlaceholder": "Explain why this document is declined…"
+    }
   },
   "projects": {
     "title": "Projects",
@@ -967,9 +981,25 @@
           "draft": "Draft",
           "pendingReview": "Pending",
           "active": "Active",
-          "disputed": "Disputed"
+          "disputed": "Disputed",
+          "approved": "Approved",
+          "declined": "Declined"
         }
-      }
+      },
+      "approve": "Approve",
+      "decline": "Decline",
+      "approveSuccess": "Document approved",
+      "declineSuccess": "Document declined",
+      "declineError": "Failed to decline document",
+      "declinedBanner": "This document was declined.",
+      "uploadNewVersion": "Upload new version",
+      "declineModal": {
+        "title": "Decline Document",
+        "message": "You are about to decline \"{name}\". Please provide a reason.",
+        "reasonLabel": "Reason for declining",
+        "reasonPlaceholder": "Explain why this document is declined…"
+      },
+      "pendingReviewTitle": "Pending your review"
     },
     "generalArrangement": {
       "title": "General Arrangement",
@@ -1652,7 +1682,40 @@
           "noDocumentTypes": "No document types configured for this project",
           "required": "Required",
           "document": "document",
-          "documents": "documents",
+          "documents": {
+            "uploadButton": "Upload",
+            "deleteButton": "Delete",
+            "uploadModal": {
+              "title": "Upload Document - {type}",
+              "file": "File",
+              "fileRequired": "File is required",
+              "selectedFile": "Selected file",
+              "titleLabel": "Title",
+              "titleOptional": "Title (optional)",
+              "titlePlaceholder": "Enter document title",
+              "titleHint": "Leave empty to use filename",
+              "descriptionLabel": "Description",
+              "descriptionOptional": "Description (optional)",
+              "descriptionPlaceholder": "Enter description (optional)",
+              "upload": "Upload",
+              "success": "Document uploaded successfully",
+              "error": "Failed to upload document",
+              "reviewers": "Additional reviewers (optional)",
+              "reviewersDescription": "Select members who should also review and approve this document.",
+              "defaultSigners": "Default signers",
+              "defaultSignersDescription": "These members will automatically receive this document for approval.",
+              "reviewersSearchPlaceholder": "Search by name or email…",
+              "reviewersNoResults": "No members found."
+            },
+            "deleteModal": {
+              "title": "Delete Document",
+              "message": "Are you sure you want to delete {name}?",
+              "warning": "This action cannot be undone.",
+              "confirm": "Delete",
+              "success": "Document deleted successfully",
+              "error": "Failed to delete document"
+            }
+          },
           "noDocuments": "No documents uploaded",
           "download": "Download",
           "errors": {
@@ -1718,34 +1781,6 @@
               "confirm": "Delete",
               "success": "Document type deleted successfully",
               "error": "Failed to delete document type"
-            }
-          },
-          "documents": {
-            "uploadButton": "Upload",
-            "deleteButton": "Delete",
-            "uploadModal": {
-              "title": "Upload Document - {type}",
-              "file": "File",
-              "fileRequired": "File is required",
-              "selectedFile": "Selected file",
-              "titleLabel": "Title",
-              "titleOptional": "Title (optional)",
-              "titlePlaceholder": "Enter document title",
-              "titleHint": "Leave empty to use filename",
-              "descriptionLabel": "Description",
-              "descriptionOptional": "Description (optional)",
-              "descriptionPlaceholder": "Enter description (optional)",
-              "upload": "Upload",
-              "success": "Document uploaded successfully",
-              "error": "Failed to upload document"
-            },
-            "deleteModal": {
-              "title": "Delete Document",
-              "message": "Are you sure you want to delete {name}?",
-              "warning": "This action cannot be undone.",
-              "confirm": "Delete",
-              "success": "Document deleted successfully",
-              "error": "Failed to delete document"
             }
           }
         }

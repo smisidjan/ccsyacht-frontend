@@ -8,20 +8,22 @@ import {
   ChevronDownIcon,
 } from "@heroicons/react/24/outline";
 import { useMyTasks } from "@/lib/api";
+import { documentsApi } from "@/lib/api/documents";
 import { useMinimumLoadingTime } from "@/lib/hooks/useMinimumLoadingTime";
 import LoadingSkeleton from "@/app/components/ui/LoadingSkeleton";
 import Alert from "@/app/components/ui/Alert";
 import FilterPopover from "@/app/components/ui/FilterPopover";
+import DocumentViewerModal from "@/app/features/documents/components/DocumentViewerModal";
 import TaskRow, { type TaskItem } from "@/app/features/tasks/components/TaskRow";
+import type { MyTaskDocumentReview } from "@/lib/api/types";
 
-/** Task buckets the user can multi-select in the Filter popover.
- *  Maps 1:1 onto `TaskItem.type` so the predicate stays trivial. */
 const TASK_TYPE_OPTIONS = [
   { value: "document_request", labelKey: "documents" },
   { value: "punchlist_item", labelKey: "punchlist" },
   { value: "setup_task", labelKey: "meetings" },
   { value: "document_acknowledgement", labelKey: "acknowledgements" },
   { value: "stage_signoff", labelKey: "signoffs" },
+  { value: "document_review", labelKey: "documentReviews" },
 ] as const;
 
 type TaskType = (typeof TASK_TYPE_OPTIONS)[number]["value"];
@@ -46,6 +48,9 @@ function matchesSearch(task: TaskItem, query: string): boolean {
   if (task.type === "stage_signoff") {
     haystack.push(task.stage.name, task.area.name, task.deck.name);
   }
+  if (task.type === "document_review") {
+    haystack.push(task.document.title, task.documentType.name);
+  }
   return haystack.some((s) => s.toLowerCase().includes(q));
 }
 
@@ -61,22 +66,28 @@ function taskBucket(task: TaskItem): "overdue" | "pending" | "completed" {
     return "pending";
   }
   if (task.type === "setup_task") return task.hasSigned ? "completed" : "pending";
-  if (task.type === "document_acknowledgement") {
-    return task.isAcknowledged ? "completed" : "pending";
-  }
+  if (task.type === "document_acknowledgement") return task.isAcknowledged ? "completed" : "pending";
   if (task.type === "stage_signoff") return task.hasSigned ? "completed" : "pending";
+  if (task.type === "document_review") return task.hasReviewed ? "completed" : "pending";
   return "pending";
+}
+
+function mimeFromFileName(fileName: string): string {
+  const ext = fileName.split(".").pop()?.toLowerCase() ?? "";
+  if (ext === "pdf") return "application/pdf";
+  if (ext === "jpg" || ext === "jpeg") return "image/jpeg";
+  if (ext === "png") return "image/png";
+  return "application/octet-stream";
 }
 
 export default function MyTasksPage() {
   const t = useTranslations("myTasks");
-  // Empty selection on either axis = no constraint (matches all). The
-  // popover lets the user multi-pick across types and projects — same
-  // Jira-style semantics as the punchlist filter.
+
   const [selectedTaskTypes, setSelectedTaskTypes] = useState<TaskType[]>([]);
   const [selectedProjectIds, setSelectedProjectIds] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [showCompleted, setShowCompleted] = useState(false);
+  const [viewingTask, setViewingTask] = useState<MyTaskDocumentReview | null>(null);
 
   const { data: tasks, loading: rawLoading, error } = useMyTasks();
   const loading = useMinimumLoadingTime(rawLoading);
@@ -89,12 +100,10 @@ export default function MyTasksPage() {
       ...tasks.setupTasks,
       ...(tasks.documentAcknowledgements || []),
       ...(tasks.stageSignoffs || []),
+      ...(tasks.documentReviews || []),
     ];
   }, [tasks]);
 
-  // Project options derived from the loaded tasks — only offering
-  // projects that actually have a task in scope keeps the filter
-  // tight to the user's current data.
   const projectOptions = useMemo(() => {
     const seen = new Map<string, string>();
     for (const task of allTasks) {
@@ -117,11 +126,6 @@ export default function MyTasksPage() {
     [allTasks, selectedTaskTypes, selectedProjectIds, searchQuery]
   );
 
-  // Review documents (document_acknowledgement) are always tied to a
-  // kick-off meeting (setup_task). When both are in scope, render the
-  // ack rows nested under their parent meeting so the relationship is
-  // visually explicit. Acks whose meeting isn't in scope render
-  // standalone in their own bucket.
   const { buckets, ackChildren } = useMemo(() => {
     const meetingsInScope = new Set<string>();
     filtered.forEach((task) => {
@@ -143,9 +147,7 @@ export default function MyTasksPage() {
     const pending: TaskItem[] = [];
     const completed: TaskItem[] = [];
     filtered.forEach((task) => {
-      if (task.type === "document_acknowledgement" && childAckIds.has(task.identifier)) {
-        return;
-      }
+      if (task.type === "document_acknowledgement" && childAckIds.has(task.identifier)) return;
       const bucket = taskBucket(task);
       if (bucket === "overdue") overdue.push(task);
       else if (bucket === "pending") pending.push(task);
@@ -155,13 +157,13 @@ export default function MyTasksPage() {
     return { buckets: { overdue, pending, completed }, ackChildren: children };
   }, [filtered]);
 
-  if (loading) {
-    return <LoadingSkeleton type="list" rows={8} />;
-  }
+  const handleView = (task: TaskItem) => {
+    if (task.type !== "document_review") return;
+    setViewingTask(task);
+  };
 
-  if (error) {
-    return <Alert type="error" message={error.message || t("loadError")} />;
-  }
+  if (loading) return <LoadingSkeleton type="list" rows={8} />;
+  if (error) return <Alert type="error" message={error.message || t("loadError")} />;
 
   const counts = tasks?.counts;
   const hasAnyTasks = allTasks.length > 0;
@@ -170,178 +172,172 @@ export default function MyTasksPage() {
     <div>
       {/* Header */}
       <div className="flex items-start justify-between gap-4 mb-4 sm:mb-6">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
-              <ClipboardDocumentListIcon className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
-                {t("title")}
-              </h1>
-              {counts && hasAnyTasks ? (
-                <div className="flex items-center gap-3 text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-                  <span className="flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-red-500" aria-hidden="true" />
-                    <span className="font-semibold text-gray-900 dark:text-white">{counts.overdue}</span>
-                    <span>{t("stats.overdue").toLowerCase()}</span>
-                  </span>
-                  <span className="text-gray-300 dark:text-gray-600">·</span>
-                  <span className="flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500" aria-hidden="true" />
-                    <span className="font-semibold text-gray-900 dark:text-white">{counts.pending}</span>
-                    <span>{t("stats.pending").toLowerCase()}</span>
-                  </span>
-                  <span className="text-gray-300 dark:text-gray-600">·</span>
-                  <span className="flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-green-500" aria-hidden="true" />
-                    <span className="font-semibold text-gray-900 dark:text-white">{counts.completed}</span>
-                    <span>{t("stats.completed").toLowerCase()}</span>
-                  </span>
-                </div>
-              ) : (
-                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-                  {t("subtitle")}
-                </p>
-              )}
-            </div>
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
+            <ClipboardDocumentListIcon className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
+              {t("title")}
+            </h1>
+            {counts && hasAnyTasks ? (
+              <div className="flex items-center gap-3 text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-500" aria-hidden="true" />
+                  <span className="font-semibold text-gray-900 dark:text-white">{counts.overdue}</span>
+                  <span>{t("stats.overdue").toLowerCase()}</span>
+                </span>
+                <span className="text-gray-300 dark:text-gray-600">·</span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500" aria-hidden="true" />
+                  <span className="font-semibold text-gray-900 dark:text-white">{counts.pending}</span>
+                  <span>{t("stats.pending").toLowerCase()}</span>
+                </span>
+                <span className="text-gray-300 dark:text-gray-600">·</span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-500" aria-hidden="true" />
+                  <span className="font-semibold text-gray-900 dark:text-white">{counts.completed}</span>
+                  <span>{t("stats.completed").toLowerCase()}</span>
+                </span>
+              </div>
+            ) : (
+              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">{t("subtitle")}</p>
+            )}
           </div>
         </div>
+      </div>
 
-        {/* Search + filter — same visual language as the punchlist:
-            search box on the left, multi-select Filter popover on the
-            right. The popover's `Type` section replaces the old
-            single-select tab strip and keeps multi-pick semantics
-            (empty = all). */}
-        <div className="flex items-center flex-wrap gap-3 mb-4">
-          <div className="relative flex-1 max-w-sm">
-            <MagnifyingGlassIcon className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              placeholder={t("searchPlaceholder")}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
-          <FilterPopover
-            triggerLabel={t("filterLabel")}
-            sections={[
-              {
-                id: "type",
-                label: t("filterCategoryType"),
-                searchPlaceholder: t("filterSearchType"),
-                options: TASK_TYPE_OPTIONS.map((opt) => ({
-                  value: opt.value,
-                  label: t(`filters.${opt.labelKey}`),
-                })),
-                selected: selectedTaskTypes,
-                onChange: (next) =>
-                  setSelectedTaskTypes(next as TaskType[]),
-              },
-              {
-                id: "project",
-                label: t("filterCategoryProject"),
-                searchPlaceholder: t("filterSearchProject"),
-                emptyLabel: t("filterNoProjects"),
-                options: projectOptions.map((p) => ({
-                  value: p.id,
-                  label: p.name,
-                })),
-                selected: selectedProjectIds,
-                onChange: setSelectedProjectIds,
-              },
-            ]}
-            onClearAll={
-              selectedTaskTypes.length + selectedProjectIds.length > 0
-                ? () => {
-                    setSelectedTaskTypes([]);
-                    setSelectedProjectIds([]);
-                  }
-                : undefined
-            }
-            activeCountLabel={(count) =>
-              t("filterActiveCount", { count })
-            }
-            clearAllLabel={t("filterClear")}
+      {/* Search + filter */}
+      <div className="flex items-center flex-wrap gap-3 mb-4">
+        <div className="relative flex-1 max-w-sm">
+          <MagnifyingGlassIcon className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input
+            type="text"
+            placeholder={t("searchPlaceholder")}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-9 pr-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           />
         </div>
+        <FilterPopover
+          triggerLabel={t("filterLabel")}
+          sections={[
+            {
+              id: "type",
+              label: t("filterCategoryType"),
+              searchPlaceholder: t("filterSearchType"),
+              options: TASK_TYPE_OPTIONS.map((opt) => ({
+                value: opt.value,
+                label: t(`filters.${opt.labelKey}`),
+              })),
+              selected: selectedTaskTypes,
+              onChange: (next) => setSelectedTaskTypes(next as TaskType[]),
+            },
+            {
+              id: "project",
+              label: t("filterCategoryProject"),
+              searchPlaceholder: t("filterSearchProject"),
+              emptyLabel: t("filterNoProjects"),
+              options: projectOptions.map((p) => ({ value: p.id, label: p.name })),
+              selected: selectedProjectIds,
+              onChange: setSelectedProjectIds,
+            },
+          ]}
+          onClearAll={
+            selectedTaskTypes.length + selectedProjectIds.length > 0
+              ? () => { setSelectedTaskTypes([]); setSelectedProjectIds([]); }
+              : undefined
+          }
+          activeCountLabel={(count) => t("filterActiveCount", { count })}
+          clearAllLabel={t("filterClear")}
+        />
+      </div>
 
-        {/* Empty state */}
-        {!hasAnyTasks && (
-          <div className="flex flex-col items-center justify-center py-20 text-center">
-            <div className="w-16 h-16 rounded-2xl bg-gray-100 dark:bg-gray-700 flex items-center justify-center mb-4">
-              <ClipboardDocumentListIcon className="w-8 h-8 text-gray-400" />
+      {/* Empty states */}
+      {!hasAnyTasks && (
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <div className="w-16 h-16 rounded-2xl bg-gray-100 dark:bg-gray-700 flex items-center justify-center mb-4">
+            <ClipboardDocumentListIcon className="w-8 h-8 text-gray-400" />
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">{t("empty.title")}</h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400">{t("empty.description")}</p>
+        </div>
+      )}
+      {hasAnyTasks && filtered.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-16 text-center bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
+          <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-1">{t("empty.noTasksFiltered")}</h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400">{t("empty.tryDifferentFilter")}</p>
+        </div>
+      )}
+
+      {/* Buckets */}
+      {hasAnyTasks && filtered.length > 0 && (
+        <div className="space-y-6">
+          {buckets.overdue.length > 0 && (
+            <TaskBucket
+              label={t("groups.overdue")}
+              count={buckets.overdue.length}
+              accent="red"
+              tasks={buckets.overdue}
+              ackChildren={ackChildren}
+              onView={handleView}
+            />
+          )}
+          {buckets.pending.length > 0 && (
+            <TaskBucket
+              label={t("groups.pending")}
+              count={buckets.pending.length}
+              accent="amber"
+              tasks={buckets.pending}
+              ackChildren={ackChildren}
+              onView={handleView}
+            />
+          )}
+          {buckets.completed.length > 0 && (
+            <div>
+              <button
+                onClick={() => setShowCompleted((v) => !v)}
+                className="flex items-center gap-2 mb-2 text-sm font-semibold text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+              >
+                <ChevronDownIcon className={`w-4 h-4 transition-transform ${showCompleted ? "" : "-rotate-90"}`} />
+                <span>{t("groups.completed")}</span>
+                <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400">
+                  {buckets.completed.length}
+                </span>
+              </button>
+              {showCompleted && (
+                <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden shadow-md dark:shadow-lg dark:shadow-black/20">
+                  {buckets.completed.map((task) => (
+                    <TaskGroup
+                      key={`${task.type}-${task.identifier}`}
+                      task={task}
+                      nestedItems={ackChildren.get(task.identifier)}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
-              {t("empty.title")}
-            </h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              {t("empty.description")}
-            </p>
-          </div>
-        )}
+          )}
+        </div>
+      )}
 
-        {hasAnyTasks && filtered.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-16 text-center bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
-            <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-1">
-              {t("empty.noTasksFiltered")}
-            </h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              {t("empty.tryDifferentFilter")}
-            </p>
-          </div>
-        )}
-
-        {/* Buckets */}
-        {hasAnyTasks && filtered.length > 0 && (
-          <div className="space-y-6">
-            {buckets.overdue.length > 0 && (
-              <TaskBucket
-                label={t("groups.overdue")}
-                count={buckets.overdue.length}
-                accent="red"
-                tasks={buckets.overdue}
-                ackChildren={ackChildren}
-              />
-            )}
-            {buckets.pending.length > 0 && (
-              <TaskBucket
-                label={t("groups.pending")}
-                count={buckets.pending.length}
-                accent="amber"
-                tasks={buckets.pending}
-                ackChildren={ackChildren}
-              />
-            )}
-            {buckets.completed.length > 0 && (
-              <div>
-                <button
-                  onClick={() => setShowCompleted((v) => !v)}
-                  className="flex items-center gap-2 mb-2 text-sm font-semibold text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
-                >
-                  <ChevronDownIcon
-                    className={`w-4 h-4 transition-transform ${showCompleted ? "" : "-rotate-90"}`}
-                  />
-                  <span>{t("groups.completed")}</span>
-                  <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400">
-                    {buckets.completed.length}
-                  </span>
-                </button>
-                {showCompleted && (
-                  <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden shadow-md dark:shadow-lg dark:shadow-black/20">
-                    {buckets.completed.map((task) => (
-                      <TaskGroup
-                        key={`${task.type}-${task.identifier}`}
-                        task={task}
-                        nestedItems={ackChildren.get(task.identifier)}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        )}
+      {/* Inline document viewer for review tasks */}
+      {viewingTask && (
+        <DocumentViewerModal
+          isOpen
+          onClose={() => setViewingTask(null)}
+          attachment={{
+            name: viewingTask.document.title,
+            encodingFormat: mimeFromFileName(viewingTask.document.fileName),
+            contentSize: "",
+            author: { name: "" },
+          } as unknown as Parameters<typeof DocumentViewerModal>[0]["attachment"]}
+          downloadUrl={documentsApi.getDownloadUrl(
+            viewingTask.project.identifier,
+            viewingTask.document.identifier
+          )}
+        />
+      )}
     </div>
   );
 }
@@ -352,9 +348,10 @@ interface TaskBucketProps {
   accent: "red" | "amber";
   tasks: TaskItem[];
   ackChildren: Map<string, TaskItem[]>;
+  onView: (task: TaskItem) => void;
 }
 
-function TaskBucket({ label, count, accent, tasks, ackChildren }: TaskBucketProps) {
+function TaskBucket({ label, count, accent, tasks, ackChildren, onView }: TaskBucketProps) {
   const accentClass =
     accent === "red"
       ? "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400"
@@ -376,6 +373,7 @@ function TaskBucket({ label, count, accent, tasks, ackChildren }: TaskBucketProp
             key={`${task.type}-${task.identifier}`}
             task={task}
             nestedItems={ackChildren.get(task.identifier)}
+            onView={onView}
           />
         ))}
       </div>
@@ -386,9 +384,10 @@ function TaskBucket({ label, count, accent, tasks, ackChildren }: TaskBucketProp
 interface TaskGroupProps {
   task: TaskItem;
   nestedItems?: TaskItem[];
+  onView?: (task: TaskItem) => void;
 }
 
-function TaskGroup({ task, nestedItems }: TaskGroupProps) {
+function TaskGroup({ task, nestedItems, onView }: TaskGroupProps) {
   const hasChildren = !!nestedItems && nestedItems.length > 0;
   const [expanded, setExpanded] = useState(false);
 
@@ -399,6 +398,7 @@ function TaskGroup({ task, nestedItems }: TaskGroupProps) {
         expandable={hasChildren}
         expanded={expanded}
         onToggleExpand={() => setExpanded((v) => !v)}
+        onView={onView}
       />
       {hasChildren && expanded && nestedItems!.map((child) => (
         <TaskRow key={`${child.type}-${child.identifier}`} task={child} nested />
