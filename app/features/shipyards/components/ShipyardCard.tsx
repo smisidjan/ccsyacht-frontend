@@ -43,14 +43,21 @@ export default function ShipyardCard({
               <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-900/30 dark:to-blue-800/30 rounded-xl flex items-center justify-center shadow-sm">
                 <BuildingOffice2Icon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
               </div>
-              <h3 className="text-xl font-bold text-gray-900 dark:text-white truncate">
-                {shipyard.name}
-              </h3>
+              <div className="flex items-center gap-2 min-w-0">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white truncate">
+                  {shipyard.name}
+                </h3>
+                {shipyard.isKeyside && (
+                  <span className="flex-shrink-0 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
+                    {t("keyside")}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
 
-          {/* Action buttons */}
-          {(canEdit || canDelete) && (
+          {/* Action buttons — hidden for the reserved Keyside entry */}
+          {!shipyard.isKeyside && (canEdit || canDelete) && (
             <div className="flex gap-1 ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
               {canEdit && (
                 <button
@@ -76,6 +83,13 @@ export default function ShipyardCard({
 
         {/* Details */}
         <div className="space-y-3">
+          {/* Keyside explanation */}
+          {shipyard.isKeyside && (
+            <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
+              {t("keysideDescription")}
+            </p>
+          )}
+
           {/* Address */}
           {shipyard.address && (
             <div className="flex items-start gap-3 text-sm">

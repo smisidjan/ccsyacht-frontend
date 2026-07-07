@@ -63,6 +63,7 @@ export default function ProjectsPage() {
   const shipyardOptions = shipyardsArray.map((shipyard) => ({
     id: shipyard.identifier,
     name: shipyard.name,
+    isKeyside: shipyard.isKeyside,
   }));
 
   // Project types for modal
@@ -108,8 +109,10 @@ export default function ProjectsPage() {
         name: data.name,
         description: data.description,
         project_type: data.projectTypeId as "new_build" | "refit",
-        shipyard_id: data.shipyardId,
+        shipyard_id: data.shipyardId || undefined,
+        keyside_note: data.keysideNote || undefined,
         external_id: data.externalId || undefined,
+        include_kickoff_meeting: data.includeKickoffMeeting,
       });
 
       projectId = newProject.identifier;

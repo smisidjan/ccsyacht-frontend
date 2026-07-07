@@ -309,7 +309,15 @@
     "contactPersonOptional": "Contact Person (Optional)",
     "createShipyard": "Create Shipyard",
     "shipyardCreated": "Shipyard created successfully",
-    "shipyardCreateError": "Failed to create shipyard"
+    "shipyardCreateError": "Failed to create shipyard",
+    "kickoffMeeting": {
+      "title": "Kickoff Meeting",
+      "enabledDescription": "A kickoff meeting setup task will be created for this project. Attendees must schedule, sign off, and complete the kickoff before the project can be activated.",
+      "disabledDescription": "No kickoff meeting will be created. The project can be activated without completing a kickoff. Use this for projects that follow a streamlined or pre-agreed workflow."
+    },
+    "keyside": "Keyside",
+    "keysideNote": "Location Note",
+    "keysideNotePlaceholder": "Describe where the vessel is moored (e.g. berth near terminal 4, pier B)..."
   },
   "editProject": {
     "title": "Edit Project Information",
@@ -1905,6 +1913,8 @@
     "createShipyard": "Create Shipyard",
     "createFirst": "Create First Shipyard",
     "noShipyards": "No shipyards found",
+    "keyside": "Keyside",
+    "keysideDescription": "Reserved entry for projects where the vessel is moored at its own location (keyside). A location note is required per project.",
     "edit": "Edit shipyard",
     "delete": "Delete shipyard",
     "form": {

@@ -9,7 +9,6 @@ import FormInput from "@/app/components/ui/FormInput";
 import FormTextarea from "@/app/components/ui/FormTextarea";
 import FormSelect from "@/app/components/ui/FormSelect";
 import Button from "@/app/components/ui/Button";
-import Alert from "@/app/components/ui/Alert";
 import Table from "@/app/components/ui/Table";
 import SelectOrCreateSection from "@/app/components/ui/SelectOrCreateSection";
 import { InlineShipyardForm } from "@/app/features/shipyards";
@@ -29,7 +28,7 @@ interface CreateProjectModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (data: ProjectFormData) => Promise<void>;
-  shipyards: { id: string; name: string }[];
+  shipyards: { id: string; name: string; isKeyside?: boolean }[];
   projectTypes: { id: string; name: string }[];
   onShipyardCreated: (shipyard: { id: string; name: string }) => void;
 }
@@ -38,10 +37,12 @@ export interface ProjectFormData {
   name: string;
   description: string;
   shipyardId: string;
+  keysideNote: string;
   projectTypeId: string;
   externalId: string;
   generalArrangement: File | null;
   documentTypes: DocumentType[];
+  includeKickoffMeeting: boolean;
 }
 
 export default function CreateProjectModal({
@@ -56,32 +57,52 @@ export default function CreateProjectModal({
   const { showToast } = useToast();
 
   // Fetch document type templates from backend
-  const { data: templates, loading: templatesLoading } = useDocumentTypeTemplates({ active_only: true });
+  const { data: templates } = useDocumentTypeTemplates({ active_only: true });
 
+  const keysideShipyard = shipyards.find((s) => s.isKeyside);
+  const regularShipyards = shipyards.filter((s) => !s.isKeyside);
+
+  const [shipyardMode, setShipyardMode] = useState<"existing" | "new" | "keyside">("existing");
   const [formData, setFormData] = useState<ProjectFormData>({
     name: "",
     description: "",
     shipyardId: "",
+    keysideNote: "",
     projectTypeId: "",
     externalId: "",
     generalArrangement: null,
     documentTypes: [],
+    includeKickoffMeeting: true,
   });
   const [newDocTypeName, setNewDocTypeName] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
 
   // Inline shipyard creation using hook
   const shipyardCreation = useInlineShipyardCreation({
     onSuccess: (shipyard) => {
       onShipyardCreated(shipyard);
       setFormData((prev) => ({ ...prev, shipyardId: shipyard.id }));
+      setShipyardMode("existing");
       showToast("success", t("shipyardCreated"));
     },
-    onError: (error) => {
+    onError: () => {
       showToast("error", t("shipyardCreateError"));
     },
   });
+
+  const handleShipyardModeChange = (mode: "existing" | "new" | "keyside") => {
+    setShipyardMode(mode);
+    if (mode === "new") {
+      shipyardCreation.setShowInlineForm(true);
+    } else {
+      shipyardCreation.handleCancel();
+    }
+    if (mode === "keyside") {
+      setFormData((prev) => ({ ...prev, shipyardId: keysideShipyard?.id || "" }));
+    } else if (mode === "existing") {
+      setFormData((prev) => ({ ...prev, shipyardId: "" }));
+    }
+  };
 
   // Initialize document types from templates when they load
   useEffect(() => {
@@ -113,9 +134,8 @@ export default function CreateProjectModal({
     }
   }, [templates]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setError("");
     setLoading(true);
 
     try {
@@ -127,15 +147,17 @@ export default function CreateProjectModal({
         name: "",
         description: "",
         shipyardId: "",
+        keysideNote: "",
         projectTypeId: "",
         externalId: "",
         generalArrangement: null,
         documentTypes: [],
+        includeKickoffMeeting: true,
       });
+      setShipyardMode("existing");
       setNewDocTypeName("");
     } catch (err) {
       const errorMessage = getErrorMessage(err, t("error"));
-      setError(errorMessage);
       showToast("error", errorMessage);
     } finally {
       setLoading(false);
@@ -184,7 +206,7 @@ export default function CreateProjectModal({
 
   const shipyardSelectOptions = [
     { value: "", label: "---------" },
-    ...shipyards.map((s) => ({ value: s.id, label: s.name })),
+    ...regularShipyards.map((s) => ({ value: s.id, label: s.name })),
   ];
 
   const projectTypeOptions = [
@@ -212,8 +234,6 @@ export default function CreateProjectModal({
       footer={footer}
       size="lg"
     >
-      {error && <Alert type="error" message={error} className="mb-6" />}
-
       <form id="create-project-form" onSubmit={handleSubmit} className="space-y-6">
         <FormInput
           id="project-name"
@@ -240,16 +260,10 @@ export default function CreateProjectModal({
           rows={3}
         />
 
-        <SelectOrCreateSection
+        <SelectOrCreateSection<"existing" | "new" | "keyside">
           title={t("yardOwner")}
-          mode={shipyardCreation.showInlineForm ? "new" : "existing"}
-          onModeChange={(mode) => {
-            if (mode === "new") {
-              shipyardCreation.setShowInlineForm(true);
-            } else {
-              shipyardCreation.handleCancel();
-            }
-          }}
+          mode={shipyardMode}
+          onModeChange={handleShipyardModeChange}
           selectLabel={t("selectShipyard")}
           createLabel={t("addShipyard")}
           selectDropdownLabel={t("selectShipyard")}
@@ -257,7 +271,7 @@ export default function CreateProjectModal({
           selectDropdownOptions={shipyardSelectOptions}
           onSelectChange={(value) => setFormData({ ...formData, shipyardId: value })}
           selectRequired={true}
-          selectDisabled={shipyards.length === 0}
+          selectDisabled={regularShipyards.length === 0}
           noItemsMessage={t("noShipyardsAvailable")}
           createFormContent={
             <InlineShipyardForm
@@ -275,6 +289,23 @@ export default function CreateProjectModal({
               onCancel={shipyardCreation.handleCancel}
               isLoading={shipyardCreation.isCreating}
             />
+          }
+          extraModeValue="keyside"
+          extraModeLabel={keysideShipyard ? t("keyside") : undefined}
+          extraContent={
+            <div className="space-y-2 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                {t("keysideNote")} <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                value={formData.keysideNote}
+                onChange={(e) => setFormData({ ...formData, keysideNote: e.target.value })}
+                placeholder={t("keysideNotePlaceholder")}
+                rows={3}
+                required={shipyardMode === "keyside"}
+                className="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+              />
+            </div>
           }
         />
 
@@ -388,6 +419,44 @@ export default function CreateProjectModal({
             </div>
           }
         />
+
+        {/* Kickoff meeting — enterprise toggle */}
+        <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 p-5">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-gray-900 dark:text-white mb-1">
+                {t("kickoffMeeting.title")}
+              </p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                {formData.includeKickoffMeeting
+                  ? t("kickoffMeeting.enabledDescription")
+                  : t("kickoffMeeting.disabledDescription")}
+              </p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={formData.includeKickoffMeeting}
+              onClick={() =>
+                setFormData((prev) => ({
+                  ...prev,
+                  includeKickoffMeeting: !prev.includeKickoffMeeting,
+                }))
+              }
+              className={`relative flex-shrink-0 w-11 h-6 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 ${
+                formData.includeKickoffMeeting
+                  ? "bg-blue-600"
+                  : "bg-gray-300 dark:bg-gray-600"
+              }`}
+            >
+              <span
+                className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                  formData.includeKickoffMeeting ? "translate-x-5" : "translate-x-0"
+                }`}
+              />
+            </button>
+          </div>
+        </div>
       </form>
     </Modal>
   );

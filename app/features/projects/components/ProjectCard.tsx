@@ -57,11 +57,18 @@ export default function ProjectCard({ project, isMember, userRole, memberCount, 
         {/* Details */}
         <div className="space-y-4 mb-5 flex-1">
           {/* Shipyard - always render */}
-          <div className="flex items-center gap-4 text-sm h-5">
-            <BuildingOffice2Icon className="w-5 h-5 text-gray-400 flex-shrink-0" />
-            <span className="text-gray-700 dark:text-gray-300 truncate">
-              {project.producer?.name || '\u00A0'}
-            </span>
+          <div className="flex items-start gap-4 text-sm">
+            <BuildingOffice2Icon className="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5" />
+            <div className="min-w-0">
+              <span className="text-gray-700 dark:text-gray-300 truncate block">
+                {project.producer?.name || '\u00A0'}
+              </span>
+              {project.producer?.isKeyside && project.keysideNote && (
+                <span className="text-xs text-gray-500 dark:text-gray-400 block truncate">
+                  {project.keysideNote}
+                </span>
+              )}
+            </div>
           </div>
 
           {/* Type & Dates - always render */}

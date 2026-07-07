@@ -315,7 +315,16 @@ export default function SettingsTab({ projectId, onProjectUpdate }: SettingsTabP
                       iconBgColor="bg-gray-100 dark:bg-gray-700/30"
                       iconColor="text-gray-600 dark:text-gray-400"
                       label={t("projectDetails.shipyard")}
-                      value={project.producer.name}
+                      value={
+                        <span>
+                          {project.producer.name}
+                          {project.producer.isKeyside && project.keysideNote && (
+                            <span className="block text-sm font-normal text-gray-500 dark:text-gray-400 mt-0.5">
+                              {project.keysideNote}
+                            </span>
+                          )}
+                        </span>
+                      }
                     />
                   )}
 

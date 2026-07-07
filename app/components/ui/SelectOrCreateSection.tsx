@@ -23,6 +23,14 @@ interface SelectOrCreateSectionProps<T extends string = "existing" | "new"> {
   createFormContent: ReactNode;
   // Optional children to render in select mode (after dropdown)
   children?: ReactNode;
+  /** Optional third radio option — used for domain-specific "extras"
+   *  like the Keyside shipyard entry. When `extraModeValue` matches
+   *  the current `mode`, `extraContent` is rendered in place of the
+   *  dropdown / create form. All three props must be provided
+   *  together for the radio to appear. */
+  extraModeValue?: T;
+  extraModeLabel?: string;
+  extraContent?: ReactNode;
 }
 
 export default function SelectOrCreateSection<T extends string = "existing" | "new">({
@@ -41,9 +49,14 @@ export default function SelectOrCreateSection<T extends string = "existing" | "n
   noItemsMessage,
   createFormContent,
   children,
+  extraModeValue,
+  extraModeLabel,
+  extraContent,
 }: SelectOrCreateSectionProps<T>) {
   const hasItems = selectDropdownOptions && selectDropdownOptions.length > 0;
   const newModeValue = "new" as T;
+  const hasExtraMode =
+    extraModeValue !== undefined && extraModeLabel !== undefined;
 
   return (
     <div>
@@ -81,6 +94,22 @@ export default function SelectOrCreateSection<T extends string = "existing" | "n
             {createLabel}
           </span>
         </label>
+
+        {hasExtraMode && (
+          <label className="flex items-center">
+            <input
+              type="radio"
+              name={`mode-${title}`}
+              value={extraModeValue}
+              checked={mode === extraModeValue}
+              onChange={() => onModeChange(extraModeValue as T)}
+              className="mr-2 w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+            />
+            <span className="text-sm text-gray-700 dark:text-gray-300">
+              {extraModeLabel}
+            </span>
+          </label>
+        )}
       </div>
 
       {/* Select existing dropdown */}
@@ -111,6 +140,12 @@ export default function SelectOrCreateSection<T extends string = "existing" | "n
         <div className="space-y-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
           {createFormContent}
         </div>
+      )}
+
+      {/* Extra mode (e.g. Keyside) — rendered raw so callers can pick
+          their own layout (a note textarea, a helper alert, etc.). */}
+      {hasExtraMode && mode === extraModeValue && extraContent && (
+        <div>{extraContent}</div>
       )}
     </div>
   );

@@ -384,6 +384,12 @@ export interface Shipyard {
   name: string;
   address?: string;
   contactPoint?: ShipyardContactPoint;
+  /** True for the reserved "Keyside" entry — a synthetic shipyard the
+   *  backend owns per tenant. Projects tied to it can carry a free-text
+   *  `keysideNote` describing the mooring location. Hide edit/delete
+   *  affordances and prefer showing it as a fixed third option in the
+   *  create/edit project picker. */
+  isKeyside?: boolean;
   dateCreated?: string;
   dateModified?: string;
 }
@@ -413,6 +419,10 @@ export interface ProjectProducer {
   identifier: string;
   name: string;
   contactPoint?: ShipyardContactPoint;
+  /** Mirrors `Shipyard.isKeyside`. Present on the nested producer so
+   *  display surfaces can flag Keyside projects without a second
+   *  fetch. */
+  isKeyside?: boolean;
 }
 
 export interface ProjectAuthor {
@@ -451,6 +461,10 @@ export interface Project {
   dateCreated?: string;
   dateModified?: string;
   producer?: ProjectProducer;
+  /** Free-text description of the mooring location, only set when the
+   *  project's producer is the Keyside shipyard. Absent (not `null`)
+   *  when no note was supplied. */
+  keysideNote?: string;
   author?: ProjectAuthor;
   // Backend-provided membership info (avoids N+1 API calls)
   isMember?: boolean;
@@ -462,9 +476,17 @@ export interface CreateProjectRequest {
   description?: string;
   project_type: ProjectType;
   shipyard_id?: string;
+  /** Only meaningful when `shipyard_id` points at the Keyside
+   *  shipyard. Optional free-text, max 5000 chars server-side. */
+  keyside_note?: string | null;
   start_date?: string;
   end_date?: string;
   external_id?: string;
+  /** When false the kickoff-meeting setup task is omitted entirely —
+   *  no scheduling, no sign-off, no kickoff document. The project can
+   *  be activated without completing a kickoff. Defaults to true on
+   *  the server when omitted. */
+  include_kickoff_meeting?: boolean;
 }
 
 export interface UpdateProjectRequest {
@@ -473,6 +495,8 @@ export interface UpdateProjectRequest {
   project_type?: ProjectType;
   status?: ProjectStatus;
   shipyard_id?: string;
+  /** Send `null` to clear an existing note; omit to leave unchanged. */
+  keyside_note?: string | null;
   start_date?: string;
   end_date?: string;
   external_id?: string;
