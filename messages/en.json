@@ -596,7 +596,12 @@
           "rejectReasonPlaceholder": "Enter your reason for rejecting...",
           "confirmReject": "Confirm Rejection"
         },
-        "cancel": "Cancel"
+        "cancel": "Cancel",
+        "subItems": {
+          "review": "Review",
+          "reviewRequired": "Review required",
+          "signedProgress": "{signed}/{total} signed"
+        }
       },
       "kickoffForm": {
         "tabs": {

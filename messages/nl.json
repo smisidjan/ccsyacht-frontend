@@ -596,7 +596,12 @@
           "rejectReasonPlaceholder": "Voer je reden voor afwijzen in...",
           "confirmReject": "Afwijzing Bevestigen"
         },
-        "cancel": "Annuleren"
+        "cancel": "Annuleren",
+        "subItems": {
+          "review": "Beoordelen",
+          "reviewRequired": "Beoordeling vereist",
+          "signedProgress": "{signed}/{total} ondertekend"
+        }
       },
       "kickoffForm": {
         "tabs": {

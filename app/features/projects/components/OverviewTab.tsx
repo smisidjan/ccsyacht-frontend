@@ -8,7 +8,7 @@ import SetupTaskCard from "./SetupTaskCard";
 import type { ProjectStatus } from "@/app/components/ui/StatusBadge";
 import Button from "@/app/components/ui/Button";
 import Alert from "@/app/components/ui/Alert";
-import { KickoffMeetingModal, KickoffSchedulingModal } from "@/app/features/kickoff";
+import { KickoffMeetingModal, KickoffSchedulingModal, KickoffScheduledCard } from "@/app/features/kickoff";
 import { CreateDeckModal } from "@/app/features/decks";
 import { useAreas, setupTasksApi } from "@/lib/api";
 import { useCurrentUserContext } from "@/app/context/CurrentUserContext";
@@ -18,7 +18,7 @@ import type { SetupTask } from "@/lib/api/types";
 import { usePermission } from "@/lib/hooks/usePermission";
 import { useMinimumLoadingTime } from "@/lib/hooks/useMinimumLoadingTime";
 import { useGAImage } from "@/lib/hooks/useGAImage";
-import { useRealtimeAreas, useRealtimeMembers, useRealtimeProject } from "@/lib/hooks/useRealtimeProject";
+import { useRealtimeAreas, useRealtimeProject } from "@/lib/hooks/useRealtimeProject";
 import { PERMISSIONS } from "@/lib/constants/permissions";
 import { projectsApi } from "@/lib/api/client";
 import { useToast } from "@/app/context/ToastContext";
@@ -73,7 +73,6 @@ export default function OverviewTab({
 
   // Setup tasks state
   const [setupTasks, setSetupTasks] = useState<SetupTask[]>([]);
-  const [setupTasksLoading, setSetupTasksLoading] = useState(true);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -127,22 +126,16 @@ export default function OverviewTab({
   useEffect(() => {
     async function fetchSetupTasks() {
       try {
-        setSetupTasksLoading(true);
         const response = await setupTasksApi.getAll(projectId);
         setSetupTasks(response.data || []);
       } catch (error) {
         handleError(error, { severity: "console", context: "Loading setup tasks" });
         setSetupTasks([]);
-      } finally {
-        setSetupTasksLoading(false);
       }
     }
 
-    // Fetch setup tasks for all users if project is in setup status
     if (projectStatus === "setup") {
       fetchSetupTasks();
-    } else {
-      setSetupTasksLoading(false);
     }
   }, [projectId, projectStatus]);
 
@@ -322,23 +315,40 @@ export default function OverviewTab({
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-            {visibleSetupTasks.map((task) => (
-              <SetupTaskCard
-                key={task.identifier}
-                task={task}
-                documentTypes={documentTypes || undefined}
-                allTasks={visibleSetupTasks}
-                onViewDetails={handleViewTaskDetails}
-                onDefineDecks={() => {
-                  setIsDeckEditMode(false);
-                  setIsDeckModalOpen(true);
-                }}
-                onViewDecks={() => {
-                  setIsDeckEditMode(true);
-                  setIsDeckModalOpen(true);
-                }}
-              />
-            ))}
+            {visibleSetupTasks.map((task) => {
+              const isScheduledKickoff =
+                task.additionalType === "kickoff_meeting" &&
+                (task.actionStatus === "scheduled" || task.actionStatus === "completed");
+
+              if (isScheduledKickoff) {
+                return (
+                  <KickoffScheduledCard
+                    key={task.identifier}
+                    task={task}
+                    projectId={projectId}
+                    onOpen={handleViewTaskDetails}
+                  />
+                );
+              }
+
+              return (
+                <SetupTaskCard
+                  key={task.identifier}
+                  task={task}
+                  documentTypes={documentTypes || undefined}
+                  allTasks={visibleSetupTasks}
+                  onViewDetails={handleViewTaskDetails}
+                  onDefineDecks={() => {
+                    setIsDeckEditMode(false);
+                    setIsDeckModalOpen(true);
+                  }}
+                  onViewDecks={() => {
+                    setIsDeckEditMode(true);
+                    setIsDeckModalOpen(true);
+                  }}
+                />
+              );
+            })}
           </div>
         </section>
       )}
