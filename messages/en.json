@@ -261,6 +261,9 @@
     "joinError": "Failed to join project",
     "members": "members",
     "memberCount": "{count, plural, =0 {No members} =1 {1 member} other {# members}}",
+    "stages": "stages",
+    "shipyardLabel": "Shipyard",
+    "typeLabel": "Project type",
     "filters": {
       "all": "All",
       "setup": "Setup",

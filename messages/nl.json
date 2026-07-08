@@ -261,6 +261,9 @@
     "joinError": "Kan niet deelnemen aan project",
     "members": "leden",
     "memberCount": "{count, plural, =0 {Geen leden} =1 {1 lid} other {# leden}}",
+    "stages": "fasen",
+    "shipyardLabel": "Scheepswerf",
+    "typeLabel": "Projecttype",
     "filters": {
       "all": "Alles",
       "setup": "Setup",

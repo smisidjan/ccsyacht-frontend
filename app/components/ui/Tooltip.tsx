@@ -9,6 +9,7 @@ interface TooltipProps {
   position?: "top" | "bottom" | "left" | "right";
   maxWidth?: string;
   multiline?: boolean;
+  triggerClassName?: string;
 }
 
 export default function Tooltip({
@@ -17,6 +18,7 @@ export default function Tooltip({
   position = "bottom",
   maxWidth = "200px",
   multiline = false,
+  triggerClassName = "relative inline-block",
 }: TooltipProps) {
   const [isVisible, setIsVisible] = useState(false);
   const [coords, setCoords] = useState({ top: 0, left: 0 });
@@ -73,7 +75,7 @@ export default function Tooltip({
   return (
     <div
       ref={triggerRef}
-      className="relative inline-block"
+      className={triggerClassName}
       onMouseEnter={() => setIsVisible(true)}
       onMouseLeave={() => setIsVisible(false)}
     >

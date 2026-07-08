@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link, useRouter } from "@/i18n/navigation";
 import {
@@ -13,8 +13,9 @@ import {
   UsersIcon,
 } from "@heroicons/react/24/outline";
 import StatusBadge from "@/app/components/ui/StatusBadge";
+import Tooltip from "@/app/components/ui/Tooltip";
 import type { Project, UserRole } from "@/lib/api/types";
-import { projectMembersApi } from "@/lib/api";
+import { projectMembersApi, useAreas } from "@/lib/api";
 import { useToast } from "@/app/context/ToastContext";
 import { usePermission } from "@/lib/hooks/usePermission";
 import { handleError } from "@/lib/utils/errors";
@@ -34,77 +35,92 @@ export default function ProjectCard({ project, isMember, userRole, memberCount, 
   const { user: currentUser } = usePermission();
   const [isJoining, setIsJoining] = useState(false);
 
-  return (
-    <div className="group bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-2xl dark:shadow-gray-900/50 dark:hover:shadow-gray-900/70 transition-all duration-300 hover:-translate-y-1 overflow-hidden h-full flex flex-col">
-      {/* Gradient accent */}
-      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 to-purple-600" />
+  const { data: areas } = useAreas(project.identifier);
+  const areasArray = useMemo(() => (Array.isArray(areas) ? areas : []), [areas]);
+  const totalStages = useMemo(() => areasArray.reduce((s, a) => s + (a.stageCount || 0), 0), [areasArray]);
+  const completedStages = useMemo(() => areasArray.reduce((s, a) => s + (a.completedStageCount || 0), 0), [areasArray]);
+  const stageProgress = totalStages > 0 ? Math.round((completedStages / totalStages) * 100) : 0;
 
-      {/* Content */}
-      <div className="p-8 flex-1 flex flex-col">
-        {/* Header */}
-        <div className="flex items-start justify-between mb-5">
-          <div className="flex items-center gap-4 flex-1 min-w-0">
+  return (
+    <div className="group relative bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-2xl dark:shadow-gray-900/50 dark:hover:shadow-gray-900/70 transition-all duration-300 hover:-translate-y-1 overflow-hidden h-full flex flex-col">
+      {/* Gradient accent — only visible on hover */}
+      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+
+      {/* Header */}
+      <div className="p-6 pb-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3 flex-1 min-w-0">
             <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-900/30 dark:to-blue-800/30 rounded-xl flex items-center justify-center shadow-sm">
               <FolderIcon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
             </div>
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white break-words">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white break-words line-clamp-2 min-h-[3.5rem]">
               {project.name}
             </h3>
           </div>
           <StatusBadge status={project.status} />
         </div>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mt-2 break-words line-clamp-2 min-h-[2.5rem]">
+          {project.description || ' '}
+        </p>
+        {totalStages > 0 && (
+          <div className="flex items-center gap-2 mt-3">
+            <div className="flex-1 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-blue-500 dark:bg-blue-400 rounded-full transition-all duration-500"
+                style={{ width: `${stageProgress}%` }}
+              />
+            </div>
+            <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+              {completedStages}/{totalStages} {t("stages")}
+            </span>
+          </div>
+        )}
+      </div>
 
-        {/* Details */}
-        <div className="space-y-4 mb-5 flex-1">
-          {/* Shipyard - always render */}
-          <div className="flex items-start gap-4 text-sm">
-            <BuildingOffice2Icon className="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5" />
-            <div className="min-w-0">
-              <span className="text-gray-700 dark:text-gray-300 truncate block">
-                {project.producer?.name || '\u00A0'}
+      {/* Details \u2014 compact sub-rows, same rhythm as the setup task cards */}
+      <div className="border-t border-gray-100 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700">
+        <div className="flex items-start gap-3 px-6 py-3">
+          <Tooltip content={t("shipyardLabel")} position="top" triggerClassName="flex-shrink-0 mt-0.5">
+            <BuildingOffice2Icon className="w-4 h-4 text-gray-400" />
+          </Tooltip>
+          <div className="min-w-0 flex-1">
+            <span className="text-sm text-gray-700 dark:text-gray-300 truncate block">
+              {project.producer?.name || '\u00A0'}
+            </span>
+            <span className="text-xs text-gray-500 dark:text-gray-400 block truncate">
+              {project.producer?.isQuayside && project.quaysideNote ? project.quaysideNote : '\u00A0'}
+            </span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 px-6 py-3">
+          <Tooltip content={t("typeLabel")} position="top" triggerClassName="flex-shrink-0">
+            <CalendarIcon className="w-4 h-4 text-gray-400" />
+          </Tooltip>
+          <div className="flex-1 min-w-0 flex items-center gap-2 flex-wrap">
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300 capitalize">
+              {project.additionalType?.replace('_', ' ') || '\u00A0'}
+            </span>
+            {(project.startDate || project.endDate) && (
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                {project.startDate && new Date(project.startDate).toLocaleDateString()}
+                {project.startDate && project.endDate && ' - '}
+                {project.endDate && new Date(project.endDate).toLocaleDateString()}
               </span>
-              {project.producer?.isQuayside && project.quaysideNote && (
-                <span className="text-xs text-gray-500 dark:text-gray-400 block truncate">
-                  {project.quaysideNote}
-                </span>
-              )}
-            </div>
-          </div>
-
-          {/* Type & Dates - always render */}
-          <div className="flex items-start gap-4 text-sm min-h-[2.5rem]">
-            <CalendarIcon className="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5" />
-            <div className="flex-1 min-w-0">
-              <div className="text-gray-700 dark:text-gray-300 mb-1">
-                <span className="font-medium capitalize">{project.additionalType?.replace('_', ' ') || '\u00A0'}</span>
-              </div>
-              <div className="text-xs text-gray-500 dark:text-gray-400 h-4">
-                {(project.startDate || project.endDate) ? (
-                  <>
-                    {project.startDate && new Date(project.startDate).toLocaleDateString()}
-                    {project.startDate && project.endDate && ' - '}
-                    {project.endDate && new Date(project.endDate).toLocaleDateString()}
-                  </>
-                ) : '\u00A0'}
-              </div>
-            </div>
-          </div>
-
-        </div>
-
-        {/* Description */}
-        <div className="mb-5">
-          <h3 className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-            {project.description || '\u00A0'}
-          </h3>
-          {/* Member Count */}
-          <div className="flex items-center justify-end gap-2 text-sm text-gray-600 dark:text-gray-400">
-            <UsersIcon className="w-4 h-4" />
-            <span>{t("memberCount", { count: memberCount ?? 0 })}</span>
+            )}
           </div>
         </div>
+      </div>
 
-        {/* Footer */}
+      {/* Content */}
+      <div className="p-6 pt-1 flex-1 flex flex-col">
+        {/* Member count — stays close to the details above */}
+        <div className="flex items-center justify-end gap-2 text-sm text-gray-600 dark:text-gray-400 mb-1">
+          <UsersIcon className="w-4 h-4" />
+          <span>{t("memberCount", { count: memberCount ?? 0 })}</span>
+        </div>
+
+        {/* Footer — pinned to the bottom so cards in a row stay aligned */}
         <div className="pt-5 border-t border-gray-100 dark:border-gray-700 flex justify-end">
           {isMember ? (
             // If user is a member, show "Open Project" button

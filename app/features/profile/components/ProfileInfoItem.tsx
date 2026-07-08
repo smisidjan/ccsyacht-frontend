@@ -20,20 +20,20 @@ export default function ProfileInfoItem({
   changeLabel,
 }: ProfileInfoItemProps) {
   return (
-    <div className="flex items-center justify-between">
-      <div className="flex items-center gap-3">
-        <div className={`w-10 h-10 ${iconBgColor} rounded-full flex items-center justify-center`}>
+    <div className="flex items-start justify-between gap-3 min-w-0">
+      <div className="flex items-start gap-3 min-w-0 flex-1">
+        <div className={`w-10 h-10 ${iconBgColor} rounded-full flex items-center justify-center flex-shrink-0`}>
           <Icon className={`w-5 h-5 ${iconColor}`} />
         </div>
-        <div>
+        <div className="min-w-0 flex-1">
           <p className="text-sm text-gray-500 dark:text-gray-400">{label}</p>
-          <div className="font-medium text-gray-900 dark:text-white">{value}</div>
+          <div className="font-medium text-gray-900 dark:text-white break-words">{value}</div>
         </div>
       </div>
       {onChangeClick && changeLabel && (
         <button
           onClick={onChangeClick}
-          className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+          className="text-sm text-blue-600 dark:text-blue-400 hover:underline flex-shrink-0"
         >
           {changeLabel}
         </button>
