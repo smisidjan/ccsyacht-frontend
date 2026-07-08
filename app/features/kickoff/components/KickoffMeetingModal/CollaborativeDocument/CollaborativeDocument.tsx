@@ -3,7 +3,6 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { useEditor, EditorContent } from "@tiptap/react";
-import { BubbleMenu } from "@tiptap/react/menus";
 import StarterKit from "@tiptap/starter-kit";
 import { Extension } from "@tiptap/core";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
@@ -14,13 +13,14 @@ import { TableCell } from "@tiptap/extension-table-cell";
 import { TableHeader } from "@tiptap/extension-table-header";
 import Image from "@tiptap/extension-image";
 import TextAlign from "@tiptap/extension-text-align";
-import {
-  ChatBubbleOvalLeftIcon,
-  BoldIcon,
-  ItalicIcon,
-  ListBulletIcon,
-  NumberedListIcon,
-} from "@heroicons/react/24/outline";
+import { TextStyle } from "@tiptap/extension-text-style";
+import { Color } from "@tiptap/extension-color";
+import Highlight from "@tiptap/extension-highlight";
+import Subscript from "@tiptap/extension-subscript";
+import Superscript from "@tiptap/extension-superscript";
+import Link from "@tiptap/extension-link";
+import { ShapeExtension } from "@/app/components/ui/RichTextEditor/ShapeExtension";
+import { VideoExtension } from "@/app/components/ui/RichTextEditor/VideoExtension";
 import CommentMark from "@/app/components/ui/RichTextEditor/comments/CommentMark";
 import CommentSidebar from "@/app/components/ui/RichTextEditor/comments/CommentSidebar";
 import CommentInputPanel from "@/app/components/ui/RichTextEditor/comments/CommentInputPanel";
@@ -31,36 +31,6 @@ import type { DocumentComment as ApiDocumentComment, ApiError } from "@/lib/api/
 import type { CollaborativeDocumentProps, InternalComment } from "./types";
 import { normalizeComment, normalizeComments } from "./types";
 
-interface BubbleButtonProps {
-  onClick: () => void;
-  active?: boolean;
-  label: string;
-  onMouseDown?: (e: React.MouseEvent) => void;
-  children: React.ReactNode;
-}
-
-function BubbleButton({ onClick, active, label, onMouseDown, children }: BubbleButtonProps) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      // Default: prevent focus shift so the editor's selection is intact when
-      // the click handler fires. Callers can override (e.g. the comment button
-      // already does) but the default keeps block-level commands working.
-      onMouseDown={onMouseDown ?? ((e) => e.preventDefault())}
-      title={label}
-      aria-label={label}
-      aria-pressed={active}
-      className={`flex items-center justify-center min-w-8 h-8 px-2 rounded text-white transition-colors text-sm ${
-        active
-          ? "bg-blue-500 hover:bg-blue-400"
-          : "hover:bg-gray-700"
-      }`}
-    >
-      {children}
-    </button>
-  );
-}
 
 export default function CollaborativeDocument({
   projectId,
@@ -93,11 +63,7 @@ export default function CollaborativeDocument({
   // so a selection change elsewhere doesn't make the open panel switch from a
   // pinned highlight thread to a "Start a conversation" prompt.
   const [panelRange, setPanelRange] = useState<{ from: number; to: number } | null>(null);
-  // Sticky BubbleMenu — opens on selection, closes only on a mousedown outside
-  // the menu DOM. Selection collapses (from menu actions, from the save round-
-  // trip resetting content, etc.) don't close it.
-  const [bubbleOpen, setBubbleOpen] = useState(false);
-  const [isCommentPanelOpen, setIsCommentPanelOpen] = useState(false);
+const [isCommentPanelOpen, setIsCommentPanelOpen] = useState(false);
   const [selectedText, setSelectedText] = useState<string>("");
   const [isSaving, setIsSaving] = useState(false);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -118,6 +84,30 @@ export default function CollaborativeDocument({
   // Store initialContent in a ref to access in onCreate
   const initialContentRef = useRef(initialContent);
   initialContentRef.current = initialContent;
+
+  // Adds fontSize attribute to the textStyle mark so the toolbar can set sizes.
+  const FontSize = useMemo(
+    () =>
+      Extension.create({
+        name: "fontSize",
+        addGlobalAttributes() {
+          return [
+            {
+              types: ["textStyle"],
+              attributes: {
+                fontSize: {
+                  default: null,
+                  parseHTML: (el) => el.style.fontSize || null,
+                  renderHTML: (attrs) =>
+                    attrs.fontSize ? { style: `font-size: ${attrs.fontSize}` } : {},
+                },
+              },
+            },
+          ];
+        },
+      }),
+    []
+  );
 
   // Create a stable extension that blocks document changes when not editable.
   // Comment marks are now applied server-side, so no programmatic-edit escape
@@ -145,25 +135,24 @@ export default function CollaborativeDocument({
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [
-      // StarterKit v3 ships link + underline by default; backend whitelist
-      // doesn't include them, so save would 422 on "Invalid document structure"
-      // as soon as a user pasted a URL or hit ⌘U.
-      StarterKit.configure({
-        link: false,
-        underline: false,
-      }),
-      Placeholder.configure({
-        placeholder: t("placeholder"),
-      }),
-      Table.configure({
-        resizable: true,
-      }),
+      StarterKit.configure({ link: false }),
+      Placeholder.configure({ placeholder: t("placeholder") }),
+      Table.configure({ resizable: true }),
       TableRow,
       TableCell,
       TableHeader,
       CommentMark,
       Image.configure({ inline: false, allowBase64: true }),
       TextAlign.configure({ types: ["heading", "paragraph"] }),
+      TextStyle,
+      Color,
+      FontSize,
+      Highlight.configure({ multicolor: true }),
+      Subscript,
+      Superscript,
+      Link.configure({ openOnClick: false, autolink: false }),
+      ShapeExtension,
+      VideoExtension,
       ConditionalReadOnly,
     ],
     content: initialContent || getDefaultContent(),
@@ -309,18 +298,10 @@ export default function CollaborativeDocument({
     if (!editor) return;
     const handler = () => {
       const { from, to } = editor.state.selection;
-      if (from !== to) {
-        setSelectionRange({ from, to });
-        setBubbleOpen(true);
-      }
-      // Don't auto-close on collapsed selection — that gets triggered by menu
-      // actions and the save round-trip's setContent. Closing is handled by
-      // the document mousedown listener below.
+      if (from !== to) setSelectionRange({ from, to });
     };
     editor.on("selectionUpdate", handler);
-    return () => {
-      editor.off("selectionUpdate", handler);
-    };
+    return () => { editor.off("selectionUpdate", handler); };
   }, [editor]);
 
   // Close the inline panel when switching to the Comments tab — otherwise
@@ -343,19 +324,6 @@ export default function CollaborativeDocument({
     }
   }, [isCommentPanelOpen]);
 
-  // Close the BubbleMenu when the user clicks outside it. Combined with the
-  // selectionUpdate listener above this gives a sticky-but-honest behavior:
-  // open on selection, stay through commands + save, close on outside click.
-  useEffect(() => {
-    if (!bubbleOpen) return;
-    const handler = (e: MouseEvent) => {
-      const target = e.target as HTMLElement;
-      if (target.closest("[data-bubble-menu='kickoff']")) return;
-      setBubbleOpen(false);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [bubbleOpen]);
 
   // Save content to API with optimistic-locking + empty-doc guard.
   const saveContent = async (content: Record<string, unknown>) => {
@@ -541,16 +509,6 @@ export default function CollaborativeDocument({
     [comments, editor]
   );
 
-  const handleOpenCommentPanel = useCallback(() => {
-    // Pin the panel to the live selection at the moment it's opened. After
-    // this, panelRange stays put even if the editor selection changes.
-    if (editor && selectionRange) {
-      const text = editor.state.doc.textBetween(selectionRange.from, selectionRange.to);
-      setSelectedText(text);
-      setPanelRange(selectionRange);
-    }
-    setIsCommentPanelOpen(true);
-  }, [editor, selectionRange]);
 
   const handleCancelCommentPanel = useCallback(() => {
     setIsCommentPanelOpen(false);
@@ -578,13 +536,6 @@ export default function CollaborativeDocument({
     return comments.filter((c) => c.from < to && c.to > from);
   }, [comments, selectionRange, panelRange]);
 
-  // Wraps a BubbleMenu button's command. The menu stays open via the outside-
-  // click guard; this just runs the action and re-asserts the open flag in
-  // case it was somehow toggled off.
-  const runMenuAction = (action: () => void) => () => {
-    action();
-    setBubbleOpen(true);
-  };
 
   return (
     <div className="space-y-4">
@@ -615,119 +566,30 @@ export default function CollaborativeDocument({
               // text cursor for the default arrow — text selection
               // still works (needed to trigger the comment popover)
               // but the editor no longer reads as a typeable field.
-              className={`prose prose-sm dark:prose-invert max-w-none p-4 min-h-[300px] focus:outline-none [&_.ProseMirror]:outline-none [&_.ProseMirror]:min-h-[280px] [&_.ProseMirror]:[&::selection]:bg-blue-200 [&_.ProseMirror]:dark:[&::selection]:bg-blue-800 [&_.comment-highlight]:bg-yellow-200 [&_.comment-highlight]:dark:bg-yellow-900/50 [&_.comment-highlight]:cursor-pointer [&_.ProseMirror_p.is-editor-empty:first-child::before]:content-[attr(data-placeholder)] [&_.ProseMirror_p.is-editor-empty:first-child::before]:text-gray-400 [&_.ProseMirror_p.is-editor-empty:first-child::before]:float-left [&_.ProseMirror_p.is-editor-empty:first-child::before]:pointer-events-none [&_.ProseMirror_p.is-editor-empty:first-child::before]:h-0 [&_.ProseMirror_table]:border-collapse [&_.ProseMirror_table]:w-full [&_.ProseMirror_table]:my-4 [&_.ProseMirror_td]:border [&_.ProseMirror_td]:border-gray-300 [&_.ProseMirror_td]:dark:border-gray-600 [&_.ProseMirror_td]:p-2 [&_.ProseMirror_th]:border [&_.ProseMirror_th]:border-gray-300 [&_.ProseMirror_th]:dark:border-gray-600 [&_.ProseMirror_th]:p-2 [&_.ProseMirror_th]:bg-gray-100 [&_.ProseMirror_th]:dark:bg-gray-800 [&_.ProseMirror_th]:font-semibold ${
-                editable
-                  ? ""
-                  : "[&_.ProseMirror]:caret-transparent [&_.ProseMirror]:cursor-default"
-              }`}
+              className={`prose prose-sm dark:prose-invert max-w-none p-4 min-h-[300px] focus:outline-none
+                [&_.ProseMirror]:outline-none [&_.ProseMirror]:min-h-[280px]
+                [&_.ProseMirror]:[&::selection]:bg-blue-200 [&_.ProseMirror]:dark:[&::selection]:bg-blue-800
+                [&_.comment-highlight]:bg-yellow-200 [&_.comment-highlight]:dark:bg-yellow-900/50 [&_.comment-highlight]:cursor-pointer
+                [&_.ProseMirror_p.is-editor-empty:first-child::before]:content-[attr(data-placeholder)]
+                [&_.ProseMirror_p.is-editor-empty:first-child::before]:text-gray-400
+                [&_.ProseMirror_p.is-editor-empty:first-child::before]:float-left
+                [&_.ProseMirror_p.is-editor-empty:first-child::before]:pointer-events-none
+                [&_.ProseMirror_p.is-editor-empty:first-child::before]:h-0
+                [&_.ProseMirror_h1]:text-3xl [&_.ProseMirror_h1]:font-bold [&_.ProseMirror_h1]:mt-6 [&_.ProseMirror_h1]:mb-2 [&_.ProseMirror_h1]:text-gray-900 [&_.ProseMirror_h1]:dark:text-white
+                [&_.ProseMirror_h2]:text-2xl [&_.ProseMirror_h2]:font-bold [&_.ProseMirror_h2]:mt-5 [&_.ProseMirror_h2]:mb-2 [&_.ProseMirror_h2]:text-gray-900 [&_.ProseMirror_h2]:dark:text-white
+                [&_.ProseMirror_h3]:text-xl  [&_.ProseMirror_h3]:font-bold [&_.ProseMirror_h3]:mt-4 [&_.ProseMirror_h3]:mb-1 [&_.ProseMirror_h3]:text-gray-900 [&_.ProseMirror_h3]:dark:text-white
+                [&_.ProseMirror_blockquote]:border-l-4 [&_.ProseMirror_blockquote]:border-gray-300 [&_.ProseMirror_blockquote]:dark:border-gray-600 [&_.ProseMirror_blockquote]:pl-4 [&_.ProseMirror_blockquote]:italic [&_.ProseMirror_blockquote]:text-gray-600 [&_.ProseMirror_blockquote]:dark:text-gray-400
+                [&_.ProseMirror_ul]:list-disc [&_.ProseMirror_ul]:pl-6 [&_.ProseMirror_ul]:my-2
+                [&_.ProseMirror_ol]:list-decimal [&_.ProseMirror_ol]:pl-6 [&_.ProseMirror_ol]:my-2
+                [&_.ProseMirror_li]:my-0.5
+                [&_.ProseMirror_hr]:border-gray-300 [&_.ProseMirror_hr]:dark:border-gray-600 [&_.ProseMirror_hr]:my-4
+                [&_.ProseMirror_a]:text-blue-600 [&_.ProseMirror_a]:dark:text-blue-400 [&_.ProseMirror_a]:underline [&_.ProseMirror_a]:cursor-pointer
+                [&_.ProseMirror_table]:border-collapse [&_.ProseMirror_table]:w-full [&_.ProseMirror_table]:my-4
+                [&_.ProseMirror_td]:border [&_.ProseMirror_td]:border-gray-300 [&_.ProseMirror_td]:dark:border-gray-600 [&_.ProseMirror_td]:p-2
+                [&_.ProseMirror_th]:border [&_.ProseMirror_th]:border-gray-300 [&_.ProseMirror_th]:dark:border-gray-600 [&_.ProseMirror_th]:p-2 [&_.ProseMirror_th]:bg-gray-100 [&_.ProseMirror_th]:dark:bg-gray-800 [&_.ProseMirror_th]:font-semibold
+                ${editable ? "" : "[&_.ProseMirror]:caret-transparent [&_.ProseMirror]:cursor-default"}`}
             />
           </div>
-
-          {/* Selection-anchored toolbar — formatting marks during the editing
-              phase, comment trigger during commenting. TipTap's BubbleMenu
-              positions itself; we control visibility per-button. */}
-          {editor && (editable || (canComment && currentUser)) && (
-            <BubbleMenu
-              editor={editor}
-              shouldShow={() => bubbleOpen}
-              // Anchor the menu inline at the right edge of the
-              // selection (with a small offset) instead of floating
-              // above. Keeps the menu out of the way of surrounding
-              // content and reads as an in-place action.
-              options={{
-                placement: "right",
-                offset: 8,
-              }}
-            >
-              <div data-bubble-menu="kickoff" className="flex items-center gap-1 rounded-lg bg-gray-900 px-1 py-1 shadow-lg">
-                {editable && (
-                  <>
-                    {/* Block-type buttons — kept identical to the toolbar so the
-                        user can switch from either place. We use buttons (not a
-                        native <select>) because selects steal focus on open and
-                        break ProseMirror's selection. */}
-                    <BubbleButton
-                      onClick={runMenuAction(() => editor.chain().focus().setParagraph().run())}
-                      active={editor.isActive("paragraph") && !editor.isActive("heading")}
-                      label="Paragraph"
-                    >
-                      <span className="font-semibold">¶</span>
-                    </BubbleButton>
-                    <BubbleButton
-                      onClick={runMenuAction(() => editor.chain().focus().toggleHeading({ level: 1 }).run())}
-                      active={editor.isActive("heading", { level: 1 })}
-                      label="Heading 1"
-                    >
-                      <span className="font-bold">H1</span>
-                    </BubbleButton>
-                    <BubbleButton
-                      onClick={runMenuAction(() => editor.chain().focus().toggleHeading({ level: 2 }).run())}
-                      active={editor.isActive("heading", { level: 2 })}
-                      label="Heading 2"
-                    >
-                      <span className="font-bold">H2</span>
-                    </BubbleButton>
-                    <BubbleButton
-                      onClick={runMenuAction(() => editor.chain().focus().toggleHeading({ level: 3 }).run())}
-                      active={editor.isActive("heading", { level: 3 })}
-                      label="Heading 3"
-                    >
-                      <span className="font-bold">H3</span>
-                    </BubbleButton>
-                    <span className="w-px h-5 bg-gray-700 mx-0.5" />
-                    <BubbleButton
-                      onClick={runMenuAction(() => editor.chain().focus().toggleBold().run())}
-                      active={editor.isActive("bold")}
-                      label="Bold"
-                    >
-                      <BoldIcon className="w-4 h-4" />
-                    </BubbleButton>
-                    <BubbleButton
-                      onClick={runMenuAction(() => editor.chain().focus().toggleItalic().run())}
-                      active={editor.isActive("italic")}
-                      label="Italic"
-                    >
-                      <ItalicIcon className="w-4 h-4" />
-                    </BubbleButton>
-                    <BubbleButton
-                      onClick={runMenuAction(() => editor.chain().focus().toggleStrike().run())}
-                      active={editor.isActive("strike")}
-                      label="Strikethrough"
-                    >
-                      <span className="text-sm line-through font-semibold leading-none px-0.5">S</span>
-                    </BubbleButton>
-                    <span className="w-px h-5 bg-gray-700 mx-0.5" />
-                    <BubbleButton
-                      onClick={runMenuAction(() => editor.chain().focus().toggleBulletList().run())}
-                      active={editor.isActive("bulletList")}
-                      label="Bullet list"
-                    >
-                      <ListBulletIcon className="w-4 h-4" />
-                    </BubbleButton>
-                    <BubbleButton
-                      onClick={runMenuAction(() => editor.chain().focus().toggleOrderedList().run())}
-                      active={editor.isActive("orderedList")}
-                      label="Numbered list"
-                    >
-                      <NumberedListIcon className="w-4 h-4" />
-                    </BubbleButton>
-                  </>
-                )}
-                {canComment && currentUser && (
-                  <>
-                    {editable && <span className="w-px h-5 bg-gray-700 mx-0.5" />}
-                    <BubbleButton
-                      onClick={handleOpenCommentPanel}
-                      label="Add comment"
-                      onMouseDown={(e) => e.preventDefault()}
-                    >
-                      <ChatBubbleOvalLeftIcon className="w-4 h-4" />
-                    </BubbleButton>
-                  </>
-                )}
-              </div>
-            </BubbleMenu>
-          )}
 
         </div>
       )}
@@ -781,9 +643,14 @@ const ALLOWED_NODE_ATTRS: Record<string, string[]> = {
   tableCell: ["colspan", "rowspan", "colwidth"],
   tableHeader: ["colspan", "rowspan", "colwidth"],
   image: ["src", "alt", "title"],
+  shape: ["shapeType", "fill", "stroke", "strokeWidth", "noStroke", "width", "height"],
+  video: ["src", "controls", "width", "height", "autoplay", "loop", "muted"],
 };
 const ALLOWED_MARK_ATTRS: Record<string, string[]> = {
-  comment: ["commentId"],
+  comment:    ["commentId"],
+  link:       ["href", "target", "rel"],
+  textStyle:  ["fontSize", "color"],
+  highlight:  ["color"],
 };
 
 type SanitizedNode = {
@@ -867,6 +734,7 @@ function collectNodeMarkTypes(doc: Record<string, unknown>): {
 function isEmptyDoc(doc: Record<string, unknown>): boolean {
   type Node = { type?: string; text?: string; content?: Node[] };
   const hasText = (node: Node): boolean => {
+    if (node.type === "shape" || node.type === "video") return true; // atom nodes count as content
     if (typeof node.text === "string" && node.text.length > 0) return true;
     if (Array.isArray(node.content)) return node.content.some(hasText);
     return false;

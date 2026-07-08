@@ -30,6 +30,7 @@ const ALLOWED_NODE_TYPES = new Set([
   "tableCell",
   "tableHeader",
   "image",
+  "video",
 ]);
 
 const ALLOWED_MARK_TYPES = new Set(["bold", "italic", "strike", "code"]);
