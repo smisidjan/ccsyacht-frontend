@@ -1324,7 +1324,7 @@
       "resendSuccess": "Invitation resent successfully",
       "resendError": "Failed to resend invitation",
       "delete": "Delete invitation",
-      "noInvitations": "No invitations",
+      "noInvitations": "No pending invitations",
       "statuses": {
         "pending": "Pending",
         "accepted": "Accepted",
@@ -1333,6 +1333,12 @@
       },
       "registrationRequests": {
         "title": "Registration Requests"
+      },
+      "history": {
+        "title": "History",
+        "subtitle": "{count} resolved",
+        "invitationsLabel": "Invitations",
+        "requestsLabel": "Registration Requests"
       }
     },
     "registrationRequests": {

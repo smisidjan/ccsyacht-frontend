@@ -65,10 +65,18 @@ export default function InvitationsTab({
   } | null>(null);
   const [invitationsCollapsed, setInvitationsCollapsed] = useState(false);
   const [requestsCollapsed, setRequestsCollapsed] = useState(false);
+  const [historyCollapsed, setHistoryCollapsed] = useState(true);
 
-  const pendingCount = invitations.filter(
-    (inv) => getInvitationStatusKey(inv) === "pending"
-  ).length;
+  // Active = still actionable; everything resolved (accepted/declined/expired,
+  // approved/rejected) moves to the History section so it doesn't clutter the view.
+  const activeInvitations = invitations.filter((inv) => getInvitationStatusKey(inv) === "pending");
+  const historyInvitations = invitations.filter((inv) => getInvitationStatusKey(inv) !== "pending");
+
+  const pendingRequests = registrationRequests.filter((r) => r.actionStatus === "PotentialActionStatus");
+  const historyRequests = registrationRequests.filter((r) => r.actionStatus !== "PotentialActionStatus");
+
+  const historyCount = historyInvitations.length + historyRequests.length;
+  const pendingCount = activeInvitations.length;
 
   const handleDeleteClick = (invitation: Invitation) => {
     setDeleteModal({
@@ -254,10 +262,10 @@ export default function InvitationsTab({
         {/* Invitations Content */}
         {!invitationsCollapsed && (
           <div>
-            {invitations.length > 0 ? (
+            {activeInvitations.length > 0 ? (
               <Table
                 columns={columns}
-                data={invitations}
+                data={activeInvitations}
                 keyExtractor={(invitation) => String(invitation.identifier)}
                 minWidth="700px"
               />
@@ -272,7 +280,7 @@ export default function InvitationsTab({
       </div>
 
       {/* Registration Requests Section */}
-      {registrationRequests.length > 0 && !requestsLoading && (
+      {pendingRequests.length > 0 && !requestsLoading && (
         <div className="mt-8 bg-white dark:bg-gray-800 rounded-xl shadow-lg dark:shadow-gray-900/30 border border-gray-100 dark:border-gray-700 overflow-hidden">
           {/* Registration Requests Header */}
           <button
@@ -285,7 +293,7 @@ export default function InvitationsTab({
               <ChevronUpIcon className="w-5 h-5 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-colors" />
             )}
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-              {t("registrationRequests.title")} ({registrationRequests.filter(r => r.actionStatus === "PotentialActionStatus").length})
+              {t("registrationRequests.title")} ({pendingRequests.length})
             </h3>
           </button>
 
@@ -293,7 +301,7 @@ export default function InvitationsTab({
           {!requestsCollapsed && (
             <div className="p-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
-                {registrationRequests.map((request) => (
+                {pendingRequests.map((request) => (
                   <RegistrationRequestCard
                     key={request.identifier}
                     request={request}
@@ -302,6 +310,66 @@ export default function InvitationsTab({
                   />
                 ))}
               </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* History Section — resolved invitations & registration requests, collapsed by default */}
+      {historyCount > 0 && (
+        <div className="mt-8 bg-white dark:bg-gray-800 rounded-xl shadow-lg dark:shadow-gray-900/30 border border-gray-100 dark:border-gray-700 overflow-hidden">
+          <button
+            onClick={() => setHistoryCollapsed(!historyCollapsed)}
+            className="flex items-center gap-3 w-full p-4 text-left group"
+          >
+            {historyCollapsed ? (
+              <ChevronDownIcon className="w-5 h-5 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-colors" />
+            ) : (
+              <ChevronUpIcon className="w-5 h-5 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-colors" />
+            )}
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                {t("history.title")}
+              </h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                {t("history.subtitle", { count: historyCount })}
+              </p>
+            </div>
+          </button>
+
+          {!historyCollapsed && (
+            <div className="divide-y divide-gray-200 dark:divide-gray-700 border-t border-gray-200 dark:border-gray-700">
+              {historyInvitations.length > 0 && (
+                <div className="p-4">
+                  <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                    {t("history.invitationsLabel")}
+                  </h4>
+                  <Table
+                    columns={columns}
+                    data={historyInvitations}
+                    keyExtractor={(invitation) => String(invitation.identifier)}
+                    minWidth="700px"
+                  />
+                </div>
+              )}
+
+              {historyRequests.length > 0 && (
+                <div className="p-4">
+                  <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                    {t("history.requestsLabel")}
+                  </h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
+                    {historyRequests.map((request) => (
+                      <RegistrationRequestCard
+                        key={request.identifier}
+                        request={request}
+                        onApprove={onApproveRequest || (async () => {})}
+                        onReject={onRejectRequest || (async () => {})}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

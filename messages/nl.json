@@ -1324,7 +1324,7 @@
       "resendSuccess": "Uitnodiging succesvol opnieuw verzonden",
       "resendError": "Uitnodiging opnieuw verzenden mislukt",
       "delete": "Uitnodiging verwijderen",
-      "noInvitations": "Geen uitnodigingen",
+      "noInvitations": "Geen openstaande uitnodigingen",
       "statuses": {
         "pending": "In afwachting",
         "accepted": "Geaccepteerd",
@@ -1333,6 +1333,12 @@
       },
       "registrationRequests": {
         "title": "Registratieverzoeken"
+      },
+      "history": {
+        "title": "Historie",
+        "subtitle": "{count} afgehandeld",
+        "invitationsLabel": "Uitnodigingen",
+        "requestsLabel": "Registratieverzoeken"
       }
     },
     "registrationRequests": {
