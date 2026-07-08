@@ -18,8 +18,8 @@ import {
 import AttendeeAvatar from "./shared/AttendeeAvatar";
 import DocumentAcknowledgementsModal from "./DocumentAcknowledgementsModal";
 import MeetingDocumentModal from "./MeetingDocumentModal";
+import { useIsTruncated } from "@/lib/hooks/useIsTruncated";
 import type { SetupTask, DocumentType } from "@/lib/api/types";
-import { useCurrentUserContext } from "@/app/context/CurrentUserContext";
 
 interface KickoffScheduledCardProps {
   task: SetupTask;
@@ -38,8 +38,6 @@ export default function KickoffScheduledCard({
 }: KickoffScheduledCardProps) {
   const t = useTranslations("projectDetail.setupTasks");
   const tKickoff = useTranslations("projectDetail.setupTasks.kickoffMeeting");
-  const { currentUser } = useCurrentUserContext();
-
   const [activeModal, setActiveModal] = useState<"docs" | "meetingDoc" | null>(null);
 
   const signedCount = task.assignees.filter((a) => a.hasSigned).length;
@@ -304,13 +302,25 @@ interface SubRowProps {
 }
 
 function SubRow({ icon, label, statusLabel, statusVariant, actionLabel, onAction, completed, disabled }: SubRowProps) {
+  const [isLabelHovered, setIsLabelHovered] = useState(false);
+  const { ref, isTruncated } = useIsTruncated<HTMLSpanElement>(isLabelHovered);
+  const expanded = isTruncated && isLabelHovered;
+
   return (
     <div className="flex items-center gap-3 px-5 py-3">
       <span className={`flex-shrink-0 ${completed ? "text-green-500 dark:text-green-400" : "text-gray-400 dark:text-gray-500"}`}>
         {icon}
       </span>
-      <span className="text-sm text-gray-700 dark:text-gray-300 flex-1 min-w-0 truncate">{label}</span>
-      <span className={`text-xs font-medium flex-shrink-0 ${statusVariantClasses[statusVariant]}`}>
+      <span
+        ref={ref}
+        onMouseEnter={() => setIsLabelHovered(true)}
+        onMouseLeave={() => setIsLabelHovered(false)}
+        className={`text-sm text-gray-700 dark:text-gray-300 flex-1 min-w-0 truncate ${expanded ? "whitespace-normal" : ""}`}
+        title={label}
+      >
+        {label}
+      </span>
+      <span className={`text-xs font-medium flex-shrink-0 ${expanded ? "hidden" : ""} ${statusVariantClasses[statusVariant]}`}>
         {statusLabel}
       </span>
       <button
@@ -329,11 +339,23 @@ function SubRow({ icon, label, statusLabel, statusVariant, actionLabel, onAction
 // ─── Locked row ───────────────────────────────────────────────────────────────
 
 function LockedRow({ icon, label, statusLabel }: { icon: React.ReactNode; label: string; statusLabel: string }) {
+  const [isLabelHovered, setIsLabelHovered] = useState(false);
+  const { ref, isTruncated } = useIsTruncated<HTMLSpanElement>(isLabelHovered);
+  const expanded = isTruncated && isLabelHovered;
+
   return (
     <div className="flex items-center gap-3 px-5 py-3 opacity-50">
       <span className="flex-shrink-0 text-gray-400 dark:text-gray-500">{icon}</span>
-      <span className="text-sm text-gray-700 dark:text-gray-300 flex-1 min-w-0 truncate">{label}</span>
-      <span className="text-xs font-medium text-gray-400 dark:text-gray-500 flex-shrink-0">{statusLabel}</span>
+      <span
+        ref={ref}
+        onMouseEnter={() => setIsLabelHovered(true)}
+        onMouseLeave={() => setIsLabelHovered(false)}
+        className={`text-sm text-gray-700 dark:text-gray-300 flex-1 min-w-0 truncate ${expanded ? "whitespace-normal" : ""}`}
+        title={label}
+      >
+        {label}
+      </span>
+      <span className={`text-xs font-medium text-gray-400 dark:text-gray-500 flex-shrink-0 ${expanded ? "hidden" : ""}`}>{statusLabel}</span>
       <span className="flex items-center justify-center w-7 h-6 flex-shrink-0">
         <LockClosedIcon className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
       </span>

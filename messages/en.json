@@ -414,7 +414,7 @@
       "addMembersAndSigners": {
         "title": "Add Project Members & Default Signers",
         "description": "Invite team members to collaborate on this project and configure the default signers for document approvals",
-        "action": "Add Members & Default Signers"
+        "action": "Add"
       },
       "addMembers": {
         "title": "Add Project Members",
