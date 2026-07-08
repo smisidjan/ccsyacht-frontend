@@ -1290,9 +1290,11 @@
       "createdAt": "Aangemaakt",
       "actions": "Acties",
       "edit": "Gebruiker bewerken",
+      "searchPlaceholder": "Zoek op naam of e-mail...",
       "noUsers": "Geen gebruikers gevonden",
       "noEmployees": "Geen medewerkers gevonden",
       "noGuests": "Geen gasten gevonden",
+      "noSearchResults": "Geen gebruikers gevonden voor \"{query}\"",
       "roleNames": {
         "admin": "Admin",
         "main user": "Hoofdgebruiker",

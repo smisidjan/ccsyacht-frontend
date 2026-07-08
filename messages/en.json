@@ -1290,9 +1290,11 @@
       "createdAt": "Created",
       "actions": "Actions",
       "edit": "Edit user",
+      "searchPlaceholder": "Search by name or email...",
       "noUsers": "No users found",
       "noEmployees": "No employees found",
       "noGuests": "No guests found",
+      "noSearchResults": "No users match \"{query}\"",
       "roleNames": {
         "admin": "Admin",
         "main user": "Main User",

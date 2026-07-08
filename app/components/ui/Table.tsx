@@ -60,12 +60,12 @@ export default function Table<T>({
       )}
       <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-x-auto">
         <table className="w-full" style={{ minWidth }}>
-          <thead className="bg-gray-50 dark:bg-gray-700/50">
+          <thead className="bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700">
             <tr>
               {columns.map((column) => (
                 <th
                   key={column.key}
-                  className={`px-4 py-3 ${column.headerClassName || "text-left"} text-sm font-medium text-gray-700 dark:text-gray-300`}
+                  className={`px-4 py-3 ${column.headerClassName || "text-left"} text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400`}
                 >
                   {column.header}
                 </th>
@@ -76,7 +76,7 @@ export default function Table<T>({
             {data.map((item) => (
               <tr
                 key={keyExtractor(item)}
-                className={rowClassName?.(item) || ""}
+                className={`hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors ${rowClassName?.(item) || ""}`}
               >
                 {columns.map((column) => (
                   <td

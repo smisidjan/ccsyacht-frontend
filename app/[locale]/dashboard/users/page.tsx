@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
+import { UsersIcon, EnvelopeIcon } from "@heroicons/react/24/outline";
 import { useTenant } from "@/app/context/TenantContext";
 import TabNavState from "@/app/components/ui/TabNavState";
 import type { StateTab } from "@/app/components/ui/TabNavState";
@@ -63,8 +64,8 @@ export default function UsersPage() {
 
   // Build tabs array based on permissions
   const tabs: StateTab[] = [
-    { key: "users", label: t("tabs.users") },
-    ...(canViewInvitations ? [{ key: "invitations", label: t("tabs.invitations") }] : []),
+    { key: "users", label: t("tabs.users"), icon: UsersIcon },
+    ...(canViewInvitations ? [{ key: "invitations", label: t("tabs.invitations"), icon: EnvelopeIcon }] : []),
   ];
 
   // Reset active tab to "users" if user doesn't have invitation permissions
