@@ -8,6 +8,7 @@ import {
   UsersIcon,
   BriefcaseIcon,
   GlobeAltIcon,
+  MagnifyingGlassIcon,
 } from "@heroicons/react/24/outline";
 import type { User, UserRole } from "@/lib/api/types";
 import { getRoleBadgeColor, getStatusBadgeColor } from "@/lib/utils/badges";
@@ -15,7 +16,6 @@ import { usePermission } from "@/lib/hooks/usePermission";
 import { PERMISSIONS } from "@/lib/constants/permissions";
 import Table from "@/app/components/ui/Table";
 import LoadingSkeleton from "@/app/components/ui/LoadingSkeleton";
-import SearchInput from "@/app/components/ui/SearchInput";
 
 interface UsersTabProps {
   users: User[];
@@ -271,8 +271,15 @@ export default function UsersTab({
           })}
         </div>
 
-        <div className="w-full sm:w-72">
-          <SearchInput value={search} onChange={setSearch} placeholder={t("searchPlaceholder")} />
+        <div className="relative w-full sm:w-72">
+          <MagnifyingGlassIcon className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input
+            type="text"
+            placeholder={t("searchPlaceholder")}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-9 pr-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          />
         </div>
       </div>
 
