@@ -39,12 +39,12 @@ export default function ShipyardCard({
         {/* Header with actions */}
         <div className="flex items-start justify-between mb-4">
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
+            <div className="flex items-start gap-2 mb-1">
               <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-900/30 dark:to-blue-800/30 rounded-xl flex items-center justify-center shadow-sm">
                 <BuildingOffice2Icon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
               </div>
-              <div className="flex items-center gap-2 min-w-0">
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white truncate">
+              <div className="flex items-center gap-2 flex-wrap min-w-0">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white break-words">
                   {shipyard.name}
                 </h3>
                 {shipyard.isQuayside && (
