@@ -306,7 +306,8 @@ export default function MyTasksPage() {
                 </span>
               </button>
               {showCompleted && (
-                <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden shadow-md dark:shadow-lg dark:shadow-black/20">
+                <div className="relative bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden shadow-md dark:shadow-lg dark:shadow-black/20">
+                  <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-gray-400 to-gray-500" />
                   {buckets.completed.map((task) => (
                     <TaskGroup
                       key={`${task.type}-${task.identifier}`}
@@ -356,6 +357,10 @@ function TaskBucket({ label, count, accent, tasks, ackChildren, onView }: TaskBu
     accent === "red"
       ? "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400"
       : "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400";
+  const barClass =
+    accent === "red"
+      ? "bg-gradient-to-r from-red-500 to-red-600"
+      : "bg-gradient-to-r from-amber-500 to-amber-600";
 
   return (
     <div>
@@ -367,7 +372,8 @@ function TaskBucket({ label, count, accent, tasks, ackChildren, onView }: TaskBu
           {count}
         </span>
       </div>
-      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden shadow-md dark:shadow-lg dark:shadow-black/20">
+      <div className="relative bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden shadow-md dark:shadow-lg dark:shadow-black/20">
+        <div className={`absolute top-0 left-0 right-0 h-1 ${barClass}`} />
         {tasks.map((task) => (
           <TaskGroup
             key={`${task.type}-${task.identifier}`}
