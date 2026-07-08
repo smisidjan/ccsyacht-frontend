@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { PlusIcon, BuildingOffice2Icon } from "@heroicons/react/24/outline";
+import { PlusIcon, BuildingOffice2Icon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import { useShipyards } from "@/lib/api";
 import { PERMISSIONS } from "@/lib/constants/permissions";
 import { usePermission } from "@/lib/hooks/usePermission";
@@ -33,6 +33,7 @@ export default function ShipyardsPage() {
   const [editingShipyard, setEditingShipyard] = useState<Shipyard | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deletingShipyard, setDeletingShipyard] = useState<Shipyard | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Permissions
   const canCreateShipyard = hasPermission(PERMISSIONS.CREATE_SHIPYARDS);
@@ -42,6 +43,15 @@ export default function ShipyardsPage() {
   const shipyardsArray = Array.isArray(shipyards)
     ? [...shipyards].sort((a, b) => (b.isQuayside ? 1 : 0) - (a.isQuayside ? 1 : 0))
     : [];
+
+  const query = searchQuery.trim().toLowerCase();
+  const filteredShipyards = query
+    ? shipyardsArray.filter((s) =>
+        [s.name, s.address, s.contactPoint?.name, s.contactPoint?.email]
+          .filter(Boolean)
+          .some((field) => field!.toLowerCase().includes(query))
+      )
+    : shipyardsArray;
 
   // Handlers
   const handleCreate = () => {
@@ -113,18 +123,39 @@ export default function ShipyardsPage() {
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {shipyardsArray.map((shipyard: Shipyard) => (
-              <ShipyardCard
-                key={shipyard.identifier}
-                shipyard={shipyard}
-                canEdit={canEditShipyard}
-                canDelete={canDeleteShipyard}
-                onEdit={handleEdit}
-                onDelete={handleDelete}
+          <>
+            <div className="relative max-w-sm mb-4">
+              <MagnifyingGlassIcon className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                placeholder={t("searchPlaceholder")}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
-            ))}
-          </div>
+            </div>
+
+            {filteredShipyards.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 text-center bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
+                <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-1">
+                  {t("noSearchResults", { query: searchQuery.trim() })}
+                </h3>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredShipyards.map((shipyard: Shipyard) => (
+                  <ShipyardCard
+                    key={shipyard.identifier}
+                    shipyard={shipyard}
+                    canEdit={canEditShipyard}
+                    canDelete={canDeleteShipyard}
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
+                  />
+                ))}
+              </div>
+            )}
+          </>
         )}
 
         {/* Modals */}

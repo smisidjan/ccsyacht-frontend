@@ -1988,6 +1988,8 @@
     "createShipyard": "Create Shipyard",
     "createFirst": "Create First Shipyard",
     "noShipyards": "No shipyards found",
+    "searchPlaceholder": "Search shipyards...",
+    "noSearchResults": "No shipyards match \"{query}\"",
     "quayside": "Quayside",
     "quaysideDescription": "Reserved entry for projects where the vessel is moored at its own location (quayside). A location note is required per project.",
     "edit": "Edit shipyard",

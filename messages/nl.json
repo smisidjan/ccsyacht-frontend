@@ -2018,6 +2018,8 @@
     "createShipyard": "Scheepswerf Toevoegen",
     "createFirst": "Eerste Scheepswerf Toevoegen",
     "noShipyards": "Geen scheepswerven gevonden",
+    "searchPlaceholder": "Zoek scheepswerven...",
+    "noSearchResults": "Geen scheepswerven gevonden voor \"{query}\"",
     "quayside": "Quayside",
     "quaysideDescription": "Gereserveerde vermelding voor projecten waarbij het vaartuig op eigen locatie ligt (quayside). Per project is een locatieopmerking verplicht.",
     "edit": "Bewerk scheepswerf",
