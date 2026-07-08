@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
-import { PlusIcon, ArrowPathIcon, TrashIcon, EnvelopeIcon, ChevronDownIcon, ChevronUpIcon } from "@heroicons/react/24/outline";
+import { PlusIcon, ArrowPathIcon, TrashIcon, EnvelopeIcon, ChevronDownIcon, ChevronUpIcon, UserPlusIcon, ClockIcon } from "@heroicons/react/24/outline";
 import type { Invitation, RegistrationRequest } from "@/lib/api/types";
 import { getStatusBadgeColor } from "@/lib/utils/badges";
 import { getInvitationStatusKey, canDeleteInvitation, canResendInvitation } from "@/lib/utils/status";
@@ -230,7 +230,9 @@ export default function InvitationsTab({
         />
       )}
 
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg dark:shadow-gray-900/30 border border-gray-100 dark:border-gray-700 overflow-hidden">
+      <div className="relative bg-white dark:bg-gray-800 rounded-xl shadow-lg dark:shadow-gray-900/30 border border-gray-100 dark:border-gray-700 overflow-hidden">
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 to-blue-600" />
+
         {/* Invitations Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
           <button
@@ -243,6 +245,9 @@ export default function InvitationsTab({
               ) : (
                 <ChevronUpIcon className="w-5 h-5 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-colors" />
               )}
+              <span className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
+                <EnvelopeIcon className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+              </span>
               <div>
                 <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
                   {t("title")}
@@ -281,7 +286,9 @@ export default function InvitationsTab({
 
       {/* Registration Requests Section */}
       {pendingRequests.length > 0 && !requestsLoading && (
-        <div className="mt-8 bg-white dark:bg-gray-800 rounded-xl shadow-lg dark:shadow-gray-900/30 border border-gray-100 dark:border-gray-700 overflow-hidden">
+        <div className="relative mt-8 bg-white dark:bg-gray-800 rounded-xl shadow-lg dark:shadow-gray-900/30 border border-gray-100 dark:border-gray-700 overflow-hidden">
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 to-blue-600" />
+
           {/* Registration Requests Header */}
           <button
             onClick={() => setRequestsCollapsed(!requestsCollapsed)}
@@ -292,6 +299,9 @@ export default function InvitationsTab({
             ) : (
               <ChevronUpIcon className="w-5 h-5 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-colors" />
             )}
+            <span className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
+              <UserPlusIcon className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+            </span>
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
               {t("registrationRequests.title")} ({pendingRequests.length})
             </h3>
@@ -317,7 +327,9 @@ export default function InvitationsTab({
 
       {/* History Section — resolved invitations & registration requests, collapsed by default */}
       {historyCount > 0 && (
-        <div className="mt-8 bg-white dark:bg-gray-800 rounded-xl shadow-lg dark:shadow-gray-900/30 border border-gray-100 dark:border-gray-700 overflow-hidden">
+        <div className="relative mt-8 bg-white dark:bg-gray-800 rounded-xl shadow-lg dark:shadow-gray-900/30 border border-gray-100 dark:border-gray-700 overflow-hidden">
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-gray-400 to-gray-500" />
+
           <button
             onClick={() => setHistoryCollapsed(!historyCollapsed)}
             className="flex items-center gap-3 w-full p-4 text-left group"
@@ -327,6 +339,9 @@ export default function InvitationsTab({
             ) : (
               <ChevronUpIcon className="w-5 h-5 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-colors" />
             )}
+            <span className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center flex-shrink-0">
+              <ClockIcon className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+            </span>
             <div>
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
                 {t("history.title")}

@@ -222,15 +222,22 @@ export default function UsersTab({
   ];
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg dark:shadow-gray-900/30 border border-gray-100 dark:border-gray-700 overflow-hidden">
+    <div className="relative bg-white dark:bg-gray-800 rounded-xl shadow-lg dark:shadow-gray-900/30 border border-gray-100 dark:border-gray-700 overflow-hidden">
+      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 to-blue-600" />
+
       {/* Header */}
-      <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-          {headerTitle}
-        </h2>
-        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-          {headerSubtitle}
-        </p>
+      <div className="flex items-center gap-3 p-4 border-b border-gray-200 dark:border-gray-700">
+        <span className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
+          <UsersIcon className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+        </span>
+        <div>
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+            {headerTitle}
+          </h2>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+            {headerSubtitle}
+          </p>
+        </div>
       </div>
 
       {/* Toolbar: filters + search */}
