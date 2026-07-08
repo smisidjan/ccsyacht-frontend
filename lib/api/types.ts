@@ -1549,7 +1549,7 @@ export interface GetDocumentTypeTemplatesParams {
 
 // ============ Setup Tasks ============
 
-export type SetupTaskType = "upload_documents" | "add_members" | "add_signers" | "kickoff_meeting" | "define_decks" | "custom";
+export type SetupTaskType = "upload_documents" | "add_members_and_signers" | "add_members" | "add_signers" | "kickoff_meeting" | "define_decks" | "custom";
 export type SetupTaskStatus = "pending" | "awaiting_responses" | "scheduled" | "completed";
 export type SetupTaskMeetingFormat = "online" | "live";
 

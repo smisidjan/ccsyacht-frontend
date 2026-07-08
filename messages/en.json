@@ -408,6 +408,11 @@
         "assignedTo": "assigned to {name}",
         "action": "Upload Documents"
       },
+      "addMembersAndSigners": {
+        "title": "Add Project Members & Default Signers",
+        "description": "Invite team members to collaborate on this project and configure the default signers for document approvals",
+        "action": "Add Members & Default Signers"
+      },
       "addMembers": {
         "title": "Add Project Members",
         "description": "Invite team members to collaborate on this project",
@@ -571,6 +576,8 @@
           "download": "Download",
           "finalize": "Send for Signing",
           "startEditing": "Start Meeting",
+          "pendingNotScheduledTitle": "Meeting not yet scheduled",
+          "pendingNotScheduledHint": "Schedule the kick-off meeting first. Once scheduled, the host can start the meeting and walk through the document.",
           "phaseCommentingTitle": "Document is read-only",
           "phaseCommentingHintAttendee": "Select any text to add a comment. The host will start the meeting when everyone's ready.",
           "phaseCommentingHintReadOnly": "Review the document. The host will start the meeting and walk through the comments.",
@@ -609,7 +616,14 @@
         "subItems": {
           "review": "Review",
           "reviewRequired": "Review required",
-          "signedProgress": "{signed}/{total} signed"
+          "signedProgress": "{signed}/{total} signed",
+          "notScheduled": "Not scheduled",
+          "schedule": "Schedule",
+          "editMeeting": "Edit",
+          "commentsOnly": "Comments only",
+          "lockedUntilScheduled": "Available after scheduling",
+          "lockedUntilAttendees": "Available after adding attendees",
+          "lockedUntilUnblocked": "Complete required steps first"
         }
       },
       "kickoffForm": {

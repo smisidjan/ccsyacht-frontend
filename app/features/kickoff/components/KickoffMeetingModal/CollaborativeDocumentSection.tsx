@@ -14,6 +14,7 @@ import {
   ChevronRightIcon,
   ArrowDownTrayIcon,
   PencilIcon,
+  CalendarIcon,
 } from "@heroicons/react/24/outline";
 
 // Lazy: TipTap (~200 ESM modules) only loads when this section actually renders.
@@ -134,12 +135,6 @@ export default function CollaborativeDocumentSection({
   }, [projectId, taskId]);
 
   useEffect(() => {
-    // Don't fetch if task is still pending
-    if (isPending) {
-      setLoading(false);
-      return;
-    }
-
     fetchData();
   }, [projectId, taskId, isPending, fetchData]);
 
@@ -279,9 +274,6 @@ export default function CollaborativeDocumentSection({
     }
   }, [kickoffDocument?.isFinalDocument, signedCount, totalAssignees, effectiveSigners, onSigningStatusChange]);
 
-  // Only show after meeting is scheduled (not pending)
-  if (isPending) return null;
-
   // Check if current user has already signed
   const currentUserSigner = kickoffDocument?.signers?.find(
     (s) => s.identifier === currentUser?.identifier
@@ -297,7 +289,8 @@ export default function CollaborativeDocumentSection({
   const contentEditable =
     phase === "editing" &&
     canFinalize &&
-    task.actionStatus !== "completed";
+    task.actionStatus !== "completed" &&
+    !isPending;
   const canComment =
     phase === "commenting" &&
     isAttendee &&
@@ -609,13 +602,17 @@ export default function CollaborativeDocumentSection({
           {activeTab === "document" && (
             <div
               className={`flex items-center justify-between gap-3 px-4 py-3 rounded-lg border ${
-                phase === "commenting"
+                isPending
+                  ? "bg-gray-50 dark:bg-gray-800/60 border-gray-200 dark:border-gray-700"
+                  : phase === "commenting"
                   ? "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800"
                   : "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800"
               }`}
             >
               <div className="flex items-start gap-2 min-w-0">
-                {phase === "commenting" ? (
+                {isPending ? (
+                  <CalendarIcon className="w-4 h-4 mt-0.5 flex-shrink-0 text-gray-500 dark:text-gray-400" />
+                ) : phase === "commenting" ? (
                   <LockClosedIcon className="w-4 h-4 mt-0.5 flex-shrink-0 text-blue-600 dark:text-blue-400" />
                 ) : (
                   <PencilIcon className="w-4 h-4 mt-0.5 flex-shrink-0 text-amber-600 dark:text-amber-400" />
@@ -623,23 +620,31 @@ export default function CollaborativeDocumentSection({
                 <div className="min-w-0">
                   <p
                     className={`text-sm font-medium ${
-                      phase === "commenting"
+                      isPending
+                        ? "text-gray-700 dark:text-gray-300"
+                        : phase === "commenting"
                         ? "text-blue-900 dark:text-blue-100"
                         : "text-amber-900 dark:text-amber-100"
                     }`}
                   >
-                    {phase === "commenting"
+                    {isPending
+                      ? t("document.pendingNotScheduledTitle")
+                      : phase === "commenting"
                       ? t("document.phaseCommentingTitle")
                       : t("document.phaseEditingTitle")}
                   </p>
                   <p
                     className={`text-xs ${
-                      phase === "commenting"
+                      isPending
+                        ? "text-gray-500 dark:text-gray-400"
+                        : phase === "commenting"
                         ? "text-blue-700 dark:text-blue-300"
                         : "text-amber-700 dark:text-amber-300"
                     }`}
                   >
-                    {phase === "commenting"
+                    {isPending
+                      ? t("document.pendingNotScheduledHint")
+                      : phase === "commenting"
                       ? canComment
                         ? t("document.phaseCommentingHintAttendee")
                         : t("document.phaseCommentingHintReadOnly")
@@ -649,7 +654,7 @@ export default function CollaborativeDocumentSection({
                   </p>
                 </div>
               </div>
-              {canFinalize && (
+              {canFinalize && !isPending && (
                 <div className="flex items-center gap-2 flex-shrink-0">
                   {phase === "commenting" && (
                     <Button

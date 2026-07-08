@@ -14,6 +14,7 @@ interface SetupTaskCardProps {
   onViewDetails?: (taskId: string) => void;
   onDefineDecks?: () => void;
   onViewDecks?: () => void;
+  onGoToSettings?: () => void;
 }
 
 // Helper to convert snake_case task type to camelCase for translations
@@ -21,6 +22,8 @@ function taskTypeToCamelCase(taskType: SetupTaskType): string {
   switch (taskType) {
     case "upload_documents":
       return "uploadDocuments";
+    case "add_members_and_signers":
+      return "addMembersAndSigners";
     case "add_members":
       return "addMembers";
     case "add_signers":
@@ -39,6 +42,7 @@ function getActionHref(taskType: SetupTaskType): string | undefined {
   switch (taskType) {
     case "upload_documents":
       return "#documents";
+    case "add_members_and_signers":
     case "add_members":
     case "add_signers":
       return "#settings";
@@ -47,7 +51,7 @@ function getActionHref(taskType: SetupTaskType): string | undefined {
   }
 }
 
-export default function SetupTaskCard({ task, documentTypes, allTasks, onMarkComplete, onViewDetails, onDefineDecks, onViewDecks }: SetupTaskCardProps) {
+export default function SetupTaskCard({ task, documentTypes, allTasks, onMarkComplete, onViewDetails, onDefineDecks, onViewDecks, onGoToSettings }: SetupTaskCardProps) {
   const t = useTranslations("projectDetail.setupTasks");
   const { currentUser } = useCurrentUserContext();
 
@@ -280,7 +284,16 @@ export default function SetupTaskCard({ task, documentTypes, allTasks, onMarkCom
       <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mt-auto">
       <div className="flex items-center justify-end gap-3">
         {/* Action button for non-kickoff tasks */}
-        {!isCompleted && actionHref && task.additionalType !== "kickoff_meeting" && (
+        {!isCompleted && task.additionalType !== "kickoff_meeting" && (task.additionalType === "add_members" || task.additionalType === "add_signers") && onGoToSettings && (
+          <button
+            onClick={onGoToSettings}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-all shadow-md hover:shadow-lg"
+          >
+            <ArrowRightIcon className="w-4 h-4" />
+            {t(`${translationKey}.action`)}
+          </button>
+        )}
+        {!isCompleted && actionHref && task.additionalType !== "kickoff_meeting" && task.additionalType !== "add_members" && task.additionalType !== "add_signers" && (
           <a
             href={actionHref}
             className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-all shadow-md hover:shadow-lg"

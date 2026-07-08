@@ -408,6 +408,11 @@
         "assignedTo": "toegewezen aan {name}",
         "action": "Upload Documenten"
       },
+       "addMembersAndSigners": {
+        "title": "Voeg projectleden & standaardondertekenaars toe",
+        "description": "Nodig teamleden uit om samen te werken aan dit project en configureer de standaard ondertekenaars voor documentgoedkeuringen",
+        "action": "Voeg leden & ondertekenaars toe"
+      },
       "addMembers": {
         "title": "Voeg Projectleden Toe",
         "description": "Nodig teamleden uit om samen te werken aan dit project",
@@ -571,6 +576,8 @@
           "download": "Downloaden",
           "finalize": "Versturen ter ondertekening",
           "startEditing": "Start meeting",
+          "pendingNotScheduledTitle": "Meeting nog niet gepland",
+          "pendingNotScheduledHint": "Plan eerst de kick-off meeting. Zodra deze gepland is, kan de host de meeting starten en het document doorlopen.",
           "phaseCommentingTitle": "Document is alleen-lezen",
           "phaseCommentingHintAttendee": "Selecteer tekst om een opmerking toe te voegen. De host start de meeting zodra iedereen klaar is.",
           "phaseCommentingHintReadOnly": "Bekijk het document. De host start de meeting en loopt door de opmerkingen.",
@@ -609,7 +616,14 @@
         "subItems": {
           "review": "Beoordelen",
           "reviewRequired": "Beoordeling vereist",
-          "signedProgress": "{signed}/{total} ondertekend"
+          "signedProgress": "{signed}/{total} ondertekend",
+          "notScheduled": "Niet gepland",
+          "schedule": "Plannen",
+          "editMeeting": "Bewerken",
+          "commentsOnly": "Alleen commentaar",
+          "lockedUntilScheduled": "Beschikbaar na planning",
+          "lockedUntilAttendees": "Beschikbaar na toevoegen deelnemers",
+          "lockedUntilUnblocked": "Voltooi eerst de vereiste stappen"
         }
       },
       "kickoffForm": {

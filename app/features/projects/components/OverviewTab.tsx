@@ -30,6 +30,7 @@ interface OverviewTabProps {
   projectStatus: ProjectStatus;
   onProjectUpdate?: () => void;
   generalArrangement?: GeneralArrangement;
+  onGoToSettings?: () => void;
 }
 
 export default function OverviewTab({
@@ -37,6 +38,7 @@ export default function OverviewTab({
   projectStatus,
   onProjectUpdate,
   generalArrangement,
+  onGoToSettings,
 }: OverviewTabProps) {
   const t = useTranslations("projectDetail");
   const { data: areas, loading: rawLoading, error, refetch } = useAreas(projectId);
@@ -316,17 +318,15 @@ export default function OverviewTab({
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
             {visibleSetupTasks.map((task) => {
-              const isScheduledKickoff =
-                task.additionalType === "kickoff_meeting" &&
-                (task.actionStatus === "scheduled" || task.actionStatus === "completed");
-
-              if (isScheduledKickoff) {
+              if (task.additionalType === "kickoff_meeting") {
                 return (
                   <KickoffScheduledCard
                     key={task.identifier}
                     task={task}
                     projectId={projectId}
                     onOpen={handleViewTaskDetails}
+                    documentTypes={documentTypes || undefined}
+                    allTasks={visibleSetupTasks}
                   />
                 );
               }
@@ -338,6 +338,7 @@ export default function OverviewTab({
                   documentTypes={documentTypes || undefined}
                   allTasks={visibleSetupTasks}
                   onViewDetails={handleViewTaskDetails}
+                  onGoToSettings={onGoToSettings}
                   onDefineDecks={() => {
                     setIsDeckEditMode(false);
                     setIsDeckModalOpen(true);
