@@ -30,7 +30,6 @@ interface OverviewTabProps {
   projectStatus: ProjectStatus;
   onProjectUpdate?: () => void;
   generalArrangement?: GeneralArrangement;
-  onGoToSettings?: () => void;
 }
 
 export default function OverviewTab({
@@ -38,7 +37,6 @@ export default function OverviewTab({
   projectStatus,
   onProjectUpdate,
   generalArrangement,
-  onGoToSettings,
 }: OverviewTabProps) {
   const t = useTranslations("projectDetail");
   const { data: areas, loading: rawLoading, error, refetch } = useAreas(projectId);
@@ -337,8 +335,6 @@ export default function OverviewTab({
                   task={task}
                   documentTypes={documentTypes || undefined}
                   allTasks={visibleSetupTasks}
-                  onViewDetails={handleViewTaskDetails}
-                  onGoToSettings={onGoToSettings}
                   onDefineDecks={() => {
                     setIsDeckEditMode(false);
                     setIsDeckModalOpen(true);

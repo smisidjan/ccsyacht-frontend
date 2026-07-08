@@ -47,9 +47,9 @@ export default function ShipyardCard({
                 <h3 className="text-xl font-bold text-gray-900 dark:text-white truncate">
                   {shipyard.name}
                 </h3>
-                {shipyard.isKeyside && (
+                {shipyard.isQuayside && (
                   <span className="flex-shrink-0 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
-                    {t("keyside")}
+                    {t("quayside")}
                   </span>
                 )}
               </div>
@@ -57,7 +57,7 @@ export default function ShipyardCard({
           </div>
 
           {/* Action buttons — hidden for the reserved Keyside entry */}
-          {!shipyard.isKeyside && (canEdit || canDelete) && (
+          {!shipyard.isQuayside && (canEdit || canDelete) && (
             <div className="flex gap-1 ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
               {canEdit && (
                 <button
@@ -84,9 +84,9 @@ export default function ShipyardCard({
         {/* Details */}
         <div className="space-y-3">
           {/* Keyside explanation */}
-          {shipyard.isKeyside && (
+          {shipyard.isQuayside && (
             <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
-              {t("keysideDescription")}
+              {t("quaysideDescription")}
             </p>
           )}
 

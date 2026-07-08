@@ -28,7 +28,7 @@ interface CreateProjectModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (data: ProjectFormData) => Promise<void>;
-  shipyards: { id: string; name: string; isKeyside?: boolean }[];
+  shipyards: { id: string; name: string; isQuayside?: boolean }[];
   projectTypes: { id: string; name: string }[];
   onShipyardCreated: (shipyard: { id: string; name: string }) => void;
 }
@@ -37,7 +37,7 @@ export interface ProjectFormData {
   name: string;
   description: string;
   shipyardId: string;
-  keysideNote: string;
+  quaysideNote: string;
   projectTypeId: string;
   externalId: string;
   generalArrangement: File | null;
@@ -59,15 +59,15 @@ export default function CreateProjectModal({
   // Fetch document type templates from backend
   const { data: templates } = useDocumentTypeTemplates({ active_only: true });
 
-  const keysideShipyard = shipyards.find((s) => s.isKeyside);
-  const regularShipyards = shipyards.filter((s) => !s.isKeyside);
+  const quaysideShipyard = shipyards.find((s) => s.isQuayside);
+  const regularShipyards = shipyards.filter((s) => !s.isQuayside);
 
-  const [shipyardMode, setShipyardMode] = useState<"existing" | "new" | "keyside">("existing");
+  const [shipyardMode, setShipyardMode] = useState<"existing" | "new" | "quayside">("existing");
   const [formData, setFormData] = useState<ProjectFormData>({
     name: "",
     description: "",
     shipyardId: "",
-    keysideNote: "",
+    quaysideNote: "",
     projectTypeId: "",
     externalId: "",
     generalArrangement: null,
@@ -90,15 +90,15 @@ export default function CreateProjectModal({
     },
   });
 
-  const handleShipyardModeChange = (mode: "existing" | "new" | "keyside") => {
+  const handleShipyardModeChange = (mode: "existing" | "new" | "quayside") => {
     setShipyardMode(mode);
     if (mode === "new") {
       shipyardCreation.setShowInlineForm(true);
     } else {
       shipyardCreation.handleCancel();
     }
-    if (mode === "keyside") {
-      setFormData((prev) => ({ ...prev, shipyardId: keysideShipyard?.id || "" }));
+    if (mode === "quayside") {
+      setFormData((prev) => ({ ...prev, shipyardId: quaysideShipyard?.id || "" }));
     } else if (mode === "existing") {
       setFormData((prev) => ({ ...prev, shipyardId: "" }));
     }
@@ -147,7 +147,7 @@ export default function CreateProjectModal({
         name: "",
         description: "",
         shipyardId: "",
-        keysideNote: "",
+        quaysideNote: "",
         projectTypeId: "",
         externalId: "",
         generalArrangement: null,
@@ -260,7 +260,7 @@ export default function CreateProjectModal({
           rows={3}
         />
 
-        <SelectOrCreateSection<"existing" | "new" | "keyside">
+        <SelectOrCreateSection<"existing" | "new" | "quayside">
           title={t("yardOwner")}
           mode={shipyardMode}
           onModeChange={handleShipyardModeChange}
@@ -290,19 +290,19 @@ export default function CreateProjectModal({
               isLoading={shipyardCreation.isCreating}
             />
           }
-          extraModeValue="keyside"
-          extraModeLabel={keysideShipyard ? t("keyside") : undefined}
+          extraModeValue="quayside"
+          extraModeLabel={quaysideShipyard ? t("quayside") : undefined}
           extraContent={
             <div className="space-y-2 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                {t("keysideNote")} <span className="text-red-500">*</span>
+                {t("quaysideNote")} <span className="text-red-500">*</span>
               </label>
               <textarea
-                value={formData.keysideNote}
-                onChange={(e) => setFormData({ ...formData, keysideNote: e.target.value })}
-                placeholder={t("keysideNotePlaceholder")}
+                value={formData.quaysideNote}
+                onChange={(e) => setFormData({ ...formData, quaysideNote: e.target.value })}
+                placeholder={t("quaysideNotePlaceholder")}
                 rows={3}
-                required={shipyardMode === "keyside"}
+                required={shipyardMode === "quayside"}
                 className="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
               />
             </div>

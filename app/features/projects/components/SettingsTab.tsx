@@ -318,9 +318,9 @@ export default function SettingsTab({ projectId, onProjectUpdate }: SettingsTabP
                       value={
                         <span>
                           {project.producer.name}
-                          {project.producer.isKeyside && project.keysideNote && (
+                          {project.producer.isQuayside && project.quaysideNote && (
                             <span className="block text-sm font-normal text-gray-500 dark:text-gray-400 mt-0.5">
-                              {project.keysideNote}
+                              {project.quaysideNote}
                             </span>
                           )}
                         </span>

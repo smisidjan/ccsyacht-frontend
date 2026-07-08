@@ -329,9 +329,9 @@
       "enabledDescription": "A kickoff meeting setup task will be created for this project. Attendees must schedule, sign off, and complete the kickoff before the project can be activated.",
       "disabledDescription": "No kickoff meeting will be created. The project can be activated without completing a kickoff. Use this for projects that follow a streamlined or pre-agreed workflow."
     },
-    "keyside": "Keyside",
-    "keysideNote": "Location Note",
-    "keysideNotePlaceholder": "Describe where the vessel is moored (e.g. berth near terminal 4, pier B)..."
+    "quayside": "Quayside",
+    "quaysideNote": "Location Note",
+    "quaysideNotePlaceholder": "Describe where the vessel is moored (e.g. berth near terminal 4, pier B)..."
   },
   "editProject": {
     "title": "Edit Project Information",
@@ -406,7 +406,10 @@
         "descriptionIntro": "Upload the following required documents:",
         "requestedIntro": "The following documents have been requested:",
         "assignedTo": "assigned to {name}",
-        "action": "Upload Documents"
+        "action": "Upload Documents",
+        "missing": "Missing",
+        "upload": "Upload",
+        "waitingFor": "Waiting: {name}"
       },
       "addMembersAndSigners": {
         "title": "Add Project Members & Default Signers",
@@ -947,6 +950,7 @@
     "areas": "areas",
     "stages": "stages",
     "completed": "completed",
+    "members": "members",
     "inProgress": "in progress",
     "viewDetails": "View Details",
     "documents": {
@@ -1976,8 +1980,8 @@
     "createShipyard": "Create Shipyard",
     "createFirst": "Create First Shipyard",
     "noShipyards": "No shipyards found",
-    "keyside": "Keyside",
-    "keysideDescription": "Reserved entry for projects where the vessel is moored at its own location (keyside). A location note is required per project.",
+    "quayside": "Quayside",
+    "quaysideDescription": "Reserved entry for projects where the vessel is moored at its own location (quayside). A location note is required per project.",
     "edit": "Edit shipyard",
     "delete": "Delete shipyard",
     "form": {

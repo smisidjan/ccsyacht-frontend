@@ -63,9 +63,9 @@ export default function ProjectCard({ project, isMember, userRole, memberCount, 
               <span className="text-gray-700 dark:text-gray-300 truncate block">
                 {project.producer?.name || '\u00A0'}
               </span>
-              {project.producer?.isKeyside && project.keysideNote && (
+              {project.producer?.isQuayside && project.quaysideNote && (
                 <span className="text-xs text-gray-500 dark:text-gray-400 block truncate">
-                  {project.keysideNote}
+                  {project.quaysideNote}
                 </span>
               )}
             </div>

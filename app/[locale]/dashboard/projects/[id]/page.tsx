@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { useParams } from "next/navigation";
 import { Link } from "@/i18n/navigation";
@@ -11,7 +11,7 @@ import type { StateTab } from "@/app/components/ui/TabNavState";
 import Alert from "@/app/components/ui/Alert";
 import Tooltip from "@/app/components/ui/Tooltip";
 import ConfirmModal from "@/app/components/modals/ConfirmModal";
-import { useProject, projectsApi } from "@/lib/api";
+import { useProject, useProjectMembers, useAreas, projectsApi } from "@/lib/api";
 import { useMinimumLoadingTime } from "@/lib/hooks/useMinimumLoadingTime";
 import { usePermission } from "@/lib/hooks/usePermission";
 import { useToast } from "@/app/context/ToastContext";
@@ -51,6 +51,10 @@ import { PunchlistTab } from "@/app/features/punchlist";
 
 type TabKey = "overview" | "documents" | "generalArrangement" | "punchlist" | "logbook" | "reporting" | "settings";
 
+function getInitials(name: string): string {
+  return name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
+}
+
 function ProjectDetailPageContent({ projectId }: { projectId: string }) {
   const t = useTranslations("projectDetail");
   const [activeTab, setActiveTab] = useState<TabKey>("overview");
@@ -60,6 +64,14 @@ function ProjectDetailPageContent({ projectId }: { projectId: string }) {
 
   // Fetch project from API
   const { data: project, loading: rawLoading, error, refetch } = useProject(projectId);
+
+  // Header enrichment
+  const { data: membersRaw } = useProjectMembers(projectId);
+  const { data: areasRaw } = useAreas(projectId);
+  const membersArray = useMemo(() => (Array.isArray(membersRaw) ? membersRaw : []), [membersRaw]);
+  const totalStages = useMemo(() => (areasRaw || []).reduce((s, a) => s + (a.stageCount || 0), 0), [areasRaw]);
+  const completedStages = useMemo(() => (areasRaw || []).reduce((s, a) => s + (a.completedStageCount || 0), 0), [areasRaw]);
+  const stageProgress = totalStages > 0 ? Math.round((completedStages / totalStages) * 100) : 0;
 
   // Enforce minimum loading time to prevent flickering
   // Only show loading on initial load, not during background polling (when we already have data)
@@ -180,7 +192,6 @@ function ProjectDetailPageContent({ projectId }: { projectId: string }) {
             projectStatus={project.status}
             onProjectUpdate={refetch}
             generalArrangement={getGAObject(project.generalArrangement)}
-            onGoToSettings={() => setActiveTab("settings")}
           />
         )}
         {activeTab === "documents" && (
@@ -272,15 +283,61 @@ function ProjectDetailPageContent({ projectId }: { projectId: string }) {
         <div className="flex items-center gap-5">
           <Link
             href="/dashboard/projects"
-            className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors flex-shrink-0"
           >
             <ArrowLeftIcon className="w-5 h-5" />
           </Link>
-          <div className="flex items-center gap-5">
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-              {project.name}
-            </h1>
-            <StatusBadge status={project.status} />
+          <div>
+            <div className="flex items-center gap-3 mb-2">
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+                {project.name}
+              </h1>
+              <StatusBadge status={project.status} />
+            </div>
+            {/* Meta row: members + stage progress */}
+            {(membersArray.length > 0 || totalStages > 0) && (
+              <div className="flex items-center gap-5 flex-wrap">
+                {membersArray.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <div className="flex -space-x-2">
+                      {membersArray.slice(0, 6).map((member) => (
+                        <Tooltip
+                          key={member.identifier}
+                          content={`${member.member.name}\n${member.member.email}\n${member.roleName}`}
+                          position="bottom"
+                          multiline
+                        >
+                          <div className="w-7 h-7 rounded-full bg-blue-100 dark:bg-blue-900/30 border-2 border-white dark:border-gray-900 flex items-center justify-center text-[10px] font-semibold text-blue-700 dark:text-blue-300 cursor-default select-none">
+                            {getInitials(member.member.name)}
+                          </div>
+                        </Tooltip>
+                      ))}
+                      {membersArray.length > 6 && (
+                        <div className="w-7 h-7 rounded-full bg-gray-100 dark:bg-gray-700 border-2 border-white dark:border-gray-900 flex items-center justify-center text-[10px] font-semibold text-gray-600 dark:text-gray-300 select-none">
+                          +{membersArray.length - 6}
+                        </div>
+                      )}
+                    </div>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                      {membersArray.length} {t("members")}
+                    </span>
+                  </div>
+                )}
+                {totalStages > 0 && (
+                  <div className="flex items-center gap-2">
+                    <div className="w-28 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-blue-500 dark:bg-blue-400 rounded-full transition-all duration-500"
+                        style={{ width: `${stageProgress}%` }}
+                      />
+                    </div>
+                    <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                      {completedStages}/{totalStages} {t("stages")}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
 

@@ -59,12 +59,14 @@ export default function ProjectsPage() {
   const projectsArray = Array.isArray(projects) ? projects : [];
   const shipyardsArray = Array.isArray(shipyards) ? shipyards : [];
 
-  // Transform shipyards for modal
-  const shipyardOptions = shipyardsArray.map((shipyard) => ({
-    id: shipyard.identifier,
-    name: shipyard.name,
-    isKeyside: shipyard.isKeyside,
-  }));
+  // Transform shipyards for modal — quayside always first
+  const shipyardOptions = [...shipyardsArray]
+    .sort((a, b) => (b.isQuayside ? 1 : 0) - (a.isQuayside ? 1 : 0))
+    .map((shipyard) => ({
+      id: shipyard.identifier,
+      name: shipyard.name,
+      isQuayside: shipyard.isQuayside,
+    }));
 
   // Project types for modal
   const projectTypeOptions = [
@@ -110,7 +112,7 @@ export default function ProjectsPage() {
         description: data.description,
         project_type: data.projectTypeId as "new_build" | "refit",
         shipyard_id: data.shipyardId || undefined,
-        keyside_note: data.keysideNote || undefined,
+        quayside_note: data.quaysideNote || undefined,
         external_id: data.externalId || undefined,
         include_kickoff_meeting: data.includeKickoffMeeting,
       });

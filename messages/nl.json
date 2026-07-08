@@ -329,9 +329,9 @@
       "enabledDescription": "Er wordt een kick-off vergadertaak aangemaakt voor dit project. Deelnemers moeten een datum plannen, ondertekenen en de kick-off afronden voordat het project geactiveerd kan worden.",
       "disabledDescription": "Er wordt geen kick-off vergadering aangemaakt. Het project kan geactiveerd worden zonder een kick-off. Gebruik dit voor projecten met een vereenvoudigde of vooraf afgesproken werkwijze."
     },
-    "keyside": "Keyside",
-    "keysideNote": "Locatieopmerking",
-    "keysideNotePlaceholder": "Beschrijf waar het vaartuig ligt (bijv. ligplaats nabij terminal 4, steiger B)..."
+    "quayside": "Quayside",
+    "quaysideNote": "Locatieopmerking",
+    "quaysideNotePlaceholder": "Beschrijf waar het vaartuig ligt (bijv. ligplaats nabij terminal 4, steiger B)..."
   },
   "editProject": {
     "title": "Project Informatie Bewerken",
@@ -406,7 +406,10 @@
         "descriptionIntro": "Upload de volgende verplichte documenten:",
         "requestedIntro": "De volgende documenten zijn aangevraagd:",
         "assignedTo": "toegewezen aan {name}",
-        "action": "Upload Documenten"
+        "action": "Upload Documenten",
+        "missing": "Ontbreekt",
+        "upload": "Uploaden",
+        "waitingFor": "Wachten op: {name}"
       },
        "addMembersAndSigners": {
         "title": "Voeg projectleden & standaardondertekenaars toe",
@@ -947,6 +950,7 @@
     "areas": "gebieden",
     "stages": "fasen",
     "completed": "voltooid",
+    "members": "leden",
     "inProgress": "in uitvoering",
     "viewDetails": "Bekijk Details",
     "documents": {
@@ -2006,8 +2010,8 @@
     "createShipyard": "Scheepswerf Toevoegen",
     "createFirst": "Eerste Scheepswerf Toevoegen",
     "noShipyards": "Geen scheepswerven gevonden",
-    "keyside": "Keyside",
-    "keysideDescription": "Gereserveerde vermelding voor projecten waarbij het vaartuig op eigen locatie ligt (keyside). Per project is een locatieopmerking verplicht.",
+    "quayside": "Quayside",
+    "quaysideDescription": "Gereserveerde vermelding voor projecten waarbij het vaartuig op eigen locatie ligt (quayside). Per project is een locatieopmerking verplicht.",
     "edit": "Bewerk scheepswerf",
     "delete": "Verwijder scheepswerf",
     "form": {

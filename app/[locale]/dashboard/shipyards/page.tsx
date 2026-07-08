@@ -39,7 +39,9 @@ export default function ShipyardsPage() {
   const canEditShipyard = hasPermission(PERMISSIONS.EDIT_SHIPYARDS);
   const canDeleteShipyard = hasPermission(PERMISSIONS.DELETE_SHIPYARDS);
 
-  const shipyardsArray = Array.isArray(shipyards) ? shipyards : [];
+  const shipyardsArray = Array.isArray(shipyards)
+    ? [...shipyards].sort((a, b) => (b.isQuayside ? 1 : 0) - (a.isQuayside ? 1 : 0))
+    : [];
 
   // Handlers
   const handleCreate = () => {

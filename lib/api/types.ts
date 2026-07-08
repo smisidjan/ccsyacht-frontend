@@ -384,12 +384,12 @@ export interface Shipyard {
   name: string;
   address?: string;
   contactPoint?: ShipyardContactPoint;
-  /** True for the reserved "Keyside" entry — a synthetic shipyard the
+  /** True for the reserved "Quayside" entry — a synthetic shipyard the
    *  backend owns per tenant. Projects tied to it can carry a free-text
-   *  `keysideNote` describing the mooring location. Hide edit/delete
+   *  `quaysideNote` describing the mooring location. Hide edit/delete
    *  affordances and prefer showing it as a fixed third option in the
    *  create/edit project picker. */
-  isKeyside?: boolean;
+  isQuayside?: boolean;
   dateCreated?: string;
   dateModified?: string;
 }
@@ -419,10 +419,10 @@ export interface ProjectProducer {
   identifier: string;
   name: string;
   contactPoint?: ShipyardContactPoint;
-  /** Mirrors `Shipyard.isKeyside`. Present on the nested producer so
-   *  display surfaces can flag Keyside projects without a second
+  /** Mirrors `Shipyard.isQuayside`. Present on the nested producer so
+   *  display surfaces can flag Quayside projects without a second
    *  fetch. */
-  isKeyside?: boolean;
+  isQuayside?: boolean;
 }
 
 export interface ProjectAuthor {
@@ -462,9 +462,9 @@ export interface Project {
   dateModified?: string;
   producer?: ProjectProducer;
   /** Free-text description of the mooring location, only set when the
-   *  project's producer is the Keyside shipyard. Absent (not `null`)
+   *  project's producer is the Quayside shipyard. Absent (not `null`)
    *  when no note was supplied. */
-  keysideNote?: string;
+  quaysideNote?: string;
   author?: ProjectAuthor;
   // Backend-provided membership info (avoids N+1 API calls)
   isMember?: boolean;
@@ -476,9 +476,9 @@ export interface CreateProjectRequest {
   description?: string;
   project_type: ProjectType;
   shipyard_id?: string;
-  /** Only meaningful when `shipyard_id` points at the Keyside
+  /** Only meaningful when `shipyard_id` points at the Quayside
    *  shipyard. Optional free-text, max 5000 chars server-side. */
-  keyside_note?: string | null;
+  quayside_note?: string | null;
   start_date?: string;
   end_date?: string;
   external_id?: string;
@@ -496,7 +496,7 @@ export interface UpdateProjectRequest {
   status?: ProjectStatus;
   shipyard_id?: string;
   /** Send `null` to clear an existing note; omit to leave unchanged. */
-  keyside_note?: string | null;
+  quayside_note?: string | null;
   start_date?: string;
   end_date?: string;
   external_id?: string;
