@@ -6,6 +6,8 @@ import { useCurrentUserContext } from "@/app/context/CurrentUserContext";
 import { usersApi } from "@/lib/api/client";
 import { useMinimumLoadingTime } from "@/lib/hooks/useMinimumLoadingTime";
 import { ChangeNameModal, ChangePasswordModal, ProfileInfoItem } from "@/app/features/profile";
+import PageHeader from "@/app/components/ui/PageHeader";
+import { getRoleBadgeColor } from "@/lib/utils/badges";
 import {
   UserIcon,
   EnvelopeIcon,
@@ -47,6 +49,13 @@ export default function ProfilePage() {
           <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-32 mb-2"></div>
           <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-48"></div>
         </div>
+        <div className="bg-white dark:bg-gray-800 rounded-xl p-6 animate-pulse flex items-center gap-4">
+          <div className="w-16 h-16 rounded-full bg-gray-200 dark:bg-gray-700 flex-shrink-0"></div>
+          <div className="space-y-2 flex-1">
+            <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded w-40"></div>
+            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-56"></div>
+          </div>
+        </div>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="bg-white dark:bg-gray-800 rounded-xl p-6 h-64 animate-pulse">
             <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-40 mb-4"></div>
@@ -75,21 +84,53 @@ export default function ProfilePage() {
     );
   }
 
+  const initial = user.name.charAt(0).toUpperCase();
+
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-          {t("title")}
-        </h1>
-        <p className="text-gray-500 dark:text-gray-400 mt-1">{t("subtitle")}</p>
+      <PageHeader title={t("title")} subtitle={t("subtitle")} className="mb-0" />
+
+      {/* Identity hero */}
+      <div className="relative bg-white dark:bg-gray-800 rounded-xl shadow-lg dark:shadow-gray-900/30 border border-gray-100 dark:border-gray-700 overflow-hidden">
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 to-blue-600" />
+        <div className="p-6 flex flex-col sm:flex-row sm:items-center gap-4">
+          <div className="w-16 h-16 rounded-full flex items-center justify-center flex-shrink-0 ring-4 ring-blue-100 dark:ring-blue-900/30 bg-blue-100 dark:bg-blue-900/30">
+            <span className="text-2xl font-semibold text-blue-600 dark:text-blue-400">
+              {initial}
+            </span>
+          </div>
+          <div className="min-w-0 flex-1">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white truncate">
+              {user.name}
+            </h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{user.email}</p>
+            <div className="flex flex-wrap items-center gap-1.5 mt-2">
+              {user.roles.map((role) => (
+                <span
+                  key={role}
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${getRoleBadgeColor(role)}`}
+                >
+                  {role === "admin" && <ShieldCheckIcon className="w-3 h-3" />}
+                  {role.split(" ").map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ")}
+                </span>
+              ))}
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300">
+                <BuildingOffice2Icon className="w-3 h-3" />
+                {user.memberOf.name}
+              </span>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Personal Information */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg dark:shadow-gray-900/30 border border-gray-100 dark:border-gray-700 p-6">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
-            <UserIcon className="w-5 h-5 text-blue-600" />
+        <div className="relative bg-white dark:bg-gray-800 rounded-xl shadow-lg dark:shadow-gray-900/30 border border-gray-100 dark:border-gray-700 overflow-hidden p-6">
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 to-blue-600" />
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-6 pb-4 border-b border-gray-100 dark:border-gray-700 flex items-center gap-2.5">
+            <span className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
+              <UserIcon className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+            </span>
             {t("personalInfo")}
           </h2>
 
@@ -136,13 +177,14 @@ export default function ProfilePage() {
               iconColor="text-orange-600 dark:text-orange-400"
               label={t("roles")}
               value={
-                <div className="flex flex-wrap gap-2 mt-1">
+                <div className="flex flex-wrap gap-1.5 mt-1">
                   {user.roles.map((role) => (
                     <span
                       key={role}
-                      className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300"
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${getRoleBadgeColor(role)}`}
                     >
-                      {role}
+                      {role === "admin" && <ShieldCheckIcon className="w-3 h-3" />}
+                      {role.split(" ").map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ")}
                     </span>
                   ))}
                 </div>
@@ -152,9 +194,12 @@ export default function ProfilePage() {
         </div>
 
         {/* Account Details */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg dark:shadow-gray-900/30 border border-gray-100 dark:border-gray-700 p-6">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
-            <CalendarIcon className="w-5 h-5 text-blue-600" />
+        <div className="relative bg-white dark:bg-gray-800 rounded-xl shadow-lg dark:shadow-gray-900/30 border border-gray-100 dark:border-gray-700 overflow-hidden p-6">
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 to-blue-600" />
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-6 pb-4 border-b border-gray-100 dark:border-gray-700 flex items-center gap-2.5">
+            <span className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
+              <CalendarIcon className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+            </span>
             {t("accountDetails")}
           </h2>
 
