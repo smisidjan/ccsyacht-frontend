@@ -561,7 +561,7 @@
           "reply": "Reageren",
           "replyPlaceholder": "Schrijf een reactie...",
           "delete": "Verwijderen",
-          "resolve": "Oplossen",
+          "resolve": "Afwijzen",
           "saving": "Opslaan",
           "saveConflict": "Document is elders gewijzigd. Laatste versie geladen — herhaal je aanpassing.",
           "saveRejectedEmpty": "Het document is leeg en is niet opgeslagen.",
@@ -594,7 +594,16 @@
           "rejectTitle": "Document Afwijzen",
           "rejectDescription": "Geef een reden voor het afwijzen van dit document.",
           "rejectReasonPlaceholder": "Voer je reden voor afwijzen in...",
-          "confirmReject": "Afwijzing Bevestigen"
+          "confirmReject": "Afwijzing Bevestigen",
+          "phaseStepCommentingLabel": "Opmerkingen",
+          "phaseStepCommentingDescAttendee": "Voeg opmerkingen toe aan het document",
+          "phaseStepCommentingDescHost": "Wachten op opmerkingen van deelnemers",
+          "phaseStepEditingLabel": "Bewerken",
+          "phaseStepEditingDescHost": "Verwerk feedback en bewerk het document",
+          "phaseStepEditingDescAttendee": "De host bewerkt het document",
+          "phaseStepSignoffLabel": "Ondertekenen",
+          "phaseStepSignoffProgress": "{signed} van {total} ondertekend",
+          "phaseStepSignoffComplete": "Alle handtekeningen verzameld"
         },
         "cancel": "Annuleren",
         "subItems": {

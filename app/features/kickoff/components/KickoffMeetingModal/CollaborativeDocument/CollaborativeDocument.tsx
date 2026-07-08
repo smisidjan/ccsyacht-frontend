@@ -12,6 +12,8 @@ import { Table } from "@tiptap/extension-table";
 import { TableRow } from "@tiptap/extension-table-row";
 import { TableCell } from "@tiptap/extension-table-cell";
 import { TableHeader } from "@tiptap/extension-table-header";
+import Image from "@tiptap/extension-image";
+import TextAlign from "@tiptap/extension-text-align";
 import {
   ChatBubbleOvalLeftIcon,
   BoldIcon,
@@ -70,6 +72,7 @@ export default function CollaborativeDocument({
   currentUser,
   editable = false,
   canComment = true,
+  canResolve = false,
   view,
   onContentChange,
   onCommentsChange,
@@ -98,21 +101,19 @@ export default function CollaborativeDocument({
   const [selectedText, setSelectedText] = useState<string>("");
   const [isSaving, setIsSaving] = useState(false);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const commentPanelRef = useRef<HTMLDivElement>(null);
 
-  // Use refs to access latest values in callbacks (TipTap doesn't re-create editor on prop changes)
+  // Use refs to access latest values in callbacks (TipTap doesn't re-create editor on prop changes).
+  // Updated synchronously during render (not in a useEffect) so filterTransaction and event
+  // handlers always read the current value — no window where the ref is stale after a prop change.
   const canCommentRef = useRef(canComment);
   const currentUserRef = useRef(currentUser);
   const editableRef = useRef(editable);
-  // Track latest version so the auto-save can read it without a re-creation cycle.
   const versionRef = useRef(version);
-
-  // Keep refs updated
-  useEffect(() => {
-    canCommentRef.current = canComment;
-    currentUserRef.current = currentUser;
-    editableRef.current = editable;
-    versionRef.current = version;
-  }, [canComment, currentUser, editable, version]);
+  canCommentRef.current = canComment;
+  currentUserRef.current = currentUser;
+  editableRef.current = editable;
+  versionRef.current = version;
 
   // Store initialContent in a ref to access in onCreate
   const initialContentRef = useRef(initialContent);
@@ -161,54 +162,14 @@ export default function CollaborativeDocument({
       TableCell,
       TableHeader,
       CommentMark,
+      Image.configure({ inline: false, allowBase64: true }),
+      TextAlign.configure({ types: ["heading", "paragraph"] }),
       ConditionalReadOnly,
     ],
     content: initialContent || getDefaultContent(),
-    editable: true, // Always true to allow selection for comments
-    editorProps: {
-      // Block all text input when not editable
-      handleTextInput: () => {
-        if (!editableRef.current) {
-          return true; // Block
-        }
-        return false;
-      },
-      // Block keyboard input when not editable
-      handleKeyDown: (_view, event) => {
-        if (editableRef.current) return false;
-
-        // Allow navigation and selection keys
-        const allowedKeys = [
-          "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight",
-          "Home", "End", "PageUp", "PageDown",
-          "Shift", "Control", "Alt", "Meta", "Tab", "Escape",
-        ];
-
-        // Allow Ctrl/Cmd+C for copy, Ctrl/Cmd+A for select all
-        if ((event.ctrlKey || event.metaKey) && ["c", "a"].includes(event.key.toLowerCase())) {
-          return false;
-        }
-
-        if (!allowedKeys.includes(event.key)) {
-          return true; // Block
-        }
-        return false;
-      },
-      // Block paste when not editable
-      handlePaste: () => {
-        if (!editableRef.current) {
-          return true; // Block
-        }
-        return false;
-      },
-      // Block drop when not editable
-      handleDrop: () => {
-        if (!editableRef.current) {
-          return true; // Block
-        }
-        return false;
-      },
-    },
+    // Always true so text can be selected in read-only (commenting) mode —
+    // the ConditionalReadOnly extension's filterTransaction blocks actual edits.
+    editable: true,
     onCreate: ({ editor }) => {
       // Ensure content is set when editor is created
       const content = initialContentRef.current;
@@ -361,6 +322,26 @@ export default function CollaborativeDocument({
       editor.off("selectionUpdate", handler);
     };
   }, [editor]);
+
+  // Close the inline panel when switching to the Comments tab — otherwise
+  // the same thread shows in both the panel and the sidebar simultaneously.
+  useEffect(() => {
+    if (view === "comments" && isCommentPanelOpen) {
+      setIsCommentPanelOpen(false);
+      setSelectionRange(null);
+      setPanelRange(null);
+      setSelectedText("");
+    }
+  }, [view, isCommentPanelOpen]);
+
+  // Scroll the inline comment panel into view when it opens.
+  useEffect(() => {
+    if (isCommentPanelOpen && commentPanelRef.current) {
+      setTimeout(() => {
+        commentPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }, 50);
+    }
+  }, [isCommentPanelOpen]);
 
   // Close the BubbleMenu when the user clicks outside it. Combined with the
   // selectionUpdate listener above this gives a sticky-but-honest behavior:
@@ -610,9 +591,11 @@ export default function CollaborativeDocument({
       {/* Editor - full width */}
       {showDocument && (
         <div className="relative">
-          {/* Fixed toolbar — only visible during the editing phase. Comments
-              don't need it (they go through the BubbleMenu instead). */}
-          {editor && editable && <RichTextToolbar editor={editor} />}
+          {editor && editable && (
+            <div className="sticky top-0 z-10 rounded-t-lg border border-b-0 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
+              <RichTextToolbar editor={editor} />
+            </div>
+          )}
           <div
             className={`border border-gray-200 dark:border-gray-700 overflow-hidden ${
               editable
@@ -754,15 +737,19 @@ export default function CollaborativeDocument({
           input when there are existing comments, and we only pass onReply when
           commenting is actually allowed (commenting phase + attendee). */}
       {currentUser && (
-        <CommentInputPanel
-          isOpen={isCommentPanelOpen}
-          currentUser={currentUser}
-          selectedText={selectedText}
-          existingComments={existingCommentsForSelection}
-          onSubmit={handleAddComment}
-          onCancel={handleCancelCommentPanel}
-          onReply={canComment ? handleReplyToComment : undefined}
-        />
+        <div ref={commentPanelRef}>
+          {/* key resets internal state when the panel opens on a new selection */}
+          <CommentInputPanel
+            key={isCommentPanelOpen ? (panelRange ? `${panelRange.from}-${panelRange.to}` : "open") : "closed"}
+            isOpen={isCommentPanelOpen}
+            currentUser={currentUser}
+            selectedText={selectedText}
+            existingComments={existingCommentsForSelection}
+            onSubmit={handleAddComment}
+            onCancel={handleCancelCommentPanel}
+            onReply={canComment ? handleReplyToComment : undefined}
+          />
+        </div>
       )}
 
       {/* Comments section */}
@@ -775,7 +762,7 @@ export default function CollaborativeDocument({
             onCommentClick={handleCommentClick}
             onReply={currentUser && canComment ? handleReplyToComment : undefined}
             onDelete={canComment ? handleDeleteComment : undefined}
-            onResolve={canComment ? handleResolveComment : undefined}
+            onResolve={canResolve ? handleResolveComment : undefined}
           />
         </div>
       )}
@@ -789,9 +776,11 @@ export default function CollaborativeDocument({
 // list (e.g. TipTap v3's new `align` attribute on table cells) triggers
 // "Invalid document structure" on save, so strip it before sending.
 const ALLOWED_NODE_ATTRS: Record<string, string[]> = {
-  heading: ["level"],
+  paragraph: ["textAlign"],
+  heading: ["level", "textAlign"],
   tableCell: ["colspan", "rowspan", "colwidth"],
   tableHeader: ["colspan", "rowspan", "colwidth"],
+  image: ["src", "alt", "title"],
 };
 const ALLOWED_MARK_ATTRS: Record<string, string[]> = {
   comment: ["commentId"],

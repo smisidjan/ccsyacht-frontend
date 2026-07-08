@@ -79,6 +79,8 @@ export interface CollaborativeDocumentProps {
   editable?: boolean;
   /** Whether the user can add comments (separate from content editing) */
   canComment?: boolean;
+  /** Whether the user can decline (dismiss) comments — host only */
+  canResolve?: boolean;
   /** Which section to render. Defaults to both for backward compatibility. */
   view?: "document" | "comments";
   /** Callback when content changes */

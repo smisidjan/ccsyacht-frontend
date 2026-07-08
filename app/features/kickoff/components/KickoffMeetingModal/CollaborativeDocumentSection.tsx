@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, Fragment } from "react";
 import dynamic from "next/dynamic";
 import { useTranslations } from "next-intl";
 import {
@@ -8,7 +8,6 @@ import {
   DocumentIcon,
   EyeIcon,
   CheckIcon,
-  XMarkIcon,
   ClockIcon,
   LockClosedIcon,
   ChevronDownIcon,
@@ -224,20 +223,7 @@ export default function CollaborativeDocumentSection({
     }
   };
 
-  // Only show after meeting is scheduled (not pending)
-  if (isPending) return null;
-  
-  // Check if current user has already signed
-  const currentUserSigner = kickoffDocument?.signers?.find(
-    (s) => s.identifier === currentUser?.identifier
-  );
-  const hasUserSigned = currentUserSigner?.hasSigned === true;
-
-  // Build the canonical signer list off task.assignees (always the full set —
-  // matches how DocumentAccordionItem in Required Documents derives its total)
-  // and merge in signed-status from kickoffDocument.signers when present.
-  // Backend sometimes returns only the *signed* people in `signers`, which
-  // would understate the total if used directly.
+  // All hooks must appear before any early return (React rules of hooks).
   // Memoized via stringified inputs so the identity stays stable when nothing
   // meaningful changed; otherwise the useEffect pushing status upward would
   // loop (parent setState → re-render → new array → effect → ...).
@@ -249,6 +235,11 @@ export default function CollaborativeDocumentSection({
       s: a.hasSigned || false,
     })) ?? null
   );
+  // Build the canonical signer list off task.assignees (always the full set —
+  // matches how DocumentAccordionItem in Required Documents derives its total)
+  // and merge in signed-status from kickoffDocument.signers when present.
+  // Backend sometimes returns only the *signed* people in `signers`, which
+  // would understate the total if used directly.
   const effectiveSigners = useMemo<DocumentSigner[]>(() => {
     const assignees = task.assignees ?? [];
     return assignees.map((a) => {
@@ -288,6 +279,15 @@ export default function CollaborativeDocumentSection({
     }
   }, [kickoffDocument?.isFinalDocument, signedCount, totalAssignees, effectiveSigners, onSigningStatusChange]);
 
+  // Only show after meeting is scheduled (not pending)
+  if (isPending) return null;
+
+  // Check if current user has already signed
+  const currentUserSigner = kickoffDocument?.signers?.find(
+    (s) => s.identifier === currentUser?.identifier
+  );
+  const hasUserSigned = currentUserSigner?.hasSigned === true;
+
   // Document phase drives the UI:
   //   commenting → comments allowed, editor read-only
   //   editing    → host can save content, comments locked
@@ -305,6 +305,9 @@ export default function CollaborativeDocumentSection({
 
   // Unresolved comment count
   const unresolvedCount = comments.filter((c) => !c.isResolved).length;
+
+  // 0 = commenting, 1 = editing, 2 = sign-off
+  const activeStepIndex = kickoffDocument?.isFinalDocument ? 2 : phase === "editing" ? 1 : 0;
 
   if (loading) {
     return (
@@ -355,7 +358,92 @@ export default function CollaborativeDocumentSection({
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
+      {/* ── Phase Stepper ─────────────────────────────────────────── */}
+      {(() => {
+        const stepDescComments = canComment
+          ? t("document.phaseStepCommentingDescAttendee")
+          : canFinalize
+          ? t("document.phaseStepCommentingDescHost")
+          : t("document.phaseStepCommentingDescAttendee");
+
+        const stepDescEditing = canFinalize
+          ? t("document.phaseStepEditingDescHost")
+          : t("document.phaseStepEditingDescAttendee");
+
+        const stepDescSignoff = allSigned
+          ? t("document.phaseStepSignoffComplete")
+          : t("document.phaseStepSignoffProgress", { signed: signedCount, total: totalAssignees });
+
+        const steps = [
+          { label: t("document.phaseStepCommentingLabel"), desc: stepDescComments },
+          { label: t("document.phaseStepEditingLabel"), desc: stepDescEditing },
+          { label: t("document.phaseStepSignoffLabel"), desc: stepDescSignoff },
+        ];
+
+        return (
+          <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/70 dark:bg-gray-800/40 px-6 py-4">
+            <div className="flex items-start">
+              {steps.map((step, index) => {
+                const isCompleted = index < activeStepIndex;
+                const isActive = index === activeStepIndex;
+
+                return (
+                  <Fragment key={index}>
+                    <div className="flex-1 flex flex-col items-center min-w-0">
+                      {/* Circle */}
+                      <div
+                        className={[
+                          "w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 transition-all",
+                          isCompleted
+                            ? "bg-green-500 text-white"
+                            : isActive
+                            ? "bg-blue-600 text-white ring-4 ring-blue-100 dark:ring-blue-900/40 shadow-sm shadow-blue-500/30"
+                            : "bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 text-gray-400 dark:text-gray-500",
+                        ].join(" ")}
+                      >
+                        {isCompleted ? <CheckIcon className="w-4 h-4" /> : <span>{index + 1}</span>}
+                      </div>
+
+                      {/* Label */}
+                      <span
+                        className={[
+                          "mt-2 text-[11px] font-semibold tracking-wider uppercase text-center leading-tight",
+                          isCompleted
+                            ? "text-green-600 dark:text-green-400"
+                            : isActive
+                            ? "text-blue-700 dark:text-blue-300"
+                            : "text-gray-400 dark:text-gray-500",
+                        ].join(" ")}
+                      >
+                        {step.label}
+                      </span>
+
+                      {/* Active description */}
+                      {isActive && step.desc && (
+                        <p className="mt-1 text-[11px] text-center text-gray-500 dark:text-gray-400 leading-snug px-1 max-w-[110px]">
+                          {step.desc}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Connector */}
+                    {index < steps.length - 1 && (
+                      <div
+                        className={[
+                          "w-10 sm:w-16 h-0.5 mt-4 flex-shrink-0 transition-colors",
+                          isCompleted ? "bg-green-400" : "bg-gray-200 dark:bg-gray-700",
+                        ].join(" ")}
+                      />
+                    )}
+                  </Fragment>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
+
       <div className="flex items-center justify-between">
         <h4 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
           <DocumentTextIcon className="w-4 h-4" />
@@ -599,20 +687,22 @@ export default function CollaborativeDocumentSection({
             currentUser={currentUser}
             editable={contentEditable}
             canComment={canComment}
+            canResolve={canFinalize}
             view={activeTab}
             onCommentsChange={setComments}
             onRefetch={fetchData}
             onSaved={(response) => {
+              // Only sync the version field from the save response — NOT the
+              // content. Replacing the full document (including content) would
+              // change the `initialContent` prop, triggering setContent() and
+              // resetting the editor mid-typing.
               const updatedDoc =
                 (response as { result?: KickoffDocument; data?: KickoffDocument }).result ||
                 (response as { data?: KickoffDocument }).data ||
-                response;
-              if (
-                updatedDoc &&
-                typeof updatedDoc === "object" &&
-                "identifier" in updatedDoc
-              ) {
-                setKickoffDocument(updatedDoc as KickoffDocument);
+                (response as KickoffDocument);
+              const newVersion = (updatedDoc as KickoffDocument)?.version;
+              if (newVersion !== undefined) {
+                setKickoffDocument((prev) => prev ? { ...prev, version: newVersion } : prev);
               }
             }}
           />

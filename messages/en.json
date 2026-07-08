@@ -561,7 +561,7 @@
           "reply": "Reply",
           "replyPlaceholder": "Write a reply...",
           "delete": "Delete",
-          "resolve": "Resolve",
+          "resolve": "Decline",
           "saving": "Saving",
           "saveConflict": "Document was changed elsewhere. Reloaded to the latest version — please redo your edit.",
           "saveRejectedEmpty": "The document is empty and was not saved.",
@@ -594,7 +594,16 @@
           "rejectTitle": "Reject Document",
           "rejectDescription": "Please provide a reason for rejecting this document.",
           "rejectReasonPlaceholder": "Enter your reason for rejecting...",
-          "confirmReject": "Confirm Rejection"
+          "confirmReject": "Confirm Rejection",
+          "phaseStepCommentingLabel": "Commenting",
+          "phaseStepCommentingDescAttendee": "Add comments to the document",
+          "phaseStepCommentingDescHost": "Awaiting attendee comments",
+          "phaseStepEditingLabel": "Editing",
+          "phaseStepEditingDescHost": "Incorporate feedback and edit",
+          "phaseStepEditingDescAttendee": "Host is editing the document",
+          "phaseStepSignoffLabel": "Sign-off",
+          "phaseStepSignoffProgress": "{signed} of {total} signed",
+          "phaseStepSignoffComplete": "All signatures collected"
         },
         "cancel": "Cancel",
         "subItems": {
