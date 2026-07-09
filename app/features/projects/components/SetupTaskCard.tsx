@@ -12,10 +12,12 @@ import {
   LockClosedIcon,
 } from "@heroicons/react/24/outline";
 import { useIsTruncated } from "@/lib/hooks/useIsTruncated";
+import { useProjectMembers, useProjectSigners } from "@/lib/api";
 import type { SetupTask, SetupTaskType, DocumentType } from "@/lib/api/types";
 
 interface SetupTaskCardProps {
   task: SetupTask;
+  projectId: string;
   documentTypes?: DocumentType[];
   allTasks?: SetupTask[];
   onDefineDecks?: () => void;
@@ -112,6 +114,38 @@ function LockedRow({ icon, label, statusLabel }: { icon: React.ReactNode; label:
   );
 }
 
+function AddMembersAndSignersRows({ projectId }: { projectId: string }) {
+  const t = useTranslations("projectDetail.setupTasks");
+  const { data: members } = useProjectMembers(projectId);
+  const { data: signers } = useProjectSigners(projectId);
+
+  const membersCompleted = (members?.length || 0) > 0;
+  const signersCompleted = (signers?.length || 0) > 0;
+
+  return (
+    <>
+      <SubRow
+        icon={<UsersIcon className="w-4 h-4" />}
+        label={t("addMembers.title")}
+        statusLabel={membersCompleted ? t("completed") : t("pending")}
+        statusVariant={membersCompleted ? "green" : "gray"}
+        actionLabel={membersCompleted ? undefined : t("addMembers.action")}
+        actionHref={membersCompleted ? undefined : "#members"}
+        completed={membersCompleted}
+      />
+      <SubRow
+        icon={<UsersIcon className="w-4 h-4" />}
+        label={t("addSigners.title")}
+        statusLabel={signersCompleted ? t("completed") : t("pending")}
+        statusVariant={signersCompleted ? "green" : "gray"}
+        actionLabel={signersCompleted ? undefined : t("addSigners.action")}
+        actionHref={signersCompleted ? undefined : "#signers"}
+        completed={signersCompleted}
+      />
+    </>
+  );
+}
+
 function taskTypeToCamelCase(taskType: SetupTaskType): string {
   switch (taskType) {
     case "upload_documents": return "uploadDocuments";
@@ -124,7 +158,7 @@ function taskTypeToCamelCase(taskType: SetupTaskType): string {
   }
 }
 
-export default function SetupTaskCard({ task, documentTypes, allTasks: _allTasks, onDefineDecks, onViewDecks }: SetupTaskCardProps) {
+export default function SetupTaskCard({ task, projectId, documentTypes, allTasks: _allTasks, onDefineDecks, onViewDecks }: SetupTaskCardProps) {
   const t = useTranslations("projectDetail.setupTasks");
 
   const isCompleted = task.isComplete || task.actionStatus === "completed";
@@ -203,9 +237,11 @@ export default function SetupTaskCard({ task, documentTypes, allTasks: _allTasks
         );
       }
 
+      case "add_members_and_signers":
+        return <AddMembersAndSignersRows projectId={projectId} />;
+
       case "add_members":
       case "add_signers":
-      case "add_members_and_signers":
         return (
           <SubRow
             icon={<UsersIcon className="w-4 h-4" />}

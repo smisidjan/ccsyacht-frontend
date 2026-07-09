@@ -8,7 +8,7 @@ import SetupTaskCard from "./SetupTaskCard";
 import type { ProjectStatus } from "@/app/components/ui/StatusBadge";
 import Button from "@/app/components/ui/Button";
 import Alert from "@/app/components/ui/Alert";
-import { KickoffMeetingModal, KickoffSchedulingModal, KickoffScheduledCard } from "@/app/features/kickoff";
+import { KickoffSchedulingModal, KickoffScheduledCard } from "@/app/features/kickoff";
 import { CreateDeckModal } from "@/app/features/decks";
 import { useAreas, setupTasksApi } from "@/lib/api";
 import { useCurrentUserContext } from "@/app/context/CurrentUserContext";
@@ -333,6 +333,7 @@ export default function OverviewTab({
                 <SetupTaskCard
                   key={task.identifier}
                   task={task}
+                  projectId={projectId}
                   documentTypes={documentTypes || undefined}
                   allTasks={visibleSetupTasks}
                   onDefineDecks={() => {
@@ -484,29 +485,16 @@ export default function OverviewTab({
         />
       )}
 
-      {/* Kickoff Meeting Modal - Use scheduling modal for pending/awaiting, meeting modal for scheduled/completed */}
-      {isKickoffModalOpen && selectedTaskId && (() => {
-        const selectedTask = visibleSetupTasks.find(t => t.identifier === selectedTaskId);
-        const useSchedulingModal = selectedTask?.actionStatus === "pending" || selectedTask?.actionStatus === "awaiting_responses";
-
-        return useSchedulingModal ? (
-          <KickoffSchedulingModal
-            isOpen={isKickoffModalOpen}
-            onClose={handleKickoffModalClose}
-            projectId={projectId}
-            taskId={selectedTaskId}
-            onUpdate={handleTaskUpdate}
-          />
-        ) : (
-          <KickoffMeetingModal
-            isOpen={isKickoffModalOpen}
-            onClose={handleKickoffModalClose}
-            projectId={projectId}
-            taskId={selectedTaskId}
-            onUpdate={handleTaskUpdate}
-          />
-        );
-      })()}
+      {/* Kickoff Meeting Modal - onOpen is only wired up for pending/awaiting-response tasks (see KickoffScheduledCard) */}
+      {isKickoffModalOpen && selectedTaskId && (
+        <KickoffSchedulingModal
+          isOpen={isKickoffModalOpen}
+          onClose={handleKickoffModalClose}
+          projectId={projectId}
+          taskId={selectedTaskId}
+          onUpdate={handleTaskUpdate}
+        />
+      )}
 
       {/* Create/Edit Deck Modal */}
       {isDeckModalOpen && (

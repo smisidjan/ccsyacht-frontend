@@ -212,7 +212,7 @@ export default function KickoffScheduledCard({
             </div>
           </div>
         ) : isScheduled ? (
-          /* Scheduled: show attendees + edit button */
+          /* Scheduled: show attendees */
           <div className="flex items-center gap-3 px-5 py-3">
             <span className="text-blue-500 dark:text-blue-400 flex-shrink-0">
               <CalendarIcon className="w-4 h-4" />
@@ -232,17 +232,9 @@ export default function KickoffScheduledCard({
                   />
                 ))}
               </div>
-              <span className="text-xs text-gray-500 dark:text-gray-400 mr-1">
+              <span className="text-xs text-gray-500 dark:text-gray-400">
                 {signedCount}/{totalCount}
               </span>
-              <button
-                type="button"
-                onClick={() => onOpen(task.identifier)}
-                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-              >
-                {tKickoff("subItems.editMeeting")}
-                <ArrowRightIcon className="w-3 h-3" />
-              </button>
             </div>
           </div>
         ) : isBlocked ? (
