@@ -262,6 +262,8 @@
     "members": "members",
     "memberCount": "{count, plural, =0 {No members} =1 {1 member} other {# members}}",
     "stages": "stages",
+    "showMore": "Show more",
+    "showLess": "Show less",
     "shipyardLabel": "Shipyard",
     "typeLabel": "Project type",
     "filters": {

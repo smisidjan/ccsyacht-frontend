@@ -58,6 +58,7 @@ export default function ProjectsPage() {
   // Prepare data
   const projectsArray = Array.isArray(projects) ? projects : [];
   const shipyardsArray = Array.isArray(shipyards) ? shipyards : [];
+  const shipyardAddressById = new Map(shipyardsArray.map((s) => [s.identifier, s.address]));
 
   // Transform shipyards for modal — quayside always first
   const shipyardOptions = [...shipyardsArray]
@@ -289,6 +290,7 @@ export default function ProjectsPage() {
                 isMember={project.isMember || false}
                 userRole={(currentUser?.roles?.[0] as UserRole) || "user"}
                 memberCount={project.memberCount}
+                shipyardAddress={project.producer && shipyardAddressById.get(project.producer.identifier)}
                 onJoin={refetch}
               />
             ))}

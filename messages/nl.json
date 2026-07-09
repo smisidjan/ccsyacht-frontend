@@ -262,6 +262,8 @@
     "members": "leden",
     "memberCount": "{count, plural, =0 {Geen leden} =1 {1 lid} other {# leden}}",
     "stages": "fasen",
+    "showMore": "Meer weergeven",
+    "showLess": "Minder weergeven",
     "shipyardLabel": "Scheepswerf",
     "typeLabel": "Projecttype",
     "filters": {

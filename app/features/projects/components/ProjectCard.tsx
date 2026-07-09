@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link, useRouter } from "@/i18n/navigation";
 import {
@@ -8,6 +8,8 @@ import {
   BuildingOffice2Icon,
   ArrowRightIcon,
   CalendarIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
   UserPlusIcon,
   LockClosedIcon,
   UsersIcon,
@@ -25,15 +27,26 @@ interface ProjectCardProps {
   isMember: boolean;
   userRole: UserRole;
   memberCount?: number;
+  shipyardAddress?: string;
   onJoin?: () => void;
 }
 
-export default function ProjectCard({ project, isMember, userRole, memberCount, onJoin }: ProjectCardProps) {
+export default function ProjectCard({ project, isMember, userRole, memberCount, shipyardAddress, onJoin }: ProjectCardProps) {
   const t = useTranslations("projects");
   const router = useRouter();
   const { showToast } = useToast();
   const { user: currentUser } = usePermission();
   const [isJoining, setIsJoining] = useState(false);
+
+  const descriptionRef = useRef<HTMLParagraphElement>(null);
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
+  const [isDescriptionTruncated, setIsDescriptionTruncated] = useState(false);
+
+  useEffect(() => {
+    const el = descriptionRef.current;
+    if (!el || isDescriptionExpanded) return;
+    setIsDescriptionTruncated(el.scrollHeight > el.clientHeight + 1);
+  }, [project.description, isDescriptionExpanded]);
 
   const { data: areas } = useAreas(project.identifier);
   const areasArray = useMemo(() => (Array.isArray(areas) ? areas : []), [areas]);
@@ -42,9 +55,9 @@ export default function ProjectCard({ project, isMember, userRole, memberCount, 
   const stageProgress = totalStages > 0 ? Math.round((completedStages / totalStages) * 100) : 0;
 
   return (
-    <div className="group relative bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-2xl dark:shadow-gray-900/50 dark:hover:shadow-gray-900/70 transition-all duration-300 hover:-translate-y-1 overflow-hidden h-full flex flex-col">
+    <div className="group relative bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-2xl dark:shadow-gray-900/50 dark:hover:shadow-gray-900/70 transition-all duration-300 hover:-translate-y-1 h-full flex flex-col">
       {/* Gradient accent — only visible on hover */}
-      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+      <div className="absolute top-0 left-0 right-0 h-1 rounded-t-2xl bg-gradient-to-r from-blue-500 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
       {/* Header */}
       <div className="p-6 pb-4">
@@ -59,27 +72,56 @@ export default function ProjectCard({ project, isMember, userRole, memberCount, 
           </div>
           <StatusBadge status={project.status} />
         </div>
-        <p className="text-sm text-gray-600 dark:text-gray-400 mt-2 break-words line-clamp-2 min-h-[2.5rem]">
-          {project.description || ' '}
-        </p>
-        {totalStages > 0 && (
-          <div className="flex items-center gap-2 mt-3">
-            <div className="flex-1 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-blue-500 dark:bg-blue-400 rounded-full transition-all duration-500"
-                style={{ width: `${stageProgress}%` }}
-              />
-            </div>
-            <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
-              {completedStages}/{totalStages} {t("stages")}
-            </span>
+        <div>
+          <p
+            ref={descriptionRef}
+            className={`text-sm text-gray-600 dark:text-gray-400 mt-2 break-words min-h-[2.5rem] ${isDescriptionExpanded ? "" : "line-clamp-2"}`}
+          >
+            {project.description || ' '}
+          </p>
+          {/* Fixed-height slot so cards without a truncated description
+              still reserve the same space — keeps every card in a row
+              (dividers, buttons, etc.) aligned when collapsed. Expanding
+              lets this specific card grow, per product decision. */}
+          <div className="mt-1 flex justify-end min-h-[1.25rem]">
+            {isDescriptionTruncated && (
+              <button
+                type="button"
+                onClick={() => setIsDescriptionExpanded((prev) => !prev)}
+                className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline"
+              >
+                {isDescriptionExpanded ? t("showLess") : t("showMore")}
+                {isDescriptionExpanded ? (
+                  <ChevronUpIcon className="w-3 h-3" />
+                ) : (
+                  <ChevronDownIcon className="w-3 h-3" />
+                )}
+              </button>
+            )}
           </div>
-        )}
+        </div>
+        {/* Fixed-height slot, same reasoning as the show-more slot above —
+            cards without stages still reserve the row's height. */}
+        <div className="flex items-center gap-2 mt-3 min-h-[1.375rem]">
+          {totalStages > 0 && (
+            <>
+              <div className="flex-1 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-blue-500 dark:bg-blue-400 rounded-full transition-all duration-500"
+                  style={{ width: `${stageProgress}%` }}
+                />
+              </div>
+              <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                {completedStages}/{totalStages} {t("stages")}
+              </span>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Details \u2014 compact sub-rows, same rhythm as the setup task cards */}
-      <div className="border-t border-gray-100 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700">
-        <div className="flex items-start gap-3 px-6 py-3">
+      <div className="border-t border-gray-100 dark:border-gray-700">
+        <div className="flex items-start gap-3 px-6 py-1.5">
           <Tooltip content={t("shipyardLabel")} position="top" triggerClassName="flex-shrink-0 mt-0.5">
             <BuildingOffice2Icon className="w-4 h-4 text-gray-400" />
           </Tooltip>
@@ -88,12 +130,12 @@ export default function ProjectCard({ project, isMember, userRole, memberCount, 
               {project.producer?.name || '\u00A0'}
             </span>
             <span className="text-xs text-gray-500 dark:text-gray-400 block truncate">
-              {project.producer?.isQuayside && project.quaysideNote ? project.quaysideNote : '\u00A0'}
+              {(project.producer?.isQuayside && project.quaysideNote) || shipyardAddress || '\u00A0'}
             </span>
           </div>
         </div>
 
-        <div className="flex items-center gap-3 px-6 py-3">
+        <div className="flex items-center gap-3 px-6 py-1.5">
           <Tooltip content={t("typeLabel")} position="top" triggerClassName="flex-shrink-0">
             <CalendarIcon className="w-4 h-4 text-gray-400" />
           </Tooltip>
