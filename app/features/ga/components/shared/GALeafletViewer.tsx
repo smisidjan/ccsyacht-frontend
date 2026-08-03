@@ -3,6 +3,9 @@
 import dynamic from "next/dynamic";
 import LoadingSkeleton from "@/app/components/ui/LoadingSkeleton";
 import type { GAPin, Deck, Area, AreaPolygonPoint } from "@/lib/api/types";
+import type { DeckColorPair } from "@/app/features/ga/utils/helpers";
+
+export type { DeckColorPair };
 
 /** Read-only polygon to render on top of the GA. Points are normalized
  *  0..1 of the GA image (same convention `AreaPolygonDrawer` writes). */
@@ -17,14 +20,6 @@ export interface AreaPolygonOverlay {
    *  shape it is. */
   areaId?: string;
   deckId?: string;
-}
-
-/** Per-deck color pair — the deck's own outline color, and the color
- *  its side profile(s) share so a deck and its side profile visually
- *  read as "the same thing, two views" of it. */
-export interface DeckColorPair {
-  deck: string;
-  sideProfile: string;
 }
 
 // Dynamic import - Leaflet doesn't work with SSR

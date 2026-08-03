@@ -17,6 +17,7 @@ import { useGAImage } from "@/lib/hooks/useGAImage";
 import { handleError } from "@/lib/utils/errors";
 import { normalizeStageColor, pickFreshStageColor } from "@/lib/utils/colors";
 import { isInsidePolygon, polygonsOverlap, polygonBbox } from "@/lib/utils/geometry";
+import { buildDeckColorMap } from "@/app/features/ga/utils/helpers";
 import {
   XMarkIcon,
   PlusIcon,
@@ -411,6 +412,20 @@ export default function DefineAreaModal({
   }, [selectedDeck, t]);
 
   const primaryPlacementId = selectedDeck?.deckPolygon?.identifier ?? null;
+
+  // Same per-deck / per-side-profile color palette as the GA tab, so
+  // the outline the user draws inside here is the same shade they'll
+  // later see highlighted there — makes it obvious which deck/side
+  // profile is currently active instead of a generic gray box.
+  const deckColorById = useMemo(() => buildDeckColorMap(decks), [decks]);
+  const activePlacementKind = placements.find(
+    (p) => p.id === activePlacementId
+  )?.kind;
+  const activeOutlineColor = selectedDeck
+    ? activePlacementKind === "side_profile"
+      ? deckColorById.get(selectedDeck.identifier)?.sideProfile
+      : deckColorById.get(selectedDeck.identifier)?.deck
+    : undefined;
 
   // Keep `activePlacementId` pointing at a valid placement: default to
   // the primary deck view whenever the deck changes or the current
@@ -822,6 +837,7 @@ export default function DefineAreaModal({
                 imageWidth={ga!.imageWidth!}
                 imageHeight={ga!.imageHeight!}
                 deckBounds={deckBounds ?? undefined}
+                deckOutlineColor={activeOutlineColor}
                 existingAreas={existingAreasForDrawer}
                 existingPins={existingPinsForDrawer}
                 polygon={polygon}

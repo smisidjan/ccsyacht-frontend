@@ -31,6 +31,7 @@ import Tooltip from "@/app/components/ui/Tooltip";
 import AuthenticatedImage from "@/app/components/ui/AuthenticatedImage";
 import { CreateGAPinModal, GALeafletViewer } from "@/app/features/ga";
 import type { AreaPolygonOverlay } from "@/app/features/ga";
+import { buildDeckColorMap } from "@/app/features/ga/utils/helpers";
 import { CreateDeckModal } from "@/app/features/decks";
 import {
   PunchlistItemCard,
@@ -132,27 +133,9 @@ const AREA_COLOR_PALETTE = [
   "#DC2626", // red
 ];
 
-// Per-deck palette (cool blues), and the paired per-side-profile palette
-// (violets) at the same index — so a deck and its own side profile read
-// as "the same thing, two views" rather than unrelated colors, while
-// still keeping the blue-vs-violet distinction CreateDeckModal already
-// established between "deck" and "side profile" as concepts.
-const DECK_COLOR_PALETTE = [
-  "#2563EB", // blue
-  "#0EA5E9", // sky
-  "#0284C7", // sky-dark
-  "#4F46E5", // indigo
-  "#1D4ED8", // blue-dark
-  "#0369A1", // sky-darker
-];
-const SIDE_PROFILE_COLOR_PALETTE = [
-  "#7C3AED", // violet
-  "#A855F7", // purple
-  "#9333EA", // purple-dark
-  "#6D28D9", // violet-dark
-  "#8B5CF6", // purple-light
-  "#5B21B6", // violet-darker
-];
+// Per-deck / per-side-profile palettes live in `ga/utils/helpers` (via
+// `buildDeckColorMap`) so this tab and the area-drawing modals assign
+// the exact same color to the same deck everywhere it's shown.
 
 // Helper to check if GA exists (uploaded but maybe not yet converted)
 function hasGA(ga: GeneralArrangement | undefined): boolean {
@@ -336,20 +319,7 @@ export default function GeneralArrangementTab({
   // profile(s) share its palette *index* into the paired violet
   // palette, so e.g. "Main Deck" (blue #1) and "Main Deck — SB"
   // (violet #1) visually read as belonging together.
-  const deckColorById = useMemo(() => {
-    const map = new Map<string, { deck: string; sideProfile: string }>();
-    const sorted = [...(decks ?? [])].sort((a, b) =>
-      a.identifier.localeCompare(b.identifier)
-    );
-    sorted.forEach((d, i) => {
-      map.set(d.identifier, {
-        deck: DECK_COLOR_PALETTE[i % DECK_COLOR_PALETTE.length],
-        sideProfile:
-          SIDE_PROFILE_COLOR_PALETTE[i % SIDE_PROFILE_COLOR_PALETTE.length],
-      });
-    });
-    return map;
-  }, [decks]);
+  const deckColorById = useMemo(() => buildDeckColorMap(decks), [decks]);
 
   // Deck legend: one entry per deck, plus one per side profile it has —
   // so "the corresponding side profiles" the user asked for show up by

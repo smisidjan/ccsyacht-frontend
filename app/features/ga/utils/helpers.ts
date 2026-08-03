@@ -149,3 +149,54 @@ export const DEFAULT_PIN_COLORS = [
   "#06B6D4", // Cyan
   "#F97316", // Orange
 ];
+
+// Per-deck palette (cool blues), and the paired per-side-profile palette
+// (violets) at the same index — so a deck and its own side profile read
+// as "the same thing, two views" rather than unrelated colors. Shared
+// across every place that draws deck/side-profile outlines (the GA tab
+// and the area-drawing modals) so a deck's color is consistent
+// everywhere it appears, not just within one screen.
+export const DECK_COLOR_PALETTE = [
+  "#2563EB", // blue
+  "#0EA5E9", // sky
+  "#0284C7", // sky-dark
+  "#4F46E5", // indigo
+  "#1D4ED8", // blue-dark
+  "#0369A1", // sky-darker
+];
+export const SIDE_PROFILE_COLOR_PALETTE = [
+  "#7C3AED", // violet
+  "#A855F7", // purple
+  "#9333EA", // purple-dark
+  "#6D28D9", // violet-dark
+  "#8B5CF6", // purple-light
+  "#5B21B6", // violet-darker
+];
+
+/** Per-deck color pair — the deck's own outline color, and the color
+ *  its side profile(s) share so a deck and its side profile visually
+ *  read as "the same thing, two views" of it. */
+export interface DeckColorPair {
+  deck: string;
+  sideProfile: string;
+}
+
+/** Assigns each deck a stable color pair, cycling through the palettes
+ *  in identifier-sorted order so the same deck gets the same color on
+ *  every render regardless of fetch order. */
+export function buildDeckColorMap(
+  decks: Deck[] | null | undefined
+): Map<string, DeckColorPair> {
+  const map = new Map<string, DeckColorPair>();
+  const sorted = [...(decks ?? [])].sort((a, b) =>
+    a.identifier.localeCompare(b.identifier)
+  );
+  sorted.forEach((d, i) => {
+    map.set(d.identifier, {
+      deck: DECK_COLOR_PALETTE[i % DECK_COLOR_PALETTE.length],
+      sideProfile:
+        SIDE_PROFILE_COLOR_PALETTE[i % SIDE_PROFILE_COLOR_PALETTE.length],
+    });
+  });
+  return map;
+}

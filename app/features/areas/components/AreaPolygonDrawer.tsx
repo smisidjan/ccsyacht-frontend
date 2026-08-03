@@ -43,6 +43,11 @@ interface AreaPolygonDrawerProps {
   /** Deck region the user is allowed to draw inside (percentage 0..100).
    *  When omitted the full GA is shown and the user can draw anywhere. */
   deckBounds?: DeckBounds | null;
+  /** Stroke/fill color for the `deckBounds` outline — the same per-deck
+   *  or per-side-profile shade shown on the GA tab, so the view the
+   *  user is drawing on is clearly identifiable instead of a generic
+   *  gray box. Falls back to gray when not supplied. */
+  deckOutlineColor?: string;
   /** Other areas in the same deck — rendered as faded outlines so the
    *  user can see them, and used to reject vertices that would land
    *  inside one. */
@@ -104,6 +109,7 @@ export default function AreaPolygonDrawer({
   imageWidth,
   imageHeight,
   deckBounds,
+  deckOutlineColor,
   existingAreas,
   existingPins,
   polygon,
@@ -193,15 +199,19 @@ export default function AreaPolygonDrawer({
         ) : undefined
       }
     >
-      {/* Deck boundary — dashed grey rectangle the user must stay inside. */}
+      {/* Deck boundary the user must stay inside. Colored to match the
+          same deck/side-profile shade used on the GA tab (falls back to
+          gray when the caller hasn't resolved one yet) so the active
+          view reads clearly instead of a faint generic box. */}
       {deckRect && (
         <Rectangle
           bounds={deckRect}
           pathOptions={{
-            color: "#9ca3af",
-            weight: 1,
-            dashArray: "4 4",
-            fillOpacity: 0,
+            color: deckOutlineColor ?? "#9ca3af",
+            weight: 2,
+            fillColor: deckOutlineColor ?? "#9ca3af",
+            fillOpacity: 0.1,
+            dashArray: "5, 5",
             interactive: false,
           }}
         />
