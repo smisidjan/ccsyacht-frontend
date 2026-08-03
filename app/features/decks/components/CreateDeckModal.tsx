@@ -479,6 +479,20 @@ export default function CreateDeckModal({
   const activeId = polygons.activeId ?? PRIMARY_KEY;
   const isPrimaryActive = activeId === PRIMARY_KEY;
   const activeColor = isPrimaryActive ? DECK_COLOR : SIDE_PROFILE_COLOR;
+  // Surfaced next to the canvas so it's always obvious which shape a
+  // click will draw into — the only way to change it is the pencil/row
+  // clicks in the right-hand list, never a click on the canvas itself.
+  // Side profiles also carry the parent deck's name (same "X - Deck"
+  // format used everywhere else for them) so it's clear which deck the
+  // profile you're drawing belongs to, not just its own prefix.
+  const deckDisplayName = name.trim() || t("primaryDeckRectangle");
+  const activeTargetLabel = isPrimaryActive
+    ? deckDisplayName
+    : buildSideProfileName(
+        sideProfilesMeta.find((sp) => sp.id === activeId)?.namePrefix.trim() ||
+          t("sideProfile"),
+        deckDisplayName
+      );
 
   /** Polygons rendered as static overlays in the drawer — every per-
    *  target snapshot that isn't the active one, plus the polygons of
@@ -525,7 +539,14 @@ export default function CreateDeckModal({
 
     // Currently-editing deck's non-active polygons — solid so they
     // dominate over the dashed neighbours but stay out of the way of
-    // the actively-drawn one. Clicking switches the active target.
+    // the actively-drawn one. Not clickable, same reasoning as the
+    // other-decks overlays above: while drawing a fresh side profile
+    // (an empty, not-yet-started polygon) a click can easily land
+    // inside the deck rectangle's bounds, e.g. because the two shapes
+    // visually overlap — clicking-to-switch there would silently
+    // swap the active target back to the deck and swallow the point
+    // the user meant to place. Switching target is exclusively done
+    // via the pencil/row clicks in the right-hand list.
     const primarySnap = polygons.all[PRIMARY_KEY];
     if (
       !isPrimaryActive &&
@@ -537,7 +558,6 @@ export default function CreateDeckModal({
         points: primarySnap.polygon,
         color: DECK_COLOR,
         dashed: false,
-        onClick: handleSelectDeckTarget,
       });
     }
     for (const meta of sideProfilesMeta) {
@@ -549,14 +569,9 @@ export default function CreateDeckModal({
         points: snap.polygon,
         color: SIDE_PROFILE_COLOR,
         dashed: false,
-        onClick: () => handleSelectSideProfile(meta.id),
       });
     }
     return out;
-    // handleSelect* / handleEditDeck change every render but the click
-    // closures are only consumed by Leaflet event handlers, not re-
-    // rendered React trees — fine to recreate.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     pendingDecks,
     editingDeckId,
@@ -649,6 +664,31 @@ export default function CreateDeckModal({
             <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
               {t("markDeckArea")}
             </p>
+            {/* Sticky so it stays in view once the (potentially tall,
+                portrait) GA drawing pushes the canvas below the fold and
+                the modal body scrolls — same reasoning as PolygonDrawer's
+                own sticky toolbar further down. Solid background (not a
+                translucent tint) so scrolled-past content doesn't show
+                through while it's pinned. */}
+            <div
+              className={`sticky top-0 z-[1000] flex items-center gap-2 mb-3 px-3 py-2 rounded-md border ${
+                isPrimaryActive
+                  ? "border-blue-500 bg-blue-50 dark:bg-blue-950"
+                  : "border-purple-500 bg-purple-50 dark:bg-purple-950"
+              }`}
+            >
+              <span
+                className="w-2.5 h-2.5 rounded-sm flex-shrink-0"
+                style={{ backgroundColor: activeColor }}
+                aria-hidden="true"
+              />
+              <span
+                className="text-sm font-medium truncate"
+                style={{ color: activeColor }}
+              >
+                {t("nowDrawing", { target: activeTargetLabel })}
+              </span>
+            </div>
             {/* Match the GA tab's sizing pattern: fix the height,
                 derive width from the image aspect, clamp horizontally
                 to the column. For portrait GAs the calc width fits the
