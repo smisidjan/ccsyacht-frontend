@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { useTranslations } from "next-intl";
 import Modal from "@/app/components/ui/Modal";
+import ConfirmModal from "@/app/components/modals/ConfirmModal";
 import FormSelect from "@/app/components/ui/FormSelect";
 import FormInput from "@/app/components/ui/FormInput";
 import FormTextarea from "@/app/components/ui/FormTextarea";
@@ -256,6 +257,9 @@ export default function DefineAreaModal({
   // any row anywhere; the row order maps 1:1 to the backend stages array.
   const [stageRows, setStageRows] = useState<StageRow[]>([]);
   const [newCustomStageName, setNewCustomStageName] = useState("");
+  // Gate on Save when one or more side profiles were never drawn — see
+  // `untouchedSideProfiles` below.
+  const [showMissingViewsConfirm, setShowMissingViewsConfirm] = useState(false);
 
   const dndSensors = useSensors(
     useSensor(PointerSensor),
@@ -599,6 +603,22 @@ export default function DefineAreaModal({
     !hasPinsOutside &&
     !hasOverlap;
 
+  // Side profiles the user never touched at all (as opposed to
+  // `halfDrawnPlacements`, which already blocks Save outright). These
+  // are allowed to stay empty, but skipping one silently means the
+  // area only exists on the top view — worth a confirmation instead of
+  // saving without a word, since the modal's own copy tells the user
+  // to outline every view.
+  const untouchedSideProfiles = useMemo(
+    () =>
+      placements.filter((p) => {
+        if (p.id === primaryPlacementId) return false;
+        const entry = polygonsByPlacement[p.id];
+        return !entry || entry.polygon.length === 0;
+      }),
+    [placements, polygonsByPlacement, primaryPlacementId]
+  );
+
   const handleReset = () => {
     // Reset clears just the view the user is currently on — switching
     // to a different placement and resetting only wipes that one.
@@ -771,7 +791,20 @@ export default function DefineAreaModal({
     return t("hintPolygonReady");
   })();
 
+  // Save is the primary button's click target. When every touched view
+  // is valid but one or more side profiles were skipped entirely, pause
+  // on a confirmation instead of saving silently — `handleSave` itself
+  // runs unconditionally once the user confirms (or didn't need to).
+  const handleSaveClick = () => {
+    if (untouchedSideProfiles.length > 0) {
+      setShowMissingViewsConfirm(true);
+      return;
+    }
+    handleSave();
+  };
+
   return (
+    <>
     <Modal
       isOpen={isOpen}
       onClose={onClose}
@@ -786,6 +819,18 @@ export default function DefineAreaModal({
       <div className="flex flex-col md:flex-row gap-4 md:gap-4 md:h-[70vh]">
         {/* Left: GA viewer + per-placement view tabs */}
         <div className="relative flex-1 h-[300px] md:h-auto md:min-h-[300px] bg-gray-50 dark:bg-gray-900 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 flex flex-col">
+          {hasGA && selectedDeckId && placements.length > 1 && (
+            // Explains *why* there are multiple tabs before the user
+            // hits `hintFinishOtherViews` as an error-shaped nudge — the
+            // area is one physical space, so its outline has to be
+            // redrawn on every view (top + each side profile), not just
+            // the one they happened to start on.
+            <div className="px-3 py-2 bg-blue-50 dark:bg-blue-900/20 border-b border-blue-100 dark:border-blue-900/40 flex-shrink-0">
+              <p className="text-xs text-blue-800 dark:text-blue-200">
+                {t("multiViewHint")}
+              </p>
+            </div>
+          )}
           {hasGA && selectedDeckId && placements.length > 1 && (
             // Tab strip: one button per view (top + each side profile).
             // A small green dot marks views that already have a closed
@@ -1125,7 +1170,7 @@ export default function DefineAreaModal({
             </Button>
             <Button
               variant="primary"
-              onClick={handleSave}
+              onClick={handleSaveClick}
               disabled={!canSave || submitting}
               loading={submitting}
             >
@@ -1135,5 +1180,18 @@ export default function DefineAreaModal({
         </div>
       </div>
     </Modal>
+    <ConfirmModal
+      isOpen={showMissingViewsConfirm}
+      onClose={() => setShowMissingViewsConfirm(false)}
+      onConfirm={handleSave}
+      title={t("missingSideProfilesTitle")}
+      message={t("missingSideProfilesMessage", {
+        names: untouchedSideProfiles.map((p) => p.name).join(", "),
+        count: untouchedSideProfiles.length,
+      })}
+      confirmLabel={t("missingSideProfilesConfirm")}
+      cancelLabel={t("missingSideProfilesCancel")}
+    />
+    </>
   );
 }
