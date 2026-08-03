@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import {
   CalendarIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
   ClockIcon,
   CheckCircleIcon,
   DocumentCheckIcon,
@@ -19,13 +21,12 @@ import AttendeeAvatar from "./shared/AttendeeAvatar";
 import DocumentAcknowledgementsModal from "./DocumentAcknowledgementsModal";
 import MeetingDocumentModal from "./MeetingDocumentModal";
 import { useIsTruncated } from "@/lib/hooks/useIsTruncated";
-import type { SetupTask, DocumentType } from "@/lib/api/types";
+import type { SetupTask } from "@/lib/api/types";
 
 interface KickoffScheduledCardProps {
   task: SetupTask;
   projectId: string;
   onOpen: (taskId: string) => void;
-  documentTypes?: DocumentType[];
   allTasks?: SetupTask[];
 }
 
@@ -33,12 +34,15 @@ export default function KickoffScheduledCard({
   task,
   projectId,
   onOpen,
-  documentTypes,
   allTasks,
 }: KickoffScheduledCardProps) {
   const t = useTranslations("projectDetail.setupTasks");
   const tKickoff = useTranslations("projectDetail.setupTasks.kickoffMeeting");
   const [activeModal, setActiveModal] = useState<"docs" | "meetingDoc" | null>(null);
+
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
+  const { ref: descriptionRef, isTruncated: isDescriptionTruncated } =
+    useIsTruncated<HTMLParagraphElement>(isDescriptionExpanded);
 
   const signedCount = task.assignees.filter((a) => a.hasSigned).length;
   const totalCount = task.assignees.length;
@@ -46,16 +50,22 @@ export default function KickoffScheduledCard({
   const isScheduled = task.actionStatus === "scheduled";
   const isPending = !isScheduled && !isCompleted;
 
-  // Blocking check (same logic as SetupTaskCard)
-  const requiredDocs = documentTypes?.filter((dt) => dt.isRequired) || [];
-  const requiredNotAssigned = requiredDocs.filter((doc) => !doc.assignees || doc.assignees.length === 0);
-  const allRequiredDocsUploaded = requiredNotAssigned.length === 0 || requiredNotAssigned.every((doc) => doc.documentCount > 0);
-  const addMembersTask = allTasks?.find((t) => t.additionalType === "add_members");
-  const membersAdded = addMembersTask ? (addMembersTask.isComplete || addMembersTask.actionStatus === "completed") : true;
-  const isBlocked = isPending && (!allRequiredDocsUploaded || !membersAdded);
+  // Scheduling a meeting date has nothing to do with required documents —
+  // it's only gated on members existing to invite as attendees. Matches
+  // either the standalone "add_members" task or the combined
+  // "add_members_and_signers" task, whichever this project uses.
+  const membersTask = allTasks?.find(
+    (t) => t.additionalType === "add_members" || t.additionalType === "add_members_and_signers"
+  );
+  const membersAdded = membersTask ? (membersTask.isComplete || membersTask.actionStatus === "completed") : true;
+  const isBlocked = isPending && !membersAdded;
 
-  // Meeting document access: locked only when no attendees yet; comments-only when pending or scheduled
-  const meetingDocLocked = isPending && totalCount === 0;
+  // Having attendees isn't enough on its own — they need to have actually
+  // been invited to a proposed meeting date (via the Schedule Meeting
+  // step) before there's anything real to acknowledge or sign. Document
+  // Acknowledgements and the Kick-off Meeting Document both stay locked
+  // until invitations go out.
+  const invitationsSent = task.actionStatus === "awaiting_responses" || isScheduled || isCompleted;
   const meetingDocCommentsOnly = !isCompleted;
 
   // Badge
@@ -97,6 +107,31 @@ export default function KickoffScheduledCard({
           </div>
         </div>
 
+        {tKickoff("description") && (
+          <>
+            <p
+              ref={descriptionRef}
+              className={`text-sm text-gray-500 dark:text-gray-400 leading-relaxed ${isDescriptionExpanded ? "" : "truncate"}`}
+            >
+              {tKickoff("description")}
+            </p>
+            {(isDescriptionTruncated || isDescriptionExpanded) && (
+              <button
+                type="button"
+                onClick={() => setIsDescriptionExpanded((prev) => !prev)}
+                className="mt-0.5 mb-1 inline-flex items-center gap-1 text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline"
+              >
+                {isDescriptionExpanded ? t("showLess") : t("showMore")}
+                {isDescriptionExpanded ? (
+                  <ChevronUpIcon className="w-3 h-3" />
+                ) : (
+                  <ChevronDownIcon className="w-3 h-3" />
+                )}
+              </button>
+            )}
+          </>
+        )}
+
         {/* Date / time (only when scheduled or completed) */}
         {task.scheduledDate && (isScheduled || isCompleted) && (
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
@@ -135,7 +170,7 @@ export default function KickoffScheduledCard({
       <div className="border-t border-gray-100 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700">
 
         {/* 1 — Document Acknowledgements */}
-        {totalCount === 0 ? (
+        {!invitationsSent ? (
           <LockedRow
             icon={<DocumentCheckIcon className="w-4 h-4" />}
             label={tKickoff("documentStatus")}
@@ -158,7 +193,7 @@ export default function KickoffScheduledCard({
         )}
 
         {/* 2 — Kick-off Meeting Document */}
-        {meetingDocLocked ? (
+        {!invitationsSent ? (
           <LockedRow
             icon={<PencilSquareIcon className="w-4 h-4" />}
             label={tKickoff("meetingDocument")}

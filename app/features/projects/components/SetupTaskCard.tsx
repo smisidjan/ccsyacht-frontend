@@ -5,6 +5,8 @@ import { useTranslations } from "next-intl";
 import {
   ArrowRightIcon,
   CheckCircleIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
   ClockIcon,
   DocumentIcon,
   MapIcon,
@@ -164,6 +166,10 @@ function taskTypeToCamelCase(taskType: SetupTaskType): string {
 export default function SetupTaskCard({ task, projectId, documentTypes, allTasks: _allTasks, onDefineDecks, onViewDecks, onDefineAreas }: SetupTaskCardProps) {
   const t = useTranslations("projectDetail.setupTasks");
 
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
+  const { ref: descriptionRef, isTruncated: isDescriptionTruncated } =
+    useIsTruncated<HTMLParagraphElement>(isDescriptionExpanded);
+
   const isCompleted = task.isComplete || task.actionStatus === "completed";
   const translationKey = taskTypeToCamelCase(task.additionalType);
 
@@ -283,6 +289,13 @@ export default function SetupTaskCard({ task, projectId, documentTypes, allTasks
     }
   };
 
+  // Custom tasks are authored per-project on the backend, so their
+  // description comes straight from the API. Built-in task types use
+  // the translated copy instead, so wording stays consistent and can
+  // explain the enterprise workflow (e.g. how decks/areas/stages relate).
+  const taskDescription =
+    task.additionalType === "custom" ? task.description : t(`${translationKey}.description`);
+
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg dark:shadow-gray-900/30 border border-gray-100 dark:border-gray-700 flex flex-col">
       {/* Header */}
@@ -294,6 +307,30 @@ export default function SetupTaskCard({ task, projectId, documentTypes, allTasks
             {badge.label}
           </span>
         </div>
+        {taskDescription && (
+          <>
+            <p
+              ref={descriptionRef}
+              className={`mt-1.5 text-sm text-gray-500 dark:text-gray-400 leading-relaxed ${isDescriptionExpanded ? "" : "truncate"}`}
+            >
+              {taskDescription}
+            </p>
+            {(isDescriptionTruncated || isDescriptionExpanded) && (
+              <button
+                type="button"
+                onClick={() => setIsDescriptionExpanded((prev) => !prev)}
+                className="mt-0.5 inline-flex items-center gap-1 text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline"
+              >
+                {isDescriptionExpanded ? t("showLess") : t("showMore")}
+                {isDescriptionExpanded ? (
+                  <ChevronUpIcon className="w-3 h-3" />
+                ) : (
+                  <ChevronDownIcon className="w-3 h-3" />
+                )}
+              </button>
+            )}
+          </>
+        )}
       </div>
 
       {/* Sub-rows */}

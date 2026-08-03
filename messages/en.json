@@ -402,6 +402,8 @@
       "scheduled": "Scheduled",
       "completed": "Completed",
       "blocked": "Blocked",
+      "showMore": "Show more",
+      "showLess": "Show less",
       "markComplete": "Mark Complete",
       "meetingFormat": {
         "online": "Online",
@@ -409,7 +411,7 @@
       },
       "uploadDocuments": {
         "title": "Upload Required Documents",
-        "description": "Upload all required project documentation including contracts, specifications, and drawings",
+        "description": "Upload the contracts, specifications, and drawings required for this project. Required documents block the kickoff meeting until they're provided.",
         "descriptionIntro": "Upload the following required documents:",
         "requestedIntro": "The following documents have been requested:",
         "assignedTo": "assigned to {name}",
@@ -420,33 +422,33 @@
       },
       "addMembersAndSigners": {
         "title": "Add Project Members & Default Signers",
-        "description": "Invite team members to collaborate on this project and configure the default signers for document approvals",
+        "description": "Add the people who will work on this project, and set the default signers who will approve documents and sign off on completed stages.",
         "action": "Add"
       },
       "addMembers": {
         "title": "Add Project Members",
-        "description": "Invite team members to collaborate on this project",
+        "description": "Invite the team members who will work on this project.",
         "action": "Add Members"
       },
       "addSigners": {
         "title": "Add Default Signers",
-        "description": "Configure the default signers for document approvals",
+        "description": "Set the default signers who will approve documents and sign off on completed stages.",
         "action": "Add Signers"
       },
       "defineDecks": {
         "title": "Define Decks",
-        "description": "Define the yacht decks for this project",
+        "description": "Draw each deck's outline directly on the General Arrangement — including a side profile view if the deck spans multiple levels — so areas and stages have somewhere to be placed.",
         "action": "Define Decks"
       },
       "defineAreasAndStages": {
         "title": "Define Areas & Stages",
-        "description": "Define at least one area with a stage so punch list items and GA pins have somewhere to live",
+        "description": "Areas are drawn within a deck's outline (or one of its side profiles) on the General Arrangement. Each area needs at least one stage before punch list items and pins can be attached to it.",
         "action": "Create Area",
         "lockedMessage": "Add a deck first"
       },
       "kickoffMeeting": {
         "title": "Kickoff Meeting",
-        "description": "Schedule and conduct the project kickoff meeting with all stakeholders",
+        "description": "Formally starts the project with all stakeholders. Once project members are added, schedule a date and invite attendees — they'll then acknowledge the required documents and sign off on the meeting outcomes.",
         "action": "Schedule Meeting",
         "attendees": "Meeting Attendees",
         "selectMember": "Select a member...",
@@ -637,9 +639,9 @@
           "schedule": "Schedule",
           "editMeeting": "Edit",
           "commentsOnly": "Comments only",
-          "lockedUntilScheduled": "Available after scheduling",
-          "lockedUntilAttendees": "Available after adding attendees",
-          "lockedUntilUnblocked": "Complete required steps first"
+          "lockedUntilScheduled": "Available after invitations are sent",
+          "lockedUntilAttendees": "Available after invitations are sent",
+          "lockedUntilUnblocked": "Add project members first"
         }
       },
       "kickoffForm": {
@@ -839,7 +841,9 @@
           "empty": "No attendees selected yet. Select team members to invite to the meeting.",
           "guest": "Guest",
           "employee": "Employee",
-          "continue": "Continue to Date Selection"
+          "continue": "Continue to Date Selection",
+          "allMembersAdded": "All project members have already been added as attendees.",
+          "noMembersLoaded": "No project members found."
         },
         "attendeesAdded": "{count, plural, one {Attendee added} other {# attendees added}} successfully",
         "attendeeRemoved": "Attendee removed successfully",

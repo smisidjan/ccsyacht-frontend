@@ -163,24 +163,23 @@ export default function OverviewTab({
     });
   }, [setupTasks, currentUser, canEditProject]);
 
-  // Check if all required documents are uploaded (for kickoff meeting blocking)
-  // Only documents that are required AND not assigned to anyone block the kickoff
-  const requiredDocs = documentTypes?.filter(dt => dt.isRequired) || [];
-  const requiredNotAssignedDocs = requiredDocs.filter(doc => !doc.assignees || doc.assignees.length === 0);
-  const allRequiredDocsUploaded = requiredNotAssignedDocs.length === 0 || requiredNotAssignedDocs.every(doc => doc.documentCount > 0);
-
-  // Check if members have been added
-  const addMembersTask = visibleSetupTasks.find(t => t.additionalType === "add_members");
-  const membersAdded = addMembersTask ? (addMembersTask.isComplete || addMembersTask.actionStatus === "completed") : true;
+  // Check if members have been added — scheduling the kickoff meeting only
+  // needs people to invite as attendees, nothing to do with documents.
+  // Matches either the standalone "add_members" task or the combined
+  // "add_members_and_signers" task, whichever this project uses.
+  const membersTask = visibleSetupTasks.find(
+    t => t.additionalType === "add_members" || t.additionalType === "add_members_and_signers"
+  );
+  const membersAdded = membersTask ? (membersTask.isComplete || membersTask.actionStatus === "completed") : true;
 
   // A task is blocked when the backend says so (isLocked, e.g. define_areas_and_stages
-  // before a deck exists) or via the kickoff-meeting-specific checks below.
+  // before a deck exists) or via the kickoff-meeting-specific check below.
   const isTaskBlocked = (task: SetupTask, isCompleted: boolean) =>
     !isCompleted &&
     (task.isLocked ||
-      (task.additionalType === "kickoff_meeting" && (!allRequiredDocsUploaded || !membersAdded)));
+      (task.additionalType === "kickoff_meeting" && !membersAdded));
 
-  // Count blocked tasks (kickoff meetings without required docs/members, or locked tasks)
+  // Count blocked tasks (kickoff meeting without members, or locked tasks)
   const blockedTasksCount = visibleSetupTasks.filter((task) => {
     const isCompleted = task.isComplete || task.actionStatus === "completed";
     return isTaskBlocked(task, isCompleted);
@@ -334,7 +333,6 @@ export default function OverviewTab({
                     task={task}
                     projectId={projectId}
                     onOpen={handleViewTaskDetails}
-                    documentTypes={documentTypes || undefined}
                     allTasks={visibleSetupTasks}
                   />
                 );
