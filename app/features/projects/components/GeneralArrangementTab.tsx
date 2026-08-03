@@ -30,6 +30,7 @@ import Alert from "@/app/components/ui/Alert";
 import Tooltip from "@/app/components/ui/Tooltip";
 import AuthenticatedImage from "@/app/components/ui/AuthenticatedImage";
 import { CreateGAPinModal, GALeafletViewer } from "@/app/features/ga";
+import type { AreaPolygonOverlay } from "@/app/features/ga";
 import { CreateDeckModal } from "@/app/features/decks";
 import {
   PunchlistItemCard,
@@ -113,6 +114,45 @@ interface GeneralArrangementTabProps {
   generalArrangement?: GeneralArrangement;
   projectStatus?: ProjectStatus;
 }
+
+// Categorical palette for area outlines, cycled per-area so distinct
+// areas are visually distinguishable on the canvas and in the legend.
+// Deliberately stays clear of the blue/indigo (decks) and violet/purple
+// (side profiles) palettes below.
+const AREA_COLOR_PALETTE = [
+  "#10B981", // emerald
+  "#F59E0B", // amber
+  "#F43F5E", // rose
+  "#06B6D4", // cyan
+  "#84CC16", // lime
+  "#D946EF", // fuchsia
+  "#F97316", // orange
+  "#14B8A6", // teal
+  "#EAB308", // yellow
+  "#DC2626", // red
+];
+
+// Per-deck palette (cool blues), and the paired per-side-profile palette
+// (violets) at the same index — so a deck and its own side profile read
+// as "the same thing, two views" rather than unrelated colors, while
+// still keeping the blue-vs-violet distinction CreateDeckModal already
+// established between "deck" and "side profile" as concepts.
+const DECK_COLOR_PALETTE = [
+  "#2563EB", // blue
+  "#0EA5E9", // sky
+  "#0284C7", // sky-dark
+  "#4F46E5", // indigo
+  "#1D4ED8", // blue-dark
+  "#0369A1", // sky-darker
+];
+const SIDE_PROFILE_COLOR_PALETTE = [
+  "#7C3AED", // violet
+  "#A855F7", // purple
+  "#9333EA", // purple-dark
+  "#6D28D9", // violet-dark
+  "#8B5CF6", // purple-light
+  "#5B21B6", // violet-darker
+];
 
 // Helper to check if GA exists (uploaded but maybe not yet converted)
 function hasGA(ga: GeneralArrangement | undefined): boolean {
@@ -201,9 +241,12 @@ export default function GeneralArrangementTab({
 
   // Pin state
   const [isAddPinMode, setIsAddPinMode] = useState(false);
-  // When true, overlay each area's polygon on the GA, colored by its active
-  // stage. Off by default — opt-in visualization.
-  const [showActiveStages, setShowActiveStages] = useState(false);
+  // Pure display filters — no action attached, just show/hide outlines.
+  // Independent of each other and of edit mode (which always shows both,
+  // since it needs them for pin placement regardless of these). Off by
+  // default — opt-in visualization.
+  const [showDeckOutlines, setShowDeckOutlines] = useState(false);
+  const [showAreaOutlines, setShowAreaOutlines] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedPin, setSelectedPin] = useState<GAPin | null>(null);
   const [newPinPosition, setNewPinPosition] = useState<{ x: number; y: number } | null>(null);
@@ -265,88 +308,140 @@ export default function GeneralArrangementTab({
   // letting the user discover this after opening the modal.
   const pinsLocked = stages !== null && stages.length === 0;
 
-  // Compute "active stage per area" overlays. We treat the active stage as
-  // the one the team is currently progressing through:
-  //   1. status === in_progress
-  //   2. else status === pending_signoff
-  //   3. else the first not_started (= next up)
-  // If none match, the area has nothing meaningful to show right now and is
-  // skipped. Empty array when the toggle is off so we don't churn render
-  // work when the user isn't looking.
-  const activeStagePolygons = useMemo(() => {
-    if (!showActiveStages) return [];
-    if (!areas || !stages) return [];
-    const stagesByArea = new Map<string, typeof stages>();
-    for (const s of stages) {
-      if (!s.area?.identifier) continue;
-      const list = stagesByArea.get(s.area.identifier) ?? [];
-      list.push(s);
-      stagesByArea.set(s.area.identifier, list);
-    }
-    type Overlay = {
-      id: string;
-      name: string;
-      polygon: NonNullable<Area["polygon"]>;
-      color: string;
-      stageName: string;
-    };
-    const overlays: Overlay[] = [];
-    for (const a of areas) {
-      const areaStages = (stagesByArea.get(a.identifier) ?? [])
-        .slice()
-        .sort((x, y) => x.position - y.position);
-      const active =
-        areaStages.find((s) => s.status.name === "in_progress") ??
-        areaStages.find((s) => s.status.name === "pending_signoff") ??
-        areaStages.find((s) => s.status.name === "not_started") ??
-        null;
-      if (!active?.color) continue;
+  // Whether decks/areas should be drawn on the canvas at all right now —
+  // edit mode always needs both (it's how pin placement works), the two
+  // toggles are the opt-in "just let me look" path outside of that.
+  const decksVisible = isAddPinMode || showDeckOutlines;
+  const areasVisible = isAddPinMode || showAreaOutlines;
 
-      // Emit one polygon entry per placement that the area is drawn on
-      // (primary deck top-down + each side profile). The viewer just
-      // iterates `areaPolygons` and renders each independently — so
-      // the same area gets coloured on every view it has a polygon
-      // for. Falls back to the legacy single `a.polygon` field when
-      // the new `polygons` array hasn't been backfilled.
+  // Stable color per area, cycling through a palette — lets both the
+  // canvas overlay and the legend below identify areas by color instead
+  // of every area looking identical. Sorted by identifier so the
+  // assignment doesn't shuffle between renders as unrelated data
+  // (pins, stages) refetches.
+  const areaColorById = useMemo(() => {
+    const map = new Map<string, string>();
+    const sorted = [...(areas ?? [])].sort((a, b) =>
+      a.identifier.localeCompare(b.identifier)
+    );
+    sorted.forEach((a, i) => {
+      map.set(a.identifier, AREA_COLOR_PALETTE[i % AREA_COLOR_PALETTE.length]);
+    });
+    return map;
+  }, [areas]);
+
+  // Same idea for decks — each deck gets its own blue/indigo shade so
+  // the "Decks" legend can list them individually instead of one
+  // generic "Deck outline" swatch for all of them. A deck's side
+  // profile(s) share its palette *index* into the paired violet
+  // palette, so e.g. "Main Deck" (blue #1) and "Main Deck — SB"
+  // (violet #1) visually read as belonging together.
+  const deckColorById = useMemo(() => {
+    const map = new Map<string, { deck: string; sideProfile: string }>();
+    const sorted = [...(decks ?? [])].sort((a, b) =>
+      a.identifier.localeCompare(b.identifier)
+    );
+    sorted.forEach((d, i) => {
+      map.set(d.identifier, {
+        deck: DECK_COLOR_PALETTE[i % DECK_COLOR_PALETTE.length],
+        sideProfile:
+          SIDE_PROFILE_COLOR_PALETTE[i % SIDE_PROFILE_COLOR_PALETTE.length],
+      });
+    });
+    return map;
+  }, [decks]);
+
+  // Deck legend: one entry per deck, plus one per side profile it has —
+  // so "the corresponding side profiles" the user asked for show up by
+  // name, not folded into a generic "Side profile" category.
+  // Grouped by deck (rather than one flat pill list) so each deck's row
+  // stacks under the previous one, with its own side profiles sitting
+  // right alongside it — reads clearly even with many decks, instead of
+  // an unrelated wrapping mix of deck/side-profile pills.
+  const deckLegend = useMemo(() => {
+    const out: {
+      deck: { name: string; color: string };
+      sideProfiles: { name: string; color: string }[];
+    }[] = [];
+    for (const d of decks ?? []) {
+      const colors = deckColorById.get(d.identifier);
+      if (!colors) continue;
+      out.push({
+        deck: { name: d.name, color: colors.deck },
+        sideProfiles: (d.sideProfilePolygons ?? []).map((sp) => ({
+          name: sp.name,
+          color: colors.sideProfile,
+        })),
+      });
+    }
+    return out;
+  }, [decks, deckColorById]);
+
+  // Every area's polygon(s) — shown purely for spatial context when
+  // "Area outlines" is on, and as clickable pin-drop targets whenever
+  // Edit mode is on (the two can be independently or simultaneously
+  // true). Interactivity itself is decided downstream in
+  // GALeafletContent from `canEdit`, not from anything here.
+  const areaOverlayPolygons = useMemo<AreaPolygonOverlay[]>(() => {
+    if (!areasVisible || !areas) return [];
+    const overlays: AreaPolygonOverlay[] = [];
+    for (const a of areas) {
+      const deckId = a.containedInPlace?.identifier;
+      if (!deckId) continue;
+      const deck = decks?.find((d) => d.identifier === deckId);
+      const color = areaColorById.get(a.identifier) ?? AREA_COLOR_PALETTE[0];
       const perPlacement = (a.polygons ?? []).filter(
         (p) => Array.isArray(p.points) && p.points.length >= 3
       );
       if (perPlacement.length > 0) {
         for (const entry of perPlacement) {
+          // Same area can be drawn on the deck's primary (top-down) view
+          // *and* on one of its side profiles — without a distinguishing
+          // label the hover tooltip would show the same area name for
+          // both, leaving the user unsure whether they're about to drop
+          // a pin on the plan view or a side elevation.
+          const sideProfile = deck?.sideProfilePolygons?.find(
+            (sp) => sp.identifier === entry.parentPolygonId
+          );
           overlays.push({
-            id: `${a.identifier}-${entry.parentPolygonId}`,
-            name: `${a.name} — ${active.name}`,
+            id: `area-${a.identifier}-${entry.parentPolygonId}`,
+            name: sideProfile ? `${a.name} — ${sideProfile.name}` : a.name,
             polygon: entry.points,
-            color: active.color,
-            stageName: active.name,
+            color,
+            areaId: a.identifier,
+            deckId,
           });
         }
       } else if (Array.isArray(a.polygon) && a.polygon.length >= 3) {
         overlays.push({
-          id: a.identifier,
-          name: `${a.name} — ${active.name}`,
+          id: `area-${a.identifier}`,
+          name: a.name,
           polygon: a.polygon,
-          color: active.color,
-          stageName: active.name,
+          color,
+          areaId: a.identifier,
+          deckId,
         });
       }
     }
     return overlays;
-  }, [showActiveStages, areas, stages]);
+  }, [areasVisible, areas, decks, areaColorById]);
 
-  // Legend: each distinct (stageName + color) combination currently coloring
-  // a polygon on the GA. Sorted alphabetically so the list reads stably.
-  const activeStageLegend = useMemo(() => {
+  // Area legend: one entry per distinct area (deduped by id, not by
+  // placement — the same area can appear 2-3 times in `areaOverlayPolygons`
+  // if it's drawn on a side profile too). Sorted by name so the list
+  // reads stably regardless of identifier order.
+  const areaLegend = useMemo(() => {
     const seen = new Set<string>();
     const out: { name: string; color: string }[] = [];
-    for (const entry of activeStagePolygons) {
-      const key = `${entry.stageName}|${entry.color.toLowerCase()}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      out.push({ name: entry.stageName, color: entry.color });
+    for (const overlay of areaOverlayPolygons) {
+      if (!overlay.areaId || seen.has(overlay.areaId)) continue;
+      seen.add(overlay.areaId);
+      const area = areas?.find((a) => a.identifier === overlay.areaId);
+      if (!area) continue;
+      out.push({ name: area.name, color: overlay.color });
     }
     return out.sort((a, b) => a.name.localeCompare(b.name));
-  }, [activeStagePolygons]);
+  }, [areaOverlayPolygons, areas]);
 
   // The stages list contains one row per (area × stage-template) combo, so
   // names repeat for every area. The filter is a stage-template picker:
@@ -768,43 +863,69 @@ export default function GeneralArrangementTab({
               );
             })()}
 
-            {(() => {
-              const showActiveStagesToggle = (
-                <label className={`flex items-center gap-3 ${pinsLocked ? "cursor-not-allowed" : "cursor-pointer"}`}>
-                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    {tPins("showActiveStages") || "Show active stages"}
-                  </span>
-                  <div className="relative">
-                    <input
-                      type="checkbox"
-                      checked={showActiveStages && !pinsLocked}
-                      disabled={pinsLocked}
-                      onChange={(e) => setShowActiveStages(e.target.checked)}
-                      className="sr-only"
-                    />
-                    <div className={`w-11 h-6 rounded-full transition-colors ${
-                      showActiveStages && !pinsLocked ? "bg-blue-600" : "bg-gray-300 dark:bg-gray-600"
-                    }`}>
-                      <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
-                        showActiveStages && !pinsLocked ? "translate-x-5" : "translate-x-0"
-                      }`} />
-                    </div>
-                  </div>
-                </label>
-              );
+            {/* Pure display filters — checkboxes, not switches, so they
+                read as "no action, just a view option" at a glance next
+                to Edit mode's switch (which actually changes what
+                clicking the canvas does). Disabled while Edit mode is
+                on: it already forces both decks and areas visible (see
+                `decksVisible` / `areasVisible`), so toggling these here
+                would be a no-op — better to make that honest than let
+                the user think unchecking one did something. */}
+            <Tooltip
+              content={
+                isAddPinMode
+                  ? tPins("outlineToggleDisabledInEditMode") ||
+                    "Edit mode already shows deck and area outlines"
+                  : ""
+              }
+              position="top"
+              triggerClassName={isAddPinMode ? "opacity-50" : ""}
+            >
+              <label
+                className={`flex items-center gap-2 select-none ${
+                  isAddPinMode ? "cursor-not-allowed" : "cursor-pointer"
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  checked={showDeckOutlines || isAddPinMode}
+                  disabled={isAddPinMode}
+                  onChange={(e) => setShowDeckOutlines(e.target.checked)}
+                  className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 disabled:cursor-not-allowed"
+                />
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  {tPins("deckOutlines") || "Deck outlines"}
+                </span>
+              </label>
+            </Tooltip>
 
-              return pinsLocked ? (
-                <Tooltip
-                  content={tPins("pinsLockedMessage") || "Create at least one area with a stage before you can add pins to the General Arrangement."}
-                  position="top"
-                  triggerClassName="opacity-50"
-                >
-                  {showActiveStagesToggle}
-                </Tooltip>
-              ) : (
-                showActiveStagesToggle
-              );
-            })()}
+            <Tooltip
+              content={
+                isAddPinMode
+                  ? tPins("outlineToggleDisabledInEditMode") ||
+                    "Edit mode already shows deck and area outlines"
+                  : ""
+              }
+              position="top"
+              triggerClassName={isAddPinMode ? "opacity-50" : ""}
+            >
+              <label
+                className={`flex items-center gap-2 select-none ${
+                  isAddPinMode ? "cursor-not-allowed" : "cursor-pointer"
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  checked={showAreaOutlines || isAddPinMode}
+                  disabled={isAddPinMode}
+                  onChange={(e) => setShowAreaOutlines(e.target.checked)}
+                  className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 disabled:cursor-not-allowed"
+                />
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  {tPins("areaOutlines") || "Area outlines"}
+                </span>
+              </label>
+            </Tooltip>
 
             {canEdit && projectStatus !== "setup" && (
               <button
@@ -817,9 +938,9 @@ export default function GeneralArrangementTab({
               </button>
             )}
 
-            {showActiveStages && activeStagePolygons.length === 0 && areas && stages && (
+            {showAreaOutlines && areaLegend.length === 0 && areas && (
               <span className="text-sm text-gray-500 dark:text-gray-400">
-                {tPins("noActiveStages") || "No areas with an active stage to show."}
+                {tPins("noAreasToShow") || "No areas with an outline to show."}
               </span>
             )}
           </div>
@@ -834,19 +955,64 @@ export default function GeneralArrangementTab({
               }`}
               aria-hidden={!isAddPinMode}
             >
-              {tPins("hoverDeckToAdd") || "Hover over a deck to add a pin"}
+              {tPins("hoverAreaToAdd") || "Hover over an area to add a pin"}
             </p>
           )}
 
-          {/* Legend — one pill per distinct stage currently coloring an
-              area on the GA. Helps the viewer connect color → stage name
-              without hovering every polygon. */}
-          {showActiveStages && activeStageLegend.length > 0 && (
+          {/* Legends — shown alongside whichever outlines are currently
+              on the canvas (either toggle, or edit mode, which always
+              shows both). Both decks and areas get their own per-item
+              color (see `deckColorById` / `areaColorById`), so each
+              legend lists every visible deck/side profile or area by
+              name rather than a generic category swatch. */}
+          {decksVisible && deckLegend.length > 0 && (
+            <div className="mb-3">
+              <span className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 block mb-1.5">
+                {tPins("decksLegendLabel") || "Decks"}
+              </span>
+              {/* One row per deck, stacked — its side profiles sit on
+                  the same row (wrapping onto their own line if there
+                  are several) so the group reads as one unit instead of
+                  flowing into the next deck's pills. */}
+              <div className="flex flex-col gap-1.5">
+                {deckLegend.map((entry) => (
+                  <div
+                    key={entry.deck.name}
+                    className="flex flex-wrap items-center gap-2"
+                  >
+                    <span className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs text-gray-700 dark:text-gray-200">
+                      <span
+                        className="w-3 h-3 rounded-sm border border-gray-300 dark:border-gray-600 flex-shrink-0"
+                        style={{ backgroundColor: entry.deck.color }}
+                        aria-hidden="true"
+                      />
+                      {entry.deck.name}
+                    </span>
+                    {entry.sideProfiles.map((sp) => (
+                      <span
+                        key={sp.name}
+                        className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs text-gray-700 dark:text-gray-200"
+                      >
+                        <span
+                          className="w-3 h-3 rounded-sm border border-gray-300 dark:border-gray-600 flex-shrink-0"
+                          style={{ backgroundColor: sp.color }}
+                          aria-hidden="true"
+                        />
+                        {sp.name}
+                      </span>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {areasVisible && areaLegend.length > 0 && (
             <div className="mb-4 flex flex-wrap items-center gap-2">
               <span className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mr-1">
-                {tPins("legend") || "Legend"}
+                {tPins("areasLegendLabel") || "Areas"}
               </span>
-              {activeStageLegend.map((entry) => (
+              {areaLegend.map((entry) => (
                 <span
                   key={`${entry.name}-${entry.color}`}
                   className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs text-gray-700 dark:text-gray-200"
@@ -924,7 +1090,9 @@ export default function GeneralArrangementTab({
                 canEdit={canEdit && isAddPinMode && !pinsLocked}
                 decks={decks || []}
                 areas={areas || []}
-                areaPolygons={activeStagePolygons}
+                areaPolygons={areaOverlayPolygons}
+                showDecks={decksVisible}
+                deckColors={deckColorById}
               />
             ) : (
               <div className="flex items-center justify-center min-h-[600px]">

@@ -14,6 +14,7 @@ import {
   latLngToPct,
 } from "@/lib/utils/gaCoordinates";
 import { getFullImageBounds } from "@/lib/utils/gaLeaflet";
+import { getAreaPolygonForDeck } from "@/app/features/ga/utils/helpers";
 import { createDonePinIcon } from "./pinIcons";
 import SmoothModifierZoom, {
   SMOOTH_MAP_DEFAULTS,
@@ -45,6 +46,15 @@ interface GAPreviewMarkerProps {
    *  modal so the user can see neighbouring pins while dropping a new
    *  one. */
   existingPins?: GAPin[];
+  /** The polygon to zoom to on open, resolved by the caller from the
+   *  area it already has in hand (e.g. the area the user clicked on
+   *  the GA tab) rather than derived here from `areas` + `selectedAreaId`.
+   *  That derived lookup depends on this component's own `areas` prop,
+   *  which in the create-pin modal comes from a deck-scoped fetch that
+   *  hasn't resolved yet on first open — so relying on it alone left
+   *  the initial zoom falling back to the deck. Takes top priority
+   *  over every other zoom source when supplied. */
+  focusPolygon?: AreaPolygonPoint[] | null;
 }
 
 // Create a custom colored marker icon
@@ -222,6 +232,7 @@ export default function GAPreviewMarker({
   selectedAreaId,
   constrainPolygon,
   existingPins,
+  focusPolygon,
 }: GAPreviewMarkerProps) {
   const mapRef = useRef<L.Map | null>(null);
 
@@ -236,13 +247,31 @@ export default function GAPreviewMarker({
   );
 
   // Compute the axis-aligned bounding box of the polygon we want the
-  // user to focus on. When a constraint polygon is supplied (e.g.
-  // stage-level pin creation, scoped to an area), it's a tighter and
-  // more useful zoom target than the surrounding deck. Falls back to
-  // the deck's primary polygon for the free-roam GA flow.
+  // user to focus on, tightest-available first:
+  //   1. `focusPolygon` — resolved by the caller synchronously from the
+  //      area it already has in hand (e.g. the area the user clicked),
+  //      so it's available on the very first render instead of waiting
+  //      on this component's own `areas` prop to arrive.
+  //   2. The selected area's own polygon, derived here from `areas` +
+  //      `selectedAreaId` — a fallback for callers that don't pass
+  //      `focusPolygon` explicitly.
+  //   3. `constrainPolygon` — an explicit scope (e.g. stage-level pin
+  //      creation, where drops are constrained to one area). In that
+  //      flow it already resolves to the same shape as the area's own
+  //      polygon, so this only matters when no area is known yet.
+  //   4. The deck's primary polygon — the free-roam GA flow fallback,
+  //      when no area is known yet.
   const zoomBounds = useMemo<L.LatLngBoundsExpression | null>(() => {
+    const selectedArea = selectedAreaId
+      ? areas?.find((a) => a.identifier === selectedAreaId)
+      : null;
+    const areaPoints = getAreaPolygonForDeck(selectedArea, initialDeck);
     const points =
-      (constrainPolygon && constrainPolygon.length >= 3
+      (focusPolygon && focusPolygon.length >= 3
+        ? focusPolygon
+        : areaPoints && areaPoints.length >= 3
+        ? areaPoints
+        : constrainPolygon && constrainPolygon.length >= 3
         ? constrainPolygon
         : initialDeck?.deckPolygon?.points) ?? null;
     if (!points || points.length < 3) return null;
@@ -256,7 +285,15 @@ export default function GAPreviewMarker({
       [y1, x1], // Southwest [lat, lng]
       [y2, x2], // Northeast [lat, lng]
     ];
-  }, [constrainPolygon, initialDeck, imageWidth, imageHeight]);
+  }, [
+    focusPolygon,
+    constrainPolygon,
+    initialDeck,
+    areas,
+    selectedAreaId,
+    imageWidth,
+    imageHeight,
+  ]);
 
   // Create icon with current color
   const icon = useMemo(() => createColoredIcon(color), [color]);

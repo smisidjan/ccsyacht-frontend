@@ -34,6 +34,9 @@ export interface GAPreviewProps {
   /** Other pins to show as non-draggable reference markers with hover
    *  labels. */
   existingPins?: GAPin[];
+  /** Polygon to zoom to on open — see `GAPreviewMarker` for priority
+   *  order against `selectedAreaId` / `constrainPolygon`. */
+  focusPolygon?: AreaPolygonPoint[] | null;
 }
 
 export default function GAPreview(props: GAPreviewProps) {

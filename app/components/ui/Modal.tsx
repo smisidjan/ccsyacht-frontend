@@ -13,6 +13,9 @@ interface ModalAction {
   type?: "button" | "submit";
   disabled?: boolean;
   loading?: boolean;
+  /** Native title attribute — shown as a browser tooltip on hover.
+   *  Mainly useful to explain *why* an action is disabled. */
+  title?: string;
 }
 
 interface ModalProps {
@@ -139,6 +142,7 @@ export default function Modal({
           disabled={action.disabled || isSubmitting}
           loading={action.loading || (action.type === "submit" && isSubmitting)}
           form={action.type === "submit" && formId ? formId : undefined}
+          title={action.title}
         >
           {action.label}
         </Button>

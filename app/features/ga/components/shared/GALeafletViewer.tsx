@@ -11,6 +11,20 @@ export interface AreaPolygonOverlay {
   name: string;
   polygon: AreaPolygonPoint[];
   color: string;
+  /** Source identifiers — let a click handler resolve straight back to
+   *  the Area + parent Deck without a separate point-in-polygon
+   *  hit-test, since the overlay already knows exactly which area's
+   *  shape it is. */
+  areaId?: string;
+  deckId?: string;
+}
+
+/** Per-deck color pair — the deck's own outline color, and the color
+ *  its side profile(s) share so a deck and its side profile visually
+ *  read as "the same thing, two views" of it. */
+export interface DeckColorPair {
+  deck: string;
+  sideProfile: string;
 }
 
 // Dynamic import - Leaflet doesn't work with SSR
@@ -38,19 +52,24 @@ export interface GALeafletViewerProps {
    *  row can be highlighted in lockstep. */
   onPinHover?: (pin: GAPin | null) => void;
   onImageClick?: (x: number, y: number) => void;
-  /** Fires when the user clicks inside a deck rectangle in edit mode. The
-   *  `area` is set when the click landed inside one of that deck's area
-   *  polygons (used to pre-select the area in the create-pin modal). */
+  /** Fires when the user clicks an area polygon in edit mode — pin
+   *  placement is area-only, so `area` is always set here. */
   onDeckClick?: (deck: Deck, x: number, y: number, area?: Area | null) => void;
   canEdit?: boolean;
   decks?: Deck[];
-  /** All areas in the project — used for point-in-polygon hit-testing so a
-   *  click can pre-select the area, even when the active-stages overlay
-   *  isn't on. */
+  /** All areas in the project. Used to resolve the full `Area` record
+   *  for an edit-mode overlay's click (see `areaPolygons`'s `areaId`). */
   areas?: Area[];
   /** Area polygons to draw on top of the GA, each pre-colored. Empty / omitted
    *  hides them entirely. */
   areaPolygons?: AreaPolygonOverlay[];
+  /** Draw deck (+ side profile) outlines even when `canEdit` is off —
+   *  a pure display filter independent of edit mode, which always
+   *  shows them regardless of this flag. */
+  showDecks?: boolean;
+  /** Per-deck color pair, keyed by deck id. Falls back to the default
+   *  blue/violet when a deck has no entry. */
+  deckColors?: Map<string, DeckColorPair>;
   className?: string;
 }
 

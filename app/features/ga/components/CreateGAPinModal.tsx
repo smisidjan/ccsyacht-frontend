@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { PencilIcon } from "@heroicons/react/24/outline";
 import BaseModal from "@/app/components/modals/BaseModal";
@@ -149,6 +149,20 @@ export default function CreateGAPinModal({
   const constrainPolygonPoints = constrainToArea
     ? getAreaPolygonForDeck(activeArea, initialDeck) ?? undefined
     : initialDeck?.deckPolygon?.points;
+
+  // The polygon the preview should zoom to on open — always the area's
+  // own shape (independent of `constrainPolygonPoints`, which in the
+  // free-roam GA-tab flow is the whole deck so dragging isn't limited
+  // to the clicked area). Memoized so its identity only changes when
+  // the resolved area/deck actually changes — `GAPreviewMarker`'s fit
+  // effect keys off this reference to decide whether to re-fit, and a
+  // fresh array every render would make it re-snap the view on every
+  // unrelated re-render (the same class of bug as the earlier
+  // `padding={[40,40]}` fitBounds issue).
+  const focusAreaPolygon = useMemo(
+    () => getAreaPolygonForDeck(activeArea, initialDeck),
+    [activeArea, initialDeck]
+  );
 
   // Initialize form with data
   useEffect(() => {
@@ -484,19 +498,18 @@ export default function CreateGAPinModal({
   // Multi-pin handlers — create mode only.
   const handleAddPin = () => {
     const id = crypto.randomUUID();
-    // Drop new pins inside the active constraint so the marker lands
-    // somewhere the user can immediately see and the drag-snap doesn't
-    // jump it back to the polygon edge on first interaction. In
-    // constrain-to-area mode that's the area polygon (stage-level
-    // create flow); otherwise the deck polygon (GA tab). Falls back to
-    // image centre when no polygon is available.
+    // Drop new pins inside the clicked area so the marker lands
+    // somewhere the user can immediately see and already valid to save,
+    // rather than jumping it back to the polygon edge on first drag or
+    // outside every area entirely. `focusAreaPolygon` is the area's own
+    // shape; `constrainPolygonPoints` falls back to the whole deck in
+    // the free-roam GA-tab flow, so it's only used when no area is
+    // known yet (or in constrain-to-area mode, where both are already
+    // the same shape).
     let nextX = 50;
     let nextY = 50;
-    // Re-use the resolved constrain polygon so a brand-new pin shares
-    // the same boundary as the active marker; falling back to the deck
-    // when the resolver couldn't land on an area polygon (legacy data,
-    // free-roam mode).
-    const points = constrainPolygonPoints ?? initialDeck?.deckPolygon?.points;
+    const points =
+      focusAreaPolygon ?? constrainPolygonPoints ?? initialDeck?.deckPolygon?.points;
     if (points && points.length >= 3) {
       const c = polygonCentroid(points);
       if (c) {
@@ -603,6 +616,7 @@ export default function CreateGAPinModal({
                 areas={areas ?? undefined}
                 selectedAreaId={initialData.area.identifier}
                 constrainPolygon={editAreaPolygon}
+                focusPolygon={focusAreaPolygon}
                 existingPins={existingPins}
               />
             </div>
@@ -661,6 +675,7 @@ export default function CreateGAPinModal({
                 areas={areas ?? undefined}
                 selectedAreaId={selectedAreaId || undefined}
                 constrainPolygon={constrainPolygonPoints}
+                focusPolygon={focusAreaPolygon}
                 // Non-active pending pins ride along as read-only
                 // reference markers, alongside the project's existing
                 // pins. Synthesised into the `GAPin` shape the

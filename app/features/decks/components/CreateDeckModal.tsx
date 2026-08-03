@@ -169,6 +169,18 @@ export default function CreateDeckModal({
 
   const polygons = usePlacementPolygons();
 
+  // Whether the add/edit form currently has anything that would be
+  // silently discarded by closing the modal — a typed name/description,
+  // a side profile row, or a drawn polygon on any placement. Drives
+  // disabling "Done" (see the modal's `actions` below) so the only ways
+  // out of a dirty form are committing it (Add/Update Deck) or an
+  // explicit Cancel, never an accidental close.
+  const isFormDirty = useMemo(() => {
+    if (name.trim() || description.trim()) return true;
+    if (sideProfilesMeta.length > 0) return true;
+    return Object.values(polygons.all).some((snap) => snap.polygon.length > 0);
+  }, [name, description, sideProfilesMeta, polygons.all]);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -598,11 +610,18 @@ export default function CreateDeckModal({
       disableEscClose
       actions={[
         // With per-deck auto-save the old batched "Save Changes" step
-        // is gone — Done just dismisses the modal.
+        // is gone — Done just dismisses the modal. Disabled while the
+        // form has a draft (see `isFormDirty`) so closing can't
+        // silently discard it — Add/Update Deck or Cancel are the only
+        // ways to clear that state.
         {
           label: t("done"),
           onClick: handleClose,
           variant: "primary",
+          disabled: isFormDirty,
+          title: isFormDirty
+            ? t("doneDisabledHint") || "Save or cancel your current deck changes first"
+            : undefined,
         },
       ]}
     >
@@ -953,7 +972,10 @@ export default function CreateDeckModal({
               >
                 {editingDeckId ? t("updateDeck") : t("addDeck")}
               </Button>
-              {editingDeckId && (
+              {/* Shown whenever there's a draft to discard — not just
+                  mid-edit — so a fresh "add new deck" in progress also
+                  has an explicit way out besides committing it. */}
+              {(editingDeckId || isFormDirty) && (
                 <Button
                   type="button"
                   onClick={handleCancelEdit}

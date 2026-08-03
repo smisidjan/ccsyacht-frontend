@@ -1,17 +1,17 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { MapContainer, ImageOverlay, Polygon, Rectangle, Tooltip, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import type { GAPin, Deck, Area } from "@/lib/api/types";
-import type { AreaPolygonOverlay } from "./GALeafletViewer";
-import { isInsidePolygon, polygonBbox } from "@/lib/utils/geometry";
+import type { AreaPolygonOverlay, DeckColorPair } from "./GALeafletViewer";
+import { polygonBbox } from "@/lib/utils/geometry";
 import {
   normToLatLng,
   pctToLatLng,
   latLngToPct,
-  pctToNorm,
 } from "@/lib/utils/gaCoordinates";
 import { FitBounds, getFullImageBounds } from "@/lib/utils/gaLeaflet";
 import PinMarker from "./PinMarker";
@@ -43,17 +43,24 @@ interface GALeafletContentProps {
   onPinClick?: (pin: GAPin) => void;
   onPinHover?: (pin: GAPin | null) => void;
   onImageClick?: (x: number, y: number) => void;
-  /** Fires when the user clicks inside a deck rectangle in edit mode. The
-   *  `area` is set when the click landed inside one of that deck's area
-   *  polygons (used to pre-select the area in the create-pin modal). */
+  /** Fires when the user clicks an area polygon in edit mode — pin
+   *  placement is area-only, so `area` is always set here (never
+   *  `null`; the parameter stays optional for API compatibility with
+   *  the wider create-pin flow). */
   onDeckClick?: (deck: Deck, x: number, y: number, area?: Area | null) => void;
   canEdit?: boolean;
   decks?: Deck[];
-  /** All areas in the project. Used for point-in-polygon hit-testing in
-   *  the deck-rectangle click handler — independent from `areaPolygons`,
-   *  which is just the active-stages visualization overlay. */
+  /** All areas in the project. Used to resolve the full `Area` record
+   *  for an edit-mode overlay's click (see `areaPolygons`'s `areaId`). */
   areas?: Area[];
   areaPolygons?: AreaPolygonOverlay[];
+  /** Draw deck (+ side profile) outlines even when `canEdit` is off —
+   *  a pure display filter independent of edit mode, which always
+   *  shows them regardless of this flag. */
+  showDecks?: boolean;
+  /** Per-deck color pair, keyed by deck id. Falls back to the default
+   *  blue/violet when a deck has no entry. */
+  deckColors?: Map<string, DeckColorPair>;
   className?: string;
 }
 
@@ -98,10 +105,15 @@ export default function GALeafletContent({
   decks = [],
   areas = [],
   areaPolygons = [],
+  showDecks = false,
+  deckColors,
   className = "",
 }: GALeafletContentProps) {
+  const t = useTranslations("gaViewer");
   const mapRef = useRef<L.Map | null>(null);
-  const [hoveredDeckId, setHoveredDeckId] = useState<string | null>(null);
+  // Decks/side-profiles are visual-only in edit mode (see the rectangle
+  // blocks below), so only areas have a hover state to track.
+  const [hoveredAreaId, setHoveredAreaId] = useState<string | null>(null);
 
   const bounds = useMemo<L.LatLngBoundsExpression>(
     () => getFullImageBounds(imageWidth, imageHeight),
@@ -202,144 +214,176 @@ export default function GALeafletContent({
           canEdit={canEdit}
         />
 
-        {/* Area polygon overlays — rendered below pins so markers stay on top.
-            Coords are 0..1 normalized → pixels for Leaflet's lat/lng. The
-            stroke + fill use the pre-computed color (typically the area's
-            active stage color). */}
-        {areaPolygons.map((area) => {
-          if (!area.polygon || area.polygon.length < 3) return null;
-          const positions: [number, number][] = area.polygon.map((p) =>
-            normToLatLng(p, imageWidth, imageHeight)
-          );
-          return (
-            <Polygon
-              key={`area-poly-${area.id}`}
-              positions={positions}
-              pathOptions={{
-                color: area.color,
-                weight: 2,
-                fillColor: area.color,
-                fillOpacity: 0.4,
-              }}
-              // In edit mode the deck rectangle owns the click — the
-              // hit-test below resolves which area was clicked. Letting
-              // the overlay capture clicks would swallow them and break
-              // pin placement when the active-stages overlay is on.
-              interactive={!canEdit}
-            >
-              {!canEdit && (
-                <Tooltip sticky direction="top">
-                  {area.name}
-                </Tooltip>
-              )}
-            </Polygon>
-          );
-        })}
+        {/* Render pins — hidden while placing a new one (`canEdit` here
+            means "pin-placement mode is on", see the prop wiring in
+            GeneralArrangementTab). Existing pin markers sit in
+            Leaflet's markerPane, which paints above the overlayPane
+            that decks/areas live in regardless of JSX order, so
+            they'd otherwise block hovering/clicking the shape
+            underneath them. */}
+        {!canEdit &&
+          pins.map((pin) => (
+            <PinMarker
+              key={pin.identifier}
+              pin={pin}
+              position={convertPinToLeaflet(pin)}
+              isSelected={selectedPinId === pin.identifier}
+              isHovered={hoveredPinIds?.has(pin.identifier) ?? false}
+              onClick={onPinClick}
+              onHover={onPinHover}
+            />
+          ))}
 
-        {/* Render pins */}
-        {pins.map((pin) => (
-          <PinMarker
-            key={pin.identifier}
-            pin={pin}
-            position={convertPinToLeaflet(pin)}
-            isSelected={selectedPinId === pin.identifier}
-            isHovered={hoveredPinIds?.has(pin.identifier) ?? false}
-            onClick={onPinClick}
-            onHover={onPinHover}
-          />
-        ))}
-
-        {/* Render deck bounding boxes on hover when in edit mode */}
-        {canEdit && decksWithBounds.map((deck) => {
+        {/* Deck bounding boxes — visual context, shown whenever edit mode
+            or the "Deck outlines" filter is on. Pin placement is
+            area-only (see the area overlay block below): a spot inside
+            a deck but outside every area isn't a valid target, so the
+            rectangle never hover-highlights or reacts to clicks in edit
+            mode — it just shows where the deck is. Outside edit mode a
+            hover tooltip gives on-demand name lookup too. Each deck
+            gets its own color (falls back to the default blue) so it
+            matches its entry in the "Decks" legend. */}
+        {(canEdit || showDecks) && decksWithBounds.map((deck) => {
           const deckBounds = polygonToLeafletBounds(deck.deckPolygon!.points);
           if (!deckBounds) return null;
-          const isHovered = hoveredDeckId === deck.identifier;
+          const color = deckColors?.get(deck.identifier)?.deck ?? "#3B82F6";
 
           return (
             <Rectangle
               key={deck.identifier}
               bounds={deckBounds}
               pathOptions={{
-                color: "#3B82F6",
-                weight: isHovered ? 3 : 2,
-                fillColor: "#3B82F6",
-                fillOpacity: isHovered ? 0.3 : 0.1,
-                dashArray: isHovered ? undefined : "5, 5",
+                color,
+                weight: 2,
+                fillColor: color,
+                fillOpacity: 0.1,
+                dashArray: "5, 5",
               }}
-              eventHandlers={{
-                mouseover: () => setHoveredDeckId(deck.identifier),
-                mouseout: () => setHoveredDeckId(null),
-                click: (e) => {
-                  L.DomEvent.stopPropagation(e.originalEvent);
-                  if (!onDeckClick) return;
-                  const pct = latLngToPct(e.latlng, imageWidth, imageHeight);
-                  const normalized = pctToNorm(pct);
-                  const hitArea =
-                    areas.find(
-                      (a) =>
-                        a.containedInPlace?.identifier === deck.identifier &&
-                        a.polygon &&
-                        isInsidePolygon(normalized, a.polygon)
-                    ) ?? null;
-                  onDeckClick(deck, pct.x, pct.y, hitArea);
-                },
-              }}
-            />
+              interactive={!canEdit}
+            >
+              {!canEdit && (
+                <Tooltip sticky direction="top">
+                  {t("deckTooltipLabel", { name: deck.name })}
+                </Tooltip>
+              )}
+            </Rectangle>
           );
         })}
 
-        {/* Render side-profile rectangles. Same click semantics as the
-            primary deck rectangle — drops the user into create-pin
-            scoped to that deck. Side profiles typically sit outside
-            any area polygon, so the hit-test will usually return
-            `null` and the area stays unselected. Purple matches the
-            convention from CreateDeckModal so the two markers read
-            as different kinds of placement at a glance. */}
-        {canEdit && sideProfiles.map(({ deck, sideProfile }) => {
+        {/* Side-profile rectangles — same treatment as the primary deck
+            rectangle above, using the paired violet shade from
+            `deckColors` so a deck and its side profile read as
+            belonging together. */}
+        {(canEdit || showDecks) && sideProfiles.map(({ deck, sideProfile }) => {
           const bounds = polygonToLeafletBounds(sideProfile.points);
           if (!bounds) return null;
-          const isHovered = hoveredDeckId === deck.identifier;
+          const color = deckColors?.get(deck.identifier)?.sideProfile ?? "#8B5CF6";
 
           return (
             <Rectangle
               key={`side-${sideProfile.identifier}`}
               bounds={bounds}
               pathOptions={{
-                color: "#8B5CF6",
-                weight: isHovered ? 3 : 2,
-                fillColor: "#8B5CF6",
-                fillOpacity: isHovered ? 0.3 : 0.1,
-                dashArray: isHovered ? undefined : "5, 5",
+                color,
+                weight: 2,
+                fillColor: color,
+                fillOpacity: 0.1,
+                dashArray: "5, 5",
               }}
-              eventHandlers={{
-                mouseover: () => setHoveredDeckId(deck.identifier),
-                mouseout: () => setHoveredDeckId(null),
-                click: (e) => {
-                  L.DomEvent.stopPropagation(e.originalEvent);
-                  if (!onDeckClick) return;
-                  const pct = latLngToPct(e.latlng, imageWidth, imageHeight);
-                  const normalized = pctToNorm(pct);
-                  const hitArea =
-                    areas.find(
-                      (a) =>
-                        a.containedInPlace?.identifier === deck.identifier &&
-                        a.polygon &&
-                        isInsidePolygon(normalized, a.polygon)
-                    ) ?? null;
-                  onDeckClick(deck, pct.x, pct.y, hitArea);
-                },
+              interactive={!canEdit}
+            >
+              {!canEdit && (
+                <Tooltip sticky direction="top">
+                  {t("sideProfileTooltipLabel", { name: sideProfile.name })}
+                </Tooltip>
+              )}
+            </Rectangle>
+          );
+        })}
+
+        {/* Area polygon overlays — rendered after decks/side-profiles so
+            they sit on top and can actually receive clicks/hovers in
+            edit mode (Leaflet resolves overlapping shapes to whichever
+            is topmost in paint order, i.e. last in this JSX — areas are
+            usually nested inside a deck's rectangle, so they'd never
+            get a hover/click otherwise). Coords are 0..1 normalized →
+            pixels for Leaflet's lat/lng.
+            Edit-mode overlays carry `areaId`/`deckId` (see
+            `GeneralArrangementTab`'s `editModeAreaPolygons`) so the
+            click resolves straight back to the source records — no
+            point-in-polygon hit-test needed, we already know exactly
+            which area's shape was clicked. Non-edit overlays (the
+            "Show active stages" visualization) keep the old
+            hover-tooltip-only behaviour. */}
+        {areaPolygons.map((area) => {
+          if (!area.polygon || area.polygon.length < 3) return null;
+          const positions: [number, number][] = area.polygon.map((p) =>
+            normToLatLng(p, imageWidth, imageHeight)
+          );
+          const isEditTarget = canEdit && !!area.areaId && !!area.deckId;
+          const isHovered = isEditTarget && hoveredAreaId === area.areaId;
+
+          return (
+            <Polygon
+              key={`area-poly-${area.id}`}
+              positions={positions}
+              pathOptions={{
+                color: area.color,
+                weight: isEditTarget ? (isHovered ? 3 : 2) : 2,
+                fillColor: area.color,
+                fillOpacity: isEditTarget ? (isHovered ? 0.45 : 0.2) : 0.4,
+                dashArray: isEditTarget && !isHovered ? "5, 5" : undefined,
               }}
-            />
+              interactive={!canEdit || isEditTarget}
+              eventHandlers={
+                isEditTarget
+                  ? {
+                      mouseover: () => setHoveredAreaId(area.areaId!),
+                      mouseout: () => setHoveredAreaId(null),
+                      click: (e) => {
+                        L.DomEvent.stopPropagation(e.originalEvent);
+                        if (!onDeckClick) return;
+                        const deck = decks.find(
+                          (d) => d.identifier === area.deckId
+                        );
+                        if (!deck) return;
+                        const fullArea =
+                          areas.find((a) => a.identifier === area.areaId) ??
+                          null;
+                        const pct = latLngToPct(
+                          e.latlng,
+                          imageWidth,
+                          imageHeight
+                        );
+                        onDeckClick(deck, pct.x, pct.y, fullArea);
+                      },
+                    }
+                  : undefined
+              }
+            >
+              {!canEdit && (
+                <Tooltip sticky direction="top">
+                  {t("areaTooltipLabel", { name: area.name })}
+                </Tooltip>
+              )}
+            </Polygon>
           );
         })}
       </MapContainer>
 
-      {/* Deck hover tooltip */}
-      {canEdit && hoveredDeckId && (
-        <div className="absolute top-4 left-4 z-[1000] bg-blue-600 text-white px-3 py-2 rounded-lg shadow-lg text-sm font-medium pointer-events-none">
-          Add pin in {decks.find(d => d.identifier === hoveredDeckId)?.name}
-        </div>
-      )}
+      {/* Area hover tooltip — decks are visual-only now (see the
+          rectangles above), so this only ever fires for an area. */}
+      {canEdit && hoveredAreaId && (() => {
+        const hoveredName = areaPolygons.find(
+          (a) => a.areaId === hoveredAreaId
+        )?.name;
+        if (!hoveredName) return null;
+        return (
+          <div className="absolute top-4 left-4 z-[1000] text-white px-3 py-2 rounded-lg shadow-lg text-sm font-medium pointer-events-none bg-emerald-600">
+            {t("addPinIn", { name: hoveredName })}
+          </div>
+        );
+      })()}
 
       {/* Zoom controls info */}
       <div className="absolute bottom-4 right-4 bg-white/90 dark:bg-gray-800/90 px-3 py-2 rounded-lg shadow-lg text-xs text-gray-600 dark:text-gray-400 pointer-events-none">

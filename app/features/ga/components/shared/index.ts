@@ -10,5 +10,6 @@
 
 export { default as GAViewer } from "./GAViewer";
 export { default as GALeafletViewer } from "./GALeafletViewer";
+export type { AreaPolygonOverlay, DeckColorPair } from "./GALeafletViewer";
 export { default as GAPreview } from "./GAPreview";
 export { default as AreaGAPreview } from "./AreaGAPreview";
