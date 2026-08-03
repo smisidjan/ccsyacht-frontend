@@ -81,6 +81,7 @@ export default function Tooltip({
     >
       {children}
       {isVisible &&
+        content &&
         createPortal(
           <div
             ref={tooltipRef}
