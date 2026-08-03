@@ -4,12 +4,13 @@ import { useState, useEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { PencilIcon } from "@heroicons/react/24/outline";
 import BaseModal from "@/app/components/modals/BaseModal";
+import Alert from "@/app/components/ui/Alert";
 import FormInput from "@/app/components/ui/FormInput";
 import PunchlistItemForm from "@/app/features/punchlist/components/PunchlistItemForm";
 import GAPreview from "@/app/features/ga/components/shared/GAPreview";
 import { gaPinsApi, useGAPins } from "@/lib/api/ga-pins";
 import { punchlistItemsApi } from "@/lib/api/punchlist-items";
-import { TrashIcon, PlusIcon } from "@heroicons/react/24/outline";
+import { TrashIcon, PlusIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
 import { isInsidePolygon, polygonCentroid, polygonBbox } from "@/lib/utils/geometry";
 import { getAreaPolygonForDeck } from "@/app/features/ga/utils/helpers";
 import { useDecks } from "@/lib/api/decks";
@@ -94,6 +95,10 @@ export default function CreateGAPinModal({
   }
   const [pins, setPins] = useState<PendingPin[]>([]);
   const [activePinId, setActivePinId] = useState<string | null>(null);
+  // Expand/collapse for the parent+sub-pins tree shown once there are
+  // 2+ pins — mirrors PunchlistTreeList's parent/child visual so this
+  // draft preview matches what it becomes after saving.
+  const [pinsExpanded, setPinsExpanded] = useState(true);
   const activePin = pins.find((p) => p.id === activePinId) ?? null;
 
   // Cascading selection state
@@ -731,46 +736,65 @@ export default function CreateGAPinModal({
               (s) => s.identifier === selectedStageId
             );
             return (
-              <div className="flex items-center flex-wrap gap-2 px-4 py-3 rounded-lg bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-700 text-sm">
-                <span className="text-gray-900 dark:text-gray-100">
-                  {initialDeck.name}
-                </span>
-                <span className="text-gray-400 dark:text-gray-500">/</span>
-                <span
-                  className={
-                    selectedAreaId
-                      ? "text-gray-900 dark:text-gray-100"
-                      : "text-gray-400 dark:text-gray-500"
-                  }
+              <div className="space-y-2">
+                <div
+                  className={`flex items-center flex-wrap gap-2 px-4 py-3 rounded-lg border text-sm ${
+                    selectedStageId
+                      ? "bg-gray-50 dark:bg-gray-700/50 border-gray-200 dark:border-gray-700"
+                      : "bg-amber-50 dark:bg-amber-900/10 border-amber-300 dark:border-amber-700"
+                  }`}
                 >
-                  {areaName}
-                </span>
-                <span className="text-gray-400 dark:text-gray-500">/</span>
-                {selectedAreaId && stageList.length > 0 ? (
-                  <div className="flex items-center gap-1.5">
-                    {activeStage?.color && (
-                      <span
-                        className="inline-block w-3 h-3 rounded-sm border border-gray-200 dark:border-gray-600 flex-shrink-0"
-                        style={{ backgroundColor: activeStage.color }}
-                        aria-hidden="true"
-                      />
-                    )}
-                    <select
-                      value={selectedStageId}
-                      onChange={(e) => setSelectedStageId(e.target.value)}
-                      className="bg-transparent border-0 outline-none text-gray-900 dark:text-gray-100 font-medium focus:ring-0 px-0 py-0 cursor-pointer"
-                      required
-                    >
-                      <option value="">{t("chooseStage")}</option>
-                      {stageList.map((stage) => (
-                        <option key={stage.identifier} value={stage.identifier}>
-                          {stage.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                ) : (
-                  <span className="text-gray-400 dark:text-gray-500">-</span>
+                  <span className="text-gray-900 dark:text-gray-100">
+                    {initialDeck.name}
+                  </span>
+                  <span className="text-gray-400 dark:text-gray-500">/</span>
+                  <span
+                    className={
+                      selectedAreaId
+                        ? "text-gray-900 dark:text-gray-100"
+                        : "text-gray-400 dark:text-gray-500"
+                    }
+                  >
+                    {areaName}
+                  </span>
+                  <span className="text-gray-400 dark:text-gray-500">/</span>
+                  {selectedAreaId && stageList.length > 0 ? (
+                    <div className="flex items-center gap-1.5">
+                      {activeStage?.color && (
+                        <span
+                          className="inline-block w-3 h-3 rounded-sm border border-gray-200 dark:border-gray-600 flex-shrink-0"
+                          style={{ backgroundColor: activeStage.color }}
+                          aria-hidden="true"
+                        />
+                      )}
+                      <select
+                        value={selectedStageId}
+                        onChange={(e) => setSelectedStageId(e.target.value)}
+                        className="bg-transparent border-0 outline-none text-gray-900 dark:text-gray-100 font-medium focus:ring-0 px-0 py-0 cursor-pointer"
+                        required
+                      >
+                        <option value="">{t("chooseStage")}</option>
+                        {stageList.map((stage) => (
+                          <option key={stage.identifier} value={stage.identifier}>
+                            {stage.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  ) : (
+                    <span className="text-gray-400 dark:text-gray-500">-</span>
+                  )}
+                </div>
+                {/* Visually explains why Save stays disabled — otherwise
+                    the only signal is the grayed-out button itself. */}
+                {!selectedStageId && (
+                  <Alert
+                    type="warning"
+                    message={
+                      t("pinOutsideAreaWarning") ||
+                      "This pin isn't inside an area with a stage yet. Drag it into a colored area on the drawing to save."
+                    }
+                  />
                 )}
               </div>
             );
@@ -1035,58 +1059,140 @@ export default function CreateGAPinModal({
               <p className="text-xs text-gray-500 dark:text-gray-400 italic px-2 py-3 rounded-md border border-dashed border-gray-300 dark:border-gray-600">
                 {t("noPinsYet") || "No locations yet — add one to continue."}
               </p>
+            ) : pins.length === 1 ? (
+              // A single pin doesn't get its own editable label — it just
+              // uses the Label field above as the punchlist item title,
+              // so asking for a second one here would be a redundant,
+              // confusing "do I need to fill this in too?" moment. Still
+              // worth a live preview though, styled like the parent row
+              // in the 2+ pins tree below, so it's clear what this pin
+              // will be titled once saved.
+              <div className="flex items-center gap-2 px-2.5 py-2 border border-gray-200 dark:border-gray-700 rounded-lg">
+                <span
+                  className="w-2.5 h-2.5 rounded-full flex-shrink-0 border border-white dark:border-gray-800 shadow-sm"
+                  style={{ backgroundColor: color }}
+                  aria-hidden="true"
+                />
+                <span className="font-mono text-xs text-gray-400 flex-shrink-0 w-7">
+                  #1
+                </span>
+                <span
+                  className={`flex-1 min-w-0 truncate text-sm ${
+                    label.trim()
+                      ? "text-gray-900 dark:text-white"
+                      : "text-gray-400 dark:text-gray-500 italic"
+                  }`}
+                >
+                  {label.trim() || t("pinLabel") || "Label"}
+                </span>
+              </div>
             ) : (
-              <ul className="space-y-1.5">
-                {pins.map((p, i) => {
-                  const isActive = p.id === activePinId;
-                  return (
-                    <li
-                      key={p.id}
-                      onClick={() => handleSelectPin(p.id)}
-                      className={`flex items-center gap-2 px-2.5 py-2 rounded-md border cursor-pointer text-sm transition-colors ${
-                        isActive
-                          ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
-                          : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
+              // 2+ pins save as a parent punchlist item (the Label field
+              // above) with one child per pin — mirrored here as a
+              // parent + indented sub-pins tree, same chevron/shading
+              // language as PunchlistTreeList, so this draft preview
+              // already looks like what it becomes after saving.
+              <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                <div className="flex items-center gap-2 px-2.5 py-2 bg-white dark:bg-gray-800">
+                  <button
+                    type="button"
+                    onClick={() => setPinsExpanded((prev) => !prev)}
+                    className="flex-shrink-0 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+                    aria-expanded={pinsExpanded}
+                    title={
+                      pinsExpanded
+                        ? t("collapseLocations") || "Collapse locations"
+                        : t("expandLocations") || "Expand locations"
+                    }
+                    aria-label={
+                      pinsExpanded
+                        ? t("collapseLocations") || "Collapse locations"
+                        : t("expandLocations") || "Expand locations"
+                    }
+                  >
+                    <ChevronRightIcon
+                      className={`w-4 h-4 transition-transform ${
+                        pinsExpanded ? "rotate-90" : ""
                       }`}
-                    >
-                      <span
-                        className="w-2.5 h-2.5 rounded-full flex-shrink-0 border border-white dark:border-gray-800 shadow-sm"
-                        style={{ backgroundColor: color }}
-                        aria-hidden="true"
-                      />
-                      <span className="font-mono text-xs text-gray-500 dark:text-gray-400 flex-shrink-0 w-7">
-                        #{i + 1}
-                      </span>
-                      <input
-                        type="text"
-                        value={p.label}
-                        onClick={(e) => e.stopPropagation()}
-                        onChange={(e) =>
-                          handlePinLabelChange(p.id, e.target.value)
-                        }
-                        placeholder={
-                          t("pinLabelPlaceholder") || "Label (optional)"
-                        }
-                        maxLength={255}
-                        className="flex-1 min-w-0 bg-transparent border-0 outline-none text-gray-900 dark:text-white text-sm p-0 placeholder:text-gray-400 dark:placeholder:text-gray-500"
-                      />
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleRemovePin(p.id);
-                        }}
-                        disabled={pins.length <= 1}
-                        className="p-1 text-gray-400 hover:text-red-600 dark:hover:text-red-400 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                        title={t("removePin") || "Remove pin"}
-                        aria-label={t("removePin") || "Remove pin"}
-                      >
-                        <TrashIcon className="w-4 h-4" />
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
+                    />
+                  </button>
+                  <span
+                    className="w-2.5 h-2.5 rounded-full flex-shrink-0 border border-white dark:border-gray-800 shadow-sm"
+                    style={{ backgroundColor: color }}
+                    aria-hidden="true"
+                  />
+                  <span className="font-mono text-xs text-gray-400 flex-shrink-0 w-7">
+                    #1
+                  </span>
+                  <span
+                    className={`flex-1 min-w-0 truncate text-sm ${
+                      label.trim()
+                        ? "text-gray-900 dark:text-white"
+                        : "text-gray-400 dark:text-gray-500 italic"
+                    }`}
+                  >
+                    {label.trim() || t("pinLabel") || "Label"}
+                  </span>
+                </div>
+
+                {pinsExpanded && (
+                  <div className="bg-gray-50 dark:bg-gray-900/40 divide-y divide-gray-100 dark:divide-gray-800 border-t border-gray-200 dark:border-gray-700">
+                    {pins.map((p, i) => {
+                      const isActive = p.id === activePinId;
+                      return (
+                        <div
+                          key={p.id}
+                          onClick={() => handleSelectPin(p.id)}
+                          className={`flex items-center gap-2 pl-9 pr-2.5 py-2 cursor-pointer text-sm transition-colors ${
+                            isActive
+                              ? "bg-blue-50 dark:bg-blue-900/20"
+                              : "hover:bg-gray-100 dark:hover:bg-gray-800/60"
+                          }`}
+                        >
+                          <span
+                            className="w-2.5 h-2.5 rounded-full flex-shrink-0 border border-white dark:border-gray-800 shadow-sm"
+                            style={{ backgroundColor: color }}
+                            aria-hidden="true"
+                          />
+                          <span className="font-mono text-xs text-gray-400 flex-shrink-0 w-9">
+                            #1.{i + 1}
+                          </span>
+                          <input
+                            type="text"
+                            value={p.label}
+                            onClick={(e) => e.stopPropagation()}
+                            onChange={(e) =>
+                              handlePinLabelChange(p.id, e.target.value)
+                            }
+                            // Each pin becomes a child punchlist item
+                            // titled by its label, falling back to
+                            // "Location N" when left blank (see
+                            // handleSubmit). Showing that exact fallback
+                            // as the placeholder means what's on screen
+                            // is what gets saved — no separate helper
+                            // text needed to explain it.
+                            placeholder={`${t("location") || "Location"} ${i + 1}`}
+                            maxLength={255}
+                            className="flex-1 min-w-0 bg-transparent border-0 outline-none text-gray-900 dark:text-white text-sm p-0 placeholder:text-gray-400 dark:placeholder:text-gray-500"
+                          />
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRemovePin(p.id);
+                            }}
+                            className="p-1 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                            title={t("removePin") || "Remove pin"}
+                            aria-label={t("removePin") || "Remove pin"}
+                          >
+                            <TrashIcon className="w-4 h-4" />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             )}
           </div>
         )}

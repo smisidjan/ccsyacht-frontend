@@ -34,6 +34,85 @@ const FILL_OPACITY_OPEN = 0.15;
 const FILL_OPACITY_CLOSED = 0.25;
 const VERTEX_COLOR = "#1d4ed8";
 
+/** Pixels from the map container's edge that trigger auto-pan while
+ *  dragging a vertex/corner/rectangle. */
+const EDGE_PAN_THRESHOLD_PX = 48;
+/** Pan speed (px/frame) at the very edge of the container, ramping
+ *  down to 0 at `EDGE_PAN_THRESHOLD_PX` in from the edge. */
+const EDGE_PAN_MAX_SPEED_PX = 14;
+
+/** While `active`, continuously pans the map toward whichever edge the
+ *  pointer is currently near — without this, dragging a vertex/corner
+ *  to the edge of the visible viewport just stalls, since Leaflet only
+ *  updates the drag preview on real `mousemove` events, which stop
+ *  firing once the cursor is pinned at the boundary. Each pan tick
+ *  re-derives the lat/lng under the (stationary) pointer and reports it
+ *  via `onPannedLatLng`, so the caller can keep extending the shape
+ *  exactly as if a new `mousemove` had fired.
+ *
+ *  Tracks the pointer via a `document`-level listener rather than
+ *  Leaflet's own `mousemove` event — the latter only fires with the
+ *  pointer inside the map pane, but during a fast drag the browser can
+ *  report a position slightly outside it (or leaflet's dragging=false
+ *  state can miss frames), and we'd rather keep panning than stall. */
+function useEdgeAutoPan(
+  map: L.Map,
+  active: boolean,
+  onPannedLatLng: (latlng: L.LatLng) => void
+) {
+  const pointerRef = useRef<{ x: number; y: number } | null>(null);
+  const onPannedLatLngRef = useRef(onPannedLatLng);
+  useEffect(() => {
+    onPannedLatLngRef.current = onPannedLatLng;
+  });
+
+  useEffect(() => {
+    if (!active) return;
+
+    const container = map.getContainer();
+    const onMove = (e: MouseEvent) => {
+      const rect = container.getBoundingClientRect();
+      pointerRef.current = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    };
+    document.addEventListener("mousemove", onMove);
+
+    let raf = 0;
+    const tick = () => {
+      const p = pointerRef.current;
+      if (p) {
+        const size = map.getSize();
+        let dx = 0;
+        let dy = 0;
+        if (p.x < EDGE_PAN_THRESHOLD_PX) {
+          dx = -EDGE_PAN_MAX_SPEED_PX * (1 - p.x / EDGE_PAN_THRESHOLD_PX);
+        } else if (p.x > size.x - EDGE_PAN_THRESHOLD_PX) {
+          dx = EDGE_PAN_MAX_SPEED_PX * (1 - (size.x - p.x) / EDGE_PAN_THRESHOLD_PX);
+        }
+        if (p.y < EDGE_PAN_THRESHOLD_PX) {
+          dy = -EDGE_PAN_MAX_SPEED_PX * (1 - p.y / EDGE_PAN_THRESHOLD_PX);
+        } else if (p.y > size.y - EDGE_PAN_THRESHOLD_PX) {
+          dy = EDGE_PAN_MAX_SPEED_PX * (1 - (size.y - p.y) / EDGE_PAN_THRESHOLD_PX);
+        }
+
+        if (dx !== 0 || dy !== 0) {
+          map.panBy([dx, dy], { animate: false });
+          onPannedLatLngRef.current(
+            map.containerPointToLatLng(L.point(p.x, p.y))
+          );
+        }
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+
+    return () => {
+      document.removeEventListener("mousemove", onMove);
+      cancelAnimationFrame(raf);
+      pointerRef.current = null;
+    };
+  }, [map, active, onPannedLatLngRef]);
+}
+
 /** Result of validating where a new (or moved) vertex would land. Use
  *  `accept: false` to silently reject the action — typical for "vertex
  *  outside allowed region" cases. */
@@ -159,6 +238,52 @@ function MapInteraction({
   const isInside = (p: AreaPolygonPoint, b: Bbox) =>
     p.x >= b.x1 && p.x <= b.x2 && p.y >= b.y1 && p.y <= b.y2;
 
+  // Shared by the real Leaflet `mousemove` handler below and by the
+  // edge-auto-pan loop, which synthesizes the equivalent update once
+  // per pan tick so dragging to the viewport edge keeps extending the
+  // shape instead of stalling.
+  const applyPointerLatLng = (latlng: L.LatLng) => {
+    const a = actionRef.current;
+    if (!a) return;
+    const p = latLngToNormHelper(latlng, imageWidth, imageHeight);
+
+    if (a.kind === "draw") {
+      setPreview({
+        x1: Math.min(a.startX, p.x),
+        y1: Math.min(a.startY, p.y),
+        x2: Math.max(a.startX, p.x),
+        y2: Math.max(a.startY, p.y),
+      });
+    } else if (a.kind === "move") {
+      const w = a.original.x2 - a.original.x1;
+      const h = a.original.y2 - a.original.y1;
+      const x1 = p.x - a.offsetX;
+      const y1 = p.y - a.offsetY;
+      setPreview({ x1, y1, x2: x1 + w, y2: y1 + h });
+    } else if (a.kind === "resize") {
+      const next = { ...a.original };
+      switch (a.corner) {
+        case "nw":
+          next.x1 = Math.min(p.x, a.original.x2 - 0.005);
+          next.y1 = Math.min(p.y, a.original.y2 - 0.005);
+          break;
+        case "ne":
+          next.x2 = Math.max(p.x, a.original.x1 + 0.005);
+          next.y1 = Math.min(p.y, a.original.y2 - 0.005);
+          break;
+        case "sw":
+          next.x1 = Math.min(p.x, a.original.x2 - 0.005);
+          next.y2 = Math.max(p.y, a.original.y1 + 0.005);
+          break;
+        case "se":
+          next.x2 = Math.max(p.x, a.original.x1 + 0.005);
+          next.y2 = Math.max(p.y, a.original.y1 + 0.005);
+          break;
+      }
+      setPreview(next);
+    }
+  };
+
   const map = useMapEvents({
     mousedown(e) {
       if (drawModeRef.current !== "rectangle") return;
@@ -197,45 +322,8 @@ function MapInteraction({
     },
     mousemove(e) {
       if (drawModeRef.current !== "rectangle") return;
-      const a = actionRef.current;
-      if (!a) return;
-      const p = latLngToNormHelper(e.latlng, imageWidth, imageHeight);
-
-      if (a.kind === "draw") {
-        setPreview({
-          x1: Math.min(a.startX, p.x),
-          y1: Math.min(a.startY, p.y),
-          x2: Math.max(a.startX, p.x),
-          y2: Math.max(a.startY, p.y),
-        });
-      } else if (a.kind === "move") {
-        const w = a.original.x2 - a.original.x1;
-        const h = a.original.y2 - a.original.y1;
-        const x1 = p.x - a.offsetX;
-        const y1 = p.y - a.offsetY;
-        setPreview({ x1, y1, x2: x1 + w, y2: y1 + h });
-      } else if (a.kind === "resize") {
-        const next = { ...a.original };
-        switch (a.corner) {
-          case "nw":
-            next.x1 = Math.min(p.x, a.original.x2 - 0.005);
-            next.y1 = Math.min(p.y, a.original.y2 - 0.005);
-            break;
-          case "ne":
-            next.x2 = Math.max(p.x, a.original.x1 + 0.005);
-            next.y1 = Math.min(p.y, a.original.y2 - 0.005);
-            break;
-          case "sw":
-            next.x1 = Math.min(p.x, a.original.x2 - 0.005);
-            next.y2 = Math.max(p.y, a.original.y1 + 0.005);
-            break;
-          case "se":
-            next.x2 = Math.max(p.x, a.original.x1 + 0.005);
-            next.y2 = Math.max(p.y, a.original.y1 + 0.005);
-            break;
-        }
-        setPreview(next);
-      }
+      if (!actionRef.current) return;
+      applyPointerLatLng(e.latlng);
     },
     mouseup() {
       if (drawModeRef.current !== "rectangle") return;
@@ -262,6 +350,12 @@ function MapInteraction({
       }
     },
   });
+
+  useEdgeAutoPan(
+    map,
+    drawMode === "rectangle" && action !== null,
+    applyPointerLatLng
+  );
 
   const startResize = (corner: Corner, original: Bbox) => {
     const next = { kind: "resize" as const, corner, original };
@@ -904,6 +998,21 @@ function VertexHandles({
   onVertexDragEnd: () => void;
 }) {
   const map = useMap();
+  // Tracked so the edge-auto-pan loop knows which vertex to keep
+  // updating while the pointer sits near the container edge — the
+  // drag itself is otherwise driven entirely by map-level listeners
+  // registered in `mousedown` below, outside React's render cycle.
+  const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
+
+  // `useEdgeAutoPan` re-reads its callback prop on every pan tick (via
+  // its own ref), so this closure — recreated each render — always
+  // sees the latest `draggingIndex` without needing a ref of our own.
+  useEdgeAutoPan(map, draggingIndex !== null, (latlng) => {
+    if (draggingIndex !== null) {
+      onVertexDrag(draggingIndex, latlng);
+    }
+  });
+
   return (
     <>
       {polygonLatLngs.map((latlng, i) => (
@@ -925,12 +1034,14 @@ function VertexHandles({
               ),
             mousedown: () => {
               map.dragging.disable();
+              setDraggingIndex(i);
               const onMove = (ev: L.LeafletMouseEvent) =>
                 onVertexDrag(i, ev.latlng);
               const onUp = () => {
                 map.off("mousemove", onMove);
                 map.off("mouseup", onUp);
                 map.dragging.enable();
+                setDraggingIndex(null);
                 onVertexDragEnd();
               };
               map.on("mousemove", onMove);

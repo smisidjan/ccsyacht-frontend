@@ -2623,6 +2623,7 @@
     "noPins": "No pins added yet",
     "allStages": "All Stages",
     "noStagesAvailable": "Please create stages first before adding pins",
+    "pinOutsideAreaWarning": "This pin isn't inside an area with a stage yet. Drag it into a colored area on the drawing to save.",
     "deck": "Deck",
     "selectDeck": "Select Deck",
     "chooseDeck": "Choose a deck...",

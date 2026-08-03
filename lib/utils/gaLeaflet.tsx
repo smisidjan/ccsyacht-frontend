@@ -56,6 +56,20 @@ export function FitBounds({
   const map = useMap();
   const didFit = useRef(false);
 
+  // Callers often pass `bounds`/`padding` as fresh array literals on
+  // every render (e.g. `padding={[40, 40]}`). With `refitOnChange`,
+  // using those objects directly as effect deps meant the fit re-ran
+  // on every unrelated re-render of the parent too — not just when the
+  // focus rect actually changed. Concretely: dragging a polygon vertex
+  // updates parent state, which re-renders this component with a new
+  // `padding` array, which retriggered `fitBounds` and snapped the
+  // view straight back to the focus rect on every single drag step.
+  // Serializing for the dependency check (while still using the real
+  // objects inside the effect) fixes that without callers needing to
+  // memoize anything.
+  const boundsKey = JSON.stringify(bounds);
+  const paddingKey = JSON.stringify(padding);
+
   useEffect(() => {
     if (didFit.current && !refitOnChange) return;
     didFit.current = true;
@@ -76,7 +90,8 @@ export function FitBounds({
       return () => clearTimeout(t);
     }
     run();
-  }, [map, bounds, padding, refitOnChange, animate, delayMs, lockMinZoomToFit]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [map, boundsKey, paddingKey, refitOnChange, animate, delayMs, lockMinZoomToFit]);
 
   return null;
 }

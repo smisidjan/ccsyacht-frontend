@@ -2653,6 +2653,7 @@
     "noPins": "Nog geen pins toegevoegd",
     "allStages": "Alle Stages",
     "noStagesAvailable": "Maak eerst stages aan voordat je pins kunt toevoegen",
+    "pinOutsideAreaWarning": "Deze pin bevindt zich nog niet binnen een gebied met een stage. Sleep hem naar een gekleurd gebied op de tekening om op te slaan.",
     "deck": "Deck",
     "selectDeck": "Selecteer Deck",
     "chooseDeck": "Kies een deck...",
