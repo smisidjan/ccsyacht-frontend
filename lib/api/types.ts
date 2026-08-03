@@ -1549,7 +1549,7 @@ export interface GetDocumentTypeTemplatesParams {
 
 // ============ Setup Tasks ============
 
-export type SetupTaskType = "upload_documents" | "add_members_and_signers" | "add_members" | "add_signers" | "kickoff_meeting" | "define_decks" | "custom";
+export type SetupTaskType = "upload_documents" | "add_members_and_signers" | "add_members" | "add_signers" | "kickoff_meeting" | "define_decks" | "define_areas_and_stages" | "custom";
 export type SetupTaskStatus = "pending" | "awaiting_responses" | "scheduled" | "completed";
 export type SetupTaskMeetingFormat = "online" | "live";
 
@@ -1627,6 +1627,10 @@ export interface SetupTask {
   meetingLink: string | null;
   completedAt: string | null;
   sortOrder: number;
+  /** True while a prerequisite isn't met yet (e.g. define_areas_and_stages
+   *  stays locked until the project has at least one deck). The task should
+   *  still render, just disabled, with a tooltip explaining the blocker. */
+  isLocked: boolean;
   allDocumentsAcknowledged: boolean; // All required documents acknowledged
   allSigned: boolean;
   allItemsCompleted: boolean;

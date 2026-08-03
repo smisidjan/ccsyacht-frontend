@@ -143,12 +143,14 @@ export default function OverviewTab({
   const visibleSetupTasks = useMemo(() => {
     if (!currentUser) return [];
 
+    const sortedTasks = [...setupTasks].sort((a, b) => a.sortOrder - b.sortOrder);
+
     // Users with edit permission see all tasks
-    if (canEditProject) return setupTasks;
+    if (canEditProject) return sortedTasks;
 
     // Other users only see tasks where they are assignees
     // For kickoff_meeting: only show after invitations are sent (actionStatus !== "pending")
-    return setupTasks.filter(task => {
+    return sortedTasks.filter(task => {
       const isAssignee = task.assignees?.some(assignee => assignee.identifier === currentUser.identifier);
       if (!isAssignee) return false;
 
@@ -171,17 +173,23 @@ export default function OverviewTab({
   const addMembersTask = visibleSetupTasks.find(t => t.additionalType === "add_members");
   const membersAdded = addMembersTask ? (addMembersTask.isComplete || addMembersTask.actionStatus === "completed") : true;
 
-  // Count blocked tasks (kickoff meetings without required docs OR without members)
+  // A task is blocked when the backend says so (isLocked, e.g. define_areas_and_stages
+  // before a deck exists) or via the kickoff-meeting-specific checks below.
+  const isTaskBlocked = (task: SetupTask, isCompleted: boolean) =>
+    !isCompleted &&
+    (task.isLocked ||
+      (task.additionalType === "kickoff_meeting" && (!allRequiredDocsUploaded || !membersAdded)));
+
+  // Count blocked tasks (kickoff meetings without required docs/members, or locked tasks)
   const blockedTasksCount = visibleSetupTasks.filter((task) => {
     const isCompleted = task.isComplete || task.actionStatus === "completed";
-    return task.additionalType === "kickoff_meeting" && !isCompleted && (!allRequiredDocsUploaded || !membersAdded);
+    return isTaskBlocked(task, isCompleted);
   }).length;
 
   const completedTasksCount = visibleSetupTasks.filter((task) => task.isComplete || task.actionStatus === "completed").length;
   const pendingTasksCount = visibleSetupTasks.filter((task) => {
     const isCompleted = task.isComplete || task.actionStatus === "completed";
-    const isBlocked = task.additionalType === "kickoff_meeting" && !isCompleted && (!allRequiredDocsUploaded || !membersAdded);
-    return !isCompleted && !isBlocked;
+    return !isCompleted && !isTaskBlocked(task, isCompleted);
   }).length;
   const allSetupTasksComplete = (pendingTasksCount + blockedTasksCount) === 0 && visibleSetupTasks.length > 0;
 
@@ -261,6 +269,9 @@ export default function OverviewTab({
   const handleCreateSuccess = () => {
     setIsCreateModalOpen(false);
     refetch();
+    // The new area (+ its stages) may complete the "Define Areas & Stages"
+    // setup task, so pull the latest task list to reflect that immediately.
+    handleTaskUpdate();
   };
 
   const handleViewTaskDetails = (taskId: string) => {
@@ -344,6 +355,7 @@ export default function OverviewTab({
                     setIsDeckEditMode(true);
                     setIsDeckModalOpen(true);
                   }}
+                  onDefineAreas={() => setIsCreateModalOpen(true)}
                 />
               );
             })}
@@ -461,12 +473,22 @@ export default function OverviewTab({
                 ))}
               </div>
               {filteredAreas.length === 0 && (
-                <div className="text-center py-12 text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 rounded-xl shadow-lg">
-                  {selectedDeckId === "all"
-                    ? t("areasSection.noAreas")
-                    : t("areasSection.noAreasInDeck")
-                  }
-                </div>
+                selectedDeckId === "all" ? (
+                  <Alert
+                    type="info"
+                    title={t("areasSection.noAreasBannerTitle")}
+                    message={t("areasSection.noAreasBannerMessage")}
+                    action={
+                      canCreateAreas && projectStatus !== "archived" && projectStatus !== "completed"
+                        ? { label: t("areasSection.createArea"), onClick: () => setIsCreateModalOpen(true) }
+                        : undefined
+                    }
+                  />
+                ) : (
+                  <div className="text-center py-12 text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 rounded-xl shadow-lg">
+                    {t("areasSection.noAreasInDeck")}
+                  </div>
+                )
               )}
             </>
           )}

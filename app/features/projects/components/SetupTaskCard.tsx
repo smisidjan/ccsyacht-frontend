@@ -7,6 +7,7 @@ import {
   CheckCircleIcon,
   ClockIcon,
   DocumentIcon,
+  MapIcon,
   Squares2X2Icon,
   UsersIcon,
   LockClosedIcon,
@@ -22,6 +23,7 @@ interface SetupTaskCardProps {
   allTasks?: SetupTask[];
   onDefineDecks?: () => void;
   onViewDecks?: () => void;
+  onDefineAreas?: () => void;
 }
 
 interface SubRowProps {
@@ -154,11 +156,12 @@ function taskTypeToCamelCase(taskType: SetupTaskType): string {
     case "add_signers": return "addSigners";
     case "kickoff_meeting": return "kickoffMeeting";
     case "define_decks": return "defineDecks";
+    case "define_areas_and_stages": return "defineAreasAndStages";
     default: return taskType;
   }
 }
 
-export default function SetupTaskCard({ task, projectId, documentTypes, allTasks: _allTasks, onDefineDecks, onViewDecks }: SetupTaskCardProps) {
+export default function SetupTaskCard({ task, projectId, documentTypes, allTasks: _allTasks, onDefineDecks, onViewDecks, onDefineAreas }: SetupTaskCardProps) {
   const t = useTranslations("projectDetail.setupTasks");
 
   const isCompleted = task.isComplete || task.actionStatus === "completed";
@@ -166,6 +169,8 @@ export default function SetupTaskCard({ task, projectId, documentTypes, allTasks
 
   const badge = isCompleted
     ? { bg: "bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400", icon: <CheckCircleIcon className="w-3.5 h-3.5" />, label: t("completed") }
+    : task.isLocked
+    ? { bg: "bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-400", icon: <LockClosedIcon className="w-3.5 h-3.5" />, label: t("blocked") }
     : { bg: "bg-amber-100 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400", icon: <ClockIcon className="w-3.5 h-3.5" />, label: t("pending") };
 
   const renderSubRows = () => {
@@ -187,8 +192,27 @@ export default function SetupTaskCard({ task, projectId, documentTypes, allTasks
             label={t("defineDecks.action")}
             statusLabel={t("pending")}
             statusVariant="gray"
-            actionLabel={t("defineDecks.action")}
+            actionLabel={t("createDecks")}
             onAction={onDefineDecks}
+          />
+        );
+
+      case "define_areas_and_stages":
+        return task.isLocked ? (
+          <LockedRow
+            icon={<MapIcon className="w-4 h-4" />}
+            label={t("defineAreasAndStages.title")}
+            statusLabel={t("defineAreasAndStages.lockedMessage")}
+          />
+        ) : (
+          <SubRow
+            icon={<MapIcon className="w-4 h-4" />}
+            label={t("defineAreasAndStages.title")}
+            statusLabel={isCompleted ? t("completed") : t("pending")}
+            statusVariant={isCompleted ? "green" : "gray"}
+            actionLabel={t("defineAreasAndStages.action")}
+            onAction={onDefineAreas}
+            completed={isCompleted}
           />
         );
 

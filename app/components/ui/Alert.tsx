@@ -13,6 +13,7 @@ interface AlertProps {
   title?: string;
   icon?: boolean;
   className?: string;
+  action?: { label: string; onClick: () => void };
 }
 
 const alertStyles = {
@@ -55,6 +56,7 @@ export default function Alert({
   title,
   icon = true,
   className = "",
+  action,
 }: AlertProps) {
   const styles = alertStyles[type];
   const Icon = icons[type];
@@ -68,11 +70,20 @@ export default function Alert({
         {icon && (
           <Icon className={`w-5 h-5 flex-shrink-0 mt-0.5 ${styles.icon}`} />
         )}
-        <div>
+        <div className="flex-1 min-w-0">
           {title && (
             <h3 className={`text-sm font-medium ${styles.title}`}>{title}</h3>
           )}
           <p className={`text-sm ${styles.text} ${title ? "mt-1" : ""}`}>{message}</p>
+          {action && (
+            <button
+              type="button"
+              onClick={action.onClick}
+              className={`mt-2 text-sm font-semibold underline hover:no-underline ${styles.title}`}
+            >
+              {action.label}
+            </button>
+          )}
         </div>
       </div>
     </div>

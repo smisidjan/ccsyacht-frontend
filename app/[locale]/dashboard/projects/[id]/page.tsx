@@ -184,6 +184,7 @@ function ProjectDetailPageContent({ projectId }: { projectId: string }) {
           <GeneralArrangementTab
             projectId={projectId}
             generalArrangement={getGAObject(project.generalArrangement)}
+            projectStatus={project.status}
           />
         )}
         {activeTab === "overview" && (

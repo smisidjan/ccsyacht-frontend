@@ -386,6 +386,8 @@
       "title": "Areas",
       "allDecks": "All Decks",
       "noAreas": "No areas have been added yet",
+      "noAreasBannerTitle": "Get started by creating your first area",
+      "noAreasBannerMessage": "Areas define where stages and punch list items live. You need at least one area with a stage before you can add pins on the General Arrangement or track punch list work.",
       "noAreasInDeck": "No areas in this deck",
       "createArea": "Create Area",
       "loadError": "Failed to load areas",
@@ -435,6 +437,12 @@
         "title": "Define Decks",
         "description": "Define the yacht decks for this project",
         "action": "Define Decks"
+      },
+      "defineAreasAndStages": {
+        "title": "Define Areas & Stages",
+        "description": "Define at least one area with a stage so punch list items and GA pins have somewhere to live",
+        "action": "Create Area",
+        "lockedMessage": "Add a deck first"
       },
       "kickoffMeeting": {
         "title": "Kickoff Meeting",
@@ -942,6 +950,7 @@
       },
       "viewDetails": "View Details",
       "viewDecks": "View Decks",
+      "createDecks": "Create Decks",
       "sign": "Sign",
       "view": "View",
       "kickoffBlocked": {
@@ -2602,6 +2611,9 @@
     "legend": "Legend",
     "hoverDeckToAdd": "Hover over a deck to add a pin",
     "manageDecks": "Manage decks",
+    "pinsLockedTitle": "Pin placement is locked",
+    "pinsLockedMessage": "Create at least one area with a stage before you can add pins to the General Arrangement.",
+    "pinsLockedCta": "Go to Overview to create an area",
     "pinsList": "Pins List",
     "noPins": "No pins added yet",
     "allStages": "All Stages",

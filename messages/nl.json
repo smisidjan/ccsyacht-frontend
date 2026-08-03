@@ -386,6 +386,8 @@
       "title": "Gebieden",
       "allDecks": "Alle Dekken",
       "noAreas": "Er zijn nog geen gebieden toegevoegd",
+      "noAreasBannerTitle": "Begin met het aanmaken van je eerste gebied",
+      "noAreasBannerMessage": "Gebieden bepalen waar stages en punchlist-items thuishoren. Je hebt minimaal één gebied met een stage nodig voordat je pins kunt toevoegen op de General Arrangement of punchlist-werk kunt bijhouden.",
       "noAreasInDeck": "Geen gebieden op dit dek",
       "createArea": "Gebied Aanmaken",
       "loadError": "Kan gebieden niet laden",
@@ -435,6 +437,12 @@
         "title": "Definieer Dekken",
         "description": "Definieer de dekken voor dit project",
         "action": "Definieer Dekken"
+      },
+      "defineAreasAndStages": {
+        "title": "Definieer Gebieden & Stages",
+        "description": "Definieer minimaal één gebied met een stage zodat punchlist-items en GA-pins ergens geplaatst kunnen worden",
+        "action": "Gebied Aanmaken",
+        "lockedMessage": "Voeg eerst een dek toe"
       },
       "kickoffMeeting": {
         "title": "Kickoff Meeting",
@@ -942,6 +950,7 @@
       },
       "viewDetails": "Bekijk Details",
       "viewDecks": "Bekijk Dekken",
+      "createDecks": "Dekken Aanmaken",
       "sign": "Ondertekenen",
       "view": "Bekijken",
       "kickoffBlocked": {
@@ -2632,6 +2641,9 @@
     "legend": "Legenda",
     "hoverDeckToAdd": "Beweeg over een dek om een pin toe te voegen",
     "manageDecks": "Dekken beheren",
+    "pinsLockedTitle": "Pins toevoegen is vergrendeld",
+    "pinsLockedMessage": "Maak eerst minimaal één gebied met een stage aan voordat je pins kunt toevoegen aan de General Arrangement.",
+    "pinsLockedCta": "Ga naar Overview om een gebied aan te maken",
     "pinsList": "Pins Lijst",
     "noPins": "Nog geen pins toegevoegd",
     "allStages": "Alle Stages",

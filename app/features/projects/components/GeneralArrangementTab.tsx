@@ -44,6 +44,7 @@ import PunchlistFilterPopover, {
   type PunchlistFilters,
 } from "@/app/features/punchlist/components/PunchlistFilterPopover";
 import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
+import type { ProjectStatus } from "@/app/components/ui/StatusBadge";
 import type {
   GAPin,
   PunchlistItem,
@@ -110,6 +111,7 @@ function pinToPunchlistItem(pin: GAPin): PunchlistItem | null {
 interface GeneralArrangementTabProps {
   projectId: string;
   generalArrangement?: GeneralArrangement;
+  projectStatus?: ProjectStatus;
 }
 
 // Helper to check if GA exists (uploaded but maybe not yet converted)
@@ -176,6 +178,7 @@ const getStageStatusBadge = (status: StageStatus) => {
 export default function GeneralArrangementTab({
   projectId,
   generalArrangement,
+  projectStatus,
 }: GeneralArrangementTabProps) {
   const t = useTranslations("projectDetail.generalArrangement");
   const tPins = useTranslations("gaViewer");
@@ -255,6 +258,12 @@ export default function GeneralArrangementTab({
   const loading = useMinimumLoadingTime(rawLoading);
 
   const canEdit = hasPermission(PERMISSIONS.EDIT_PROJECTS);
+
+  // No stage exists anywhere in the project yet — every area/deck the
+  // user could click leads to a dead end (CreateGAPinModal keeps Save
+  // disabled without a stage). Block pin placement up front instead of
+  // letting the user discover this after opening the modal.
+  const pinsLocked = stages !== null && stages.length === 0;
 
   // Compute "active stage per area" overlays. We treat the active stage as
   // the one the team is currently progressing through:
@@ -701,53 +710,103 @@ export default function GeneralArrangementTab({
       <div className="flex flex-col lg:flex-row gap-6">
         {/* Left: GA Viewer */}
         <div className="flex-shrink-0">
+          {/* Blocking banner — shown instead of letting the user discover
+              via a disabled Save button deep inside the Add Pin modal
+              that nothing can be placed until an area + stage exists. */}
+          {canEdit && pinsLocked && (
+            <Alert
+              type="warning"
+              title={tPins("pinsLockedTitle") || "Pin placement is locked"}
+              message={tPins("pinsLockedMessage") || "Create at least one area with a stage before you can add pins to the General Arrangement."}
+              action={{
+                label: tPins("pinsLockedCta") || "Go to Overview to create an area",
+                onClick: () => {
+                  window.location.hash = "overview";
+                },
+              }}
+              className="mb-4"
+            />
+          )}
+
           {/* Edit Mode + Show active stages toggles */}
           <div className="mb-4 flex flex-wrap items-center gap-x-6 gap-y-2">
-            {canEdit && (
-              <label className="flex items-center gap-3 cursor-pointer">
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  {tPins("editMode") || "Edit mode"}
-                </span>
-                <div className="relative">
-                  <input
-                    type="checkbox"
-                    checked={isAddPinMode}
-                    onChange={(e) => setIsAddPinMode(e.target.checked)}
-                    className="sr-only"
-                  />
-                  <div className={`w-11 h-6 rounded-full transition-colors ${
-                    isAddPinMode ? "bg-blue-600" : "bg-gray-300 dark:bg-gray-600"
-                  }`}>
-                    <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
-                      isAddPinMode ? "translate-x-5" : "translate-x-0"
-                    }`} />
+            {canEdit && (() => {
+              const editModeToggle = (
+                <label className={`flex items-center gap-3 ${pinsLocked ? "cursor-not-allowed" : "cursor-pointer"}`}>
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    {tPins("editMode") || "Edit mode"}
+                  </span>
+                  <div className="relative">
+                    <input
+                      type="checkbox"
+                      checked={isAddPinMode && !pinsLocked}
+                      disabled={pinsLocked}
+                      onChange={(e) => setIsAddPinMode(e.target.checked)}
+                      className="sr-only"
+                    />
+                    <div className={`w-11 h-6 rounded-full transition-colors ${
+                      isAddPinMode && !pinsLocked ? "bg-blue-600" : "bg-gray-300 dark:bg-gray-600"
+                    }`}>
+                      <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                        isAddPinMode && !pinsLocked ? "translate-x-5" : "translate-x-0"
+                      }`} />
+                    </div>
                   </div>
-                </div>
-              </label>
-            )}
+                </label>
+              );
 
-            <label className="flex items-center gap-3 cursor-pointer">
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                {tPins("showActiveStages") || "Show active stages"}
-              </span>
-              <div className="relative">
-                <input
-                  type="checkbox"
-                  checked={showActiveStages}
-                  onChange={(e) => setShowActiveStages(e.target.checked)}
-                  className="sr-only"
-                />
-                <div className={`w-11 h-6 rounded-full transition-colors ${
-                  showActiveStages ? "bg-blue-600" : "bg-gray-300 dark:bg-gray-600"
-                }`}>
-                  <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
-                    showActiveStages ? "translate-x-5" : "translate-x-0"
-                  }`} />
-                </div>
-              </div>
-            </label>
+              return pinsLocked ? (
+                <Tooltip
+                  content={tPins("pinsLockedMessage") || "Create at least one area with a stage before you can add pins to the General Arrangement."}
+                  position="top"
+                  triggerClassName="opacity-50"
+                >
+                  {editModeToggle}
+                </Tooltip>
+              ) : (
+                editModeToggle
+              );
+            })()}
 
-            {canEdit && (
+            {(() => {
+              const showActiveStagesToggle = (
+                <label className={`flex items-center gap-3 ${pinsLocked ? "cursor-not-allowed" : "cursor-pointer"}`}>
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    {tPins("showActiveStages") || "Show active stages"}
+                  </span>
+                  <div className="relative">
+                    <input
+                      type="checkbox"
+                      checked={showActiveStages && !pinsLocked}
+                      disabled={pinsLocked}
+                      onChange={(e) => setShowActiveStages(e.target.checked)}
+                      className="sr-only"
+                    />
+                    <div className={`w-11 h-6 rounded-full transition-colors ${
+                      showActiveStages && !pinsLocked ? "bg-blue-600" : "bg-gray-300 dark:bg-gray-600"
+                    }`}>
+                      <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                        showActiveStages && !pinsLocked ? "translate-x-5" : "translate-x-0"
+                      }`} />
+                    </div>
+                  </div>
+                </label>
+              );
+
+              return pinsLocked ? (
+                <Tooltip
+                  content={tPins("pinsLockedMessage") || "Create at least one area with a stage before you can add pins to the General Arrangement."}
+                  position="top"
+                  triggerClassName="opacity-50"
+                >
+                  {showActiveStagesToggle}
+                </Tooltip>
+              ) : (
+                showActiveStagesToggle
+              );
+            })()}
+
+            {canEdit && projectStatus !== "setup" && (
               <button
                 type="button"
                 onClick={() => setIsManageDecksOpen(true)}
@@ -854,7 +913,7 @@ export default function GeneralArrangementTab({
                   setHoveredItemIds(ids);
                 }}
                 onDeckClick={(deck, x, y, area) => {
-                  if (canEdit && isAddPinMode) {
+                  if (canEdit && isAddPinMode && !pinsLocked) {
                     setNewPinPosition({ x, y });
                     setClickedDeck(deck);
                     setClickedArea(area ?? null);
@@ -862,7 +921,7 @@ export default function GeneralArrangementTab({
                     setIsCreateModalOpen(true);
                   }
                 }}
-                canEdit={canEdit && isAddPinMode}
+                canEdit={canEdit && isAddPinMode && !pinsLocked}
                 decks={decks || []}
                 areas={areas || []}
                 areaPolygons={activeStagePolygons}
@@ -889,9 +948,11 @@ export default function GeneralArrangementTab({
         <div className="flex-1 min-w-0 lg:mt-20 lg:sticky lg:top-4 lg:self-start">
           {!selectedDetail ? (
             displayedPins.length === 0 ? (
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                {tPins("noPins")}
-              </p>
+              pinsLocked ? null : (
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  {tPins("noPins")}
+                </p>
+              )
             ) : (
               <PunchlistTreeList
                   items={displayedTreeItems}
