@@ -104,6 +104,14 @@ function FitToDeck({
   const map = useMap();
   const lastFitKey = useRef<string>("");
   const wasVisible = useRef(visible);
+  // The delayed half of `runFit` fires via `setTimeout` — if the user
+  // switches placements/tabs again before it fires (or closes the
+  // modal), an uncancelled timeout either piles up redundant
+  // invalidateSize/fitBounds work on top of the newer fit (the
+  // "breaks on fast switching, costs a lot of energy" symptom) or
+  // calls into a Leaflet map that's already been torn down. Track the
+  // pending one so a fresh call — or unmount — cancels it first.
+  const pendingFitRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // `forceInvalidate` is only for the visibility-transition path below
   // — the container was genuinely hidden (0×0) so Leaflet's cached
@@ -113,6 +121,10 @@ function FitToDeck({
   // every placement switch call `invalidateSize()` synchronously,
   // which crashed the tab on a real device.
   const runFit = (fast: boolean, forceInvalidate: boolean) => {
+    if (pendingFitRef.current) {
+      clearTimeout(pendingFitRef.current);
+      pendingFitRef.current = null;
+    }
     // Relax the floor before the intermediate full-GA fit — a previous
     // deck may have raised minZoom above the level needed to lay down
     // fullBounds, which would silently clamp the fit.
@@ -121,7 +133,8 @@ function FitToDeck({
     const target = deckBoundsToLeaflet(deckBounds, imageWidth, imageHeight);
     if (forceInvalidate) map.invalidateSize();
     map.fitBounds(full, { padding: [10, 10], animate: false });
-    setTimeout(() => {
+    pendingFitRef.current = setTimeout(() => {
+      pendingFitRef.current = null;
       map.invalidateSize();
       map.fitBounds(target, { padding: DECK_FIT_PADDING, animate: false });
       map.setMinZoom(map.getZoom());
@@ -144,6 +157,12 @@ function FitToDeck({
     runFit(true, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible]);
+
+  useEffect(() => {
+    return () => {
+      if (pendingFitRef.current) clearTimeout(pendingFitRef.current);
+    };
+  }, []);
 
   return null;
 }
