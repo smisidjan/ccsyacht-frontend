@@ -15,6 +15,37 @@ export const getFullImageBounds = (
   [imageHeight, imageWidth],
 ];
 
+/** Every GA `MapContainer` used a flat `maxZoom={4}`. With `CRS.Simple`
+ *  and `getFullImageBounds` mapping 1 unit = 1 image pixel at zoom 0,
+ *  that lets the (untiled) `ImageOverlay` be scaled up to 2^4 = 16×
+ *  its natural size — for a large source drawing, tens of thousands
+ *  of pixels per side. Fitting the *whole* image rarely reaches that
+ *  zoom, but fitting tightly to a small sub-region (e.g. a
+ *  side-profile rectangle within a much bigger GA sheet) does, and
+ *  asking a mobile GPU/compositor to rasterize a layer that large
+ *  crashes the tab outright rather than just rendering slowly — this
+ *  is what crashed area/deck creation on iOS Safari specifically when
+ *  switching to a side-profile view. Cap the zoom so the image can
+ *  never be asked to render past a size every mobile browser can
+ *  actually composite, regardless of how small the region a caller
+ *  fits to. */
+const SAFE_MAX_RENDERED_PX = 8192;
+const DEFAULT_MAX_ZOOM = 4;
+
+export function getSafeMaxZoom(imageWidth: number, imageHeight: number): number {
+  const largestDim = Math.max(imageWidth, imageHeight, 1);
+  const safeZoom = Math.floor(Math.log2(SAFE_MAX_RENDERED_PX / largestDim));
+  // Floor at 0 (native image size), not 1 — flooring at 1 would force
+  // a further 2× blow-up on top of the image's own native size for
+  // sources already close to (or over) the safe threshold, defeating
+  // the whole point. A source image already larger than
+  // `SAFE_MAX_RENDERED_PX` in its own right is a separate problem
+  // (needs actual downsampling/tiling upstream) that capping zoom
+  // alone can't fix — this only guarantees we never zoom further past
+  // whatever size the image already is.
+  return Math.min(DEFAULT_MAX_ZOOM, Math.max(0, safeZoom));
+}
+
 interface FitBoundsProps {
   bounds: L.LatLngBoundsExpression;
   padding?: [number, number];

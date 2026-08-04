@@ -18,7 +18,7 @@ import {
   latLngToNorm as latLngToNormHelper,
 } from "@/lib/utils/gaCoordinates";
 import { bboxToPolygon, polygonBbox } from "@/lib/utils/geometry";
-import { FitBounds, getFullImageBounds } from "@/lib/utils/gaLeaflet";
+import { FitBounds, getFullImageBounds, getSafeMaxZoom } from "@/lib/utils/gaLeaflet";
 import SmoothModifierZoom, {
   SMOOTH_MAP_DEFAULTS,
 } from "./SmoothModifierZoom";
@@ -636,7 +636,7 @@ export default function PolygonDrawer({
         maxBounds={fullBounds}
         maxBoundsViscosity={1.0}
         minZoom={-5}
-        maxZoom={4}
+        maxZoom={getSafeMaxZoom(imageWidth, imageHeight)}
         // Cmd/Ctrl+wheel zoom + bubble plain wheel — see
         // SmoothModifierZoom child below.
         {...SMOOTH_MAP_DEFAULTS}

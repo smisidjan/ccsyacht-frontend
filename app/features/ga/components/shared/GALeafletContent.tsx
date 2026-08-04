@@ -13,7 +13,7 @@ import {
   pctToLatLng,
   latLngToPct,
 } from "@/lib/utils/gaCoordinates";
-import { FitBounds, getFullImageBounds } from "@/lib/utils/gaLeaflet";
+import { FitBounds, getFullImageBounds, getSafeMaxZoom } from "@/lib/utils/gaLeaflet";
 import PinMarker from "./PinMarker";
 import SmoothModifierZoom, {
   SMOOTH_MAP_DEFAULTS,
@@ -170,7 +170,7 @@ export default function GALeafletContent({
         maxBounds={bounds}
         maxBoundsViscosity={1.0}
         minZoom={-5}
-        maxZoom={4}
+        maxZoom={getSafeMaxZoom(imageWidth, imageHeight)}
         // Cmd/Ctrl+wheel zoom + bubble plain wheel — see
         // SmoothModifierZoom child below.
         {...SMOOTH_MAP_DEFAULTS}

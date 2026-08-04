@@ -13,7 +13,7 @@ import {
   pctToNorm,
   latLngToPct,
 } from "@/lib/utils/gaCoordinates";
-import { getFullImageBounds } from "@/lib/utils/gaLeaflet";
+import { getFullImageBounds, getSafeMaxZoom } from "@/lib/utils/gaLeaflet";
 import { getAreaPolygonForDeck } from "@/app/features/ga/utils/helpers";
 import { createDonePinIcon } from "./pinIcons";
 import SmoothModifierZoom, {
@@ -330,7 +330,7 @@ export default function GAPreviewMarker({
         maxBounds={bounds}
         maxBoundsViscosity={1.0}
         minZoom={-5}
-        maxZoom={4}
+        maxZoom={getSafeMaxZoom(imageWidth, imageHeight)}
         // Cmd/Ctrl+wheel zoom + bubble plain wheel — see
         // SmoothModifierZoom child below.
         {...SMOOTH_MAP_DEFAULTS}

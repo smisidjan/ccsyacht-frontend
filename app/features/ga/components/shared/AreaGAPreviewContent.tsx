@@ -15,7 +15,7 @@ import { createDonePinIcon } from "./pinIcons";
 import { getFixedImageUrl, hasGAImageData } from "@/app/features/ga/utils/helpers";
 import { polygonBbox } from "@/lib/utils/geometry";
 import { normToLatLng, pctToLatLng } from "@/lib/utils/gaCoordinates";
-import { FitBounds, getFullImageBounds } from "@/lib/utils/gaLeaflet";
+import { FitBounds, getFullImageBounds, getSafeMaxZoom } from "@/lib/utils/gaLeaflet";
 import type { Area } from "@/lib/api/types";
 
 interface AreaGAPreviewContentProps {
@@ -303,7 +303,7 @@ export default function AreaGAPreviewContent({
           maxBounds={fullBounds}
           maxBoundsViscosity={1.0}
           minZoom={-5}
-          maxZoom={4}
+          maxZoom={getSafeMaxZoom(ga.imageWidth, ga.imageHeight)}
           zoomControl={false}
           attributionControl={false}
           scrollWheelZoom={false}
