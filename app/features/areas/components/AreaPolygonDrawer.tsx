@@ -105,14 +105,21 @@ function FitToDeck({
   const lastFitKey = useRef<string>("");
   const wasVisible = useRef(visible);
 
-  const runFit = (fast: boolean) => {
+  // `forceInvalidate` is only for the visibility-transition path below
+  // — the container was genuinely hidden (0×0) so Leaflet's cached
+  // size needs an immediate refresh before the first `fitBounds` call.
+  // The regular deck-switch path never needs it (the container was
+  // already visible and correctly sized); adding it there too made
+  // every placement switch call `invalidateSize()` synchronously,
+  // which crashed the tab on a real device.
+  const runFit = (fast: boolean, forceInvalidate: boolean) => {
     // Relax the floor before the intermediate full-GA fit — a previous
     // deck may have raised minZoom above the level needed to lay down
     // fullBounds, which would silently clamp the fit.
     map.setMinZoom(-5);
     const full = getFullImageBounds(imageWidth, imageHeight);
     const target = deckBoundsToLeaflet(deckBounds, imageWidth, imageHeight);
-    map.invalidateSize();
+    if (forceInvalidate) map.invalidateSize();
     map.fitBounds(full, { padding: [10, 10], animate: false });
     setTimeout(() => {
       map.invalidateSize();
@@ -126,7 +133,7 @@ function FitToDeck({
     if (lastFitKey.current === key) return;
     const isFirstFit = lastFitKey.current === "";
     lastFitKey.current = key;
-    runFit(isFirstFit);
+    runFit(isFirstFit, false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [map, deckBounds, imageWidth, imageHeight]);
 
@@ -134,7 +141,7 @@ function FitToDeck({
     const becameVisible = visible && !wasVisible.current;
     wasVisible.current = visible;
     if (!becameVisible) return;
-    runFit(true);
+    runFit(true, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible]);
 
