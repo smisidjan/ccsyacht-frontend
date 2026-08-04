@@ -1312,6 +1312,32 @@ export interface PunchlistItemAssignee {
   assignedAt: string;
 }
 
+/** A project member tagged in a comment via `@name`. Resolved server-side
+ *  from the `mention_ids` sent on create/update — only valid project
+ *  member UUIDs are accepted (422 otherwise). */
+export interface PunchlistItemMention {
+  "@type"?: string;
+  identifier: string;
+  name: string;
+}
+
+/** Comment on a punchlist item. Only ever arrives inlined on the item
+ *  detail response (`GET .../punchlist-items/{itemId}`) — there's no
+ *  standalone list endpoint. Backend returns the array sorted by
+ *  `dateCreated` ascending (oldest first). */
+export interface PunchlistItemNote {
+  identifier: string;
+  text: string;
+  author: {
+    identifier: string;
+    name: string;
+  };
+  /** Always present — empty array when nobody is tagged. */
+  mentions: PunchlistItemMention[];
+  dateCreated: string;
+  dateModified: string;
+}
+
 export interface PunchlistItem {
   "@context"?: string;
   "@type"?: string;
@@ -1355,6 +1381,9 @@ export interface PunchlistItem {
   };
   assignees: PunchlistItemAssignee[];
   attachmentCount: number;
+  /** Only present on the item detail response — index/list endpoints
+   *  don't inline it. Sorted `dateCreated` ascending by the backend. */
+  notes?: PunchlistItemNote[];
   dateCreated: string;
   dateModified: string;
   cancellation?: {

@@ -20,6 +20,7 @@ import PunchlistStatusDropdown from "./PunchlistStatusDropdown";
 import PunchlistPriorityDropdown from "./PunchlistPriorityDropdown";
 import PunchlistAssigneePicker from "./PunchlistAssigneePicker";
 import PunchlistActivityCollapse from "./PunchlistActivityCollapse";
+import PunchlistCommentsSection from "./PunchlistCommentsSection";
 import AuthenticatedImage from "@/app/components/ui/AuthenticatedImage";
 import {
   punchlistItemsApi,
@@ -118,6 +119,13 @@ export default function PunchlistItemCard({
     useState<PunchlistItemAttachment | null>(null);
   const [selectedDocument, setSelectedDocument] =
     useState<PunchlistItemAttachment | null>(null);
+  // Comments log their own logbook entries (e.g.
+  // `punchlist_item_comment_added`) server-side, but posting one
+  // doesn't touch `item.dateModified` — the Activity feed's own
+  // refresh trigger — so without this it never learns a comment
+  // landed. Bumped by `PunchlistCommentsSection` on every mutation and
+  // folded into the Activity feed's trigger below.
+  const [commentActivityTick, setCommentActivityTick] = useState(0);
   // Inline edit state — same UX as Jira: click → input + save/cancel.
   // Only one field can be in edit mode at a time.
   const [editingField, setEditingField] = useState<
@@ -878,10 +886,19 @@ export default function PunchlistItemCard({
           </dl>
         </Section>
 
+        <PunchlistCommentsSection
+          projectId={projectId}
+          itemId={item.identifier}
+          onActivityChange={() => setCommentActivityTick((v) => v + 1)}
+        />
+
         <PunchlistActivityCollapse
           projectId={projectId}
           itemId={item.identifier}
-          refreshTrigger={item.dateModified ? Date.parse(item.dateModified) : 0}
+          refreshTrigger={
+            (item.dateModified ? Date.parse(item.dateModified) : 0) +
+            commentActivityTick
+          }
         />
       </div>
 

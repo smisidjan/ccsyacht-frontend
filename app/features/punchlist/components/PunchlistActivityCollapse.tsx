@@ -37,6 +37,8 @@ const actionLabel = (
       return t("activityAttachmentUploaded");
     case "punchlist_attachment_deleted":
       return t("activityAttachmentDeleted");
+    case "punchlist_item_comment_added":
+      return t("activityCommentAdded");
     default:
       // Humanise the raw key so we never end up with a blank verb.
       return name.replace(/_/g, " ");

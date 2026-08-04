@@ -9,6 +9,7 @@ import type {
   UpdatePunchlistItemStatusRequest,
   AddAssigneesRequest,
   PunchlistItemAttachment,
+  PunchlistItemNote,
   ApiError,
 } from "./types";
 import { apiFetch, buildQueryString } from "./fetch";
@@ -268,6 +269,50 @@ export const punchlistItemsApi = {
         method: "DELETE",
       }
     ),
+
+  // Comments ("notes"). No standalone list endpoint — they only ever
+  // arrive inlined on `getById`'s response, so callers refetch the
+  // item detail to pick up changes (see `usePunchlistItemNotes`).
+  // `mentionIds` are project-member user UUIDs tagged via `@name` in
+  // the text; only newly-added ones (vs. the note's previous mentions)
+  // get an email notification server-side.
+  createNote: (
+    projectId: string,
+    itemId: string,
+    content: string,
+    mentionIds: string[] = []
+  ): Promise<PunchlistItemNote> =>
+    apiFetch(`/projects/${projectId}/punchlist-items/${itemId}/notes`, {
+      method: "POST",
+      body: { content, mention_ids: mentionIds },
+    }),
+
+  updateNote: (
+    projectId: string,
+    itemId: string,
+    noteId: string,
+    content: string,
+    mentionIds: string[] = []
+  ): Promise<PunchlistItemNote> =>
+    apiFetch(
+      `/projects/${projectId}/punchlist-items/${itemId}/notes/${noteId}`,
+      {
+        method: "PATCH",
+        body: { content, mention_ids: mentionIds },
+      }
+    ),
+
+  deleteNote: (
+    projectId: string,
+    itemId: string,
+    noteId: string
+  ): Promise<void> =>
+    apiFetch(
+      `/projects/${projectId}/punchlist-items/${itemId}/notes/${noteId}`,
+      {
+        method: "DELETE",
+      }
+    ),
 };
 
 // ============ Hooks ============
@@ -460,5 +505,73 @@ export function usePunchlistItemAttachments(projectId: string, itemId: string, e
     refetch: fetchAttachments,
     uploadAttachment,
     deleteAttachment,
+  };
+}
+
+/** Comments live only on the item detail payload — there's no
+ *  standalone list endpoint — so this hook re-fetches the whole item
+ *  via `getById` and exposes just its `notes`. Mutations optimistically
+ *  refetch the same way so the list always reflects the server's sort
+ *  order (`dateCreated` ascending) instead of a client-guessed one. */
+export function usePunchlistItemNotes(
+  projectId: string,
+  itemId: string,
+  enabled = true
+) {
+  const [state, setState] = useState<UseApiState<PunchlistItemNote[]>>({
+    data: null,
+    loading: enabled,
+    error: null,
+  });
+
+  const fetchNotes = useCallback(async () => {
+    if (!enabled) {
+      setState({ data: [], loading: false, error: null });
+      return;
+    }
+    setState((prev) => ({ ...prev, loading: true, error: null }));
+    try {
+      const item = await punchlistItemsApi.getById(projectId, itemId);
+      setState({ data: item.notes ?? [], loading: false, error: null });
+    } catch (err) {
+      setState({ data: null, loading: false, error: err as ApiError });
+    }
+  }, [projectId, itemId, enabled]);
+
+  useEffect(() => {
+    fetchNotes();
+  }, [fetchNotes]);
+
+  const addNote = async (content: string, mentionIds: string[] = []) => {
+    await punchlistItemsApi.createNote(projectId, itemId, content, mentionIds);
+    await fetchNotes();
+  };
+
+  const editNote = async (
+    noteId: string,
+    content: string,
+    mentionIds: string[] = []
+  ) => {
+    await punchlistItemsApi.updateNote(
+      projectId,
+      itemId,
+      noteId,
+      content,
+      mentionIds
+    );
+    await fetchNotes();
+  };
+
+  const removeNote = async (noteId: string) => {
+    await punchlistItemsApi.deleteNote(projectId, itemId, noteId);
+    await fetchNotes();
+  };
+
+  return {
+    ...state,
+    refetch: fetchNotes,
+    addNote,
+    editNote,
+    removeNote,
   };
 }
