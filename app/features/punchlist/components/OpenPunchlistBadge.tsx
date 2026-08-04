@@ -54,7 +54,7 @@ export default function OpenPunchlistBadge({
 
   if (initialLoad) {
     return (
-      <div className="h-[88px] rounded-lg bg-gray-100 dark:bg-gray-800 animate-pulse" />
+      <div className="h-[88px] rounded-xl bg-gray-100 dark:bg-gray-800 animate-pulse" />
     );
   }
 
@@ -68,27 +68,31 @@ export default function OpenPunchlistBadge({
     ? {
         container:
           "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800",
+        chip: "bg-amber-100 dark:bg-amber-900/40",
         icon: "text-amber-600 dark:text-amber-400",
-        label: "text-amber-700 dark:text-amber-300",
+        label: "text-amber-700/80 dark:text-amber-300/80",
         value: "text-amber-900 dark:text-amber-100",
       }
     : {
         container:
           "bg-gray-50 dark:bg-gray-900/40 border-gray-200 dark:border-gray-700",
+        chip: "bg-gray-100 dark:bg-gray-800",
         icon: "text-gray-500 dark:text-gray-400",
-        label: "text-gray-500 dark:text-gray-400",
+        label: "text-gray-400 dark:text-gray-500",
         value: "text-gray-900 dark:text-white",
       };
 
   return (
     <div
-      className={`flex items-center gap-4 px-5 py-4 rounded-lg border ${tone.container}`}
+      className={`flex items-center gap-4 px-5 py-4 rounded-xl border transition-shadow hover:shadow-sm ${tone.container}`}
     >
-      <ExclamationTriangleIcon
-        className={`w-6 h-6 flex-shrink-0 ${tone.icon}`}
-      />
+      <span
+        className={`inline-flex items-center justify-center w-11 h-11 rounded-full flex-shrink-0 ${tone.chip}`}
+      >
+        <ExclamationTriangleIcon className={`w-5 h-5 ${tone.icon}`} />
+      </span>
       <div className="min-w-0">
-        <p className={`text-xs mb-0.5 ${tone.label}`}>
+        <p className={`text-xs font-medium uppercase tracking-wide mb-0.5 ${tone.label}`}>
           {t("punchlistItems")}
         </p>
         <p className={`text-2xl font-bold leading-none ${tone.value}`}>

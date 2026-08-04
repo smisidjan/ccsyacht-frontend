@@ -140,14 +140,14 @@ export default function AreaDetailPage() {
             </div>
             <div className="md:col-span-3 flex flex-col gap-4">
               {activeStage && (
-                <div className="flex items-center gap-4 px-5 py-4 rounded-lg bg-gray-50 dark:bg-gray-900/40 border border-gray-200 dark:border-gray-700">
+                <div className="flex items-center gap-4 px-5 py-4 rounded-xl bg-gray-50 dark:bg-gray-900/40 border border-gray-200 dark:border-gray-700">
                   <span
-                    className="inline-block w-5 h-5 rounded flex-shrink-0 border border-gray-200 dark:border-gray-600"
+                    className="inline-block w-4 h-4 rounded-full flex-shrink-0 ring-4 ring-white dark:ring-gray-800 shadow-sm"
                     style={{ backgroundColor: activeStage.color || "#9ca3af" }}
                     aria-hidden="true"
                   />
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">
+                    <p className="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500 mb-0.5">
                       {t("activeStage")}
                     </p>
                     <p className="text-lg font-semibold text-gray-900 dark:text-white truncate">
@@ -155,25 +155,32 @@ export default function AreaDetailPage() {
                     </p>
                   </div>
                   <span
-                    className={`inline-block px-2.5 py-1 rounded text-xs font-medium flex-shrink-0 ${
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium flex-shrink-0 ${
                       statusBadgeColors[
                         activeStage.status.name as keyof typeof statusBadgeColors
                       ]
                     }`}
                   >
+                    <span
+                      className="w-1.5 h-1.5 rounded-full bg-current"
+                      aria-hidden="true"
+                    />
                     {t(`status.${activeStage.status.name}`)}
                   </span>
                 </div>
               )}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="flex items-center gap-4 px-5 py-4 rounded-lg bg-gray-50 dark:bg-gray-900/40 border border-gray-200 dark:border-gray-700">
-                  <ProgressCircle percentage={progress} size={88} strokeWidth={8} />
-                  <div>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white leading-none">
-                      {completedStages}/{totalStages}
-                    </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                <div className="flex items-center gap-4 px-5 py-4 rounded-xl bg-gray-50 dark:bg-gray-900/40 border border-gray-200 dark:border-gray-700 transition-shadow hover:shadow-sm">
+                  <ProgressCircle percentage={progress} size={72} strokeWidth={7} />
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500 mb-0.5">
                       {t("stagesCompleted")}
+                    </p>
+                    <p className="text-2xl font-bold text-gray-900 dark:text-white leading-none">
+                      {completedStages}
+                      <span className="text-base font-medium text-gray-400 dark:text-gray-500">
+                        /{totalStages}
+                      </span>
                     </p>
                   </div>
                 </div>
