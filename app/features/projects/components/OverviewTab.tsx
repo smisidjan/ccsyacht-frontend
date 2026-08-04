@@ -2,12 +2,13 @@
 
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
-import { PlusIcon, ChevronDownIcon } from "@heroicons/react/24/outline";
+import { PlusIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import { AreaCard, DefineAreaModal, type Area as AreaCardData } from "@/app/features/areas";
 import SetupTaskCard from "./SetupTaskCard";
 import type { ProjectStatus } from "@/app/components/ui/StatusBadge";
 import Button from "@/app/components/ui/Button";
 import Alert from "@/app/components/ui/Alert";
+import FilterPopover, { type FilterSection } from "@/app/components/ui/FilterPopover";
 import { KickoffSchedulingModal, KickoffScheduledCard } from "@/app/features/kickoff";
 import { CreateDeckModal } from "@/app/features/decks";
 import { useAreas, setupTasksApi } from "@/lib/api";
@@ -48,10 +49,9 @@ export default function OverviewTab({
   const [isDeckModalOpen, setIsDeckModalOpen] = useState(false);
   const [isDeckEditMode, setIsDeckEditMode] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState<string>("");
-  const [selectedDeckId, setSelectedDeckId] = useState<string>("all");
-  const [isDeckFilterOpen, setIsDeckFilterOpen] = useState(false);
+  const [selectedDeckIds, setSelectedDeckIds] = useState<string[]>([]);
+  const [areaSearchQuery, setAreaSearchQuery] = useState("");
   const hasUpdatedStatusRef = useRef(false);
-  const deckFilterRef = useRef<HTMLDivElement>(null);
 
   const loading = useMinimumLoadingTime(rawLoading);
   const canCreateAreas = hasPermission(PERMISSIONS.CREATE_AREAS);
@@ -74,30 +74,11 @@ export default function OverviewTab({
   // Setup tasks state
   const [setupTasks, setSetupTasks] = useState<SetupTask[]>([]);
 
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (deckFilterRef.current && !deckFilterRef.current.contains(event.target as Node)) {
-        setIsDeckFilterOpen(false);
-      }
-    };
-
-    if (isDeckFilterOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [isDeckFilterOpen]);
-
-  // Get unique decks from areas
+  // Get unique decks from areas — feeds the "Deck" filter section below.
   const deckOptions = useMemo(() => {
     if (!areas) return [];
 
     const uniqueDecks = new Map<string, { id: string; name: string }>();
-    uniqueDecks.set("all", { id: "all", name: t("areasSection.allDecks") });
-
     areas.forEach((area) => {
       if (area.containedInPlace) {
         uniqueDecks.set(area.containedInPlace.identifier, {
@@ -107,16 +88,45 @@ export default function OverviewTab({
       }
     });
 
-    return Array.from(uniqueDecks.values());
-  }, [areas, t]);
+    return Array.from(uniqueDecks.values()).sort((a, b) =>
+      a.name.localeCompare(b.name)
+    );
+  }, [areas]);
 
-  // Filter areas by selected deck
+  // Filter areas by name/description search + selected decks. Both
+  // axes are independent of `deckOptions`'s own filter section (built
+  // from the same data) so this stays a pure derivation of state.
   const filteredAreas = useMemo(() => {
     if (!areas) return [];
-    if (selectedDeckId === "all") return areas;
+    const q = areaSearchQuery.trim().toLowerCase();
+    return areas.filter((area) => {
+      if (
+        selectedDeckIds.length > 0 &&
+        !selectedDeckIds.includes(area.containedInPlace?.identifier ?? "")
+      )
+        return false;
+      if (
+        q &&
+        !area.name.toLowerCase().includes(q) &&
+        !(area.description ?? "").toLowerCase().includes(q)
+      )
+        return false;
+      return true;
+    });
+  }, [areas, areaSearchQuery, selectedDeckIds]);
 
-    return areas.filter((area) => area.containedInPlace?.identifier === selectedDeckId);
-  }, [areas, selectedDeckId]);
+  const deckFilterSections: FilterSection[] = useMemo(
+    () => [
+      {
+        id: "deck",
+        label: t("areasSection.deckFilterLabel"),
+        options: deckOptions.map((d) => ({ value: d.id, label: d.name })),
+        selected: selectedDeckIds,
+        onChange: setSelectedDeckIds,
+      },
+    ],
+    [deckOptions, selectedDeckIds, t]
+  );
 
   // Real-time updates
   useRealtimeProject(projectId, onProjectUpdate);
@@ -378,62 +388,47 @@ export default function OverviewTab({
         // done would see content even when Define decks is still open.
         (projectStatus !== "setup" || (allSetupTasksComplete && canEditProject)) && (
           <section>
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
               {t("areasSection.title")}
             </h2>
-            <div className="flex items-center gap-3">
-              {/* Deck Filter */}
-              {deckOptions.length > 1 && (
-                <div ref={deckFilterRef} className="relative">
-                  <button
-                    onClick={() => setIsDeckFilterOpen(!isDeckFilterOpen)}
-                    className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white flex items-center gap-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all min-w-[160px]"
-                  >
-                    <span className="flex-1 text-left">
-                      {deckOptions.find((d) => d.id === selectedDeckId)?.name}
-                    </span>
-                    <ChevronDownIcon
-                      className={`w-4 h-4 text-gray-400 transition-transform ${
-                        isDeckFilterOpen ? "rotate-180" : ""
-                      }`}
-                    />
-                  </button>
-                  {isDeckFilterOpen && (
-                    <div className="absolute z-10 mt-2 w-full bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg max-h-96 overflow-auto right-0">
-                      {deckOptions.map((deck) => (
-                        <button
-                          key={deck.id}
-                          onClick={() => {
-                            setSelectedDeckId(deck.id);
-                            setIsDeckFilterOpen(false);
-                          }}
-                          className={`w-full px-4 py-2.5 text-left hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${
-                            selectedDeckId === deck.id
-                              ? "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-medium"
-                              : "text-gray-900 dark:text-white"
-                          }`}
-                        >
-                          {selectedDeckId === deck.id && (
-                            <span className="mr-2">✓</span>
-                          )}
-                          {deck.name}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-              {canCreateAreas && projectStatus !== "archived" && projectStatus !== "completed" && (
-                <Button
-                  variant="primary"
-                  onClick={() => setIsCreateModalOpen(true)}
-                >
-                  <PlusIcon className="w-4 h-4" />
-                  {t("areasSection.createArea")}
-                </Button>
-              )}
+            {canCreateAreas && projectStatus !== "archived" && projectStatus !== "completed" && (
+              <Button
+                variant="primary"
+                onClick={() => setIsCreateModalOpen(true)}
+              >
+                <PlusIcon className="w-4 h-4" />
+                {t("areasSection.createArea")}
+              </Button>
+            )}
+          </div>
+
+          {/* Search + deck filter — same compact pattern as the
+              punchlist tab's toolbar, so search/filter reads the same
+              way everywhere it appears. Left-aligned on its own row
+              rather than bundled with the title/Create button, so it
+              reads as a toolbar for the grid below it. Deck is now one
+              of potentially several filter axes here rather than a
+              single-select dropdown, so multiple decks can be compared
+              at once. */}
+          <div className="flex items-center gap-3 flex-wrap mb-4">
+            <div className="relative">
+              <MagnifyingGlassIcon className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                value={areaSearchQuery}
+                onChange={(e) => setAreaSearchQuery(e.target.value)}
+                placeholder={t("areasSection.searchPlaceholder")}
+                className="pl-9 pr-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
             </div>
+            {deckOptions.length > 1 && (
+              <FilterPopover
+                sections={deckFilterSections}
+                triggerLabel={t("areasSection.filterLabel")}
+                onClearAll={() => setSelectedDeckIds([])}
+              />
+            )}
           </div>
 
           {loading && (
@@ -471,7 +466,7 @@ export default function OverviewTab({
                 ))}
               </div>
               {filteredAreas.length === 0 && (
-                selectedDeckId === "all" ? (
+                areas.length === 0 ? (
                   <Alert
                     type="info"
                     title={t("areasSection.noAreasBannerTitle")}
@@ -484,7 +479,7 @@ export default function OverviewTab({
                   />
                 ) : (
                   <div className="text-center py-12 text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 rounded-xl shadow-lg">
-                    {t("areasSection.noAreasInDeck")}
+                    {t("areasSection.noMatchingAreas")}
                   </div>
                 )
               )}

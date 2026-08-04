@@ -384,11 +384,13 @@
     },
     "areasSection": {
       "title": "Gebieden",
-      "allDecks": "Alle Dekken",
+      "searchPlaceholder": "Zoek gebieden…",
+      "filterLabel": "Filter",
+      "deckFilterLabel": "Dek",
       "noAreas": "Er zijn nog geen gebieden toegevoegd",
       "noAreasBannerTitle": "Begin met het aanmaken van je eerste gebied",
       "noAreasBannerMessage": "Gebieden bepalen waar stages en punchlist-items thuishoren. Je hebt minimaal één gebied met een stage nodig voordat je pins kunt toevoegen op de General Arrangement of punchlist-werk kunt bijhouden.",
-      "noAreasInDeck": "Geen gebieden op dit dek",
+      "noMatchingAreas": "Geen gebieden komen overeen met je zoekopdracht of filter",
       "createArea": "Gebied Aanmaken",
       "loadError": "Kan gebieden niet laden",
       "completeSetupFirst": "Voltooi alle setup taken voordat je gebieden aanmaakt"
