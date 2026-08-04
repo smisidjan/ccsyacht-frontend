@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
-import { PlusIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
+import { PlusIcon, MagnifyingGlassIcon, Squares2X2Icon } from "@heroicons/react/24/outline";
 import { AreaCard, DefineAreaModal, type Area as AreaCardData } from "@/app/features/areas";
 import SetupTaskCard from "./SetupTaskCard";
 import type { ProjectStatus } from "@/app/components/ui/StatusBadge";
@@ -540,15 +540,29 @@ export default function OverviewTab({
                 ? t("areasSection.decksTitle")
                 : t("areasSection.title")}
             </h2>
-            {canCreateAreas && projectStatus !== "archived" && projectStatus !== "completed" && (
-              <Button
-                variant="primary"
-                onClick={() => setIsCreateModalOpen(true)}
-              >
-                <PlusIcon className="w-4 h-4" />
-                {t("areasSection.createArea")}
-              </Button>
-            )}
+            <div className="flex items-center gap-2 flex-wrap">
+              {canEditProject && projectStatus !== "setup" && (
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setIsDeckEditMode(true);
+                    setIsDeckModalOpen(true);
+                  }}
+                >
+                  <Squares2X2Icon className="w-4 h-4" />
+                  {t("areasSection.manageDecks")}
+                </Button>
+              )}
+              {canCreateAreas && projectStatus !== "archived" && projectStatus !== "completed" && (
+                <Button
+                  variant="primary"
+                  onClick={() => setIsCreateModalOpen(true)}
+                >
+                  <PlusIcon className="w-4 h-4" />
+                  {t("areasSection.createArea")}
+                </Button>
+              )}
+            </div>
           </div>
 
           {/* Search + deck filter — same compact pattern as the

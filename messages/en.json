@@ -385,6 +385,7 @@
     "areasSection": {
       "title": "Areas",
       "decksTitle": "Decks",
+      "manageDecks": "Manage Decks",
       "searchPlaceholder": "Search areas…",
       "searchDecksPlaceholder": "Search in decks…",
       "filterLabel": "Filter",

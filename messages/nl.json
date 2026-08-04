@@ -385,6 +385,7 @@
     "areasSection": {
       "title": "Gebieden",
       "decksTitle": "Decks",
+      "manageDecks": "Dekken Beheren",
       "searchPlaceholder": "Zoek gebieden…",
       "searchDecksPlaceholder": "Zoek in decks…",
       "filterLabel": "Filter",
