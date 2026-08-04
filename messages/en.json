@@ -2100,6 +2100,8 @@
     "deckDescriptionPlaceholder": "Describe the deck...",
     "createAndDefineAreaTitle": "Create and Define Area",
     "editAreaTitle": "Edit Area",
+    "mobileTabGA": "GA",
+    "mobileTabDetails": "Details",
     "tabDetails": "Details",
     "tabStages": "Stages",
     "stagesCount": "{count, plural, =1 {# stage} other {# stages}}",

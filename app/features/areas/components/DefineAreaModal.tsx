@@ -210,6 +210,14 @@ export default function DefineAreaModal({
   const [localStages, setLocalStages] = useState<LocalStage[]>([]);
   const [editTab, setEditTab] = useState<"details" | "stages">("details");
 
+  /** Mobile-only view switcher — the GA drawer and the form share the
+   *  screen side by side on desktop, but that squeezes both into
+   *  unusably narrow columns below `md`. Same pattern as the "Define
+   *  Decks" modal: one pane at a time, picked via a top tab bar.
+   *  Default to the GA pane so the user sees the drawing surface (and
+   *  the deck picker prompt) immediately on open. */
+  const [activeMobileTab, setActiveMobileTab] = useState<"ga" | "form">("ga");
+
   // The GA image is auth-gated, so we fetch it through the same flow that
   // OverviewTab + the deck-define modal already use: rewrite the URL to a
   // proxy pathname, then resolve to a blob URL via useGAImage.
@@ -319,6 +327,7 @@ export default function DefineAreaModal({
     setNewCustomStageName("");
     setEditTab("details");
     setLocalStages([]);
+    setActiveMobileTab("ga");
   }, [isOpen, area, resetAllPolygons]);
 
   // Seed the local stage list from the server snapshot once stages
@@ -812,13 +821,52 @@ export default function DefineAreaModal({
       size="2xl"
       disableBackdropClick
     >
-      {/* Fixed height only on md+ — at narrow widths the columns stack
-          and we let the Modal's own scroller handle overflow instead of
-          forcing a 70vh box that pushes inputs off-screen when the user
-          focuses one. */}
+      {/* Mobile-only view switcher — the GA drawer and the form share
+          the screen side by side on desktop, but that squeezes both
+          into unusably narrow columns below `md` (the drawer ends up
+          a sliver and the toolbar overlaps the hint text). Same
+          pattern as the "Define Decks" modal: one pane at a time,
+          picked via a top tab bar. Only shown when there's a GA image
+          to switch to — otherwise both panes already render fine
+          stacked full-width. */}
+      {hasGA && (
+        <div className="md:hidden flex p-1 bg-gray-100 dark:bg-gray-800 rounded-lg gap-1 mb-4">
+          {(["ga", "form"] as const).map((tab) => (
+            <button
+              key={tab}
+              type="button"
+              onClick={() => setActiveMobileTab(tab)}
+              className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${
+                activeMobileTab === tab
+                  ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
+                  : "text-gray-600 dark:text-gray-400"
+              }`}
+            >
+              {t(tab === "ga" ? "mobileTabGA" : "mobileTabDetails")}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* On mobile the GA pane is a dedicated full-width tab (see the
+          switcher above) so it can take a generous share of the
+          viewport — h-[300px] was sized for the old squeezed
+          side-by-side layout and left barely any room for the canvas
+          once the hint text, view tabs, and floating toolbar all
+          shared it (the toolbar's negative margin ended up overlapping
+          the content above it). At md+ the columns sit side by side
+          and the fixed 70vh box takes over instead; when there's no
+          GA image the form's natural height still drives the modal
+          via the scroller. */}
       <div className="flex flex-col md:flex-row gap-4 md:gap-4 md:h-[70vh]">
         {/* Left: GA viewer + per-placement view tabs */}
-        <div className="relative flex-1 h-[300px] md:h-auto md:min-h-[300px] bg-gray-50 dark:bg-gray-900 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 flex flex-col">
+        <div
+          className={`${
+            hasGA && activeMobileTab !== "ga" ? "hidden" : "flex"
+          } md:flex flex-col relative md:flex-1 ${
+            hasGA ? "h-[65vh]" : "h-[300px]"
+          } md:h-auto md:min-h-[300px] bg-gray-50 dark:bg-gray-900 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700`}
+        >
           {hasGA && selectedDeckId && placements.length > 1 && (
             // Explains *why* there are multiple tabs before the user
             // hits `hintFinishOtherViews` as an error-shaped nudge — the
@@ -907,7 +955,11 @@ export default function DefineAreaModal({
         {/* Right: form. Scrollable only on md+ where the column is
             height-bounded; on mobile the modal itself scrolls so the
             focused input stays in view. */}
-        <div className="md:w-80 md:flex-shrink-0 flex flex-col gap-4 md:border-l md:pl-4 md:border-gray-200 md:dark:border-gray-700 md:overflow-y-auto">
+        <div
+          className={`${
+            hasGA && activeMobileTab !== "form" ? "hidden" : "flex"
+          } md:flex flex-col gap-4 md:w-80 md:flex-shrink-0 md:border-l md:pl-4 md:border-gray-200 md:dark:border-gray-700 md:overflow-y-auto`}
+        >
           <div className="flex border-b border-gray-200 dark:border-gray-700">
             {(["details", "stages"] as const).map((tab) => (
               <button

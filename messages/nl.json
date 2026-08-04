@@ -2130,6 +2130,8 @@
     "deckDescriptionPlaceholder": "Beschrijf het dek...",
     "createAndDefineAreaTitle": "Area aanmaken en intekenen",
     "editAreaTitle": "Area bewerken",
+    "mobileTabGA": "GA",
+    "mobileTabDetails": "Details",
     "tabDetails": "Details",
     "tabStages": "Stages",
     "stagesCount": "{count, plural, =1 {# stage} other {# stages}}",

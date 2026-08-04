@@ -82,25 +82,64 @@ function FitToDeck({
 }) {
   const map = useMap();
   const lastFitKey = useRef<string>("");
-  useEffect(() => {
-    const key = `${deckBounds.x1},${deckBounds.y1},${deckBounds.x2},${deckBounds.y2}`;
-    if (lastFitKey.current === key) return;
-    const isFirstFit = lastFitKey.current === "";
-    lastFitKey.current = key;
 
+  const runFit = (fast: boolean) => {
     // Relax the floor before the intermediate full-GA fit — a previous
     // deck may have raised minZoom above the level needed to lay down
     // fullBounds, which would silently clamp the fit.
     map.setMinZoom(-5);
     const full = getFullImageBounds(imageWidth, imageHeight);
     const target = deckBoundsToLeaflet(deckBounds, imageWidth, imageHeight);
+    map.invalidateSize();
     map.fitBounds(full, { padding: [10, 10], animate: false });
     setTimeout(() => {
       map.invalidateSize();
       map.fitBounds(target, { padding: DECK_FIT_PADDING, animate: false });
       map.setMinZoom(map.getZoom());
-    }, isFirstFit ? FIT_DELAY_MS_FAST : FIT_DELAY_MS_SLOW);
+    }, fast ? FIT_DELAY_MS_FAST : FIT_DELAY_MS_SLOW);
+  };
+  // Read via a ref inside the ResizeObserver effect below so it always
+  // calls the latest closure (fresh deckBounds/imageWidth/imageHeight)
+  // without having to tear down and re-observe on every prop change.
+  const runFitRef = useRef(runFit);
+  runFitRef.current = runFit;
+
+  useEffect(() => {
+    const key = `${deckBounds.x1},${deckBounds.y1},${deckBounds.x2},${deckBounds.y2}`;
+    if (lastFitKey.current === key) return;
+    const isFirstFit = lastFitKey.current === "";
+    lastFitKey.current = key;
+    runFit(isFirstFit);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [map, deckBounds, imageWidth, imageHeight]);
+
+  // The area-creation modal mounts this map as soon as a deck is picked
+  // — on mobile that can happen while the "GA" pane sits behind a
+  // `display:none` tab (the user picks the deck on the "Details" tab).
+  // Leaflet measures a 0×0 container at that point and never re-checks
+  // on its own; switching back to the GA tab flips the CSS but leaves
+  // the map thinking it's still 0×0, so the deck-fit computed above
+  // lands wrong. Watch the container's real size and redo the fit the
+  // moment it actually has one (also covers any other display:none →
+  // visible transition, e.g. the desktop/mobile layout swap at `md`).
+  useEffect(() => {
+    const container = map.getContainer();
+    let wasHidden = container.offsetWidth === 0 || container.offsetHeight === 0;
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (!entry) return;
+      const hasSize = entry.contentRect.width > 0 && entry.contentRect.height > 0;
+      if (hasSize && wasHidden) {
+        wasHidden = false;
+        runFitRef.current(true);
+      } else if (!hasSize) {
+        wasHidden = true;
+      }
+    });
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [map]);
+
   return null;
 }
 
