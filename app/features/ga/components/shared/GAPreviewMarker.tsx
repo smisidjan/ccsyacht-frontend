@@ -13,7 +13,7 @@ import {
   pctToNorm,
   latLngToPct,
 } from "@/lib/utils/gaCoordinates";
-import { getFullImageBounds, getSafeMaxZoom } from "@/lib/utils/gaLeaflet";
+import { getFullImageBounds, getSafeMaxZoom, useFitWhenIdle } from "@/lib/utils/gaLeaflet";
 import { getAreaPolygonForDeck } from "@/app/features/ga/utils/helpers";
 import { createDonePinIcon } from "./pinIcons";
 import SmoothModifierZoom, {
@@ -125,6 +125,8 @@ function FitToMarker({
   zoomBounds?: L.LatLngBoundsExpression | null;
 }) {
   const map = useMap();
+  const fitWhenIdle = useFitWhenIdle(map);
+  const cancelIdleWaitRef = useRef<(() => void) | null>(null);
   // What we last fit to. Null until the first fit fires. The ref
   // doubles as the "first fit?" flag — checking against null is the
   // same question as "have we initialized".
@@ -174,16 +176,29 @@ function FitToMarker({
     // its actual viewport size by the time fitBounds computes the
     // zoom level. Without this, the modal-mount frame can have a
     // zero-sized map and fitBounds resolves to a meaningless level.
+    //
+    // `fitWhenIdle` additionally guards against the user touching the
+    // map (dragging/pinching) inside that 100ms window — forcing this
+    // view change out from under an in-progress Leaflet gesture (e.g.
+    // TouchZoom's pinch tracking) corrupted its internal state badly
+    // enough to crash the tab outright on iOS Safari, not just
+    // interrupt the animation.
     const t = setTimeout(() => {
-      const m = mapRef.current;
-      m.invalidateSize();
-      if (target === "marker") {
-        m.setView(markerRef.current, 1, { animate: false });
-      } else {
-        m.fitBounds(target, { padding: [20, 20], animate: false });
-      }
+      cancelIdleWaitRef.current = fitWhenIdle(() => {
+        const m = mapRef.current;
+        m.invalidateSize();
+        if (target === "marker") {
+          m.setView(markerRef.current, 1, { animate: false });
+        } else {
+          m.fitBounds(target, { padding: [20, 20], animate: false });
+        }
+      });
     }, 100);
-    return () => clearTimeout(t);
+    return () => {
+      clearTimeout(t);
+      cancelIdleWaitRef.current?.();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [zoomBounds]);
 
   return null;

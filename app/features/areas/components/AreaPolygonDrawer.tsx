@@ -10,7 +10,7 @@ import {
   normToLatLng,
   normToPct,
 } from "@/lib/utils/gaCoordinates";
-import { getFullImageBounds } from "@/lib/utils/gaLeaflet";
+import { getFullImageBounds, useFitWhenIdle } from "@/lib/utils/gaLeaflet";
 import PolygonDrawer, {
   type VertexValidator,
 } from "@/app/features/ga/components/shared/PolygonDrawer";
@@ -105,6 +105,8 @@ function FitToDeck({
 }) {
   const map = useMap();
   const lastFitKey = useRef<string>("");
+  const fitWhenIdle = useFitWhenIdle(map);
+  const cancelIdleWaitRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     const key = `${deckBounds.x1},${deckBounds.y1},${deckBounds.x2},${deckBounds.y2}`;
@@ -122,12 +124,23 @@ function FitToDeck({
     }
 
     const target = deckBoundsToLeaflet(deckBounds, imageWidth, imageHeight);
+    // `fitWhenIdle` guards against the user touching the map
+    // (dragging/pinching) inside this deferred window — forcing this
+    // view change out from under an in-progress Leaflet gesture
+    // corrupted its internal state badly enough to crash the tab
+    // outright on iOS Safari, not just interrupt the animation.
     const t = setTimeout(() => {
-      map.invalidateSize();
-      map.fitBounds(target, { padding: DECK_FIT_PADDING, animate: false });
-      map.setMinZoom(map.getZoom());
+      cancelIdleWaitRef.current = fitWhenIdle(() => {
+        map.invalidateSize();
+        map.fitBounds(target, { padding: DECK_FIT_PADDING, animate: false });
+        map.setMinZoom(map.getZoom());
+      });
     }, isFirstFit ? FIT_DELAY_MS_FAST : FIT_DELAY_MS_SLOW);
-    return () => clearTimeout(t);
+    return () => {
+      clearTimeout(t);
+      cancelIdleWaitRef.current?.();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [map, deckBounds, imageWidth, imageHeight]);
 
   return null;

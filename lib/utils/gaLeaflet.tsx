@@ -46,6 +46,69 @@ export function getSafeMaxZoom(imageWidth: number, imageHeight: number): number 
   return Math.min(DEFAULT_MAX_ZOOM, Math.max(0, safeZoom));
 }
 
+/** Tracks whether the map's container currently has an active touch
+ *  or mouse-drag on it. Every GA viewer that mounts with a deferred
+ *  re-fit (show the full image immediately, then `fitBounds`/`setView`
+ *  to the real target ~100-300ms later, once the container has
+ *  settled its size) has the same latent bug: if the user starts
+ *  panning/pinching *during* that window, the deferred call forces
+ *  the view out from under Leaflet's own in-progress gesture tracking
+ *  (e.g. `TouchZoom`'s pinch math, which references the gesture's
+ *  start point). That corrupts Leaflet's internal state badly enough
+ *  to crash the tab outright on iOS Safari — not just interrupt an
+ *  animation — if the user so much as touches the map before it's
+ *  finished its own initial fit. `whenIdle` runs `fn` immediately if
+ *  nothing is active, or waits for the current gesture to end
+ *  otherwise, so a programmatic re-fit never lands mid-gesture. */
+export function useFitWhenIdle(map: L.Map) {
+  const interactingRef = useRef(false);
+  useEffect(() => {
+    const container = map.getContainer();
+    const onStart = () => {
+      interactingRef.current = true;
+    };
+    const onEnd = () => {
+      interactingRef.current = false;
+    };
+    container.addEventListener("touchstart", onStart, { passive: true });
+    container.addEventListener("touchend", onEnd, { passive: true });
+    container.addEventListener("touchcancel", onEnd, { passive: true });
+    container.addEventListener("mousedown", onStart);
+    window.addEventListener("mouseup", onEnd);
+    return () => {
+      container.removeEventListener("touchstart", onStart);
+      container.removeEventListener("touchend", onEnd);
+      container.removeEventListener("touchcancel", onEnd);
+      container.removeEventListener("mousedown", onStart);
+      window.removeEventListener("mouseup", onEnd);
+    };
+  }, [map]);
+
+  /** Returns a cancel function — call it if the caller's own effect
+   *  cleans up before `fn` has run, so a stale closure doesn't fire
+   *  into an unmounted map. */
+  return (fn: () => void): (() => void) => {
+    if (!interactingRef.current) {
+      fn();
+      return () => {};
+    }
+    const container = map.getContainer();
+    const run = () => {
+      cancel();
+      fn();
+    };
+    const cancel = () => {
+      container.removeEventListener("touchend", run);
+      container.removeEventListener("touchcancel", run);
+      window.removeEventListener("mouseup", run);
+    };
+    container.addEventListener("touchend", run, { passive: true });
+    container.addEventListener("touchcancel", run, { passive: true });
+    window.addEventListener("mouseup", run);
+    return cancel;
+  };
+}
+
 interface FitBoundsProps {
   bounds: L.LatLngBoundsExpression;
   padding?: [number, number];
@@ -86,6 +149,8 @@ export function FitBounds({
 }: FitBoundsProps) {
   const map = useMap();
   const didFit = useRef(false);
+  const fitWhenIdle = useFitWhenIdle(map);
+  const cancelRef = useRef<(() => void) | null>(null);
 
   // Callers often pass `bounds`/`padding` as fresh array literals on
   // every render (e.g. `padding={[40, 40]}`). With `refitOnChange`,
@@ -117,8 +182,14 @@ export function FitBounds({
     };
 
     if (delayMs && delayMs > 0) {
-      const t = setTimeout(run, delayMs);
-      return () => clearTimeout(t);
+      const t = setTimeout(() => {
+        const cancelIdleWait = fitWhenIdle(run);
+        cancelRef.current = cancelIdleWait;
+      }, delayMs);
+      return () => {
+        clearTimeout(t);
+        cancelRef.current?.();
+      };
     }
     run();
     // eslint-disable-next-line react-hooks/exhaustive-deps
