@@ -80,16 +80,28 @@ interface AreaPolygonDrawerProps {
  *  mid-edit. Tracks the bbox values themselves rather than object
  *  identity.
  *
+ *  Mirrors the proven pattern in `GAPreviewMarker`'s `FitToMarker`:
+ *  the "flash the full image, then settle on the target" two-step
+ *  only runs on the very first fit (so the user sees *something*
+ *  immediately instead of a blank/wrong view). Every later switch
+ *  (deck ↔ side profile) snaps straight to its target with a single
+ *  `fitBounds` call — half the Leaflet work of doing the full-image
+ *  detour every time, which is what made rapid placement switching
+ *  heavy enough to crash the tab on a real mobile device. The pending
+ *  timer is cancelled via the effect's own cleanup (return value) —
+ *  React runs that automatically before the next fit *and* on
+ *  unmount, so a superseded or late-arriving fit never piles work on
+ *  top of a newer one or calls into an already-destroyed map.
+ *
  *  `visible` additionally covers the area-creation modal's mobile tab
  *  switcher: on mobile the map mounts as soon as a deck is picked on
  *  the "Details" tab, while the "GA" pane still sits behind a
  *  `display:none` tab. Leaflet measures a 0×0 container at that point
  *  and never re-checks on its own, so switching back to the GA tab
- *  flips the CSS but leaves the fit wrong. Re-running the fit once
- *  `visible` flips true fixes it without polling the DOM (a
- *  ResizeObserver here previously caused a resize/measure loop that
- *  crashed the tab on a real device — this is deliberately just a
- *  plain effect on a boolean prop instead). */
+ *  flips the CSS but leaves the fit wrong. Re-running it once
+ *  `visible` flips true fixes that — no timer needed there since the
+ *  DOM has already committed the new (real) size by the time this
+ *  effect runs. */
 function FitToDeck({
   deckBounds,
   imageWidth,
@@ -104,65 +116,42 @@ function FitToDeck({
   const map = useMap();
   const lastFitKey = useRef<string>("");
   const wasVisible = useRef(visible);
-  // The delayed half of `runFit` fires via `setTimeout` — if the user
-  // switches placements/tabs again before it fires (or closes the
-  // modal), an uncancelled timeout either piles up redundant
-  // invalidateSize/fitBounds work on top of the newer fit (the
-  // "breaks on fast switching, costs a lot of energy" symptom) or
-  // calls into a Leaflet map that's already been torn down. Track the
-  // pending one so a fresh call — or unmount — cancels it first.
-  const pendingFitRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // `forceInvalidate` is only for the visibility-transition path below
-  // — the container was genuinely hidden (0×0) so Leaflet's cached
-  // size needs an immediate refresh before the first `fitBounds` call.
-  // The regular deck-switch path never needs it (the container was
-  // already visible and correctly sized); adding it there too made
-  // every placement switch call `invalidateSize()` synchronously,
-  // which crashed the tab on a real device.
-  const runFit = (fast: boolean, forceInvalidate: boolean) => {
-    if (pendingFitRef.current) {
-      clearTimeout(pendingFitRef.current);
-      pendingFitRef.current = null;
-    }
-    // Relax the floor before the intermediate full-GA fit — a previous
-    // deck may have raised minZoom above the level needed to lay down
-    // fullBounds, which would silently clamp the fit.
-    map.setMinZoom(-5);
-    const full = getFullImageBounds(imageWidth, imageHeight);
-    const target = deckBoundsToLeaflet(deckBounds, imageWidth, imageHeight);
-    if (forceInvalidate) map.invalidateSize();
-    map.fitBounds(full, { padding: [10, 10], animate: false });
-    pendingFitRef.current = setTimeout(() => {
-      pendingFitRef.current = null;
-      map.invalidateSize();
-      map.fitBounds(target, { padding: DECK_FIT_PADDING, animate: false });
-      map.setMinZoom(map.getZoom());
-    }, fast ? FIT_DELAY_MS_FAST : FIT_DELAY_MS_SLOW);
-  };
 
   useEffect(() => {
     const key = `${deckBounds.x1},${deckBounds.y1},${deckBounds.x2},${deckBounds.y2}`;
     if (lastFitKey.current === key) return;
     const isFirstFit = lastFitKey.current === "";
     lastFitKey.current = key;
-    runFit(isFirstFit, false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
+    // Relax the floor before any full-image fit — a previous deck may
+    // have raised minZoom above the level needed to lay down
+    // fullBounds, which would silently clamp the fit.
+    map.setMinZoom(-5);
+    if (isFirstFit) {
+      const full = getFullImageBounds(imageWidth, imageHeight);
+      map.fitBounds(full, { padding: [10, 10], animate: false });
+    }
+
+    const target = deckBoundsToLeaflet(deckBounds, imageWidth, imageHeight);
+    const t = setTimeout(() => {
+      map.invalidateSize();
+      map.fitBounds(target, { padding: DECK_FIT_PADDING, animate: false });
+      map.setMinZoom(map.getZoom());
+    }, isFirstFit ? FIT_DELAY_MS_FAST : FIT_DELAY_MS_SLOW);
+    return () => clearTimeout(t);
   }, [map, deckBounds, imageWidth, imageHeight]);
 
   useEffect(() => {
     const becameVisible = visible && !wasVisible.current;
     wasVisible.current = visible;
     if (!becameVisible) return;
-    runFit(true, true);
+    map.invalidateSize();
+    map.setMinZoom(-5);
+    const target = deckBoundsToLeaflet(deckBounds, imageWidth, imageHeight);
+    map.fitBounds(target, { padding: DECK_FIT_PADDING, animate: false });
+    map.setMinZoom(map.getZoom());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible]);
-
-  useEffect(() => {
-    return () => {
-      if (pendingFitRef.current) clearTimeout(pendingFitRef.current);
-    };
-  }, []);
 
   return null;
 }
