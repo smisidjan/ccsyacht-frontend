@@ -218,6 +218,24 @@ export default function DefineAreaModal({
    *  the deck picker prompt) immediately on open. */
   const [activeMobileTab, setActiveMobileTab] = useState<"ga" | "form">("ga");
 
+  /** Tracks the `md` breakpoint so the GA pane's mount gate (below)
+   *  knows it's always actually visible at that width, regardless of
+   *  `activeMobileTab` — the mobile tab bar is `md:hidden`, so a user
+   *  who switched to "Details" on a narrow viewport and then widened
+   *  the window would otherwise have no way to flip `activeMobileTab`
+   *  back to "ga" and the drawer would never mount. Lazy-initialized
+   *  from `matchMedia` so there's no incorrect flash on first paint. */
+  const [isDesktop, setIsDesktop] = useState(
+    () => typeof window !== "undefined" && window.matchMedia("(min-width: 768px)").matches
+  );
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 768px)");
+    setIsDesktop(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+
   // The GA image is auth-gated, so we fetch it through the same flow that
   // OverviewTab + the deck-define modal already use: rewrite the URL to a
   // proxy pathname, then resolve to a blob URL via useGAImage.
@@ -924,13 +942,20 @@ export default function DefineAreaModal({
             </div>
           )}
           <div className="relative flex-1 min-h-0">
-            {hasGA && selectedDeckId ? (
+            {/* Gate the mount (not just CSS visibility) on the pane
+                actually being shown: on mobile this component sits
+                behind a `display:none` tab until the deck is picked
+                *and* the user has switched to "GA" — mounting Leaflet
+                against a 0×0 container corrupted its internal zoom
+                state badly enough to crash the tab on a real device.
+                Waiting for real visibility avoids that entirely
+                instead of trying to repair it afterwards. */}
+            {hasGA && selectedDeckId && (activeMobileTab === "ga" || isDesktop) ? (
               <AreaPolygonDrawer
                 imageUrl={gaBlobUrl!}
                 imageWidth={ga!.imageWidth!}
                 imageHeight={ga!.imageHeight!}
                 deckBounds={deckBounds ?? undefined}
-                isVisible={activeMobileTab === "ga"}
                 deckOutlineColor={activeOutlineColor}
                 existingAreas={existingAreasForDrawer}
                 existingPins={existingPinsForDrawer}
