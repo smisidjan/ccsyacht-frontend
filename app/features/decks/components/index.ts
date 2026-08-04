@@ -5,3 +5,4 @@
 
 export { default as CreateDeckModal } from "./CreateDeckModal";
 export { default as DeckForm } from "./DeckForm";
+export { default as DeckCard } from "./DeckCard";

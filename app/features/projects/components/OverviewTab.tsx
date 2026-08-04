@@ -10,10 +10,11 @@ import Button from "@/app/components/ui/Button";
 import Alert from "@/app/components/ui/Alert";
 import FilterPopover, { type FilterSection } from "@/app/components/ui/FilterPopover";
 import { KickoffSchedulingModal, KickoffScheduledCard } from "@/app/features/kickoff";
-import { CreateDeckModal } from "@/app/features/decks";
+import { CreateDeckModal, DeckCard } from "@/app/features/decks";
 import { useAreas, setupTasksApi } from "@/lib/api";
 import { useCurrentUserContext } from "@/app/context/CurrentUserContext";
 import { useDecks } from "@/lib/api/decks";
+import { useProjectStages } from "@/lib/api/stages";
 import { useDocumentTypes } from "@/lib/api/document-types";
 import type { SetupTask } from "@/lib/api/types";
 import { usePermission } from "@/lib/hooks/usePermission";
@@ -23,7 +24,7 @@ import { useRealtimeAreas, useRealtimeProject } from "@/lib/hooks/useRealtimePro
 import { PERMISSIONS } from "@/lib/constants/permissions";
 import { projectsApi } from "@/lib/api/client";
 import { useToast } from "@/app/context/ToastContext";
-import type { Area, GeneralArrangement } from "@/lib/api/types";
+import type { Area, Deck, GeneralArrangement } from "@/lib/api/types";
 import { handleError } from "@/lib/utils/errors";
 
 interface OverviewTabProps {
@@ -50,7 +51,12 @@ export default function OverviewTab({
   const [isDeckEditMode, setIsDeckEditMode] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState<string>("");
   const [selectedDeckIds, setSelectedDeckIds] = useState<string[]>([]);
+  const [selectedStageNames, setSelectedStageNames] = useState<string[]>([]);
+  const [selectedProgressStatuses, setSelectedProgressStatuses] = useState<
+    string[]
+  >([]);
   const [areaSearchQuery, setAreaSearchQuery] = useState("");
+  const [areasViewMode, setAreasViewMode] = useState<"area" | "deck">("area");
   const hasUpdatedStatusRef = useRef(false);
 
   const loading = useMinimumLoadingTime(rawLoading);
@@ -59,6 +65,14 @@ export default function OverviewTab({
 
   // Fetch decks for edit mode
   const { data: decks, refetch: refetchDecks } = useDecks(projectId);
+
+  // Real stage instances (not just aggregate counts) — the areas list
+  // endpoint's `containsPlace` turned out to not reliably carry stages,
+  // which silently emptied the "Stage" filter. This is the same
+  // project-wide stages fetch the punchlist tab uses, each entry
+  // carrying its owning area's id, so it doubles as a real source of
+  // "which stages does this area have" for the filter below.
+  const { data: projectStages } = useProjectStages(projectId);
 
   // Fetch document types for setup task description (include assignees for blocking logic)
   const { data: documentTypes } = useDocumentTypes(projectId, { includeAssignees: true });
@@ -93,18 +107,71 @@ export default function OverviewTab({
     );
   }, [areas]);
 
-  // Filter areas by name/description search + selected decks. Both
-  // axes are independent of `deckOptions`'s own filter section (built
+  // Every distinct stage name across the project — feeds the "Stage"
+  // filter section. Names (not ids) because the same conceptual stage
+  // ("Substrate preparation") exists as a separate record per area;
+  // grouping by name is what lets the filter answer "which areas have
+  // a Priming stage" across the whole project.
+  const stageOptions = useMemo(() => {
+    const names = new Set<string>();
+    (projectStages ?? []).forEach((s) => names.add(s.name));
+    return Array.from(names).sort((a, b) => a.localeCompare(b));
+  }, [projectStages]);
+
+  // Area id → set of its stage names, derived from the same
+  // project-wide stages fetch (`area.containsPlace` isn't reliably
+  // populated on the areas list endpoint).
+  const stageNamesByAreaId = useMemo(() => {
+    const map = new Map<string, Set<string>>();
+    (projectStages ?? []).forEach((s) => {
+      const areaId = s.area?.identifier;
+      if (!areaId) return;
+      if (!map.has(areaId)) map.set(areaId, new Set());
+      map.get(areaId)!.add(s.name);
+    });
+    return map;
+  }, [projectStages]);
+
+  type ProgressBucket = "not_started" | "in_progress" | "completed";
+  const progressBucketOf = (area: Area): ProgressBucket => {
+    const total = area.stageCount ?? 0;
+    const completed = area.completedStageCount ?? 0;
+    if (total === 0) return "not_started";
+    if (completed >= total) return "completed";
+    if (completed > 0 || (area.inProgressStageCount ?? 0) > 0) return "in_progress";
+    return "not_started";
+  };
+
+  // Deck / stage / progress are the three non-text filter axes, shared
+  // between both views — area view applies this plus the text search;
+  // deck view applies this per-deck before layering its own
+  // deck-name-aware search on top (see `decksForView`).
+  const matchesAreaFilters = (area: Area) => {
+    if (
+      selectedDeckIds.length > 0 &&
+      !selectedDeckIds.includes(area.containedInPlace?.identifier ?? "")
+    )
+      return false;
+    if (selectedStageNames.length > 0) {
+      const names = stageNamesByAreaId.get(area.identifier);
+      if (!names || !selectedStageNames.some((n) => names.has(n))) return false;
+    }
+    if (
+      selectedProgressStatuses.length > 0 &&
+      !selectedProgressStatuses.includes(progressBucketOf(area))
+    )
+      return false;
+    return true;
+  };
+
+  // Filter areas by name/description search + the shared filter axes
+  // above. Independent of `deckFilterSections`'s own options (built
   // from the same data) so this stays a pure derivation of state.
   const filteredAreas = useMemo(() => {
     if (!areas) return [];
     const q = areaSearchQuery.trim().toLowerCase();
     return areas.filter((area) => {
-      if (
-        selectedDeckIds.length > 0 &&
-        !selectedDeckIds.includes(area.containedInPlace?.identifier ?? "")
-      )
-        return false;
+      if (!matchesAreaFilters(area)) return false;
       if (
         q &&
         !area.name.toLowerCase().includes(q) &&
@@ -113,7 +180,8 @@ export default function OverviewTab({
         return false;
       return true;
     });
-  }, [areas, areaSearchQuery, selectedDeckIds]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [areas, areaSearchQuery, selectedDeckIds, selectedStageNames, selectedProgressStatuses]);
 
   const deckFilterSections: FilterSection[] = useMemo(
     () => [
@@ -124,9 +192,87 @@ export default function OverviewTab({
         selected: selectedDeckIds,
         onChange: setSelectedDeckIds,
       },
+      {
+        id: "stage",
+        label: t("areasSection.stageFilterLabel"),
+        options: stageOptions.map((name) => ({ value: name, label: name })),
+        selected: selectedStageNames,
+        onChange: setSelectedStageNames,
+        emptyLabel: t("areasSection.stageFilterEmpty"),
+      },
+      {
+        id: "progress",
+        label: t("areasSection.progressFilterLabel"),
+        options: [
+          { value: "not_started", label: t("areasSection.progressNotStarted") },
+          { value: "in_progress", label: t("areasSection.progressInProgress") },
+          { value: "completed", label: t("areasSection.progressCompleted") },
+        ],
+        selected: selectedProgressStatuses,
+        onChange: setSelectedProgressStatuses,
+      },
     ],
-    [deckOptions, selectedDeckIds, t]
+    [deckOptions, selectedDeckIds, stageOptions, selectedStageNames, selectedProgressStatuses, t]
   );
+
+  // Deck-first grouping for the "Deck view" toggle. Independent of
+  // `filteredAreas` (which only ever matches against area name/desc)
+  // because "search in decks" needs to match the *deck* itself too —
+  // a deck whose own name matches keeps all of its (filter-passing)
+  // areas listed (the deck is what satisfied the search, not one
+  // specific area); otherwise it's kept only when at least one area
+  // matches, showing just those.
+  //
+  // Decks with zero matching areas only survive when *no* filter is
+  // active at all (deck/stage/progress/text) — that's pure browsing,
+  // where showing every deck (even empty ones) surfaces setup gaps.
+  // The moment any filter is on, an empty result means "this deck
+  // doesn't satisfy it", so it must disappear like it does in Area
+  // view — otherwise e.g. filtering by a Stage name still shows decks
+  // that have none of their areas in that stage.
+  const decksForView = useMemo(() => {
+    if (!decks) return [];
+    const relevant =
+      selectedDeckIds.length > 0
+        ? decks.filter((d) => selectedDeckIds.includes(d.identifier))
+        : decks;
+    const q = areaSearchQuery.trim().toLowerCase();
+    const hasActiveFilter =
+      selectedDeckIds.length > 0 ||
+      selectedStageNames.length > 0 ||
+      selectedProgressStatuses.length > 0 ||
+      q.length > 0;
+    return relevant
+      .map((deck) => {
+        const deckAreas = (areas ?? []).filter(
+          (a) =>
+            a.containedInPlace?.identifier === deck.identifier &&
+            matchesAreaFilters(a)
+        );
+        if (!hasActiveFilter) return { deck, areas: deckAreas };
+        if (deckAreas.length === 0) return null;
+        if (!q) return { deck, areas: deckAreas };
+        const deckMatches =
+          deck.name.toLowerCase().includes(q) ||
+          (deck.description ?? "").toLowerCase().includes(q);
+        if (deckMatches) return { deck, areas: deckAreas };
+        const matchingAreas = deckAreas.filter(
+          (a) =>
+            a.name.toLowerCase().includes(q) ||
+            (a.description ?? "").toLowerCase().includes(q)
+        );
+        return matchingAreas.length > 0 ? { deck, areas: matchingAreas } : null;
+      })
+      .filter((entry): entry is { deck: Deck; areas: Area[] } => entry !== null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    decks,
+    areas,
+    selectedDeckIds,
+    selectedStageNames,
+    selectedProgressStatuses,
+    areaSearchQuery,
+  ]);
 
   // Real-time updates
   useRealtimeProject(projectId, onProjectUpdate);
@@ -390,7 +536,9 @@ export default function OverviewTab({
           <section>
           <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-              {t("areasSection.title")}
+              {areasViewMode === "deck"
+                ? t("areasSection.decksTitle")
+                : t("areasSection.title")}
             </h2>
             {canCreateAreas && projectStatus !== "archived" && projectStatus !== "completed" && (
               <Button
@@ -418,7 +566,11 @@ export default function OverviewTab({
                 type="text"
                 value={areaSearchQuery}
                 onChange={(e) => setAreaSearchQuery(e.target.value)}
-                placeholder={t("areasSection.searchPlaceholder")}
+                placeholder={
+                  areasViewMode === "deck"
+                    ? t("areasSection.searchDecksPlaceholder")
+                    : t("areasSection.searchPlaceholder")
+                }
                 className="pl-9 pr-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
@@ -428,6 +580,37 @@ export default function OverviewTab({
                 triggerLabel={t("areasSection.filterLabel")}
                 onClearAll={() => setSelectedDeckIds([])}
               />
+            )}
+            {/* Area/Deck view toggle — a connected segmented control
+                (not the spaced-out `FilterTabs` pills used elsewhere)
+                since these two options are mutually exclusive views of
+                the same data, not independent filters. Pushed to the
+                far right of the toolbar via `ml-auto`. */}
+            {decks && decks.length > 0 && (
+              <div className="inline-flex rounded-md border border-gray-300 dark:border-gray-600 overflow-hidden ml-auto">
+                <button
+                  type="button"
+                  onClick={() => setAreasViewMode("area")}
+                  className={`px-3 py-1.5 text-sm font-medium transition-colors ${
+                    areasViewMode === "area"
+                      ? "bg-blue-600 text-white"
+                      : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                  }`}
+                >
+                  {t("areasSection.areaView")}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAreasViewMode("deck")}
+                  className={`px-3 py-1.5 text-sm font-medium border-l border-gray-300 dark:border-gray-600 transition-colors ${
+                    areasViewMode === "deck"
+                      ? "bg-blue-600 text-white"
+                      : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                  }`}
+                >
+                  {t("areasSection.deckView")}
+                </button>
+              </div>
             )}
           </div>
 
@@ -455,35 +638,53 @@ export default function OverviewTab({
           )}
 
           {!loading && !error && areas && (
-            <>
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                {filteredAreas.map((area) => (
-                  <AreaCard
-                    key={area.identifier}
-                    area={mapAreaToCardData(area)}
-                    projectId={projectId}
-                  />
-                ))}
-              </div>
-              {filteredAreas.length === 0 && (
-                areas.length === 0 ? (
-                  <Alert
-                    type="info"
-                    title={t("areasSection.noAreasBannerTitle")}
-                    message={t("areasSection.noAreasBannerMessage")}
-                    action={
-                      canCreateAreas && projectStatus !== "archived" && projectStatus !== "completed"
-                        ? { label: t("areasSection.createArea"), onClick: () => setIsCreateModalOpen(true) }
-                        : undefined
-                    }
-                  />
-                ) : (
+            areas.length === 0 ? (
+              <Alert
+                type="info"
+                title={t("areasSection.noAreasBannerTitle")}
+                message={t("areasSection.noAreasBannerMessage")}
+                action={
+                  canCreateAreas && projectStatus !== "archived" && projectStatus !== "completed"
+                    ? { label: t("areasSection.createArea"), onClick: () => setIsCreateModalOpen(true) }
+                    : undefined
+                }
+              />
+            ) : areasViewMode === "area" ? (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                  {filteredAreas.map((area) => (
+                    <AreaCard
+                      key={area.identifier}
+                      area={mapAreaToCardData(area)}
+                      projectId={projectId}
+                    />
+                  ))}
+                </div>
+                {filteredAreas.length === 0 && (
                   <div className="text-center py-12 text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 rounded-xl shadow-lg">
                     {t("areasSection.noMatchingAreas")}
                   </div>
-                )
-              )}
-            </>
+                )}
+              </>
+            ) : (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                  {decksForView.map(({ deck, areas: deckAreas }) => (
+                    <DeckCard
+                      key={deck.identifier}
+                      deck={deck}
+                      areas={deckAreas}
+                      projectId={projectId}
+                    />
+                  ))}
+                </div>
+                {decksForView.length === 0 && (
+                  <div className="text-center py-12 text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 rounded-xl shadow-lg">
+                    {t("areasSection.noMatchingAreas")}
+                  </div>
+                )}
+              </>
+            )
           )}
         </section>
         )
