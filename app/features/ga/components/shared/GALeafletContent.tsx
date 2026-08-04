@@ -17,6 +17,7 @@ import { FitBounds, getFullImageBounds, getSafeMaxZoom } from "@/lib/utils/gaLea
 import PinMarker from "./PinMarker";
 import SmoothModifierZoom, {
   SMOOTH_MAP_DEFAULTS,
+  TouchPanGate,
 } from "./SmoothModifierZoom";
 
 // Fix Leaflet default marker icon issue in Next.js
@@ -196,6 +197,7 @@ export default function GALeafletContent({
             before the second fit. */}
         <FitBounds bounds={bounds} delayMs={100} lockMinZoomToFit />
         <SmoothModifierZoom />
+        <TouchPanGate />
 
         {/* GA Image as overlay */}
         <ImageOverlay

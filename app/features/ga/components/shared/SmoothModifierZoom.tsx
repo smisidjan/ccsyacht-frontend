@@ -52,6 +52,70 @@ export default function SmoothModifierZoom() {
   return null;
 }
 
+/**
+ * Touch equivalent of `SmoothModifierZoom`'s modifier rule: a single
+ * finger doesn't pan the map, so the surrounding page can still be
+ * scrolled through it; two fingers pan/pinch-zoom as normal. Without
+ * this, a map that fills (or nearly fills) the viewport claims every
+ * single-finger drag for its own panning, and on a touchscreen —
+ * unlike a mouse — there's no separate wheel event to fall back to,
+ * so there's no way left to scroll the page past it at all.
+ *
+ * Only touches `map.dragging`, and only in response to touch events —
+ * mouse-drag panning (desktop) is untouched. Leaflet's own pinch-zoom
+ * handler (`touchZoom`) is a separate handler that doesn't depend on
+ * `dragging`, so disabling it here doesn't affect two-finger
+ * pinch/pan at all, only whether a *single* finger can start a pan.
+ *
+ * Registered on the capture phase so it disables dragging before
+ * Leaflet's own touchstart handler (which starts single-finger pan
+ * tracking) runs for the same event — otherwise Leaflet would already
+ * have claimed the gesture by the time we react to it.
+ *
+ * Drop in as a child of any `<MapContainer>` that's embedded in a
+ * scrollable page (the main GA tab, deck/side-profile preview panels)
+ * — not needed inside modals with their own bounded canvas, where
+ * losing single-finger pan isn't worth the tradeoff. */
+export function TouchPanGate() {
+  const map = useMap();
+  useEffect(() => {
+    const container = map.getContainer();
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.touches.length === 1) {
+        map.dragging.disable();
+      }
+    };
+    const onTouchEnd = (e: TouchEvent) => {
+      if (e.touches.length === 0) {
+        map.dragging.enable();
+      }
+    };
+    container.addEventListener("touchstart", onTouchStart, {
+      passive: true,
+      capture: true,
+    });
+    container.addEventListener("touchend", onTouchEnd, {
+      passive: true,
+      capture: true,
+    });
+    container.addEventListener("touchcancel", onTouchEnd, {
+      passive: true,
+      capture: true,
+    });
+    return () => {
+      container.removeEventListener("touchstart", onTouchStart, {
+        capture: true,
+      });
+      container.removeEventListener("touchend", onTouchEnd, { capture: true });
+      container.removeEventListener("touchcancel", onTouchEnd, {
+        capture: true,
+      });
+      map.dragging.enable();
+    };
+  }, [map]);
+  return null;
+}
+
 /** Spread onto every `<MapContainer>` paired with
  *  `<SmoothModifierZoom />` so the wheel + zoom behaviour is
  *  consistent. Callers can override individual props as needed. */
