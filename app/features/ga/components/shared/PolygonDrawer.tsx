@@ -23,6 +23,24 @@ import SmoothModifierZoom, {
   SMOOTH_MAP_DEFAULTS,
 } from "./SmoothModifierZoom";
 
+/** Every drag-style interaction here (vertex move, rectangle draw /
+ *  move / resize) is driven by native Pointer Events
+ *  (`pointerdown`/`pointermove`/`pointerup`/`pointercancel`) attached
+ *  directly to the map container, instead of Leaflet's own
+ *  `mousedown`/`mousemove`/`mouseup` map events or per-marker
+ *  `eventHandlers`. On a touchscreen, browsers only synthesize a
+ *  same-tick `mousedown`+`mouseup`+`click` burst *after* the finger
+ *  lifts — there's no synthetic `mousemove` reflecting the actual
+ *  drag, so anything built on mouse events silently no-ops on touch
+ *  (you can tap to add a vertex, but dragging one, or drawing a
+ *  rectangle, does nothing). Pointer Events fire in real time for
+ *  mouse, touch, and pen alike (iOS Safari 13+), so building the drag
+ *  logic on them instead makes it work identically everywhere.
+ *  Because of that, vertex/corner hit-testing is done manually here
+ *  (project each candidate point to a screen position via
+ *  `map.latLngToContainerPoint` and compare to the pointerdown
+ *  position) rather than via Leaflet's per-marker click regions. */
+
 /** Minimum vertices any polygon must have. Backend rejects fewer, and
  *  the Shift+click delete helper enforces it so the user can't break a
  *  closed polygon. */
@@ -33,6 +51,14 @@ const FILL_COLOR = "#2563eb";
 const FILL_OPACITY_OPEN = 0.15;
 const FILL_OPACITY_CLOSED = 0.25;
 const VERTEX_COLOR = "#1d4ed8";
+
+/** Hit-test radius (screen px) used to resolve a `pointerdown` onto a
+ *  nearby vertex or rectangle-corner handle — generous enough for a
+ *  fingertip, well past the visual radius of the small circle markers
+ *  themselves. See the module doc comment for why this is done via
+ *  manual hit-testing on the map container rather than per-marker
+ *  event handlers. */
+const HANDLE_HIT_RADIUS_PX = 20;
 
 /** Pixels from the map container's edge that trigger auto-pan while
  *  dragging a vertex/corner/rectangle. */
@@ -54,7 +80,9 @@ const EDGE_PAN_MAX_SPEED_PX = 14;
  *  Leaflet's own `mousemove` event — the latter only fires with the
  *  pointer inside the map pane, but during a fast drag the browser can
  *  report a position slightly outside it (or leaflet's dragging=false
- *  state can miss frames), and we'd rather keep panning than stall. */
+ *  state can miss frames), and we'd rather keep panning than stall.
+ *  Listens for `pointermove` (not `mousemove`) so this also works
+ *  during a touch drag — see the module doc comment. */
 function useEdgeAutoPan(
   map: L.Map,
   active: boolean,
@@ -70,11 +98,11 @@ function useEdgeAutoPan(
     if (!active) return;
 
     const container = map.getContainer();
-    const onMove = (e: MouseEvent) => {
+    const onMove = (e: PointerEvent) => {
       const rect = container.getBoundingClientRect();
       pointerRef.current = { x: e.clientX - rect.left, y: e.clientY - rect.top };
     };
-    document.addEventListener("mousemove", onMove);
+    document.addEventListener("pointermove", onMove);
 
     let raf = 0;
     const tick = () => {
@@ -106,7 +134,7 @@ function useEdgeAutoPan(
     raf = requestAnimationFrame(tick);
 
     return () => {
-      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("pointermove", onMove);
       cancelAnimationFrame(raf);
       pointerRef.current = null;
     };
@@ -285,48 +313,101 @@ function MapInteraction({
   };
 
   const map = useMapEvents({
-    mousedown(e) {
-      if (drawModeRef.current !== "rectangle") return;
-      // If a corner handle already set up a resize action, leave it
-      // alone — the handle's own mousedown ran first and stopPropped.
-      if (actionRef.current?.kind === "resize") return;
+    // Tap-to-add-vertex stays on Leaflet's `click` — a plain tap
+    // reliably synthesizes a `click` on every browser, unlike drag
+    // gestures (see the module doc comment). Only the drag-driven
+    // rectangle interactions below move to Pointer Events.
+    click(e) {
+      if (suppressNextClickRef.current) {
+        suppressNextClickRef.current = false;
+        return;
+      }
+      if (drawModeRef.current === "polygon" && !isClosedRef.current) {
+        onAddVertex(e.latlng);
+      }
+    },
+  });
 
-      const p = latLngToNormHelper(e.latlng, imageWidth, imageHeight);
-      const poly = polygonRef.current;
-      const bb =
-        isClosedRef.current && poly.length >= MIN_VERTICES
-          ? polygonBbox(poly)
-          : null;
-      const original: Bbox | null = bb
-        ? {
-            x1: bb.bbox_x,
-            y1: bb.bbox_y,
-            x2: bb.bbox_x + bb.bbox_width,
-            y2: bb.bbox_y + bb.bbox_height,
+  // Keeps `currentBbox` available to the pointerdown handler below
+  // without retriggering the effect that registers it on every
+  // render (the handler reads through the ref instead).
+  const currentBboxRef = useRef(currentBbox);
+  useEffect(() => {
+    currentBboxRef.current = currentBbox;
+  });
+
+  useEdgeAutoPan(
+    map,
+    drawMode === "rectangle" && action !== null,
+    applyPointerLatLng
+  );
+
+  // Rectangle draw / move / resize, driven by Pointer Events on the
+  // map container instead of Leaflet's mouse events — see the module
+  // doc comment for why. Corner-resize hit-testing happens here too
+  // (projecting each corner to a screen position via
+  // `latLngToContainerPoint` and checking proximity) rather than via
+  // `RectangleCorners`' own handlers, so there's one interaction
+  // surface instead of two racing to claim the same pointerdown.
+  useEffect(() => {
+    if (drawMode !== "rectangle") return;
+    const container = map.getContainer();
+
+    const toContainerPoint = (p: AreaPolygonPoint) =>
+      map.latLngToContainerPoint(normToLatLngHelper(p, imageWidth, imageHeight));
+
+    const handlePointerDown = (e: PointerEvent) => {
+      const rect = container.getBoundingClientRect();
+      const screenPoint = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+      const bbox = currentBboxRef.current;
+
+      if (bbox) {
+        const corners: { corner: Corner; point: AreaPolygonPoint }[] = [
+          { corner: "nw", point: { x: bbox.x1, y: bbox.y1 } },
+          { corner: "ne", point: { x: bbox.x2, y: bbox.y1 } },
+          { corner: "sw", point: { x: bbox.x1, y: bbox.y2 } },
+          { corner: "se", point: { x: bbox.x2, y: bbox.y2 } },
+        ];
+        for (const c of corners) {
+          const cp = toContainerPoint(c.point);
+          const dx = cp.x - screenPoint.x;
+          const dy = cp.y - screenPoint.y;
+          if (Math.sqrt(dx * dx + dy * dy) <= HANDLE_HIT_RADIUS_PX) {
+            const next = { kind: "resize" as const, corner: c.corner, original: bbox };
+            actionRef.current = next;
+            setAction(next);
+            setPreview(bbox);
+            map.dragging.disable();
+            e.preventDefault();
+            return;
           }
-        : null;
+        }
+      }
 
-      if (original && isInside(p, original)) {
-        setAction({
-          kind: "move",
-          offsetX: p.x - original.x1,
-          offsetY: p.y - original.y1,
-          original,
-        });
-        setPreview(original);
+      const latlng = map.containerPointToLatLng(L.point(screenPoint.x, screenPoint.y));
+      const p = latLngToNormHelper(latlng, imageWidth, imageHeight);
+      if (bbox && isInside(p, bbox)) {
+        setAction({ kind: "move", offsetX: p.x - bbox.x1, offsetY: p.y - bbox.y1, original: bbox });
+        setPreview(bbox);
       } else {
         setAction({ kind: "draw", startX: p.x, startY: p.y });
         setPreview({ x1: p.x, y1: p.y, x2: p.x, y2: p.y });
       }
       map.dragging.disable();
-    },
-    mousemove(e) {
-      if (drawModeRef.current !== "rectangle") return;
+      e.preventDefault();
+    };
+
+    const handlePointerMove = (e: PointerEvent) => {
       if (!actionRef.current) return;
-      applyPointerLatLng(e.latlng);
-    },
-    mouseup() {
-      if (drawModeRef.current !== "rectangle") return;
+      const rect = container.getBoundingClientRect();
+      const latlng = map.containerPointToLatLng(
+        L.point(e.clientX - rect.left, e.clientY - rect.top)
+      );
+      applyPointerLatLng(latlng);
+    };
+
+    const handlePointerUp = () => {
+      if (!actionRef.current) return;
       const p = previewRef.current;
       if (p) {
         const w = Math.abs(p.x2 - p.x1);
@@ -339,36 +420,20 @@ function MapInteraction({
       setAction(null);
       setPreview(null);
       map.dragging.enable();
-    },
-    click(e) {
-      if (suppressNextClickRef.current) {
-        suppressNextClickRef.current = false;
-        return;
-      }
-      if (drawModeRef.current === "polygon" && !isClosedRef.current) {
-        onAddVertex(e.latlng);
-      }
-    },
-  });
+    };
 
-  useEdgeAutoPan(
-    map,
-    drawMode === "rectangle" && action !== null,
-    applyPointerLatLng
-  );
-
-  const startResize = (corner: Corner, original: Bbox) => {
-    const next = { kind: "resize" as const, corner, original };
-    // Update the ref synchronously so the map's mousedown (which
-    // fires right after the corner's, in the same event cycle) sees
-    // the resize action already in flight and bails. Waiting for
-    // React to propagate `setAction` would leave a one-tick window
-    // where the map starts a "move" and overwrites the resize.
-    actionRef.current = next;
-    setAction(next);
-    setPreview(original);
-    map.dragging.disable();
-  };
+    container.addEventListener("pointerdown", handlePointerDown, { passive: false });
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp);
+    window.addEventListener("pointercancel", handlePointerUp);
+    return () => {
+      container.removeEventListener("pointerdown", handlePointerDown);
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+      window.removeEventListener("pointercancel", handlePointerUp);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [map, drawMode, imageWidth, imageHeight]);
 
   // The rectangle shown on the canvas: live preview during an active
   // interaction, otherwise the committed bbox (when one exists).
@@ -402,37 +467,35 @@ function MapInteraction({
 
       {/* Corner handles — only when a rectangle is committed (not
           mid-draw / mid-move) so they don't dance around during
-          interaction. Their own mousedown sets the resize action
-          before the map's mousedown fires. */}
+          interaction — hit-testing for the actual resize drag happens
+          in the pointerdown handler above. */}
       {drawMode === "rectangle" && currentBbox && !action && (
         <RectangleCorners
           bbox={currentBbox}
           imageWidth={imageWidth}
           imageHeight={imageHeight}
           color={strokeColor}
-          onStartResize={startResize}
         />
       )}
     </>
   );
 }
 
-/** Four draggable circles at the corners of the committed rectangle.
- *  Each handle absorbs its mousedown (via Leaflet's `stopPropagation`)
- *  so the map's mousedown handler doesn't treat it as the start of a
- *  draw / move. */
+/** Four circles marking the corners of the committed rectangle —
+ *  purely visual. The actual resize-drag hit-testing lives in
+ *  `MapInteraction`'s pointerdown handler above (one interaction
+ *  surface for the whole rectangle tool, instead of these racing a
+ *  separate handler on the map itself for the same pointerdown). */
 function RectangleCorners({
   bbox,
   imageWidth,
   imageHeight,
   color,
-  onStartResize,
 }: {
   bbox: Bbox;
   imageWidth: number;
   imageHeight: number;
   color: string;
-  onStartResize: (corner: Corner, original: Bbox) => void;
 }) {
   const corners: { corner: Corner; pos: [number, number] }[] = [
     { corner: "nw", pos: [bbox.y1 * imageHeight, bbox.x1 * imageWidth] },
@@ -453,13 +516,7 @@ function RectangleCorners({
             fillOpacity: 1,
             weight: 2,
           }}
-          eventHandlers={{
-            mousedown: (e) => {
-              L.DomEvent.stopPropagation(e.originalEvent);
-              L.DomEvent.preventDefault(e.originalEvent);
-              onStartResize(c.corner, bbox);
-            },
-          }}
+          interactive={false}
         />
       ))}
     </>
@@ -1000,9 +1057,21 @@ function VertexHandles({
   const map = useMap();
   // Tracked so the edge-auto-pan loop knows which vertex to keep
   // updating while the pointer sits near the container edge — the
-  // drag itself is otherwise driven entirely by map-level listeners
-  // registered in `mousedown` below, outside React's render cycle.
+  // drag itself is otherwise driven entirely by the pointerdown/move/
+  // up handlers below, outside React's render cycle.
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
+  const draggingIndexRef = useRef<number | null>(null);
+
+  // Read fresh inside the pointer handlers (registered once, not
+  // per-render) without retriggering the registration effect.
+  const polygonLatLngsRef = useRef(polygonLatLngs);
+  const onVertexDragRef = useRef(onVertexDrag);
+  const onVertexDragEndRef = useRef(onVertexDragEnd);
+  useEffect(() => {
+    polygonLatLngsRef.current = polygonLatLngs;
+    onVertexDragRef.current = onVertexDrag;
+    onVertexDragEndRef.current = onVertexDragEnd;
+  });
 
   // `useEdgeAutoPan` re-reads its callback prop on every pan tick (via
   // its own ref), so this closure — recreated each render — always
@@ -1012,6 +1081,67 @@ function VertexHandles({
       onVertexDrag(draggingIndex, latlng);
     }
   });
+
+  // Vertex-drag start is resolved via manual hit-testing on the map
+  // container instead of each `CircleMarker`'s own `mousedown` — see
+  // the module doc comment for why drag gestures need Pointer Events
+  // rather than Leaflet's mouse events. Tap-to-select-for-delete
+  // (shift-click) stays on the marker's own `click` handler below,
+  // since a plain tap is unaffected by this.
+  useEffect(() => {
+    const container = map.getContainer();
+
+    const handlePointerDown = (e: PointerEvent) => {
+      const rect = container.getBoundingClientRect();
+      const screenPoint = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+      let closestIndex: number | null = null;
+      let closestDist = HANDLE_HIT_RADIUS_PX;
+      polygonLatLngsRef.current.forEach((latlng, i) => {
+        const cp = map.latLngToContainerPoint(latlng);
+        const dx = cp.x - screenPoint.x;
+        const dy = cp.y - screenPoint.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist <= closestDist) {
+          closestDist = dist;
+          closestIndex = i;
+        }
+      });
+      if (closestIndex === null) return;
+
+      map.dragging.disable();
+      draggingIndexRef.current = closestIndex;
+      setDraggingIndex(closestIndex);
+      e.preventDefault();
+    };
+
+    const handlePointerMove = (e: PointerEvent) => {
+      if (draggingIndexRef.current === null) return;
+      const rect = container.getBoundingClientRect();
+      const latlng = map.containerPointToLatLng(
+        L.point(e.clientX - rect.left, e.clientY - rect.top)
+      );
+      onVertexDragRef.current(draggingIndexRef.current, latlng);
+    };
+
+    const handlePointerUp = () => {
+      if (draggingIndexRef.current === null) return;
+      map.dragging.enable();
+      draggingIndexRef.current = null;
+      setDraggingIndex(null);
+      onVertexDragEndRef.current();
+    };
+
+    container.addEventListener("pointerdown", handlePointerDown, { passive: false });
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp);
+    window.addEventListener("pointercancel", handlePointerUp);
+    return () => {
+      container.removeEventListener("pointerdown", handlePointerDown);
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+      window.removeEventListener("pointercancel", handlePointerUp);
+    };
+  }, [map]);
 
   return (
     <>
@@ -1032,21 +1162,6 @@ function VertexHandles({
                 i,
                 (e.originalEvent as MouseEvent | undefined)?.shiftKey ?? false
               ),
-            mousedown: () => {
-              map.dragging.disable();
-              setDraggingIndex(i);
-              const onMove = (ev: L.LeafletMouseEvent) =>
-                onVertexDrag(i, ev.latlng);
-              const onUp = () => {
-                map.off("mousemove", onMove);
-                map.off("mouseup", onUp);
-                map.dragging.enable();
-                setDraggingIndex(null);
-                onVertexDragEnd();
-              };
-              map.on("mousemove", onMove);
-              map.on("mouseup", onUp);
-            },
           }}
         />
       ))}
