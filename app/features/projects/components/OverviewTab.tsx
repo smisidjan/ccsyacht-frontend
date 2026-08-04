@@ -13,6 +13,7 @@ import { KickoffSchedulingModal, KickoffScheduledCard } from "@/app/features/kic
 import { CreateDeckModal, DeckCard } from "@/app/features/decks";
 import { useAreas, setupTasksApi } from "@/lib/api";
 import { useCurrentUserContext } from "@/app/context/CurrentUserContext";
+import { useProjectMembersFromContext } from "@/app/context/ProjectContext";
 import { useDecks } from "@/lib/api/decks";
 import { useProjectStages } from "@/lib/api/stages";
 import { useDocumentTypes } from "@/lib/api/document-types";
@@ -45,6 +46,7 @@ export default function OverviewTab({
   const { hasPermission } = usePermission();
   const { showToast } = useToast();
   const { currentUser } = useCurrentUserContext();
+  const { data: projectMembersList } = useProjectMembersFromContext();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isKickoffModalOpen, setIsKickoffModalOpen] = useState(false);
   const [isDeckModalOpen, setIsDeckModalOpen] = useState(false);
@@ -501,6 +503,7 @@ export default function OverviewTab({
                   projectId={projectId}
                   documentTypes={documentTypes || undefined}
                   allTasks={visibleSetupTasks}
+                  membersCount={projectMembersList?.length}
                   onDefineDecks={() => {
                     setIsDeckEditMode(false);
                     setIsDeckModalOpen(true);
@@ -652,35 +655,15 @@ export default function OverviewTab({
           )}
 
           {!loading && !error && areas && (
-            areas.length === 0 ? (
-              <Alert
-                type="info"
-                title={t("areasSection.noAreasBannerTitle")}
-                message={t("areasSection.noAreasBannerMessage")}
-                action={
-                  canCreateAreas && projectStatus !== "archived" && projectStatus !== "completed"
-                    ? { label: t("areasSection.createArea"), onClick: () => setIsCreateModalOpen(true) }
-                    : undefined
-                }
-              />
-            ) : areasViewMode === "area" ? (
-              <>
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                  {filteredAreas.map((area) => (
-                    <AreaCard
-                      key={area.identifier}
-                      area={mapAreaToCardData(area)}
-                      projectId={projectId}
-                    />
-                  ))}
-                </div>
-                {filteredAreas.length === 0 && (
-                  <div className="text-center py-12 text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 rounded-xl shadow-lg">
-                    {t("areasSection.noMatchingAreas")}
-                  </div>
-                )}
-              </>
-            ) : (
+            // Deck view checked first: it's about deck structure, not
+            // areas specifically, so it renders its own grid (each
+            // DeckCard showing "No areas on this deck yet" for empty
+            // ones) even when the project has zero areas overall —
+            // decks created via "Manage Decks" should stay visible.
+            // The "create your first area" banner only replaces the
+            // grid in Area view, where an empty project genuinely has
+            // nothing else to show.
+            areasViewMode === "deck" ? (
               <>
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                   {decksForView.map(({ deck, areas: deckAreas }) => (
@@ -693,6 +676,36 @@ export default function OverviewTab({
                   ))}
                 </div>
                 {decksForView.length === 0 && (
+                  <div className="text-center py-12 text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 rounded-xl shadow-lg">
+                    {decks && decks.length === 0
+                      ? t("areasSection.noDecksYet")
+                      : t("areasSection.noMatchingAreas")}
+                  </div>
+                )}
+              </>
+            ) : areas.length === 0 ? (
+              <Alert
+                type="info"
+                title={t("areasSection.noAreasBannerTitle")}
+                message={t("areasSection.noAreasBannerMessage")}
+                action={
+                  canCreateAreas && projectStatus !== "archived" && projectStatus !== "completed"
+                    ? { label: t("areasSection.createArea"), onClick: () => setIsCreateModalOpen(true) }
+                    : undefined
+                }
+              />
+            ) : (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                  {filteredAreas.map((area) => (
+                    <AreaCard
+                      key={area.identifier}
+                      area={mapAreaToCardData(area)}
+                      projectId={projectId}
+                    />
+                  ))}
+                </div>
+                {filteredAreas.length === 0 && (
                   <div className="text-center py-12 text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 rounded-xl shadow-lg">
                     {t("areasSection.noMatchingAreas")}
                   </div>

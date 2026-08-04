@@ -406,6 +406,7 @@
       "noAreasBannerTitle": "Begin met het aanmaken van je eerste gebied",
       "noAreasBannerMessage": "Gebieden bepalen waar stages en punchlist-items thuishoren. Je hebt minimaal één gebied met een stage nodig voordat je pins kunt toevoegen op de General Arrangement of punchlist-werk kunt bijhouden.",
       "noMatchingAreas": "Geen gebieden komen overeen met je zoekopdracht of filter",
+      "noDecksYet": "Er zijn nog geen decks aangemaakt",
       "createArea": "Gebied Aanmaken",
       "loadError": "Kan gebieden niet laden",
       "completeSetupFirst": "Voltooi alle setup taken voordat je gebieden aanmaakt"

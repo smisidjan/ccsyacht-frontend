@@ -23,6 +23,12 @@ interface SetupTaskCardProps {
   projectId: string;
   documentTypes?: DocumentType[];
   allTasks?: SetupTask[];
+  /** Project member count from the shared project context (already
+   *  fetched once at the layout level) — used to correct the
+   *  "add_members" task's top badge, which otherwise trusts
+   *  `task.isComplete` even when the project still only has its
+   *  creator and nobody else. Omit to fall back to the backend flag. */
+  membersCount?: number;
   onDefineDecks?: () => void;
   onViewDecks?: () => void;
   onDefineAreas?: () => void;
@@ -118,12 +124,18 @@ function LockedRow({ icon, label, statusLabel }: { icon: React.ReactNode; label:
   );
 }
 
+// A project always has its creator as a member, so requiring just
+// "more than zero" members made this look complete before anyone was
+// ever actually invited. Two is the real floor: the creator plus at
+// least one other person.
+const MIN_PROJECT_MEMBERS = 2;
+
 function AddMembersAndSignersRows({ projectId }: { projectId: string }) {
   const t = useTranslations("projectDetail.setupTasks");
   const { data: members } = useProjectMembers(projectId);
   const { data: signers } = useProjectSigners(projectId);
 
-  const membersCompleted = (members?.length || 0) > 0;
+  const membersCompleted = (members?.length || 0) >= MIN_PROJECT_MEMBERS;
   const signersCompleted = (signers?.length || 0) > 0;
 
   return (
@@ -134,7 +146,7 @@ function AddMembersAndSignersRows({ projectId }: { projectId: string }) {
         statusLabel={membersCompleted ? t("completed") : t("pending")}
         statusVariant={membersCompleted ? "green" : "gray"}
         actionLabel={membersCompleted ? undefined : t("addMembers.action")}
-        actionHref={membersCompleted ? undefined : "#members"}
+        actionHref={membersCompleted ? undefined : "#settings"}
         completed={membersCompleted}
       />
       <SubRow
@@ -143,10 +155,33 @@ function AddMembersAndSignersRows({ projectId }: { projectId: string }) {
         statusLabel={signersCompleted ? t("completed") : t("pending")}
         statusVariant={signersCompleted ? "green" : "gray"}
         actionLabel={signersCompleted ? undefined : t("addSigners.action")}
-        actionHref={signersCompleted ? undefined : "#signers"}
+        actionHref={signersCompleted ? undefined : "#settings"}
         completed={signersCompleted}
       />
     </>
+  );
+}
+
+// Standalone "add_members" task (projects that don't combine it with
+// signers). Same `MIN_PROJECT_MEMBERS` floor as the combined variant
+// above — driven by the real member list rather than `task.isComplete`,
+// since that backend flag has the same "creator counts as a member"
+// gap.
+function AddMembersRow({ projectId }: { projectId: string }) {
+  const t = useTranslations("projectDetail.setupTasks");
+  const { data: members } = useProjectMembers(projectId);
+  const membersCompleted = (members?.length || 0) >= MIN_PROJECT_MEMBERS;
+
+  return (
+    <SubRow
+      icon={<UsersIcon className="w-4 h-4" />}
+      label={t("addMembers.title")}
+      statusLabel={membersCompleted ? t("completed") : t("pending")}
+      statusVariant={membersCompleted ? "green" : "gray"}
+      actionLabel={membersCompleted ? undefined : t("addMembers.action")}
+      actionHref={membersCompleted ? undefined : "#settings"}
+      completed={membersCompleted}
+    />
   );
 }
 
@@ -163,14 +198,22 @@ function taskTypeToCamelCase(taskType: SetupTaskType): string {
   }
 }
 
-export default function SetupTaskCard({ task, projectId, documentTypes, allTasks: _allTasks, onDefineDecks, onViewDecks, onDefineAreas }: SetupTaskCardProps) {
+export default function SetupTaskCard({ task, projectId, documentTypes, allTasks: _allTasks, membersCount, onDefineDecks, onViewDecks, onDefineAreas }: SetupTaskCardProps) {
   const t = useTranslations("projectDetail.setupTasks");
 
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
   const { ref: descriptionRef, isTruncated: isDescriptionTruncated } =
     useIsTruncated<HTMLParagraphElement>(isDescriptionExpanded);
 
-  const isCompleted = task.isComplete || task.actionStatus === "completed";
+  // The standalone "add_members" task's badge otherwise trusts
+  // `task.isComplete`, which the backend can flag true from just the
+  // creator being "a member" — override it with the real count when
+  // the caller supplied one (see `AddMembersRow` for the matching
+  // sub-row logic).
+  const isCompleted =
+    task.additionalType === "add_members" && membersCount !== undefined
+      ? membersCount >= MIN_PROJECT_MEMBERS
+      : task.isComplete || task.actionStatus === "completed";
   const translationKey = taskTypeToCamelCase(task.additionalType);
 
   const badge = isCompleted
@@ -271,6 +314,8 @@ export default function SetupTaskCard({ task, projectId, documentTypes, allTasks
         return <AddMembersAndSignersRows projectId={projectId} />;
 
       case "add_members":
+        return <AddMembersRow projectId={projectId} />;
+
       case "add_signers":
         return (
           <SubRow

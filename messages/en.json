@@ -406,6 +406,7 @@
       "noAreasBannerTitle": "Get started by creating your first area",
       "noAreasBannerMessage": "Areas define where stages and punch list items live. You need at least one area with a stage before you can add pins on the General Arrangement or track punch list work.",
       "noMatchingAreas": "No areas match your search or filter",
+      "noDecksYet": "No decks have been created yet",
       "createArea": "Create Area",
       "loadError": "Failed to load areas",
       "completeSetupFirst": "Complete all setup tasks before creating areas"
