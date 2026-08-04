@@ -189,7 +189,11 @@ export default function ProjectsPage() {
           title={t("title")}
           subtitle={t("subtitle")}
           action={canCreateProject && (
-            <Button onClick={() => setIsCreateModalOpen(true)}>
+            <Button
+              size="sm"
+              className="whitespace-nowrap sm:py-3 sm:px-5 sm:text-base"
+              onClick={() => setIsCreateModalOpen(true)}
+            >
               <PlusIcon className="w-5 h-5" />
               {t("newProject")}
             </Button>

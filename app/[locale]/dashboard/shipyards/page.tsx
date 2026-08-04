@@ -94,7 +94,11 @@ export default function ShipyardsPage() {
           title={t("title")}
           subtitle={t("subtitle")}
           action={canCreateShipyard && (
-            <Button onClick={handleCreate}>
+            <Button
+              size="sm"
+              className="whitespace-nowrap sm:py-3 sm:px-5 sm:text-base"
+              onClick={handleCreate}
+            >
               <PlusIcon className="w-5 h-5" />
               {t("createShipyard")}
             </Button>

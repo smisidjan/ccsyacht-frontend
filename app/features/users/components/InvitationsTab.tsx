@@ -258,7 +258,11 @@ export default function InvitationsTab({
               </div>
             </div>
           </button>
-          <Button onClick={onInviteUser}>
+          <Button
+            size="sm"
+            className="flex-shrink-0 whitespace-nowrap sm:py-3 sm:px-5 sm:text-base"
+            onClick={onInviteUser}
+          >
             <PlusIcon className="w-4 h-4" />
             {t("inviteUser")}
           </Button>
