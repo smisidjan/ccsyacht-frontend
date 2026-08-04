@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ComponentType, type SVGProps } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ComponentType, type SVGProps } from "react";
 import {
   AdjustmentsHorizontalIcon,
   MagnifyingGlassIcon,
@@ -78,6 +78,18 @@ export default function FilterPopover({
   );
   const [query, setQuery] = useState("");
   const wrapperRef = useRef<HTMLDivElement | null>(null);
+  const buttonRef = useRef<HTMLButtonElement | null>(null);
+
+  // On mobile the trigger can sit anywhere in its toolbar (right-aligned
+  // on the projects/tasks pages, left-aligned on the logbook tab), so a
+  // fixed left/right anchor relative to the trigger overflows the
+  // screen in one direction or the other depending on which page it's
+  // on. Below the `sm` breakpoint we instead measure the trigger's
+  // position and render the panel `fixed` with viewport-relative
+  // margins, so it always fits regardless of where the button lives.
+  // At `sm` and up there's enough room and it reverts to the simpler
+  // anchored-to-trigger positioning.
+  const [mobileMenuTop, setMobileMenuTop] = useState<number | null>(null);
 
   // Dismiss on outside click / Esc. Lightweight on purpose — pulling
   // in a portal library for one popover doesn't pay off here.
@@ -95,6 +107,17 @@ export default function FilterPopover({
       document.removeEventListener("mousedown", handleClick);
       document.removeEventListener("keydown", handleKey);
     };
+  }, [open]);
+
+  useLayoutEffect(() => {
+    if (!open) {
+      setMobileMenuTop(null);
+      return;
+    }
+    const isMobile = window.matchMedia("(max-width: 639px)").matches;
+    if (!isMobile) return;
+    const rect = buttonRef.current?.getBoundingClientRect();
+    if (rect) setMobileMenuTop(rect.bottom + 8);
   }, [open]);
 
   // Resolved section the right pane shows. Falls back to the first
@@ -123,6 +146,7 @@ export default function FilterPopover({
   return (
     <div className="relative" ref={wrapperRef}>
       <button
+        ref={buttonRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
         className={`inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-md border transition-colors ${
@@ -144,8 +168,23 @@ export default function FilterPopover({
       {open && activeSection && (
         // High z-index so the popover sits above the GA Leaflet map
         // (which uses its own stacking context with values up to 1000
-        // for its panes / controls).
-        <div className="absolute left-0 mt-2 z-[1100] w-[520px] max-w-[calc(100vw-2rem)] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl overflow-hidden">
+        // for its panes / controls). Below `sm` the trigger can sit
+        // anywhere in its toolbar (right-aligned on some pages,
+        // left-aligned on others), so anchoring to the trigger's edge
+        // overflows the screen in one direction or the other depending
+        // on the page. `mobileMenuTop` (set on open, see above) makes
+        // the panel `fixed` with viewport-relative side margins instead
+        // — it always fits regardless of where the button lives. At
+        // `sm` and up there's enough room and it reverts to the
+        // simpler anchored-to-trigger positioning.
+        <div
+          className={`z-[1100] w-[520px] max-w-[calc(100vw-2rem)] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl overflow-hidden ${
+            mobileMenuTop != null
+              ? "fixed left-4 right-4"
+              : "absolute left-0 mt-2"
+          } sm:absolute sm:left-0 sm:right-auto sm:mt-2`}
+          style={mobileMenuTop != null ? { top: mobileMenuTop } : undefined}
+        >
           <div className="flex">
             {/* Category rail — Jira's filter popover has the same
                 left-rail / right-pane split. */}
