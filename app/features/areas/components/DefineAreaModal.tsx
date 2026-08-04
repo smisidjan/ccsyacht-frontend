@@ -930,6 +930,7 @@ export default function DefineAreaModal({
                 imageWidth={ga!.imageWidth!}
                 imageHeight={ga!.imageHeight!}
                 deckBounds={deckBounds ?? undefined}
+                isVisible={activeMobileTab === "ga"}
                 deckOutlineColor={activeOutlineColor}
                 existingAreas={existingAreasForDrawer}
                 existingPins={existingPinsForDrawer}

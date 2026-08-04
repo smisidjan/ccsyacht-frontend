@@ -64,24 +64,46 @@ interface AreaPolygonDrawerProps {
   canUndo: boolean;
   canRedo: boolean;
   onReset: () => void;
+  /** Whether the drawer's container is actually visible right now.
+   *  Defaults to `true` — callers that never hide this component (e.g.
+   *  a fixed-layout viewer) don't need to think about it. The
+   *  area-creation modal's mobile tab switcher passes `false` while
+   *  its "GA" pane is behind a `display:none` tab, so `FitToDeck` can
+   *  redo the deck fit once it becomes visible again — see the
+   *  `FitToDeck` doc comment for why. */
+  isVisible?: boolean;
 }
 
 /** Fit-to-deck on first mount and on deck switch, but never on parent
  *  re-renders that produce a fresh `DeckBounds` object with the same
  *  values — that would yank the map back and steal the user's pan/zoom
  *  mid-edit. Tracks the bbox values themselves rather than object
- *  identity. */
+ *  identity.
+ *
+ *  `visible` additionally covers the area-creation modal's mobile tab
+ *  switcher: on mobile the map mounts as soon as a deck is picked on
+ *  the "Details" tab, while the "GA" pane still sits behind a
+ *  `display:none` tab. Leaflet measures a 0×0 container at that point
+ *  and never re-checks on its own, so switching back to the GA tab
+ *  flips the CSS but leaves the fit wrong. Re-running the fit once
+ *  `visible` flips true fixes it without polling the DOM (a
+ *  ResizeObserver here previously caused a resize/measure loop that
+ *  crashed the tab on a real device — this is deliberately just a
+ *  plain effect on a boolean prop instead). */
 function FitToDeck({
   deckBounds,
   imageWidth,
   imageHeight,
+  visible,
 }: {
   deckBounds: DeckBounds;
   imageWidth: number;
   imageHeight: number;
+  visible: boolean;
 }) {
   const map = useMap();
   const lastFitKey = useRef<string>("");
+  const wasVisible = useRef(visible);
 
   const runFit = (fast: boolean) => {
     // Relax the floor before the intermediate full-GA fit — a previous
@@ -98,11 +120,6 @@ function FitToDeck({
       map.setMinZoom(map.getZoom());
     }, fast ? FIT_DELAY_MS_FAST : FIT_DELAY_MS_SLOW);
   };
-  // Read via a ref inside the ResizeObserver effect below so it always
-  // calls the latest closure (fresh deckBounds/imageWidth/imageHeight)
-  // without having to tear down and re-observe on every prop change.
-  const runFitRef = useRef(runFit);
-  runFitRef.current = runFit;
 
   useEffect(() => {
     const key = `${deckBounds.x1},${deckBounds.y1},${deckBounds.x2},${deckBounds.y2}`;
@@ -113,32 +130,13 @@ function FitToDeck({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [map, deckBounds, imageWidth, imageHeight]);
 
-  // The area-creation modal mounts this map as soon as a deck is picked
-  // — on mobile that can happen while the "GA" pane sits behind a
-  // `display:none` tab (the user picks the deck on the "Details" tab).
-  // Leaflet measures a 0×0 container at that point and never re-checks
-  // on its own; switching back to the GA tab flips the CSS but leaves
-  // the map thinking it's still 0×0, so the deck-fit computed above
-  // lands wrong. Watch the container's real size and redo the fit the
-  // moment it actually has one (also covers any other display:none →
-  // visible transition, e.g. the desktop/mobile layout swap at `md`).
   useEffect(() => {
-    const container = map.getContainer();
-    let wasHidden = container.offsetWidth === 0 || container.offsetHeight === 0;
-    const observer = new ResizeObserver((entries) => {
-      const entry = entries[0];
-      if (!entry) return;
-      const hasSize = entry.contentRect.width > 0 && entry.contentRect.height > 0;
-      if (hasSize && wasHidden) {
-        wasHidden = false;
-        runFitRef.current(true);
-      } else if (!hasSize) {
-        wasHidden = true;
-      }
-    });
-    observer.observe(container);
-    return () => observer.disconnect();
-  }, [map]);
+    const becameVisible = visible && !wasVisible.current;
+    wasVisible.current = visible;
+    if (!becameVisible) return;
+    runFit(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible]);
 
   return null;
 }
@@ -159,6 +157,7 @@ export default function AreaPolygonDrawer({
   canUndo,
   canRedo,
   onReset,
+  isVisible = true,
 }: AreaPolygonDrawerProps) {
   // Area-specific validation: must stay inside the deck rectangle, must
   // not land inside another area. The generic drawer treats this as an
@@ -234,6 +233,7 @@ export default function AreaPolygonDrawer({
             deckBounds={deckBounds}
             imageWidth={imageWidth}
             imageHeight={imageHeight}
+            visible={isVisible}
           />
         ) : undefined
       }
