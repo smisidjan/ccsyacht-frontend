@@ -223,33 +223,35 @@ export default function ReleaseFormsList({
           {forms!.map((form) => (
             <li
               key={form.identifier}
-              className="flex items-start gap-3 p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
+              className="flex flex-col sm:flex-row sm:items-start gap-3 p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
             >
-              <DocumentIcon className="w-5 h-5 text-gray-400 mt-0.5 flex-shrink-0" />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                  {form.title}
-                </p>
-                {form.description && (
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-2">
-                    {form.description}
+              <div className="flex items-start gap-3 flex-1 min-w-0">
+                <DocumentIcon className="w-5 h-5 text-gray-400 mt-0.5 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900 dark:text-white break-words">
+                    {form.title}
                   </p>
-                )}
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  {t("releaseFormsCreatedBy", { name: form.createdBy.name })} ·{" "}
-                  {new Date(form.dateCreated).toLocaleDateString()}{" "}
-                  {new Date(form.dateCreated).toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </p>
-                {form.hasFile && form.file && (
+                  {form.description && (
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-2">
+                      {form.description}
+                    </p>
+                  )}
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    {form.file.fileName} · {form.file.contentSize}
+                    {t("releaseFormsCreatedBy", { name: form.createdBy.name })} ·{" "}
+                    {new Date(form.dateCreated).toLocaleDateString()}{" "}
+                    {new Date(form.dateCreated).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
                   </p>
-                )}
+                  {form.hasFile && form.file && (
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 break-all">
+                      {form.file.fileName} · {form.file.contentSize}
+                    </p>
+                  )}
+                </div>
               </div>
-              <div className="flex items-center gap-1 flex-shrink-0">
+              <div className="flex items-center gap-1 flex-shrink-0 self-end sm:self-start">
                 <button
                   type="button"
                   onClick={() => setViewForm(form)}

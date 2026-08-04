@@ -242,17 +242,23 @@ export default function StageDetailPanel({
       {/* Header */}
       <div className="p-4 sm:p-6 md:p-8 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-start justify-between gap-6">
-          <div className="flex-1">
-            <div className="flex items-center justify-between gap-3 mb-2">
-              <div className="flex items-center gap-3 min-w-0">
+          <div className="flex-1 min-w-0">
+            {/* `flex-wrap` so the signoff chip drops to its own line
+                on narrow screens instead of squeezing the stage name
+                — mirrors the same fix on the area detail page's
+                active-stage row. */}
+            <div className="flex items-start flex-wrap justify-between gap-x-3 gap-y-2 mb-2">
+              <div className="flex items-start gap-3 min-w-0">
                 {stage.color && (
                   <span
-                    className="inline-block w-5 h-5 rounded-sm flex-shrink-0 border border-gray-200 dark:border-gray-600"
+                    className="inline-block w-5 h-5 rounded-sm flex-shrink-0 border border-gray-200 dark:border-gray-600 mt-1"
                     style={{ backgroundColor: stage.color }}
                     aria-hidden="true"
                   />
                 )}
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white truncate">
+                {/* No `truncate` — the stage name must always show in
+                    full, so it wraps instead of being ellipsized. */}
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white break-words min-w-0">
                   {stage.name}
                 </h2>
               </div>
@@ -412,7 +418,11 @@ export default function StageDetailPanel({
                       >
                         <SignerAvatar name={signer.member.name} />
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between gap-4">
+                          {/* Stacks on mobile — name/subtitle above,
+                              status + sign/reject/remove buttons below
+                              — instead of squeezing both onto one row
+                              and overflowing on narrow screens. */}
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4">
                             <div className="min-w-0">
                               <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
                                 {signer.member.name}
@@ -421,7 +431,7 @@ export default function StageDetailPanel({
                                 {subtitle}
                               </p>
                             </div>
-                            <div className="flex items-center gap-3 flex-shrink-0">
+                            <div className="flex items-center flex-wrap gap-3 flex-shrink-0">
                               <SignoffStatusIndicator
                                 status={signoff?.status}
                                 t={tSignoffs}
@@ -573,13 +583,16 @@ export default function StageDetailPanel({
         {/* Tabs Section */}
         {availableTabs.length > 0 && (
           <div className="pt-8 border-t border-gray-200 dark:border-gray-700">
-            {/* Tab Headers - only show if multiple tabs available */}
+            {/* Tab Headers - only show if multiple tabs available.
+                `overflow-x-auto` + `whitespace-nowrap` so three tabs
+                scroll horizontally on narrow screens instead of
+                wrapping the border/underline row awkwardly. */}
             {availableTabs.length > 1 && (
-            <div className="flex border-b border-gray-200 dark:border-gray-700 mb-8 gap-2">
+            <div className="flex border-b border-gray-200 dark:border-gray-700 mb-8 gap-2 overflow-x-auto whitespace-nowrap">
             {showPunchlistTab && (
               <button
                 onClick={() => setActiveTab("punchlist")}
-                className={`px-5 py-3 text-sm font-medium border-b-2 transition-colors ${
+                className={`flex-shrink-0 px-5 py-3 text-sm font-medium border-b-2 transition-colors ${
                   activeTab === "punchlist"
                     ? "border-blue-600 text-blue-600 dark:text-blue-400"
                     : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
@@ -591,7 +604,7 @@ export default function StageDetailPanel({
             {showRemarksTab && (
               <button
                 onClick={() => setActiveTab("remarks")}
-                className={`px-5 py-3 text-sm font-medium border-b-2 transition-colors ${
+                className={`flex-shrink-0 px-5 py-3 text-sm font-medium border-b-2 transition-colors ${
                   activeTab === "remarks"
                     ? "border-blue-600 text-blue-600 dark:text-blue-400"
                     : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
@@ -603,7 +616,7 @@ export default function StageDetailPanel({
             {showReleaseFormsTab && (
               <button
                 onClick={() => setActiveTab("releaseForms")}
-                className={`px-5 py-3 text-sm font-medium border-b-2 transition-colors ${
+                className={`flex-shrink-0 px-5 py-3 text-sm font-medium border-b-2 transition-colors ${
                   activeTab === "releaseForms"
                     ? "border-blue-600 text-blue-600 dark:text-blue-400"
                     : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"

@@ -140,17 +140,24 @@ export default function AreaDetailPage() {
             </div>
             <div className="md:col-span-3 flex flex-col gap-4">
               {activeStage && (
-                <div className="flex items-center gap-4 px-5 py-4 rounded-xl bg-gray-50 dark:bg-gray-900/40 border border-gray-200 dark:border-gray-700">
+                // `flex-wrap` so the status badge drops to its own line
+                // on narrow screens instead of squeezing the name —
+                // once it wraps, the name block (flex-1) gets the
+                // whole first line to itself alongside just the dot.
+                <div className="flex items-start flex-wrap gap-x-4 gap-y-2 px-4 sm:px-5 py-4 rounded-xl bg-gray-50 dark:bg-gray-900/40 border border-gray-200 dark:border-gray-700">
                   <span
-                    className="inline-block w-4 h-4 rounded-full flex-shrink-0 ring-4 ring-white dark:ring-gray-800 shadow-sm"
+                    className="inline-block w-4 h-4 rounded-full flex-shrink-0 ring-4 ring-white dark:ring-gray-800 shadow-sm mt-1"
                     style={{ backgroundColor: activeStage.color || "#9ca3af" }}
                     aria-hidden="true"
                   />
+                  {/* No `truncate` — the name must always show in full,
+                      so it wraps onto extra lines instead of being
+                      ellipsized on narrow screens. */}
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500 mb-0.5">
                       {t("activeStage")}
                     </p>
-                    <p className="text-lg font-semibold text-gray-900 dark:text-white truncate">
+                    <p className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white break-words">
                       {activeStage.name}
                     </p>
                   </div>

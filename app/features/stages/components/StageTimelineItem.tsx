@@ -75,11 +75,12 @@ export default function StageTimelineItem({
         aria-hidden="true"
       />
       <h3
-        className={`flex-1 text-sm font-semibold truncate ${
+        className={`flex-1 min-w-0 text-sm font-semibold truncate ${
           isUpcomingMode
             ? "text-gray-500 dark:text-gray-400"
             : "text-gray-900 dark:text-white"
         }`}
+        title={stage.name}
       >
         {stage.name}
       </h3>

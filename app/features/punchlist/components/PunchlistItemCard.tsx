@@ -521,8 +521,11 @@ export default function PunchlistItemCard({
           </div>
         )}
         {/* Top bar — status dropdown + priority pill. Mirrors Jira's
-            workflow row above the title. */}
-        <div className="flex items-center gap-2 mb-4 pr-20">
+            workflow row above the title. `flex-wrap` so the dropdowns
+            drop to a second line on narrow screens instead of being
+            squeezed under the fixed `pr-20` reserved for the header's
+            more-menu/close buttons. */}
+        <div className="flex items-center flex-wrap gap-2 mb-4 pr-20">
           <PunchlistStatusDropdown
             status={item.status}
             stageStatus={stageStatus}
@@ -814,7 +817,7 @@ export default function PunchlistItemCard({
             rows. Skips fields that have no value so the panel doesn't
             advertise empty slots. */}
         <Section title={t("detailsHeader")} dense>
-          <dl className="grid grid-cols-3 gap-x-3 gap-y-2 text-sm">
+          <dl className="grid grid-cols-1 sm:grid-cols-3 gap-x-3 gap-y-2 text-sm">
             <DetailRow label={t("detailAssignees")}>
               <PunchlistAssigneePicker
                 projectId={projectId}
@@ -1105,7 +1108,7 @@ function DetailRow({
       <dt className="col-span-1 text-xs text-gray-500 dark:text-gray-400 pt-0.5">
         {label}
       </dt>
-      <dd className="col-span-2 text-sm">{children}</dd>
+      <dd className="col-span-1 sm:col-span-2 text-sm mb-2 sm:mb-0">{children}</dd>
     </>
   );
 }
@@ -1137,7 +1140,7 @@ function SubTaskRow({
   onAssigneesChange: () => void;
 }) {
   return (
-    <div className="flex items-center gap-3 px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors">
+    <div className="flex items-center flex-wrap gap-3 px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors">
       {displayNumber && (
         <span className="font-mono text-xs text-gray-400 dark:text-gray-500 flex-shrink-0">
           #{displayNumber}

@@ -177,13 +177,21 @@ export default function Modal({
         ref={modalRef}
         className={`w-full ${sizeClasses[size]} bg-white dark:bg-gray-800 rounded-2xl shadow-2xl dark:shadow-gray-900/50 max-h-[90vh] flex flex-col`}
       >
-        <div className="flex items-center justify-between px-6 py-5 md:px-8 md:py-6 border-b border-gray-200 dark:border-gray-700">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+        <div className="flex items-center justify-between gap-3 px-6 py-5 md:px-8 md:py-6 border-b border-gray-200 dark:border-gray-700">
+          {/* `min-w-0` + `truncate` so a long dynamic title (e.g. a
+              release form's own name interpolated into the modal
+              title) shrinks and ellipsizes instead of wrapping/pushing
+              the close button off on narrow screens — smaller on
+              mobile since there's less room to work with. */}
+          <h2
+            className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white truncate min-w-0 flex-1"
+            title={title}
+          >
             {title}
           </h2>
           <button
             onClick={onClose}
-            className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+            className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors flex-shrink-0"
           >
             <XMarkIcon className="w-5 h-5" />
           </button>
