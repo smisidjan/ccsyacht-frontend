@@ -428,12 +428,16 @@ export default function SettingsTab({ projectId, onProjectUpdate }: SettingsTabP
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Team Members */}
         <section id="members" className="bg-white dark:bg-gray-800 rounded-xl shadow-lg dark:shadow-gray-900/30 border border-gray-100 dark:border-gray-700 p-6">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
             {t("teamMembers.title")}
           </h3>
           {canManageMembers && !isReadOnly && (
-            <Button onClick={() => setIsAddMemberModalOpen(true)}>
+            <Button
+              size="sm"
+              className="self-start whitespace-nowrap sm:py-3 sm:px-5 sm:text-base"
+              onClick={() => setIsAddMemberModalOpen(true)}
+            >
               <UserPlusIcon className="w-4 h-4" />
               {t("teamMembers.addMember")}
             </Button>
@@ -447,21 +451,21 @@ export default function SettingsTab({ projectId, onProjectUpdate }: SettingsTabP
         ) : members && members.length > 0 ? (
           <div className="divide-y divide-gray-100 dark:divide-gray-700">
             {members.map((member) => (
-              <div key={member.identifier} className="py-4 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
+              <div key={member.identifier} className="py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center flex-shrink-0">
                     <UserCircleIcon className="w-6 h-6 text-blue-600 dark:text-blue-400" />
                   </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-900 dark:text-white">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
                       {member.member.name}
                     </p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                    <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
                       {member.member.email}
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-4">
+                <div className="flex items-center flex-wrap gap-3 pl-[52px] sm:pl-0">
                   <span className="text-sm text-gray-600 dark:text-gray-400 capitalize">
                     {member.roleName}
                   </span>
@@ -523,21 +527,21 @@ export default function SettingsTab({ projectId, onProjectUpdate }: SettingsTabP
         ) : signers && signers.length > 0 ? (
           <div className="divide-y divide-gray-100 dark:divide-gray-700">
             {signers.map((signer) => (
-              <div key={signer.identifier} className="py-4 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-full flex items-center justify-center">
+              <div key={signer.identifier} className="py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-full flex items-center justify-center flex-shrink-0">
                     <UserCircleIcon className="w-6 h-6 text-purple-600 dark:text-purple-400" />
                   </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-900 dark:text-white">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
                       {signer.member.name}
                     </p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                    <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
                       {signer.member.email}
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-4">
+                <div className="flex items-center flex-wrap gap-3 pl-[52px] sm:pl-0">
                   <span className="text-sm text-gray-600 dark:text-gray-400 capitalize">
                     {signer.roleName}
                   </span>

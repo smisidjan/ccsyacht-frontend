@@ -82,6 +82,15 @@ export default function CreateGAPinModal({
   const [x, setX] = useState(50);
   const [y, setY] = useState(50);
 
+  /** Mobile-only tab switch between the GA preview (where the pin is
+   *  dropped) and the form fields (deck/area/stage/label/punchlist).
+   *  On larger screens both panes render side by side and this is
+   *  ignored — see the `sm:` overrides below. */
+  const [mobileTab, setMobileTab] = useState<"location" | "details">("location");
+  useEffect(() => {
+    if (isOpen) setMobileTab("location");
+  }, [isOpen]);
+
   /** Multi-pin draft state — create mode only. Edit mode keeps using
    *  the single `x` / `y` / `label` triple above so the existing
    *  single-pin API stays untouched. In create mode the `label` field
@@ -649,10 +658,45 @@ export default function CreateGAPinModal({
       }
       size={showGAPreview ? "2xl" : "md"}
     >
-      <div className={showGAPreview ? "flex gap-6" : ""}>
+      {/* Mobile-only tab switch — the side-by-side layout below is too
+          cramped on small screens (GA preview and every form field
+          squeezed into half-width columns), so under `sm:` we show
+          one pane at a time instead. Hidden entirely at `sm:` and up,
+          where both panes render side by side as before. */}
+      {showGAPreview && (
+        <div className="flex sm:hidden mb-4 border-b border-gray-200 dark:border-gray-700">
+          <button
+            type="button"
+            onClick={() => setMobileTab("location")}
+            className={`flex-1 px-3 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+              mobileTab === "location"
+                ? "border-blue-600 text-blue-600 dark:text-blue-400"
+                : "border-transparent text-gray-500 dark:text-gray-400"
+            }`}
+          >
+            {t("locationTab") || "Location"}
+          </button>
+          <button
+            type="button"
+            onClick={() => setMobileTab("details")}
+            className={`flex-1 px-3 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+              mobileTab === "details"
+                ? "border-blue-600 text-blue-600 dark:text-blue-400"
+                : "border-transparent text-gray-500 dark:text-gray-400"
+            }`}
+          >
+            {t("detailsTab") || "Details"}
+          </button>
+        </div>
+      )}
+      <div className={showGAPreview ? "flex flex-col sm:flex-row gap-6" : ""}>
         {/* Left: GA Preview with draggable marker */}
         {showGAPreview && (
-          <div className="w-1/2 flex-shrink-0">
+          <div
+            className={`w-full sm:w-1/2 sm:flex-shrink-0 ${
+              mobileTab === "location" ? "block" : "hidden"
+            } sm:block`}
+          >
             <p className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
               {t("pinLocation") || "Pin Location"}
             </p>
@@ -715,7 +759,15 @@ export default function CreateGAPinModal({
         )}
 
         {/* Right: Form fields */}
-        <div className={showGAPreview ? "w-1/2 space-y-5" : "space-y-5"}>
+        <div
+          className={
+            showGAPreview
+              ? `w-full sm:w-1/2 space-y-5 ${
+                  mobileTab === "details" ? "block" : "hidden"
+                } sm:block`
+              : "space-y-5"
+          }
+        >
         {constrainToArea && initialDeck && initialArea && initialStage ? (
           // Compact location summary — caller already locked all three
           // levels so the user just needs to fill in the punchlist body.

@@ -2675,6 +2675,8 @@
     "pinColor": "Pin Kleur",
     "position": "Positie",
     "pinLocation": "Pin Locatie",
+    "locationTab": "Locatie",
+    "detailsTab": "Details",
     "dragToAdjust": "Sleep de pin om de positie aan te passen",
     "dragSelectedPinToAdjust": "Sleep de geselecteerde pin om de positie aan te passen",
     "pin": "Pin",

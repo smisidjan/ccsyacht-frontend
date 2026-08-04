@@ -2645,6 +2645,8 @@
     "pinColor": "Pin Color",
     "position": "Position",
     "pinLocation": "Pin Location",
+    "locationTab": "Location",
+    "detailsTab": "Details",
     "dragToAdjust": "Drag the pin to adjust position",
     "dragSelectedPinToAdjust": "Drag the selected pin to adjust its position",
     "pin": "Pin",

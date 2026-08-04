@@ -547,6 +547,8 @@ export default function OverviewTab({
               {canEditProject && projectStatus !== "setup" && (
                 <Button
                   variant="secondary"
+                  size="sm"
+                  className="sm:py-3 sm:px-5 sm:text-base"
                   onClick={() => {
                     setIsDeckEditMode(true);
                     setIsDeckModalOpen(true);
@@ -559,6 +561,8 @@ export default function OverviewTab({
               {canCreateAreas && projectStatus !== "archived" && projectStatus !== "completed" && (
                 <Button
                   variant="primary"
+                  size="sm"
+                  className="sm:py-3 sm:px-5 sm:text-base"
                   onClick={() => setIsCreateModalOpen(true)}
                 >
                   <PlusIcon className="w-4 h-4" />

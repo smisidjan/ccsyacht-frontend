@@ -36,7 +36,7 @@ export default function RemarksList({ projectId, stageId, stageStatus }: Remarks
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex items-center gap-4">
           <ChatBubbleLeftRightIcon className="w-6 h-6 text-gray-600 dark:text-gray-400" />
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
@@ -51,6 +51,8 @@ export default function RemarksList({ projectId, stageId, stageStatus }: Remarks
         {isStageInProgress && (
           <Button
             variant="primary"
+            size="sm"
+            className="self-start whitespace-nowrap sm:py-3 sm:px-5 sm:text-base"
             onClick={() => setIsCreateModalOpen(true)}
           >
             <PlusIcon className="w-4 h-4" />
